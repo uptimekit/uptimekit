@@ -2,7 +2,7 @@
 # See https://okigu.com/ruler for documentation.
 
 # Default agents to run when --agents is not specified
-default_agents = ["copilot", "gemini-cli", "cursor", "claude"]
+default_agents = ["copilot", "gemini-cli", "cursor", "claude", "antigravity"]
 
 # --- Global MCP Server Configuration ---
 [mcp]
@@ -21,8 +21,6 @@ args = ["-y", "@upstash/context7-mcp"]
 [mcp_servers.shadcn]
 command = "npx"
 args = ["shadcn@latest", "mcp"]
-
-
 
 
 

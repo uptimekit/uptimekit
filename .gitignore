@@ -50,6 +50,8 @@ tmp
 temp
 
 # START Ruler Generated Files
+/.agent/rules/ruler.md
+/.agent/rules/ruler.md.bak
 /.cursor/mcp.json
 /.cursor/mcp.json.bak
 /.gemini/settings.json

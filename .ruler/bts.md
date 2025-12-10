@@ -1,6 +1,4 @@
-# Better-T-Stack Project Rules
-
-This is a uptimekit project created with Better-T-Stack CLI.
+# Uptimekit Rules
 
 ## Project Structure
 
@@ -40,31 +38,6 @@ Authentication is enabled in this project:
 - Server auth logic is in `packages/auth/src/lib/auth.ts`
 - Web app auth client is in `apps/web/src/lib/auth-client.ts`
 
-## Adding More Features
-
-You can add additional addons or deployment options to your project using:
-
-```bash
-pnpx create-better-t-stack
-add
-```
-
-Available addons you can add:
-- **Documentation**: Starlight, Fumadocs
-- **Linting**: Biome, Oxlint, Ultracite
-- **Other**: Ruler, Turborepo, PWA, Tauri, Husky
-
-You can also add web deployment configurations like Cloudflare Workers support.
-
-## Project Configuration
-
-This project includes a `bts.jsonc` configuration file that stores your Better-T-Stack settings:
-
-- Contains your selected stack configuration (database, ORM, backend, frontend, etc.)
-- Used by the CLI to understand your project structure
-- Safe to delete if not needed
-- Updated automatically when using the `add` command
-
 ## Key Points
 
 - This is a Turborepo monorepo using pnpm workspaces
@@ -72,5 +45,22 @@ This project includes a `bts.jsonc` configuration file that stores your Better-T
 - Run commands from the root to execute across all workspaces
 - Run workspace-specific commands with `pnpm run command-name`
 - Turborepo handles build caching and parallel execution
-- Use `pnpx
-create-better-t-stack add` to add more features later
+
+## Code Guidelines
+
+### Formatting & Style
+- **Consistency**: Rely on Prettier and ESLint to enforce standard formatting.
+- **Imports**: Organize imports logically (External packages -> Internal monorepo packages -> Relative imports).
+- **Naming**: Use `camelCase` for functions/variables and `PascalCase` for components/interfaces. Make names descriptive (e.g., `fetchUserData` instead of `getData`).
+
+### Functions
+- **Single Responsibility**: Functions should aim to do one thing well.
+- **Guard Clauses**: Use early returns to reduce nesting and cognitive load.
+- **Size**: Keep functions small. distinct logic blocks should often be extracted into helper functions.
+- **Parameters**: Limit the number of arguments (max ~3). Use a configuration object for more complex signatures.
+
+### Comments
+- **Explain "Why", Not "What"**: The code itself explains what is happening. Use comments to explain the *intent*, business logic, or complex decisions behind the code.
+- **Avoid Clutter**: Do not comment obvious logic (e.g., `// Update count` above `count++`).
+- **Function headers**: Use JSDoc/TSDoc for public-facing utilities to document params and return values.
+- **TODOs**: Use `// TODO:` to mark areas for improvement, but address them sooner rather than later.
