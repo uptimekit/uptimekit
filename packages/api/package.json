@@ -1,0 +1,30 @@
+{
+  "name": "@uptimekit/api",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "@uptimekit/config": "workspace:*"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@orpc/server": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/zod": "catalog:",
+    "next": "^16.0.7",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@uptimekit/auth": "workspace:*",
+    "@uptimekit/db": "workspace:*"
+  }
+}
