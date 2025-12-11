@@ -40,11 +40,11 @@ export const metadata: Metadata = {
 		icon: [
 			{
 				url: "https://r2.uptimekit.dev/logos/uptimekit.svg",
-				media: "(prefers-color-scheme: light)",
+				media: "(prefers-color-scheme: dark)",
 			},
 			{
 				url: "https://r2.uptimekit.dev/logos/uptimekit-dark.svg",
-				media: "(prefers-color-scheme: dark)",
+				media: "(prefers-color-scheme: light)",
 			},
 		],
 	},
