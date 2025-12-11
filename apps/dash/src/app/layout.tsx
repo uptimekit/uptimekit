@@ -9,8 +9,45 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-	title: "uptimekit",
-	description: "uptimekit",
+	title: {
+		default: "UptimeKit",
+		template: "%s | UptimeKit",
+	},
+	description: "The modern status page and monitoring solution for your services.",
+	openGraph: {
+		title: "UptimeKit",
+		description: "The modern status page and monitoring solution for your services.",
+		url: "https://uptimekit.dev",
+		siteName: "UptimeKit",
+		images: [
+			{
+				url: "https://r2.uptimekit.dev/banners/banner.png",
+				width: 1200,
+				height: 630,
+				alt: "UptimeKit",
+			},
+		],
+		locale: "en_US",
+		type: "website",
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "UptimeKit",
+		description: "The modern status page and monitoring solution for your services.",
+		images: ["https://r2.uptimekit.dev/banners/banner.png"],
+	},
+	icons: {
+		icon: [
+			{
+				url: "https://r2.uptimekit.dev/logos/uptimekit.svg",
+				media: "(prefers-color-scheme: light)",
+			},
+			{
+				url: "https://r2.uptimekit.dev/logos/uptimekit-dark.svg",
+				media: "(prefers-color-scheme: dark)",
+			},
+		],
+	},
 };
 
 export default function RootLayout({
