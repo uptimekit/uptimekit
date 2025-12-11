@@ -1,13 +1,10 @@
-import { authClient } from "@/lib/auth-client";
 import { useForm } from "@tanstack/react-form";
-import { toast } from "sonner";
-import z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import z from "zod";
 import Loader from "@/components/common/loader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
@@ -16,6 +13,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
 
 export default function SignUpForm() {
 	const router = useRouter();
@@ -61,7 +61,7 @@ export default function SignUpForm() {
 	return (
 		<Card className="mx-auto w-full max-w-md">
 			<CardHeader>
-				<CardTitle className="text-2xl font-bold">Create Account</CardTitle>
+				<CardTitle className="font-bold text-2xl">Create Account</CardTitle>
 				<CardDescription>
 					Enter your information to create an account
 				</CardDescription>
@@ -91,7 +91,7 @@ export default function SignUpForm() {
 									{field.state.meta.errors.map((error) => (
 										<p
 											key={error?.message}
-											className="text-sm text-red-500 font-medium"
+											className="font-medium text-red-500 text-sm"
 										>
 											{error?.message}
 										</p>
@@ -118,7 +118,7 @@ export default function SignUpForm() {
 									{field.state.meta.errors.map((error) => (
 										<p
 											key={error?.message}
-											className="text-sm text-red-500 font-medium"
+											className="font-medium text-red-500 text-sm"
 										>
 											{error?.message}
 										</p>
@@ -144,7 +144,7 @@ export default function SignUpForm() {
 									{field.state.meta.errors.map((error) => (
 										<p
 											key={error?.message}
-											className="text-sm text-red-500 font-medium"
+											className="font-medium text-red-500 text-sm"
 										>
 											{error?.message}
 										</p>
@@ -168,7 +168,7 @@ export default function SignUpForm() {
 				</form>
 			</CardContent>
 			<CardFooter className="justify-center">
-				<p className="text-sm text-muted-foreground">
+				<p className="text-muted-foreground text-sm">
 					Already have an account?{" "}
 					<Link href="/login" className="text-primary hover:underline">
 						Sign In

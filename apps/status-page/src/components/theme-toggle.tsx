@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun, Monitor } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ export function ThemeToggle() {
 					"flex h-7 w-7 items-center justify-center rounded-md transition-all",
 					theme === "light"
 						? "bg-background text-foreground shadow-sm"
-						: "text-muted-foreground hover:text-foreground"
+						: "text-muted-foreground hover:text-foreground",
 				)}
 				aria-label="Light mode"
 			>
@@ -45,7 +45,7 @@ export function ThemeToggle() {
 					"flex h-7 w-7 items-center justify-center rounded-md transition-all",
 					theme === "dark"
 						? "bg-background text-foreground shadow-sm"
-						: "text-muted-foreground hover:text-foreground"
+						: "text-muted-foreground hover:text-foreground",
 				)}
 				aria-label="Dark mode"
 			>
@@ -58,7 +58,7 @@ export function ThemeToggle() {
 					"flex h-7 w-7 items-center justify-center rounded-md transition-all",
 					theme === "system"
 						? "bg-background text-foreground shadow-sm"
-						: "text-muted-foreground hover:text-foreground"
+						: "text-muted-foreground hover:text-foreground",
 				)}
 				aria-label="System theme"
 			>

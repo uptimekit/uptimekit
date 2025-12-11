@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
+import { redirect } from "next/navigation";
 import SignInForm from "@/components/auth/sign-in-form";
 
 export default async function LoginPage() {
@@ -8,8 +8,11 @@ export default async function LoginPage() {
 
 	if (isSelfHosted) {
 		// Check if any users exist in self-hosted mode (server-side)
-		const users = await db.select({ id: schema.user.id }).from(schema.user).limit(1);
-		
+		const users = await db
+			.select({ id: schema.user.id })
+			.from(schema.user)
+			.limit(1);
+
 		if (users.length === 0) {
 			// No users exist, redirect to register
 			redirect("/register");

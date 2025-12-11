@@ -1,15 +1,11 @@
-"use client"
+"use client";
 
-import { authClient } from "@/lib/auth-client";
 import { useForm } from "@tanstack/react-form";
-import { toast } from "sonner";
-import z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Loader from "../common/loader";
+import { toast } from "sonner";
+import z from "zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
@@ -18,6 +14,10 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
+import Loader from "../common/loader";
 
 export default function SignInForm() {
 	const router = useRouter();
@@ -60,7 +60,7 @@ export default function SignInForm() {
 	return (
 		<Card className="mx-auto w-full max-w-md">
 			<CardHeader>
-				<CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+				<CardTitle className="font-bold text-2xl">Welcome Back</CardTitle>
 				<CardDescription>
 					Enter your credentials to access your account
 				</CardDescription>
@@ -91,7 +91,7 @@ export default function SignInForm() {
 									{field.state.meta.errors.map((error) => (
 										<p
 											key={error?.message}
-											className="text-sm text-red-500 font-medium"
+											className="font-medium text-red-500 text-sm"
 										>
 											{error?.message}
 										</p>
@@ -119,7 +119,7 @@ export default function SignInForm() {
 									{field.state.meta.errors.map((error) => (
 										<p
 											key={error?.message}
-											className="text-sm text-red-500 font-medium"
+											className="font-medium text-red-500 text-sm"
 										>
 											{error?.message}
 										</p>
@@ -143,7 +143,7 @@ export default function SignInForm() {
 				</form>
 			</CardContent>
 			<CardFooter className="justify-center">
-				<p className="text-sm text-muted-foreground">
+				<p className="text-muted-foreground text-sm">
 					Don&apos;t have an account?{" "}
 					<Link href="/register" className="text-primary hover:underline">
 						Sign Up

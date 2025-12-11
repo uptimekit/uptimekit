@@ -1,7 +1,7 @@
+import { auth } from "@uptimekit/auth";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { IncidentsTable } from "@/components/incidents/table";
-import { headers } from "next/headers";
-import { auth } from "@uptimekit/auth";
 
 export default async function HomePage() {
 	const session = await auth.api.getSession({

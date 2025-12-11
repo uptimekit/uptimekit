@@ -1,4 +1,3 @@
-
 import { MonitorsTable } from "@/components/monitors/table";
 
 export default function MonitorsPage() {

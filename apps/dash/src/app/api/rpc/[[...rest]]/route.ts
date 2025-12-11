@@ -1,11 +1,11 @@
-import { createContext } from "@uptimekit/api/context";
-import { appRouter } from "@uptimekit/api/routers/index";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
-import { RPCHandler } from "@orpc/server/fetch";
 import { onError } from "@orpc/server";
-import { NextRequest } from "next/server";
+import { RPCHandler } from "@orpc/server/fetch";
+import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { createContext } from "@uptimekit/api/context";
+import { appRouter } from "@uptimekit/api/routers/index";
+import type { NextRequest } from "next/server";
 
 const rpcHandler = new RPCHandler(appRouter, {
 	interceptors: [

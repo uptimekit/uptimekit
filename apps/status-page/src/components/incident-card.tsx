@@ -1,6 +1,6 @@
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusDot, type StatusType } from "./status-indicator";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface IncidentUpdate {
 	id: string;
@@ -42,15 +42,15 @@ export function IncidentCard({
 	return (
 		<div
 			className={cn(
-				"rounded-xl border border-border bg-card overflow-hidden transition-all duration-300",
+				"overflow-hidden rounded-xl border border-border bg-card transition-all duration-300",
 				"hover:border-primary/20",
-				className
+				className,
 			)}
 		>
 			<button
 				type="button"
 				onClick={onToggle}
-				className="w-full flex items-center justify-between p-5 text-left hover:bg-muted/50 transition-colors"
+				className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-muted/50"
 			>
 				<div className="flex items-center gap-3">
 					<StatusDot status={incident.status} />
@@ -58,7 +58,7 @@ export function IncidentCard({
 						<h3 className="font-semibold text-card-foreground">
 							{incident.title}
 						</h3>
-						<p className="text-xs text-muted-foreground mt-0.5">
+						<p className="mt-0.5 text-muted-foreground text-xs">
 							{incident.startedAt.toLocaleDateString("en-US", {
 								month: "short",
 								day: "numeric",
@@ -76,17 +76,17 @@ export function IncidentCard({
 			</button>
 
 			{isExpanded && (
-				<div className="px-5 pb-5 border-t border-border pt-4 animate-slide-up">
+				<div className="animate-slide-up border-border border-t px-5 pt-4 pb-5">
 					{/* Affected services */}
 					<div className="mb-4">
-						<h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+						<h4 className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
 							Affected Services
 						</h4>
 						<div className="flex flex-wrap gap-2">
 							{incident.affectedServices.map((service) => (
 								<span
 									key={service}
-									className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground"
+									className="inline-flex items-center rounded-md bg-secondary px-2.5 py-1 font-medium text-secondary-foreground text-xs"
 								>
 									{service}
 								</span>
@@ -96,7 +96,7 @@ export function IncidentCard({
 
 					{/* Updates timeline */}
 					<div>
-						<h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+						<h4 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
 							Updates
 						</h4>
 						<div className="space-y-4">
@@ -104,32 +104,32 @@ export function IncidentCard({
 								<div key={update.id} className="relative pl-6">
 									{/* Timeline line */}
 									{index < incident.updates.length - 1 && (
-										<div className="absolute left-[7px] top-4 bottom-0 w-px bg-border" />
+										<div className="absolute top-4 bottom-0 left-[7px] w-px bg-border" />
 									)}
 									{/* Timeline dot */}
 									<div
 										className={cn(
-											"absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full border-2 border-background",
+											"absolute top-1.5 left-0 h-3.5 w-3.5 rounded-full border-2 border-background",
 											update.status === "resolved"
 												? "bg-status-operational"
 												: update.status === "monitoring"
 													? "bg-status-degraded"
 													: update.status === "identified"
 														? "bg-status-partial-outage"
-														: "bg-status-major-outage"
+														: "bg-status-major-outage",
 										)}
 									/>
 									<div>
-										<div className="flex items-center gap-2 mb-1">
+										<div className="mb-1 flex items-center gap-2">
 											<span
 												className={cn(
-													"text-xs font-semibold uppercase",
-													updateStatusColors[update.status]
+													"font-semibold text-xs uppercase",
+													updateStatusColors[update.status],
 												)}
 											>
 												{update.status}
 											</span>
-											<span className="text-xs text-muted-foreground">
+											<span className="text-muted-foreground text-xs">
 												{update.timestamp.toLocaleString("en-US", {
 													month: "short",
 													day: "numeric",
@@ -138,7 +138,7 @@ export function IncidentCard({
 												})}
 											</span>
 										</div>
-										<p className="text-sm text-card-foreground">
+										<p className="text-card-foreground text-sm">
 											{update.message}
 										</p>
 									</div>
@@ -166,19 +166,22 @@ export function generateMockIncidents(): Incident[] {
 				{
 					id: "1-3",
 					status: "monitoring",
-					message: "We have deployed a fix and are monitoring the situation. Response times are improving.",
+					message:
+						"We have deployed a fix and are monitoring the situation. Response times are improving.",
 					timestamp: new Date(now.getTime() - 30 * 60 * 1000),
 				},
 				{
 					id: "1-2",
 					status: "identified",
-					message: "The issue has been identified as a database connection pool exhaustion. We are working on a fix.",
+					message:
+						"The issue has been identified as a database connection pool exhaustion. We are working on a fix.",
 					timestamp: new Date(now.getTime() - 1 * 60 * 60 * 1000),
 				},
 				{
 					id: "1-1",
 					status: "investigating",
-					message: "We are investigating reports of increased API response times.",
+					message:
+						"We are investigating reports of increased API response times.",
 					timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
 				},
 			],
@@ -194,13 +197,15 @@ export function generateMockIncidents(): Incident[] {
 				{
 					id: "2-2",
 					status: "resolved",
-					message: "Maintenance completed successfully. All systems are back to normal.",
+					message:
+						"Maintenance completed successfully. All systems are back to normal.",
 					timestamp: new Date(now.getTime() - 20 * 60 * 60 * 1000),
 				},
 				{
 					id: "2-1",
 					status: "investigating",
-					message: "Starting scheduled database maintenance. Some services may experience brief interruptions.",
+					message:
+						"Starting scheduled database maintenance. Some services may experience brief interruptions.",
 					timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000),
 				},
 			],

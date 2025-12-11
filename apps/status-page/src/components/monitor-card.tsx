@@ -1,7 +1,7 @@
+import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusDot, type StatusType } from "./status-indicator";
-import { UptimeBar, generateMockUptimeData } from "./uptime-bar";
-import { ExternalLink } from "lucide-react";
+import { generateMockUptimeData, UptimeBar } from "./uptime-bar";
 
 interface MonitorCardProps {
 	name: string;
@@ -26,15 +26,15 @@ export function MonitorCard({
 		<div
 			className={cn(
 				"group rounded-xl border border-border bg-card p-5 transition-all duration-300",
-				"hover:shadow-lg hover:border-primary/20 hover:-translate-y-0.5",
-				className
+				"hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-lg",
+				className,
 			)}
 		>
-			<div className="flex items-start justify-between mb-4">
+			<div className="mb-4 flex items-start justify-between">
 				<div className="flex items-center gap-3">
 					<StatusDot status={status} />
 					<div>
-						<h3 className="font-semibold text-card-foreground group-hover:text-primary transition-colors">
+						<h3 className="font-semibold text-card-foreground transition-colors group-hover:text-primary">
 							{name}
 						</h3>
 						{url && (
@@ -42,7 +42,7 @@ export function MonitorCard({
 								href={url}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5"
+								className="mt-0.5 flex items-center gap-1 text-muted-foreground text-xs hover:text-primary"
 							>
 								{new URL(url).hostname}
 								<ExternalLink className="h-3 w-3" />
@@ -51,11 +51,11 @@ export function MonitorCard({
 					</div>
 				</div>
 				<div className="text-right">
-					<div className="text-sm font-medium text-card-foreground">
+					<div className="font-medium text-card-foreground text-sm">
 						{uptime.toFixed(2)}%
 					</div>
 					{responseTime && (
-						<div className="text-xs text-muted-foreground">
+						<div className="text-muted-foreground text-xs">
 							{responseTime}ms
 						</div>
 					)}

@@ -1,8 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { StatusType } from "./status-indicator";
-import { useState } from "react";
 
 interface UptimeDay {
 	date: string;
@@ -40,12 +40,12 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 						<div
 							className={cn(
 								"uptime-bar-segment cursor-pointer",
-								statusColors[day.status]
+								statusColors[day.status],
 							)}
 						/>
 						{hoveredIndex === index && (
-							<div className="absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap">
-								<div className="rounded-md bg-popover px-3 py-2 text-xs shadow-lg border border-border">
+							<div className="-translate-x-1/2 absolute bottom-full left-1/2 z-10 mb-2 whitespace-nowrap">
+								<div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg">
 									<div className="font-medium text-popover-foreground">
 										{new Date(day.date).toLocaleDateString("en-US", {
 											weekday: "short",
@@ -53,17 +53,17 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 											day: "numeric",
 										})}
 									</div>
-									<div className="text-muted-foreground mt-0.5">
+									<div className="mt-0.5 text-muted-foreground">
 										{day.uptime.toFixed(2)}% uptime
 									</div>
 								</div>
-								<div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-popover" />
+								<div className="-translate-x-1/2 absolute top-full left-1/2 border-4 border-transparent border-t-popover" />
 							</div>
 						)}
 					</div>
 				))}
 			</div>
-			<div className="mt-2 flex justify-between text-xs text-muted-foreground">
+			<div className="mt-2 flex justify-between text-muted-foreground text-xs">
 				<span>{days.length} days ago</span>
 				<span>Today</span>
 			</div>
@@ -71,7 +71,7 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 	);
 }
 
-export function generateMockUptimeData(days: number = 90): UptimeDay[] {
+export function generateMockUptimeData(days = 90): UptimeDay[] {
 	const data: UptimeDay[] = [];
 	const now = new Date();
 

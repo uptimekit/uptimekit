@@ -1,9 +1,9 @@
-import { nextCookies } from 'better-auth/next-js';
-import { betterAuth } from "better-auth";
-import { admin, apiKey, organization } from "better-auth/plugins"
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
+import { admin, apiKey, organization } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 // Helper to create slug from email
@@ -30,12 +30,16 @@ export const auth = betterAuth({
 					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 
 					// Count users to check if this is the first user
-					const users = await db.select({ id: schema.user.id }).from(schema.user).limit(2);
+					const users = await db
+						.select({ id: schema.user.id })
+						.from(schema.user)
+						.limit(2);
 					const isFirstUser = users.length === 1;
 
 					// Assign admin role if self-hosted and first user
 					if (isSelfHosted && isFirstUser) {
-						await db.update(schema.user)
+						await db
+							.update(schema.user)
 							.set({ role: "admin" })
 							.where(eq(schema.user.id, user.id));
 					}
@@ -65,7 +69,8 @@ export const auth = betterAuth({
 							.limit(1);
 
 						if (membership.length > 0 && membership[0]) {
-							await db.update(schema.session)
+							await db
+								.update(schema.session)
 								.set({ activeOrganizationId: membership[0].organizationId })
 								.where(eq(schema.session.id, session.id));
 						}

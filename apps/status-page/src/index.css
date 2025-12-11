@@ -5,9 +5,9 @@
 
 @theme {
 	--font-sans:
-		var(--font-montserrat, "Montserrat"), "Inter", ui-sans-serif,
-		system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-		"Segoe UI Symbol", "Noto Color Emoji";
+		var(--font-montserrat, "Montserrat"), "Inter", ui-sans-serif, system-ui,
+		sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+		"Noto Color Emoji";
 }
 
 html,

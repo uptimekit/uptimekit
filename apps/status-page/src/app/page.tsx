@@ -1,12 +1,15 @@
 "use client";
 
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
-import { OverallStatus } from "@/components/overall-status";
-import { MonitorCard } from "@/components/monitor-card";
-import { IncidentCard, generateMockIncidents } from "@/components/incident-card";
-import type { StatusType } from "@/components/status-indicator";
 import { useState } from "react";
+import { Footer } from "@/components/footer";
+import { Header } from "@/components/header";
+import {
+	generateMockIncidents,
+	IncidentCard,
+} from "@/components/incident-card";
+import { MonitorCard } from "@/components/monitor-card";
+import { OverallStatus } from "@/components/overall-status";
+import type { StatusType } from "@/components/status-indicator";
 
 interface Monitor {
 	id: string;
@@ -71,7 +74,9 @@ function calculateOverallStatus(monitorList: Monitor[]): StatusType {
 	const hasOutage = monitorList.some((m) => m.status === "major_outage");
 	if (hasOutage) return "major_outage";
 
-	const hasPartialOutage = monitorList.some((m) => m.status === "partial_outage");
+	const hasPartialOutage = monitorList.some(
+		(m) => m.status === "partial_outage",
+	);
 	if (hasPartialOutage) return "partial_outage";
 
 	const hasDegraded = monitorList.some((m) => m.status === "degraded");
@@ -89,11 +94,11 @@ export default function StatusPage() {
 	const overallStatus = calculateOverallStatus(monitors);
 
 	return (
-		<div className="min-h-screen flex flex-col bg-background">
+		<div className="flex min-h-screen flex-col bg-background">
 			<Header title="Acme Corp Status" />
 
 			<main className="flex-1">
-				<div className="max-w-4xl mx-auto px-4 pb-12">
+				<div className="mx-auto max-w-4xl px-4 pb-12">
 					{/* Overall Status */}
 					<section className="mb-10">
 						<OverallStatus status={overallStatus} />
@@ -101,7 +106,7 @@ export default function StatusPage() {
 
 					{/* Monitors */}
 					<section className="mb-10">
-						<h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+						<h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground text-lg">
 							<span className="inline-block h-1 w-1 rounded-full bg-primary" />
 							Services
 						</h2>
@@ -127,7 +132,7 @@ export default function StatusPage() {
 					{/* Active Incidents */}
 					{incidents.length > 0 && (
 						<section className="mb-10">
-							<h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+							<h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground text-lg">
 								<span className="inline-block h-1 w-1 rounded-full bg-status-partial-outage" />
 								Recent Incidents
 							</h2>
@@ -139,7 +144,7 @@ export default function StatusPage() {
 										isExpanded={expandedIncident === incident.id}
 										onToggle={() =>
 											setExpandedIncident(
-												expandedIncident === incident.id ? null : incident.id
+												expandedIncident === incident.id ? null : incident.id,
 											)
 										}
 									/>
@@ -151,20 +156,18 @@ export default function StatusPage() {
 					{/* Uptime Summary */}
 					<section>
 						<div className="rounded-xl border border-border bg-card p-6">
-							<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+							<div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 								<div>
 									<h2 className="font-semibold text-card-foreground">
 										90-Day Uptime Summary
 									</h2>
-									<p className="text-sm text-muted-foreground mt-1">
+									<p className="mt-1 text-muted-foreground text-sm">
 										Overall system availability across all services
 									</p>
 								</div>
 								<div className="text-right">
-									<div className="text-3xl font-bold text-primary">
-										99.95%
-									</div>
-									<div className="text-xs text-muted-foreground">
+									<div className="font-bold text-3xl text-primary">99.95%</div>
+									<div className="text-muted-foreground text-xs">
 										Average uptime
 									</div>
 								</div>

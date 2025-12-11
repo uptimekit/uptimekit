@@ -1,19 +1,19 @@
-import { cn } from "@/lib/utils";
-import { 
-	CheckCircle2, 
-	AlertTriangle, 
-	AlertCircle, 
-	XCircle, 
+import {
+	AlertCircle,
+	AlertTriangle,
+	CheckCircle2,
+	HelpCircle,
 	Wrench,
-	HelpCircle 
+	XCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export type StatusType = 
-	| "operational" 
-	| "degraded" 
-	| "partial_outage" 
-	| "major_outage" 
-	| "maintenance" 
+export type StatusType =
+	| "operational"
+	| "degraded"
+	| "partial_outage"
+	| "major_outage"
+	| "maintenance"
 	| "unknown";
 
 interface StatusIndicatorProps {
@@ -23,12 +23,15 @@ interface StatusIndicatorProps {
 	className?: string;
 }
 
-const statusConfig: Record<StatusType, { 
-	label: string; 
-	color: string; 
-	bgColor: string;
-	icon: React.ComponentType<{ className?: string }>;
-}> = {
+const statusConfig: Record<
+	StatusType,
+	{
+		label: string;
+		color: string;
+		bgColor: string;
+		icon: React.ComponentType<{ className?: string }>;
+	}
+> = {
 	operational: {
 		label: "Operational",
 		color: "text-status-operational",
@@ -73,11 +76,11 @@ const sizeConfig = {
 	lg: { dot: "h-3 w-3", icon: "h-5 w-5", text: "text-base" },
 };
 
-export function StatusIndicator({ 
-	status, 
-	showLabel = true, 
+export function StatusIndicator({
+	status,
+	showLabel = true,
 	size = "md",
-	className 
+	className,
 }: StatusIndicatorProps) {
 	const config = statusConfig[status];
 	const sizes = sizeConfig[size];
@@ -85,7 +88,12 @@ export function StatusIndicator({
 
 	return (
 		<div className={cn("flex items-center gap-2", className)}>
-			<div className={cn("relative flex items-center justify-center", config.color)}>
+			<div
+				className={cn(
+					"relative flex items-center justify-center",
+					config.color,
+				)}
+			>
 				<Icon className={cn(sizes.icon, "animate-pulse-glow")} />
 			</div>
 			{showLabel && (
@@ -97,27 +105,31 @@ export function StatusIndicator({
 	);
 }
 
-export function StatusDot({ 
-	status, 
-	className 
-}: { 
-	status: StatusType; 
+export function StatusDot({
+	status,
+	className,
+}: {
+	status: StatusType;
 	className?: string;
 }) {
 	const config = statusConfig[status];
 
 	return (
 		<div className={cn("relative", className)}>
-			<div className={cn(
-				"h-2.5 w-2.5 rounded-full",
-				config.bgColor,
-				status === "operational" && "animate-pulse"
-			)} />
+			<div
+				className={cn(
+					"h-2.5 w-2.5 rounded-full",
+					config.bgColor,
+					status === "operational" && "animate-pulse",
+				)}
+			/>
 			{status === "operational" && (
-				<div className={cn(
-					"absolute inset-0 h-2.5 w-2.5 rounded-full animate-ping opacity-75",
-					config.bgColor
-				)} />
+				<div
+					className={cn(
+						"absolute inset-0 h-2.5 w-2.5 animate-ping rounded-full opacity-75",
+						config.bgColor,
+					)}
+				/>
 			)}
 		</div>
 	);

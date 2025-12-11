@@ -5,15 +5,21 @@ import {
 	AlertTriangle,
 	Building2,
 	ChevronDown,
-	HeartPulse,
 	LayoutDashboard,
 	Settings,
 	ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import * as React from "react";
-
+import type * as React from "react";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
 	Sidebar,
 	SidebarContent,
@@ -28,15 +34,8 @@ import {
 	SidebarRail,
 	SidebarSeparator,
 } from "@/components/ui/sidebar";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { authClient } from "@/lib/auth-client";
+
 // import { UserMenu } from "@/components/layout/user-menu"; // Unused as we defined a local component for now to match structure
 
 // Navigation items
@@ -73,19 +72,17 @@ const configNav = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
-	const {
-		data: organizations,
-		isPending: isLoadingOrgs,
-	} = authClient.useListOrganizations();
+	const { data: organizations, isPending: isLoadingOrgs } =
+		authClient.useListOrganizations();
 	const {
 		data: activeOrg,
 		isPending: isLoadingActiveOrg,
 		refetch: refetchActiveOrg,
 	} = authClient.useActiveOrganization();
 
-    // Use organization info safely
-    // Note: Better-auth might return null/undefined while loading
-    const currentOrgName = activeOrg?.name || "Select Organization";
+	// Use organization info safely
+	// Note: Better-auth might return null/undefined while loading
+	const currentOrgName = activeOrg?.name || "Select Organization";
 
 	return (
 		<Sidebar collapsible="icon" {...props}>
@@ -94,11 +91,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarMenuItem>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
+								<SidebarMenuButton
 									size="lg"
 									className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
 								>
-									<div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden group-data-[collapsible=icon]:size-6">
+									<div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
 										<img
 											src={
 												activeOrg?.logo ||
@@ -125,7 +122,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								side="bottom"
 								sideOffset={4}
 							>
-								<DropdownMenuLabel className="text-xs text-muted-foreground">
+								<DropdownMenuLabel className="text-muted-foreground text-xs">
 									Organizations
 								</DropdownMenuLabel>
 								{isLoadingOrgs ? (
@@ -141,7 +138,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 											}}
 											className="gap-2 p-2"
 										>
-											<div className="flex size-6 items-center justify-center rounded-sm border overflow-hidden">
+											<div className="flex size-6 items-center justify-center overflow-hidden rounded-sm border">
 												<img
 													src={
 														org.logo ||
@@ -153,7 +150,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 											</div>
 											{org.name}
 											{activeOrg?.id === org.id && (
-												<span className="ml-auto text-xs text-muted-foreground">
+												<span className="ml-auto text-muted-foreground text-xs">
 													Active
 												</span>
 											)}
@@ -185,8 +182,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									<SidebarMenuButton
 										asChild
 										isActive={
-											item.url === "/" 
-												? pathname === "/" 
+											item.url === "/"
+												? pathname === "/"
 												: pathname.startsWith(item.url)
 										}
 										tooltip={item.title}
@@ -225,14 +222,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
-                {/* Reusing existing UserMenu but we might need to adapt it if it's strictly a dropdown trigger without structure. 
+				{/* Reusing existing UserMenu but we might need to adapt it if it's strictly a dropdown trigger without structure. 
                     Let's check UserMenu again or just embed the logic here for better sidebar integration. 
                     For now, let's wrap it in a menu item */}
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <UserMenuComponent />
-                    </SidebarMenuItem>
-                </SidebarMenu>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<UserMenuComponent />
+					</SidebarMenuItem>
+				</SidebarMenu>
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
@@ -243,77 +240,87 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 // The existing UserMenu returns a DropdownMenu directly. We want to style the trigger to look like a SidebarMenuButton.
 // Let's create a wrapper or modify UserMenu. For now, I'll create a local wrapper that uses the same logic.
 
-import { useRouter } from "next/navigation";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronsUpDown, LogOut, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function UserMenuComponent() {
-    const router = useRouter();
+	const router = useRouter();
 	const { data: session, isPending } = authClient.useSession();
 
-    if (isPending) return <Skeleton className="h-12 w-full rounded-lg" />
-    if (!session) return null; // Should not happen in dashboard
+	if (isPending) return <Skeleton className="h-12 w-full rounded-lg" />;
+	if (!session) return null; // Should not happen in dashboard
 
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                    size="lg"
-                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-                >
-                    <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
-                        <AvatarImage src={session.user.image || ""} alt={session.user.name} />
-                        <AvatarFallback className="rounded-lg">
-                            {session.user.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                        <span className="truncate font-semibold">{session.user.name}</span>
-                        <span className="truncate text-xs">{session.user.email}</span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-                </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-            >
-                <DropdownMenuLabel className="p-0 font-normal">
-                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                        <Avatar className="h-8 w-8 rounded-lg">
-                            <AvatarImage src={session.user.image || ""} alt={session.user.name} />
-                            <AvatarFallback className="rounded-lg">
-                                {session.user.name.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="grid flex-1 text-left text-sm leading-tight">
-                            <span className="truncate font-semibold">{session.user.name}</span>
-                            <span className="truncate text-xs">{session.user.email}</span>
-                        </div>
-                    </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    Account
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {
-                        authClient.signOut({
-                            fetchOptions: {
-                                onSuccess: () => {
-                                    router.push("/");
-                                },
-                            },
-                        });
-                    }}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    )
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<SidebarMenuButton
+					size="lg"
+					className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+				>
+					<Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
+						<AvatarImage
+							src={session.user.image || ""}
+							alt={session.user.name}
+						/>
+						<AvatarFallback className="rounded-lg">
+							{session.user.name.slice(0, 2).toUpperCase()}
+						</AvatarFallback>
+					</Avatar>
+					<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+						<span className="truncate font-semibold">{session.user.name}</span>
+						<span className="truncate text-xs">{session.user.email}</span>
+					</div>
+					<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+				</SidebarMenuButton>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+				side="bottom"
+				align="end"
+				sideOffset={4}
+			>
+				<DropdownMenuLabel className="p-0 font-normal">
+					<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+						<Avatar className="h-8 w-8 rounded-lg">
+							<AvatarImage
+								src={session.user.image || ""}
+								alt={session.user.name}
+							/>
+							<AvatarFallback className="rounded-lg">
+								{session.user.name.slice(0, 2).toUpperCase()}
+							</AvatarFallback>
+						</Avatar>
+						<div className="grid flex-1 text-left text-sm leading-tight">
+							<span className="truncate font-semibold">
+								{session.user.name}
+							</span>
+							<span className="truncate text-xs">{session.user.email}</span>
+						</div>
+					</div>
+				</DropdownMenuLabel>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem>
+					<User className="mr-2 h-4 w-4" />
+					Account
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem
+					onClick={() => {
+						authClient.signOut({
+							fetchOptions: {
+								onSuccess: () => {
+									router.push("/");
+								},
+							},
+						});
+					}}
+				>
+					<LogOut className="mr-2 h-4 w-4" />
+					Log out
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
 }

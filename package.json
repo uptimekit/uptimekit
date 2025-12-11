@@ -1,41 +1,41 @@
 {
-  "name": "uptimekit",
-  "private": true,
-  "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "check": "biome check --write .",
-    "prepare": "husky",
-    "build": "turbo build",
-    "check-types": "turbo check-types",
-    "dev": "turbo dev",
-    "dev:dash": "turbo -F @uptimekit/dash dev",
-    "dev:docs": "turbo -F @uptimekit/docs dev",
-    "dev:status-page": "turbo -F @uptimekit/status-page dev",
-    "db:push": "turbo -F @uptimekit/db db:push",
-    "db:studio": "turbo -F @uptimekit/db db:studio",
-    "db:generate": "turbo -F @uptimekit/db db:generate",
-    "db:migrate": "turbo -F @uptimekit/db db:migrate",
-    "ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
-  },
-  "dependencies": {
-    "dotenv": "^17.2.2",
-    "zod": "^4.1.13"
-  },
-  "devDependencies": {
-    "turbo": "^2.5.4",
-    "@biomejs/biome": "^2.2.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
-    "@types/node": "^22.13.11"
-  },
-  "lint-staged": {
-    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-      "biome check --write ."
-    ]
-  },
-  "packageManager": "pnpm@10.19.0"
+	"name": "uptimekit",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"scripts": {
+		"check": "biome check --write .",
+		"prepare": "husky",
+		"build": "turbo build",
+		"check-types": "turbo check-types",
+		"dev": "turbo dev",
+		"dev:dash": "turbo -F @uptimekit/dash dev",
+		"dev:docs": "turbo -F @uptimekit/docs dev",
+		"dev:status-page": "turbo -F @uptimekit/status-page dev",
+		"db:push": "turbo -F @uptimekit/db db:push",
+		"db:studio": "turbo -F @uptimekit/db db:studio",
+		"db:generate": "turbo -F @uptimekit/db db:generate",
+		"db:migrate": "turbo -F @uptimekit/db db:migrate",
+		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
+	},
+	"dependencies": {
+		"dotenv": "^17.2.2",
+		"zod": "^4.1.13"
+	},
+	"devDependencies": {
+		"turbo": "^2.5.4",
+		"@biomejs/biome": "^2.2.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.1.2",
+		"@types/node": "^22.13.11"
+	},
+	"lint-staged": {
+		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+			"biome check --write ."
+		]
+	},
+	"packageManager": "pnpm@10.19.0"
 }

@@ -9,7 +9,7 @@ const montserrat = Montserrat({
 export default function Layout({ children }: LayoutProps<"/">) {
 	return (
 		<html lang="en" className={montserrat.className} suppressHydrationWarning>
-			<body className="flex flex-col min-h-screen">
+			<body className="flex min-h-screen flex-col">
 				<RootProvider>{children}</RootProvider>
 			</body>
 		</html>

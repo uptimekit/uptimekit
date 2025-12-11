@@ -1,32 +1,32 @@
 {
-  "name": "@uptimekit/db",
-  "type": "module",
-  "exports": {
-    ".": {
-      "default": "./src/index.ts"
-    },
-    "./*": {
-      "default": "./src/*.ts"
-    }
-  },
-  "scripts": {
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
-  },
-  "devDependencies": {
-    "drizzle-kit": "^0.31.8",
-    "@types/pg": "^8.15.6",
-    "@uptimekit/config": "workspace:*"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "drizzle-orm": "^0.45.0",
-    "pg": "^8.16.3",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  }
+	"name": "@uptimekit/db",
+	"type": "module",
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		},
+		"./*": {
+			"default": "./src/*.ts"
+		}
+	},
+	"scripts": {
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate"
+	},
+	"devDependencies": {
+		"drizzle-kit": "^0.31.8",
+		"@types/pg": "^8.15.6",
+		"@uptimekit/config": "workspace:*"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"drizzle-orm": "^0.45.0",
+		"pg": "^8.16.3",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	}
 }
