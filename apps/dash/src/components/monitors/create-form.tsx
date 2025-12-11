@@ -47,6 +47,18 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { US, EU, DE, SG, GB, FR, JP, BR, AU, IN } from 'country-flag-icons/react/3x2';
+
+const REGION_MAPPING: Record<string, { label: string, Flag: React.ElementType }> = {
+    "eu-general": { label: "Europe", Flag: EU },
+    "us-east": { label: "United States (East)", Flag: US },
+    "us-west": { label: "United States (West)", Flag: US },
+    "eu-central": { label: "Europe (Central)", Flag: DE },
+    "ap-southeast": { label: "Asia Pacific", Flag: SG },
+    "sa-east": { label: "South America", Flag: BR },
+    "oc-syd": { label: "Oceania", Flag: AU },
+    "uk-london": { label: "United Kingdom", Flag: GB },
+};
 
 // --- Configuration Registry ---
 
@@ -466,10 +478,18 @@ export function CreateMonitorForm() {
     const type = form.watch("type");
     const selectedType = monitorTypes.find((t) => t.id === type) || monitorTypes[0];
 
+    const locations = form.watch("locations") || [];
+    const hasAnySelection = locations.length > 0;
+
     // Helper to select all regions
     const handleSelectAllRegions = () => {
-        if (regions) {
-            form.setValue("locations", regions);
+        if (!regions) return;
+        
+        // If anything is selected, deselect all. Otherwise, select all.
+        if (hasAnySelection) {
+             form.setValue("locations", []);
+        } else {
+             form.setValue("locations", regions);
         }
     }
 
@@ -666,11 +686,15 @@ export function CreateMonitorForm() {
                                                 className="h-auto p-0 text-xs"
                                                 onClick={handleSelectAllRegions}
                                             >
-                                                Select all
+                                                {hasAnySelection ? "Deselect all" : "Select all"}
                                             </Button>
                                         </FormLabel>
                                         <div className="grid grid-cols-2 gap-2">
-                                            {regions?.map((region) => (
+                                            {regions?.map((region) => {
+                                                const regionInfo = REGION_MAPPING[region] || { label: region, Flag: Globe };
+                                                const Flag = regionInfo.Flag;
+                                                
+                                                return (
                                                 <FormField
                                                     key={region}
                                                     control={form.control}
@@ -695,16 +719,19 @@ export function CreateMonitorForm() {
                                                                         }}
                                                                     />
                                                                 </FormControl>
-                                                                <div className="space-y-1 leading-none">
-                                                                    <FormLabel>
-                                                                        {region}
+                                                                <div className="space-y-1 leading-none flex items-center gap-2">
+                                                                    <div className="w-5 h-3.5 relative overflow-hidden rounded-[2px] shadow-sm">
+                                                                       <Flag className="w-full h-full object-cover" />
+                                                                    </div>
+                                                                    <FormLabel className="font-normal cursor-pointer">
+                                                                        {regionInfo.label}
                                                                     </FormLabel>
                                                                 </div>
                                                             </FormItem>
                                                         )
                                                     }}
                                                 />
-                                            ))}
+                                            )})}
                                         </div>
                                         <FormMessage />
                                     </FormItem>
