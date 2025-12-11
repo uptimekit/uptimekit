@@ -1,6 +1,13 @@
 "use client";
 
-import { BarChart3, ChevronLeft, Settings, Shield, Users } from "lucide-react";
+import {
+	BarChart3,
+	ChevronLeft,
+	Server,
+	Settings,
+	Shield,
+	Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
@@ -28,6 +35,11 @@ const adminNav = [
 		title: "Overview",
 		url: "/admin",
 		icon: BarChart3,
+	},
+	{
+		title: "Workers",
+		url: "/admin/workers",
+		icon: Server,
 	},
 	{
 		title: "Users",
