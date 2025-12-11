@@ -1,13 +1,15 @@
+"use client"
+
 import { authClient } from "@/lib/auth-client";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Loader from "./loader";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import Loader from "../common/loader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
@@ -34,7 +36,7 @@ export default function SignInForm() {
 				},
 				{
 					onSuccess: () => {
-						router.push("/dashboard");
+						router.push("/");
 						toast.success("Sign in successful");
 					},
 					onError: (error) => {

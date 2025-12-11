@@ -4,10 +4,10 @@ import { toast } from "sonner";
 import z from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Loader from "./loader";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import Loader from "@/components/common/loader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
@@ -36,7 +36,7 @@ export default function SignUpForm() {
 				},
 				{
 					onSuccess: () => {
-						router.push("/dashboard");
+						router.push("/");
 						toast.success("Sign up successful");
 					},
 					onError: (error) => {

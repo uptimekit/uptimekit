@@ -5,7 +5,7 @@
 This is a monorepo with the following structure:
 
 - **`apps/web/`** - Fullstack application (Next.js)
-
+- **`apps/status-page/`** - Status page application (Next.js)
 
 - **`packages/api/`** - Shared API logic and types
 - **`packages/auth/`** - Authentication logic and utilities
@@ -64,3 +64,7 @@ Authentication is enabled in this project:
 - **Avoid Clutter**: Do not comment obvious logic (e.g., `// Update count` above `count++`).
 - **Function headers**: Use JSDoc/TSDoc for public-facing utilities to document params and return values.
 - **TODOs**: Use `// TODO:` to mark areas for improvement, but address them sooner rather than later.
+
+### Self Hosting
+- App has two variants, self-hosted and cloud-hosted. We define if this instance is self-hosted with NEXT_PUBLIC_SELF_HOSTED environment variable.
+- Some features are only available in cloud-hosted variant, or look different in self-hosted variant.

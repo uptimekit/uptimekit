@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import Dashboard from "./dashboard";
+import { IncidentsTable } from "@/components/incidents/table";
 import { headers } from "next/headers";
 import { auth } from "@uptimekit/auth";
-import { authClient } from "@/lib/auth-client";
 
-export default async function DashboardPage() {
+export default async function HomePage() {
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
@@ -14,10 +13,8 @@ export default async function DashboardPage() {
 	}
 
 	return (
-		<div>
-			<h1>Dashboard</h1>
-			<p>Welcome {session.user.name}</p>
-			<Dashboard session={session} />
+		<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+			<IncidentsTable />
 		</div>
 	);
 }

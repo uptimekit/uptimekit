@@ -9,15 +9,17 @@
   "scripts": {
     "check": "biome check --write .",
     "prepare": "husky",
-    "ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only",
-    "dev": "turbo dev",
     "build": "turbo build",
     "check-types": "turbo check-types",
+    "dev": "turbo dev",
     "dev:dash": "turbo -F @uptimekit/dash dev",
+    "dev:docs": "turbo -F @uptimekit/docs dev",
+    "dev:status-page": "turbo -F @uptimekit/status-page dev",
     "db:push": "turbo -F @uptimekit/db db:push",
     "db:studio": "turbo -F @uptimekit/db db:studio",
     "db:generate": "turbo -F @uptimekit/db db:generate",
-    "db:migrate": "turbo -F @uptimekit/db db:migrate"
+    "db:migrate": "turbo -F @uptimekit/db db:migrate",
+    "ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
