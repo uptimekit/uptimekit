@@ -74,11 +74,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
 	const { data: organizations, isPending: isLoadingOrgs } =
 		authClient.useListOrganizations();
-	const {
-		data: activeOrg,
-		isPending: isLoadingActiveOrg,
-		refetch: refetchActiveOrg,
-	} = authClient.useActiveOrganization();
+	const { data: activeOrg } = authClient.useActiveOrganization();
+	const { data: session } = authClient.useSession();
 
 	// Use organization info safely
 	// Note: Better-auth might return null/undefined while loading
@@ -203,20 +200,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarGroupLabel>Configuration</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{configNav.map((item) => (
-								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton
-										asChild
-										isActive={pathname.startsWith(item.url)}
-										tooltip={item.title}
-									>
-										<Link href={item.url as any}>
-											<item.icon />
-											<span>{item.title}</span>
-										</Link>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							))}
+							{configNav
+								.filter(
+									(item) =>
+										item.title !== "Admin" || session?.user?.role === "admin",
+								)
+								.map((item) => (
+									<SidebarMenuItem key={item.title}>
+										<SidebarMenuButton
+											asChild
+											isActive={pathname.startsWith(item.url)}
+											tooltip={item.title}
+										>
+											<Link href={item.url as any}>
+												<item.icon />
+												<span>{item.title}</span>
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>

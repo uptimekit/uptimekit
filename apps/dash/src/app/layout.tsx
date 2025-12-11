@@ -13,10 +13,12 @@ export const metadata: Metadata = {
 		default: "UptimeKit",
 		template: "%s | UptimeKit",
 	},
-	description: "The modern status page and monitoring solution for your services.",
+	description:
+		"The modern status page and monitoring solution for your services.",
 	openGraph: {
 		title: "UptimeKit",
-		description: "The modern status page and monitoring solution for your services.",
+		description:
+			"The modern status page and monitoring solution for your services.",
 		url: "https://uptimekit.dev",
 		siteName: "UptimeKit",
 		images: [
@@ -33,7 +35,8 @@ export const metadata: Metadata = {
 	twitter: {
 		card: "summary_large_image",
 		title: "UptimeKit",
-		description: "The modern status page and monitoring solution for your services.",
+		description:
+			"The modern status page and monitoring solution for your services.",
 		images: ["https://r2.uptimekit.dev/banners/banner.png"],
 	},
 	icons: {
