@@ -19,7 +19,11 @@ import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import Loader from "../common/loader";
 
-export default function SignInForm() {
+export default function SignInForm({
+	showRegister = true,
+}: {
+	showRegister?: boolean;
+}) {
 	const router = useRouter();
 	const { isPending } = authClient.useSession();
 
@@ -142,14 +146,16 @@ export default function SignInForm() {
 					</form.Subscribe>
 				</form>
 			</CardContent>
-			<CardFooter className="justify-center">
-				<p className="text-muted-foreground text-sm">
-					Don&apos;t have an account?{" "}
-					<Link href="/register" className="text-primary hover:underline">
-						Sign Up
-					</Link>
-				</p>
-			</CardFooter>
+			{showRegister && (
+				<CardFooter className="justify-center">
+					<p className="text-muted-foreground text-sm">
+						Don&apos;t have an account?{" "}
+						<Link href="/register" className="text-primary hover:underline">
+							Sign Up
+						</Link>
+					</p>
+				</CardFooter>
+			)}
 		</Card>
 	);
 }

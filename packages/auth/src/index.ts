@@ -26,17 +26,29 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
+				before: async () => {
+					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
+
+					if (isSelfHosted) {
+						const users = await db
+							.select({ id: schema.user.id })
+							.from(schema.user)
+							.limit(1);
+
+						if (users.length > 0) {
+							throw new Error("Registration is disabled on this instance.");
+						}
+					}
+				},
 				after: async (user) => {
 					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 
-					// Count users to check if this is the first user
 					const users = await db
 						.select({ id: schema.user.id })
 						.from(schema.user)
 						.limit(2);
 					const isFirstUser = users.length === 1;
 
-					// Assign admin role if self-hosted and first user
 					if (isSelfHosted && isFirstUser) {
 						await db
 							.update(schema.user)
@@ -44,7 +56,6 @@ export const auth = betterAuth({
 							.where(eq(schema.user.id, user.id));
 					}
 
-					// Create organization from email using better-auth API
 					const slug = createSlugFromEmail(user.email);
 
 					await auth.api.createOrganization({
@@ -60,7 +71,6 @@ export const auth = betterAuth({
 		session: {
 			create: {
 				after: async (session) => {
-					// If session doesn't have active organization, set the user's first org as active
 					if (!session.activeOrganizationId) {
 						const membership = await db
 							.select({ organizationId: schema.member.organizationId })

@@ -1,3 +1,5 @@
+"use client";
+
 import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +19,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 
-export default function SignUpForm() {
+export default function SignUpForm({
+	showLogin = true,
+}: {
+	showLogin?: boolean;
+}) {
 	const router = useRouter();
 	const { isPending } = authClient.useSession();
 
@@ -167,14 +173,16 @@ export default function SignUpForm() {
 					</form.Subscribe>
 				</form>
 			</CardContent>
-			<CardFooter className="justify-center">
-				<p className="text-muted-foreground text-sm">
-					Already have an account?{" "}
-					<Link href="/login" className="text-primary hover:underline">
-						Sign In
-					</Link>
-				</p>
-			</CardFooter>
+			{showLogin && (
+				<CardFooter className="justify-center">
+					<p className="text-muted-foreground text-sm">
+						Already have an account?{" "}
+						<Link href="/login" className="text-primary hover:underline">
+							Sign In
+						</Link>
+					</p>
+				</CardFooter>
+			)}
 		</Card>
 	);
 }
