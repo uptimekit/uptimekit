@@ -88,16 +88,18 @@ export function CreateWorkerDialog() {
 		}
 	};
 
-	const handleClose = () => {
-		setOpen(false);
-		// Reset state after a short delay to allow animation to finish
-		setTimeout(() => {
-			setNewWorkerKey(null);
-		}, 300);
+	const handleOpenChange = (isOpen: boolean) => {
+		setOpen(isOpen);
+		if (!isOpen) {
+			// Reset state after a short delay to allow animation to finish
+			setTimeout(() => {
+				setNewWorkerKey(null);
+			}, 300);
+		}
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={handleClose}>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
 				<Button size="sm" className="h-8 gap-1" onClick={() => setOpen(true)}>
 					<Plus className="h-3.5 w-3.5" />
@@ -169,7 +171,7 @@ export function CreateWorkerDialog() {
 				)}
 				{newWorkerKey && (
 					<DialogFooter>
-						<Button type="button" onClick={handleClose}>
+						<Button type="button" onClick={() => handleOpenChange(false)}>
 							Done
 						</Button>
 					</DialogFooter>
