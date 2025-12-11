@@ -1,4 +1,3 @@
-"use client";
 
 import {
 	ChevronDown,
@@ -10,6 +9,7 @@ import {
 	Search,
 	ShieldAlert,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -20,10 +20,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { client, orpc } from "@/utils/orpc";
+import { toast } from "sonner";
 
-type MonitorStatus = "up" | "down" | "degraded" | "maintenance";
+export type MonitorStatus = "up" | "down" | "degraded" | "maintenance";
 
-interface Monitor {
+export interface Monitor {
 	id: string;
 	name: string;
 	url: string;
@@ -33,58 +36,17 @@ interface Monitor {
 	usedOn: number;
 	frequency: string;
 	hasIncident?: boolean;
+    active: boolean;
 }
 
-const monitors: Monitor[] = [
-	{
-		id: "1",
-		name: "api.cortano.cloud",
-		url: "https://api.cortano.cloud",
-		status: "up",
-		statusText: "Online",
-		duration: "14d 2h 10m",
-		usedOn: 2,
-		frequency: "1m",
-		hasIncident: false,
-	},
-	{
-		id: "2",
-		name: "premium-pl1.cortano.cloud",
-		url: "https://premium-pl1.cortano.cloud",
-		status: "down",
-		statusText: "Down",
-		duration: "28d 13h 34m",
-		usedOn: 1,
-		frequency: "3m",
-		hasIncident: true,
-	},
-	{
-		id: "3",
-		name: "legacy-api.cortano.cloud",
-		url: "https://legacy-api.cortano.cloud",
-		status: "degraded",
-		statusText: "Degraded Performance",
-		duration: "3d 19h 15m",
-		usedOn: 1,
-		frequency: "3m",
-		hasIncident: false,
-	},
-	{
-		id: "4",
-		name: "cdn.cortano.cloud",
-		url: "https://cdn.cortano.cloud",
-		status: "maintenance",
-		statusText: "Maintenance",
-		duration: "1h 5m",
-		usedOn: 4,
-		frequency: "30s",
-		hasIncident: false,
-	},
-];
+interface MonitorsTableProps {
+	data: Monitor[];
+}
 
-export function MonitorsTable() {
+export function MonitorsTable({ data }: MonitorsTableProps) {
 	return (
 		<div className="space-y-4">
+			{/* ... existing header ... */}
 			<div className="flex items-center justify-between">
 				<h1 className="font-bold text-2xl tracking-tight">Monitors</h1>
 				<div className="flex items-center gap-2">
@@ -95,9 +57,14 @@ export function MonitorsTable() {
 					<Button variant="outline" size="icon">
 						<Filter className="h-4 w-4" />
 					</Button>
-					<Button className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100">
-						<Plus className="h-4 w-4" />
-						Create monitor
+					<Button
+						asChild
+						className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100"
+					>
+						<Link href="/monitors/new">
+							<Plus className="h-4 w-4" />
+							Create monitor
+						</Link>
 					</Button>
 				</div>
 			</div>
@@ -109,11 +76,34 @@ export function MonitorsTable() {
 				</div>
 				<Table>
 					<TableBody>
-						{monitors.map((monitor) => (
+						{data.length === 0 ? (
+							<TableRow>
+								<TableCell colSpan={6} className="h-24 text-center">
+									<div className="flex flex-col items-center justify-center gap-2 py-6">
+										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+											<PlayCircle className="h-6 w-6 text-muted-foreground" />
+										</div>
+										<p className="font-medium text-lg">No monitors found</p>
+										<p className="text-muted-foreground text-sm">
+											Get started by creating your first monitor.
+										</p>
+										<div className="mt-2">
+											<Button asChild>
+												<Link href="/monitors/new">Create monitor</Link>
+											</Button>
+										</div>
+									</div>
+								</TableCell>
+							</TableRow>
+						) : (
+							data.map((monitor) => (
 							<TableRow
-								key={monitor.id}
-								className="group h-[72px] cursor-pointer hover:bg-muted/40"
-							>
+                                key={monitor.id}
+                                className={cn(
+                                    "group h-[72px] cursor-pointer hover:bg-muted/40",
+                                    !monitor.active && "opacity-50 grayscale"
+                                )}
+                            >
 								<TableCell className="w-[50px] pl-6">
 									<div
 										className={cn(
@@ -133,6 +123,11 @@ export function MonitorsTable() {
 									<div className="grid gap-1">
 										<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
 											{monitor.name}
+                                            {!monitor.active && (
+                                                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+                                                    PAUSED
+                                                </span>
+                                            )}
 										</span>
 										<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
 											<span
@@ -171,32 +166,74 @@ export function MonitorsTable() {
 									</div>
 								</TableCell>
 								<TableCell className="w-[50px] pr-4">
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-											>
-												<MoreHorizontal className="h-4 w-4" />
-												<span className="sr-only">Open menu</span>
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem>View details</DropdownMenuItem>
-											<DropdownMenuItem>Edit monitor</DropdownMenuItem>
-											<DropdownMenuItem>Pause monitoring</DropdownMenuItem>
-											<DropdownMenuItem className="text-red-500">
-												Delete
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
+                                     <MonitorActions monitor={monitor} />
 								</TableCell>
 							</TableRow>
-						))}
+						)))}
 					</TableBody>
 				</Table>
 			</div>
 		</div>
 	);
+}
+
+function MonitorActions({ monitor }: { monitor: Monitor }) {
+    const queryClient = useQueryClient();
+    
+    const { mutate: deleteMonitor } = useMutation({
+        mutationFn: (id: string) => client.monitors.delete({ id }),
+        onSuccess: () => {
+             toast.success("Monitor deleted");
+             queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+        },
+        onError: () => toast.error("Failed to delete monitor")
+    });
+
+    const { mutate: toggleMonitor } = useMutation({
+        mutationFn: ({ id, active }: { id: string; active: boolean }) => 
+            client.monitors.toggle({ id, active }),
+        onSuccess: () => {
+             toast.success("Monitor updated");
+             queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+        },
+        onError: () => toast.error("Failed to update monitor")
+    });
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem>View details</DropdownMenuItem>
+                <DropdownMenuItem>Edit monitor</DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMonitor({ id: monitor.id, active: !monitor.active });
+                    }}
+                >
+                    {monitor.active ? "Pause monitoring" : "Resume monitoring"}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                    className="text-red-500"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm("Are you sure?")) {
+                            deleteMonitor(monitor.id);
+                        }
+                    }}
+                >
+                    Delete
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 }

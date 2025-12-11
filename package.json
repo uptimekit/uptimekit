@@ -26,16 +26,16 @@
 		"zod": "^4.1.13"
 	},
 	"devDependencies": {
-		"turbo": "^2.5.4",
 		"@biomejs/biome": "^2.2.0",
+		"@types/node": "^22.13.11",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.1.2",
-		"@types/node": "^22.13.11"
+		"turbo": "^2.5.4"
 	},
 	"lint-staged": {
 		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
 			"biome check --write ."
 		]
 	},
-	"packageManager": "pnpm@10.19.0"
+	"packageManager": "pnpm@10.25.0"
 }

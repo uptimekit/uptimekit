@@ -1,0 +1,823 @@
+"use client";
+
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { client, orpc } from "@/utils/orpc";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	Form,
+	FormControl,
+	FormDescription,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+    CommandSeparator,
+} from "@/components/ui/command";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { Card, CardContent } from "@/components/ui/card";
+import { Check, ChevronsUpDown, Globe, Search, Activity, Server, Network, Braces, Plus, Folder, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+// --- Configuration Registry ---
+
+const baseSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    interval: z.coerce.number().min(30),
+    groupId: z.string().optional(),
+    incidentPendingDuration: z.coerce.number().default(0),
+    incidentRecoveryDuration: z.coerce.number().default(0),
+    locations: z.array(z.string()).min(1, "At least one region must be selected"),
+});
+
+const httpSchema = z.object({
+    type: z.literal("http"),
+    url: z.string().url("Must be a valid URL"),
+    checkSsl: z.boolean().default(true),
+    headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+    body: z.string().optional(),
+    method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]).default("GET"),
+});
+
+const httpJsonSchema = z.object({
+    type: z.literal("http-json"),
+    url: z.string().url("Must be a valid URL"),
+    jsonPath: z.string().min(1, "JSONata expression is required"),
+    checkSsl: z.boolean().default(true),
+    headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+    body: z.string().optional(),
+    method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]).default("GET"),
+});
+
+const keywordSchema = z.object({
+    type: z.literal("keyword"),
+    url: z.string().url("Must be a valid URL"),
+    keyword: z.string().min(1, "Keyword is required"),
+    checkSsl: z.boolean().default(true),
+    headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
+    body: z.string().optional(),
+    method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]).default("GET"),
+});
+
+const pingSchema = z.object({
+    type: z.literal("ping"),
+    hostname: z.string().min(1, "Hostname is required"),
+});
+
+const tcpSchema = z.object({
+    type: z.literal("tcp"),
+    hostname: z.string().min(1, "Hostname is required"),
+    port: z.coerce.number().min(1).max(65535, "Port must be between 1 and 65535"),
+});
+
+const dnsSchema = z.object({
+    type: z.literal("dns"),
+    hostname: z.string().min(1, "Hostname is required"),
+});
+
+// Union schema
+const monitorConfigSchema = z.discriminatedUnion("type", [
+    httpSchema,
+    httpJsonSchema,
+    keywordSchema,
+    pingSchema,
+    tcpSchema,
+    dnsSchema,
+]);
+
+const formSchema = z.intersection(baseSchema, monitorConfigSchema);
+
+type FormValues = z.infer<typeof formSchema>;
+
+// Registry for UI components and metadata
+type MonitorTypeDefinition = {
+    id: FormValues["type"];
+    label: string;
+    description: string;
+    icon: React.ElementType;
+    group: "Network & web" | "Infrastructure";
+    // Component to render specific fields
+    Fields: React.ComponentType<{ form: any }>; 
+};
+
+// Reusable field components
+const UrlField = ({ form }: { form: any }) => (
+    <FormField
+        control={form.control}
+        name="url"
+        render={({ field }) => (
+            <FormItem>
+                <FormLabel>Target URL</FormLabel>
+                <FormControl>
+                    <Input placeholder="https://example.com" {...field} />
+                </FormControl>
+                <FormDescription>
+                    The URL you want to monitor.
+                </FormDescription>
+                <FormMessage />
+            </FormItem>
+        )}
+    />
+);
+
+const HostnameField = ({ form }: { form: any }) => (
+    <FormField
+        control={form.control}
+        name="hostname"
+        render={({ field }) => (
+            <FormItem>
+                <FormLabel>Hostname</FormLabel>
+                <FormControl>
+                    <Input placeholder="example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+            </FormItem>
+        )}
+    />
+);
+
+const TcpFields = ({ form }: { form: any }) => (
+    <div className="flex gap-4">
+        <div className="flex-1">
+             <HostnameField form={form} />
+        </div>
+        <div className="w-32">
+            <FormField
+                control={form.control}
+                name="port"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Port</FormLabel>
+                        <FormControl>
+                            <Input placeholder="80" {...field} type="number" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+    </div>
+);
+
+const KeywordFields = ({ form }: { form: any }) => (
+    <>
+        <UrlField form={form} />
+        <FormField
+            control={form.control}
+            name="keyword"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Keyword</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Error" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                        Alert if this keyword is found on the page.
+                    </FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+    </>
+);
+
+const HttpJsonFields = ({ form }: { form: any }) => (
+    <>
+        <UrlField form={form} />
+        <FormField
+            control={form.control}
+            name="jsonPath"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>JSONata Expression</FormLabel>
+                    <FormControl>
+                        <Input placeholder="$.message = 'Hello World'" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                        Expression to validate the JSON response.
+                    </FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+    </>
+);
+
+const monitorTypes: MonitorTypeDefinition[] = [
+	{
+		id: "http",
+        group: "Network & web",
+		label: "HTTP(s)",
+		description: "Monitor a website or API endpoint",
+		icon: Globe,
+        Fields: UrlField,
+	},
+    {
+		id: "http-json",
+        group: "Network & web",
+		label: "HTTP JSON",
+		description: "Validate JSON response from an API",
+		icon: Braces,
+        Fields: HttpJsonFields,
+	},
+	{
+		id: "keyword",
+        group: "Network & web",
+		label: "HTTP Keyword",
+		description: "Check if a keyword is present on a page",
+		icon: Search,
+        Fields: KeywordFields,
+	},
+    {
+		id: "dns",
+        group: "Network & web",
+		label: "DNS",
+		description: "Monitor DNS records",
+		icon: Network,
+        Fields: HostnameField,
+	},
+	{
+		id: "ping",
+        group: "Infrastructure",
+		label: "Ping",
+		description: "Check reachability of a host",
+		icon: Activity,
+        Fields: HostnameField,
+	},
+	{
+		id: "tcp",
+        group: "Infrastructure",
+		label: "Port (TCP)",
+		description: "Monitor a specific port on a server",
+		icon: Server,
+        Fields: TcpFields,
+	},
+];
+
+const groupedTypes: { group: string, items: MonitorTypeDefinition[] }[] = [
+    { group: "Network & web", items: monitorTypes.filter(t => t.group === "Network & web") },
+    { group: "Infrastructure", items: monitorTypes.filter(t => t.group === "Infrastructure") },
+];
+
+// Add new Advanced Fields Components
+const HttpAdvancedFields = ({ form }: { form: any }) => {
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "headers",
+    });
+
+    return (
+        <div className="space-y-4">
+             <FormField
+                control={form.control}
+                name="checkSsl"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg p-4 bg-muted/50">
+                        <div className="space-y-0.5">
+                            <FormLabel className="text-base">SSL & domain verification</FormLabel>
+                            <FormDescription>
+                                Receive an alert when your certificate is about to expire.
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                            />
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+
+            <div className="space-y-2">
+                <FormLabel>Request Headers</FormLabel>
+                <div className="space-y-2">
+                    {fields.map((field, index) => (
+                        <div key={field.id} className="flex gap-2">
+                            <FormField
+                                control={form.control}
+                                name={`headers.${index}.key`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormControl>
+                                            <Input placeholder="Key" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`headers.${index}.value`}
+                                render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                        <FormControl>
+                                            <Input placeholder="Value" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="button" variant="outline" size="icon" onClick={() => remove(index)}>
+                                <span className="sr-only">Remove</span>
+                                <Plus className="h-4 w-4 rotate-45" /> 
+                            </Button>
+                        </div>
+                    ))}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => append({ key: "", value: "" })}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Header
+                    </Button>
+                </div>
+            </div>
+            
+             <FormField
+                control={form.control}
+                name="body"
+                render={({ field }) => (
+                    <FormItem>
+                         <div className="flex items-center justify-between">
+                             <FormLabel>Request Body</FormLabel>
+                             <Select onValueChange={(val) => form.setValue("method", val)} defaultValue={form.getValues("method") || "GET"}>
+                                 <SelectTrigger className="w-[100px] h-8">
+                                     <SelectValue placeholder="Method" />
+                                 </SelectTrigger>
+                                 <SelectContent>
+                                     <SelectItem value="GET">GET</SelectItem>
+                                     <SelectItem value="POST">POST</SelectItem>
+                                     <SelectItem value="PUT">PUT</SelectItem>
+                                     <SelectItem value="PATCH">PATCH</SelectItem>
+                                     <SelectItem value="DELETE">DELETE</SelectItem>
+                                     <SelectItem value="HEAD">HEAD</SelectItem>
+                                 </SelectContent>
+                             </Select>
+                         </div>
+                        <FormControl>
+                            <Textarea 
+                                placeholder="{ 'key': 'value' }" 
+                                className="font-mono" 
+                                {...field} 
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+    );
+};
+
+// ... (CreateMonitorForm update)
+
+export function CreateMonitorForm() {
+	// ... (hooks remain)
+    
+    // Fetch regions
+    const { data: regions } = useQuery(orpc.workers.listLocations.queryOptions());
+    
+    const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+	const form = useForm<FormValues>({
+		resolver: zodResolver(formSchema) as any,
+		defaultValues: {
+			name: "",
+            // @ts-ignore
+			type: "http",
+			interval: 60,
+            checkSsl: true,
+            incidentPendingDuration: 0,
+            incidentRecoveryDuration: 0,
+            locations: [], // Will require validation to ensure at least one
+            method: "GET",
+		},
+	});
+
+    const router = useRouter();
+    const utils = useQueryClient();
+
+    const { mutate, isPending } = useMutation({
+        mutationFn: async (data: FormValues) => {
+             // Transform form data to match API expectation
+            const { type, name, interval, groupId, locations, incidentPendingDuration, incidentRecoveryDuration, ...rest } = data;
+            
+            const payload = {
+                type,
+                name,
+                interval,
+                groupId,
+                locations,
+                incidentPendingDuration,
+                incidentRecoveryDuration,
+                config: rest 
+            };
+            
+            return client.monitors.create(payload as any); 
+        },
+        onSuccess: () => {
+            toast.success("Monitor created");
+            utils.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+            router.push("/monitors");
+        },
+        onError: (error) => {
+            toast.error("Failed to create monitor");
+            console.error(error);
+        }
+    });
+
+    function onSubmit(values: FormValues) {
+        mutate(values);
+    }
+
+    const type = form.watch("type");
+    const selectedType = monitorTypes.find((t) => t.id === type) || monitorTypes[0];
+
+    // Helper to select all regions
+    const handleSelectAllRegions = () => {
+        if (regions) {
+            form.setValue("locations", regions);
+        }
+    }
+
+	return (
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+                {/* ... (What to monitor Section remains same) ... */}
+
+                {/* ... (General Settings Section updated) ... */}
+                {/* Section: What to monitor */}
+                <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+                    <div className="col-span-1">
+                        <h2 className="text-lg font-semibold leading-tight tracking-tight">
+                            What to monitor
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Select the type of monitor and enter the target details.
+                        </p>
+                    </div>
+
+                    <Card className="col-span-1 border-none shadow-none md:col-span-2">
+                        <CardContent className="space-y-6 pt-0">
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Monitor Type</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className={cn(
+                                                            "w-full justify-between",
+                                                            !field.value &&
+                                                                "text-muted-foreground",
+                                                        )}
+                                                    >
+                                                        {field.value ? (
+                                                            <div className="flex items-center gap-2">
+                                                                {(() => {
+                                                                    const type = monitorTypes.find(
+                                                                        (t) => t.id === field.value,
+                                                                    );
+                                                                    if (!type) return field.value;
+                                                                    const Icon = type.icon;
+                                                                    return (
+                                                                        <>
+                                                                            <Icon className="h-4 w-4 text-muted-foreground" />
+                                                                            <span>{type.label}</span>
+                                                                        </>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        ) : (
+                                                            "Select type"
+                                                        )}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[400px] p-0">
+                                                <Command>
+                                                    <CommandInput placeholder="Search monitor type..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>
+                                                            No type found.
+                                                        </CommandEmpty>
+                                                        {groupedTypes.map((group) => (
+                                                            <CommandGroup
+                                                                key={group.group}
+                                                                heading={group.group}
+                                                            >
+                                                                {group.items.map(
+                                                                    (type) => (
+                                                                        <CommandItem
+                                                                            value={type.label}
+                                                                            key={type.id}
+                                                                            onSelect={() => {
+                                                                                form.setValue("type", type.id);
+                                                                            }}
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "mr-2 h-4 w-4",
+                                                                                    field.value ===
+                                                                                        type.id
+                                                                                        ? "opacity-100"
+                                                                                        : "opacity-0",
+                                                                                )}
+                                                                            />
+                                                                            <div className="flex items-center gap-2">
+                                                                                <type.icon className="h-4 w-4 text-muted-foreground" />
+                                                                                <div className="flex flex-col">
+                                                                                    <span>
+                                                                                        {type.label}
+                                                                                    </span>
+                                                                                    <span className="text-muted-foreground text-xs">
+                                                                                        {type.description}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </CommandItem>
+                                                                    ),
+                                                                )}
+                                                            </CommandGroup>
+                                                        ))}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Dynamic Fields based on Type */}
+                            {selectedType && <selectedType.Fields form={form} />}
+                        </CardContent>
+                    </Card>
+                </div>
+                
+
+
+                 {/* Section: General Settings */}
+                <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+                    <div className="col-span-1">
+                         <h2 className="text-lg font-semibold leading-tight tracking-tight">
+                            General settings
+                        </h2>
+                         <p className="mt-1 text-sm text-muted-foreground">
+                            Configure the display name and monitoring frequency.
+                        </p>
+                    </div>
+
+                    <Card className="col-span-1 border-none shadow-none md:col-span-2">
+                        <CardContent className="space-y-6 pt-0">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Display name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="My Monitor" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                                <FormField
+                                    control={form.control}
+                                    name="interval"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Heartbeat period</FormLabel>
+                                            <Select
+                                                onValueChange={(val) => field.onChange(Number(val))}
+                                                defaultValue={field.value.toString()}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select interval" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="60">1 minute</SelectItem>
+                                                    <SelectItem value="120">2 minutes</SelectItem>
+                                                    <SelectItem value="300">5 minutes</SelectItem>
+                                                    <SelectItem value="600">10 minutes</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+
+                            
+                            {/* New Regions Field */}
+                            <FormField
+                                control={form.control}
+                                name="locations"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center justify-between">
+                                            Regions
+                                            <Button 
+                                                type="button" 
+                                                variant="link" 
+                                                className="h-auto p-0 text-xs"
+                                                onClick={handleSelectAllRegions}
+                                            >
+                                                Select all
+                                            </Button>
+                                        </FormLabel>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {regions?.map((region) => (
+                                                <FormField
+                                                    key={region}
+                                                    control={form.control}
+                                                    name="locations"
+                                                    render={({ field }) => {
+                                                        return (
+                                                            <FormItem
+                                                                key={region}
+                                                                className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-4 bg-muted/50"
+                                                            >
+                                                                <FormControl>
+                                                                    <Checkbox
+                                                                        checked={field.value?.includes(region)}
+                                                                        onCheckedChange={(checked) => {
+                                                                            return checked
+                                                                                ? field.onChange([...field.value, region])
+                                                                                : field.onChange(
+                                                                                    field.value?.filter(
+                                                                                        (value) => value !== region
+                                                                                    )
+                                                                                )
+                                                                        }}
+                                                                    />
+                                                                </FormControl>
+                                                                <div className="space-y-1 leading-none">
+                                                                    <FormLabel>
+                                                                        {region}
+                                                                    </FormLabel>
+                                                                </div>
+                                                            </FormItem>
+                                                        )
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
+                
+
+
+                {/* Section: Advanced Settings */}
+                <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen} className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+                     <div className="col-span-1">
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" className="pl-0 hover:bg-transparent text-lg font-semibold leading-tight tracking-tight flex items-center gap-2">
+                                <ChevronRight className={cn("h-4 w-4 transition-transform", isAdvancedOpen && "rotate-90")} />
+                                Advanced settings
+                            </Button>
+                        </CollapsibleTrigger>
+                         {isAdvancedOpen && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Detailed configurations for requests, timeouts, and headers.
+                            </p>
+                         )}
+                    </div>
+
+                     <CollapsibleContent className="col-span-1 md:col-span-2">
+                        <Card className="border-none shadow-none">
+                            <CardContent className="space-y-6 pt-0">
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="incidentPendingDuration"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Confirmation period (Pending)</FormLabel>
+                                                <Select
+                                                    onValueChange={(val) => field.onChange(Number(val))}
+                                                    defaultValue={field.value.toString()}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select duration" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="0">Immediate</SelectItem>
+                                                        <SelectItem value="60">1 minute</SelectItem>
+                                                        <SelectItem value="120">2 minutes</SelectItem>
+                                                        <SelectItem value="180">3 minutes</SelectItem>
+                                                        <SelectItem value="300">5 minutes</SelectItem>
+                                                        <SelectItem value="600">10 minutes</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>
+                                                    How long to wait before alerting.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="incidentRecoveryDuration"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Recovery period</FormLabel>
+                                                <Select
+                                                    onValueChange={(val) => field.onChange(Number(val))}
+                                                    defaultValue={field.value.toString()}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Select duration" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="0">Immediate</SelectItem>
+                                                        <SelectItem value="60">1 minute</SelectItem>
+                                                        <SelectItem value="120">2 minutes</SelectItem>
+                                                        <SelectItem value="300">5 minutes</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>
+                                                    How long it must be up to resolve.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                {['http', 'http-json', 'keyword'].includes(selectedType.id) && <HttpAdvancedFields form={form} />}
+                            </CardContent>
+                        </Card>
+                     </CollapsibleContent>
+                </Collapsible>
+                
+                <div className="flex justify-end gap-4">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => router.back()}
+                        disabled={isPending}
+                    >
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={isPending}>
+                        {isPending ? "Creating..." : "Create Monitor"}
+                    </Button>
+                </div>
+            </form>
+        </Form>
+    );
+}
