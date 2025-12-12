@@ -23,6 +23,9 @@
 
 <br/>
 
+> [!CAUTION]
+> This project is not ready for use. It is still in development and may not work as expected.
+
 ## ✨ Features
 
 UptimeKit is designed to be the all-in-one solution for tracking your services' uptime and communicating with your users.
