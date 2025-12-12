@@ -1,6 +1,10 @@
 import { db } from "@uptimekit/db";
-import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
-import { eq, desc } from "drizzle-orm";
+import {
+	monitor,
+	monitorGroup,
+	monitorEvent,
+} from "@uptimekit/db/schema/monitors";
+import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
 import { ORPCError } from "@orpc/server";
@@ -10,51 +14,73 @@ export const monitorsRouter = {
 		const monitors = await db
 			.select()
 			.from(monitor)
-            .leftJoin(monitorGroup, eq(monitor.groupId, monitorGroup.id))
-			.where(eq(monitor.organizationId, context.session.session.activeOrganizationId!))
+			.leftJoin(monitorGroup, eq(monitor.groupId, monitorGroup.id))
+			.where(
+				eq(
+					monitor.organizationId,
+					context.session.session.activeOrganizationId!,
+				),
+			)
 			.orderBy(desc(monitor.createdAt));
 
-		return monitors.map((row) => ({
-            ...row.monitor,
-            group: row.monitor_group || null,
-        }));
+		const monitorsWithStatus = await Promise.all(
+			monitors.map(async (row) => {
+				const latestEvent = await db.query.monitorEvent.findFirst({
+					where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
+					orderBy: (t, { desc }) => desc(t.timestamp),
+				});
+
+				return {
+					...row.monitor,
+					group: row.monitor_group || null,
+					status: latestEvent?.status || "pending",
+					lastCheck: latestEvent?.timestamp || null,
+				};
+			}),
+		);
+
+		return monitorsWithStatus;
 	}),
 
-    listGroups: protectedProcedure
-        .handler(async ({ context }) => {
-            const groups = await db
-                .select()
-                .from(monitorGroup)
-                .where(eq(monitorGroup.organizationId, context.session.session.activeOrganizationId!))
-                .orderBy(desc(monitorGroup.createdAt));
-            return groups;
-        }),
+	listGroups: protectedProcedure.handler(async ({ context }) => {
+		const groups = await db
+			.select()
+			.from(monitorGroup)
+			.where(
+				eq(
+					monitorGroup.organizationId,
+					context.session.session.activeOrganizationId!,
+				),
+			)
+			.orderBy(desc(monitorGroup.createdAt));
+		return groups;
+	}),
 
-    createGroup: protectedProcedure
-        .input(z.object({ name: z.string().min(1) }))
-        .handler(async ({ input, context }) => {
-            const [newGroup] = await db
-                .insert(monitorGroup)
-                .values({
-                    id: crypto.randomUUID(),
-                    name: input.name,
-                    organizationId: context.session.session.activeOrganizationId!,
-                })
-                .returning();
-            return newGroup;
-        }),
+	createGroup: protectedProcedure
+		.input(z.object({ name: z.string().min(1) }))
+		.handler(async ({ input, context }) => {
+			const [newGroup] = await db
+				.insert(monitorGroup)
+				.values({
+					id: crypto.randomUUID(),
+					name: input.name,
+					organizationId: context.session.session.activeOrganizationId!,
+				})
+				.returning();
+			return newGroup;
+		}),
 
 	create: protectedProcedure
 		.input(
 			z.object({
 				name: z.string().min(1),
-				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]), 
-                interval: z.number().min(30).default(60),
-                groupId: z.string().optional(),
-                config: z.record(z.any(), z.any()),
-                locations: z.array(z.string()).min(1), // Require at least one location
-                incidentPendingDuration: z.number().min(0).default(0),
-                incidentRecoveryDuration: z.number().min(0).default(0),
+				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
+				interval: z.number().min(30).default(60),
+				groupId: z.string().optional(),
+				config: z.record(z.any(), z.any()),
+				locations: z.array(z.string()).min(1), // Require at least one location
+				incidentPendingDuration: z.number().min(0).default(0),
+				incidentRecoveryDuration: z.number().min(0).default(0),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -65,12 +91,12 @@ export const monitorsRouter = {
 					name: input.name,
 					organizationId: context.session.session.activeOrganizationId!,
 					type: input.type,
-					config: input.config, 
+					config: input.config,
 					locations: input.locations,
-                    groupId: input.groupId,
+					groupId: input.groupId,
 					active: true,
-                    incidentPendingDuration: input.incidentPendingDuration,
-                    incidentRecoveryDuration: input.incidentRecoveryDuration,
+					incidentPendingDuration: input.incidentPendingDuration,
+					incidentRecoveryDuration: input.incidentRecoveryDuration,
 				})
 				.returning();
 
@@ -81,80 +107,474 @@ export const monitorsRouter = {
 			return newMonitor;
 		}),
 
-    delete: protectedProcedure
-        .input(z.object({ id: z.string() }))
-        .handler(async ({ input, context }) => {
-             // Verify ownership
-            const existing = await db.query.monitor.findFirst({
-                where: eq(monitor.id, input.id),
-            });
+	delete: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			// Verify ownership
+			const existing = await db.query.monitor.findFirst({
+				where: eq(monitor.id, input.id),
+			});
 
-            if (!existing || existing.organizationId !== context.session.session.activeOrganizationId) {
-                throw new ORPCError("NOT_FOUND");
-            }
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
 
-            await db.delete(monitor).where(eq(monitor.id, input.id));
-            return { success: true };
-        }),
+			await db.delete(monitor).where(eq(monitor.id, input.id));
+			return { success: true };
+		}),
 
-    toggle: protectedProcedure
-        .input(z.object({ id: z.string(), active: z.boolean() }))
-        .handler(async ({ input, context }) => {
-             const existing = await db.query.monitor.findFirst({
-                where: eq(monitor.id, input.id),
-            });
+	toggle: protectedProcedure
+		.input(z.object({ id: z.string(), active: z.boolean() }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.monitor.findFirst({
+				where: eq(monitor.id, input.id),
+			});
 
-            if (!existing || existing.organizationId !== context.session.session.activeOrganizationId) {
-                throw new ORPCError("NOT_FOUND");
-            }
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
 
-            await db
-                .update(monitor)
-                .set({ active: input.active })
-                .where(eq(monitor.id, input.id));
-            
-            return { success: true };
-        }),
+			await db
+				.update(monitor)
+				.set({ active: input.active })
+				.where(eq(monitor.id, input.id));
 
-    update: protectedProcedure
-        .input(
-            z.object({
-                id: z.string(),
-                name: z.string().min(1),
-                type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]), 
-                interval: z.number().min(30).default(60),
-                groupId: z.string().optional(),
-                config: z.record(z.any(), z.any()),
-                locations: z.array(z.string()).min(1),
-                incidentPendingDuration: z.number().min(0).default(0),
-                incidentRecoveryDuration: z.number().min(0).default(0),
-                active: z.boolean().default(true),
-            })
-        )
-        .handler(async ({ input, context }) => {
-            const existing = await db.query.monitor.findFirst({
-                where: eq(monitor.id, input.id),
-            });
+			return { success: true };
+		}),
 
-            if (!existing || existing.organizationId !== context.session.session.activeOrganizationId) {
-                throw new ORPCError("NOT_FOUND");
-            }
+	update: protectedProcedure
+		.input(
+			z.object({
+				id: z.string(),
+				name: z.string().min(1),
+				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
+				interval: z.number().min(30).default(60),
+				groupId: z.string().optional(),
+				config: z.record(z.any(), z.any()),
+				locations: z.array(z.string()).min(1),
+				incidentPendingDuration: z.number().min(0).default(0),
+				incidentRecoveryDuration: z.number().min(0).default(0),
+				active: z.boolean().default(true),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.monitor.findFirst({
+				where: eq(monitor.id, input.id),
+			});
 
-            await db
-                .update(monitor)
-                .set({
-                    name: input.name,
-                    type: input.type,
-                    interval: input.interval,
-                    groupId: input.groupId,
-                    config: input.config,
-                    locations: input.locations,
-                    incidentPendingDuration: input.incidentPendingDuration,
-                    incidentRecoveryDuration: input.incidentRecoveryDuration,
-                    active: input.active,
-                })
-                .where(eq(monitor.id, input.id));
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
 
-            return { success: true };
-        }),
+			await db
+				.update(monitor)
+				.set({
+					name: input.name,
+					type: input.type,
+					interval: input.interval,
+					groupId: input.groupId,
+					config: input.config,
+					locations: input.locations,
+					incidentPendingDuration: input.incidentPendingDuration,
+					incidentRecoveryDuration: input.incidentRecoveryDuration,
+					active: input.active,
+				})
+				.where(eq(monitor.id, input.id));
+
+			return { success: true };
+		}),
+
+	get: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const row = await db
+				.select()
+				.from(monitor)
+				.leftJoin(monitorGroup, eq(monitor.groupId, monitorGroup.id))
+				.where(
+					and(
+						eq(monitor.id, input.id),
+						eq(
+							monitor.organizationId,
+							context.session.session.activeOrganizationId!,
+						),
+					),
+				)
+				.limit(1);
+
+			const found = row[0];
+
+			if (!found) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			const latestEvent = await db.query.monitorEvent.findFirst({
+				where: (t, { eq }) => eq(t.monitorId, found.monitor.id),
+				orderBy: (t, { desc }) => desc(t.timestamp),
+			});
+
+			const latestChange = await db.query.monitorChange.findFirst({
+				where: (t, { eq }) => eq(t.monitorId, found.monitor.id),
+				orderBy: (t, { desc }) => desc(t.timestamp),
+			});
+
+			return {
+				...found.monitor,
+				group: found.monitor_group || null,
+				status: latestEvent?.status || "pending",
+				lastCheck: latestEvent?.timestamp || null,
+				lastStatusChange: latestChange?.timestamp || null,
+			};
+		}),
+
+	getStats: protectedProcedure
+		.input(
+			z.object({
+				monitorId: z.string(),
+				range: z.enum(["24h", "7d", "30d"]),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.monitor.findFirst({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.id, input.monitorId),
+						eq(t.organizationId, context.session.session.activeOrganizationId!),
+					),
+			});
+
+			if (!existing) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			const now = new Date();
+			let startDate = new Date();
+			if (input.range === "24h") startDate.setHours(now.getHours() - 24);
+			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
+			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
+			// Optimized average ping calculation using SQL
+			const avgPingResult = await db
+				.select({
+					value: sql<number>`avg(${monitorEvent.latency})`.mapWith(Number),
+				})
+				.from(monitorEvent)
+				.where(
+					and(
+						eq(monitorEvent.monitorId, input.monitorId),
+						gte(monitorEvent.timestamp, startDate),
+					),
+				);
+
+			return {
+				avgPing: Math.round(avgPingResult[0]?.value || 0),
+			};
+		}),
+
+	getTimeline: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/monitors/{monitorId}/timeline",
+				tags: ["monitors"],
+				summary: "Get monitor status timeline",
+				description: "Get paginated status changes for a monitor",
+			},
+		})
+		.input(
+			z.object({
+				monitorId: z.string(),
+				limit: z.number().min(1).max(100).default(20),
+				cursor: z.number().optional(), // Timestamp cursor
+			}),
+		)
+		.output(
+			z.object({
+				items: z.array(
+					z.object({
+						id: z.string(),
+						status: z.string(),
+						timestamp: z.string(),
+						location: z.string().optional(),
+					}),
+				),
+				nextCursor: z.number().optional(),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const { session } = context.session;
+
+			// Ensure user has access to this monitor
+			const mon = await db.query.monitor.findFirst({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.id, input.monitorId),
+						eq(t.organizationId, session.activeOrganizationId!),
+					),
+			});
+
+			if (!mon) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Monitor not found",
+				});
+			}
+
+			const { limit, cursor } = input;
+
+			const changes = await db.query.monitorChange.findMany({
+				where: (t, { eq, and, lt }) => {
+					const conditions = [eq(t.monitorId, input.monitorId)];
+					if (cursor) {
+						conditions.push(lt(t.timestamp, new Date(cursor)));
+					}
+					return and(...conditions);
+				},
+				limit: limit + 1,
+				orderBy: (t, { desc }) => desc(t.timestamp),
+			});
+
+			let nextCursor: number | undefined = undefined;
+			if (changes.length > limit) {
+				const nextItem = changes.pop();
+				nextCursor = nextItem!.timestamp.getTime();
+			}
+
+			return {
+				items: changes.map((change) => ({
+					id: change.id,
+					status: change.status,
+					timestamp: change.timestamp.toISOString(),
+					location: change.location || undefined,
+				})),
+				nextCursor,
+			};
+		}),
+
+	getResponseTimes: protectedProcedure
+		.input(
+			z.object({
+				monitorId: z.string(),
+				range: z.enum(["24h", "7d", "30d"]),
+				location: z.string().optional(),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const { session } = context.session;
+			// Ensure access
+			const mon = await db.query.monitor.findFirst({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.id, input.monitorId),
+						eq(t.organizationId, session.activeOrganizationId!),
+					),
+			});
+
+			if (!mon) {
+				throw new ORPCError("NOT_FOUND", { message: "Monitor not found" });
+			}
+
+			const now = new Date();
+			let startDate = new Date();
+			if (input.range === "24h") startDate.setHours(now.getHours() - 24);
+			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
+			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
+
+			// Fetch raw events for chart
+			const events = await db.query.monitorEvent.findMany({
+				where: (t, { eq, and, gte }) => {
+					const conditions = [
+						eq(t.monitorId, input.monitorId),
+						gte(t.timestamp, startDate),
+					];
+					if (input.location && input.location !== "all") {
+						conditions.push(eq(t.location, input.location));
+					}
+					return and(...conditions);
+				},
+				orderBy: (t, { asc }) => asc(t.timestamp),
+				limit: 2000,
+			});
+
+			return events.map((e) => ({
+				timestamp: e.timestamp.toISOString(),
+				latency: e.latency,
+			}));
+		}),
+
+	getAvailability: protectedProcedure
+		.input(z.object({ monitorId: z.string() }))
+		.handler(async ({ input, context }) => {
+			const { session } = context.session;
+			const mon = await db.query.monitor.findFirst({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.id, input.monitorId),
+						eq(t.organizationId, session.activeOrganizationId!),
+					),
+			});
+			if (!mon) throw new ORPCError("NOT_FOUND");
+
+			// Helper to calculate stats for a given start date
+			const calculateStats = async (startDate: Date | null) => {
+				// Get ALL changes since startDate
+				const changes = await db.query.monitorChange.findMany({
+					where: (t, { eq, and, gte }) => {
+						const conditions = [eq(t.monitorId, input.monitorId)];
+						if (startDate) conditions.push(gte(t.timestamp, startDate));
+						return and(...conditions);
+					},
+					orderBy: (t, { asc }) => asc(t.timestamp),
+				});
+
+				// Also get the *state at startDate* (the change just before startDate)
+				// If no changes in range, we need to know if it was UP or DOWN the whole time.
+				let initialStatus = "up";
+				if (startDate) {
+					const lastBefore = await db.query.monitorChange.findFirst({
+						where: (t, { eq, and, lt }) =>
+							and(eq(t.monitorId, input.monitorId), lt(t.timestamp, startDate)),
+						orderBy: (t, { desc }) => desc(t.timestamp),
+					});
+					if (lastBefore) initialStatus = lastBefore.status;
+				} else {
+					// For "all time", the first change determines start, or default up if empty
+				}
+
+				const NOW = new Date().getTime();
+				const START = startDate
+					? startDate.getTime()
+					: changes[0]?.timestamp.getTime() || NOW;
+				const TOTAL_TIME = Math.max(1, NOW - START); // avoid div by 0
+
+				let downtimeMs = 0;
+				let incidentCount = 0;
+				let maxIncidentMs = 0;
+				let incidentSumMs = 0;
+
+				let currentStatus = initialStatus;
+				let lastTime = START;
+
+				// Merge initial state into timeline for processing
+				// If the first change is AFTER start, we have a gap from START to first change
+				// occupied by `initialStatus`.
+
+				const timeline = [...changes];
+
+				for (const change of timeline) {
+					const time = change.timestamp.getTime();
+					const duration = time - lastTime;
+
+					if (currentStatus !== "up") {
+						// assuming anything non-up is down
+						downtimeMs += duration;
+					}
+
+					if (change.status !== "up" && currentStatus === "up") {
+						incidentCount++;
+					}
+
+					// If resolving an incident, track duration
+					if (change.status === "up" && currentStatus !== "up") {
+						// Logic refactor:
+						// Incident duration is from START of down to END of down.
+					}
+
+					currentStatus = change.status;
+					lastTime = time;
+				}
+
+				// Add time from last events until NOW
+				const durationSinceLast = NOW - lastTime;
+				if (currentStatus !== "up") {
+					downtimeMs += durationSinceLast;
+				}
+
+				// Recalculate incidents properly to get max/avg
+				// Re-scan? Or just simpler logic:
+				// We need distinct "down periods".
+				// Pair (DownTime, UpTime).
+
+				// Let's do a robust pass:
+				const incidents: number[] = [];
+				let incidentStart: number | null = null;
+
+				// Re-simulate with robust tracking
+				let simStatus = initialStatus;
+				let simTime = START;
+
+				// If starting in down state, we are in an incident (from before start)
+				if (simStatus !== "up") {
+					incidentStart = simTime;
+				}
+
+				for (const change of timeline) {
+					const time = change.timestamp.getTime();
+
+					if (change.status !== "up") {
+						if (simStatus === "up") {
+							// New incident start
+							incidentStart = time;
+						}
+					} else {
+						// Resolved
+						if (simStatus !== "up" && incidentStart !== null) {
+							const dur = time - incidentStart;
+							incidents.push(dur);
+							incidentStart = null;
+						}
+					}
+					simStatus = change.status;
+				}
+
+				// Ongoing incident?
+				if (simStatus !== "up" && incidentStart !== null) {
+					const dur = NOW - incidentStart;
+					incidents.push(dur);
+				}
+
+				incidentCount = incidents.length;
+				maxIncidentMs = Math.max(0, ...incidents);
+				incidentSumMs = incidents.reduce((a, b) => a + b, 0);
+
+				// Downtime matches sum of incidents?
+				// Yes, roughly.
+
+				const uptimeMs = TOTAL_TIME - downtimeMs;
+				const uptimePercent = (uptimeMs / TOTAL_TIME) * 100;
+
+				return {
+					uptimePercent,
+					downtimeMs,
+					incidentCount,
+					maxIncidentMs,
+					avgIncidentMs: incidentCount > 0 ? incidentSumMs / incidentCount : 0,
+				};
+			};
+
+			const now = new Date();
+			const day = new Date();
+			day.setHours(now.getHours() - 24);
+			const week = new Date();
+			week.setDate(now.getDate() - 7);
+			const month = new Date();
+			month.setDate(now.getDate() - 30);
+			const year = new Date();
+			year.setDate(now.getDate() - 365);
+
+			return {
+				today: await calculateStats(day),
+				week: await calculateStats(week),
+				month: await calculateStats(month),
+				year: await calculateStats(year),
+				all: await calculateStats(null),
+			};
+		}),
 };

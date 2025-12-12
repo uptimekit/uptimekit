@@ -1,0 +1,16 @@
+{
+	"extends": "@uptimekit/config/tsconfig.base.json",
+	"compilerOptions": {
+        "lib": ["es2022", "dom"],
+        "module": "NodeNext",
+        "target": "es2022",
+        "moduleResolution": "NodeNext",
+        "outDir": "dist",
+        "rootDir": "src",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "strict": true
+    },
+	"include": ["src/**/*"],
+	"exclude": ["node_modules"]
+}

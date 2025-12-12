@@ -12,13 +12,20 @@ export default function MonitorsPage() {
 			id: m.id,
 			name: m.name,
 			url: (m.config as { url: string }).url || "", // simplified safely access
-			status: "pending", // Defaulting for now as we don't have events yet
-			statusText: "Pending",
+			status: (m as any).status || "pending",
+			statusText:
+				(m as any).status === "up"
+					? "Operational"
+					: (m as any).status === "down"
+						? "Downtime"
+						: (m as any).status === "degraded"
+							? "Degraded"
+							: "Pending",
 			duration: "0s",
 			usedOn: 0,
 			frequency: `${m.interval}s`,
 			hasIncident: false,
-            active: m.active,
+			active: m.active,
 		})) ?? [];
 
 	return (

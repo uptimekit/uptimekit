@@ -1,4 +1,3 @@
-
 import {
 	ChevronDown,
 	ChevronRight,
@@ -24,7 +23,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client, orpc } from "@/utils/orpc";
 import { toast } from "sonner";
 
-export type MonitorStatus = "up" | "down" | "degraded" | "maintenance" | "pending";
+export type MonitorStatus =
+	| "up"
+	| "down"
+	| "degraded"
+	| "maintenance"
+	| "pending";
 
 export interface Monitor {
 	id: string;
@@ -36,7 +40,7 @@ export interface Monitor {
 	usedOn: number;
 	frequency: string;
 	hasIncident?: boolean;
-    active: boolean;
+	active: boolean;
 }
 
 interface MonitorsTableProps {
@@ -97,82 +101,89 @@ export function MonitorsTable({ data }: MonitorsTableProps) {
 							</TableRow>
 						) : (
 							data.map((monitor) => (
-							<TableRow
-                                key={monitor.id}
-                                className={cn(
-                                    "group h-[72px] cursor-pointer hover:bg-muted/40",
-                                    !monitor.active && "opacity-50 grayscale"
-                                )}
-                            >
-								<TableCell className="w-[50px] pl-6">
-									<div
-										className={cn(
-											"h-2.5 w-2.5 rounded-full shadow-sm",
-											monitor.status === "up" &&
-												"bg-emerald-500 shadow-emerald-500/20",
-											monitor.status === "down" &&
-												"bg-red-500 shadow-red-500/20",
-											monitor.status === "degraded" &&
-												"bg-amber-500 shadow-amber-500/20",
-											monitor.status === "maintenance" &&
-												"bg-blue-500 shadow-blue-500/20",
-                                            monitor.status === "pending" &&
-                                                "bg-zinc-500 shadow-zinc-500/20",
-										)}
-									/>
-								</TableCell>
-								<TableCell>
-									<div className="grid gap-1">
-										<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
-											{monitor.name}
-                                            {!monitor.active && (
-                                                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
-                                                    PAUSED
-                                                </span>
-                                            )}
-										</span>
-										<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
-											<span
-												className={cn(
-													monitor.status === "up" && "text-emerald-500",
-													monitor.status === "down" && "text-red-500",
-													monitor.status === "degraded" && "text-amber-500",
-													monitor.status === "maintenance" && "text-blue-500",
-                                                    monitor.status === "pending" && "text-zinc-500",
-												)}
-											>
-												{monitor.statusText}
-											</span>
-											<span>·</span>
-											<span>{monitor.duration}</span>
-											<span>·</span>
-											<span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
-												Used on {monitor.usedOn} status page
-												{monitor.usedOn !== 1 ? "s" : ""}
-											</span>
-										</div>
-									</div>
-								</TableCell>
-								<TableCell className="w-[200px]">
-									{monitor.hasIncident && (
-										<div className="inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
-											<ShieldAlert className="h-3.5 w-3.5" />
-											Ongoing Incident
-											<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
-										</div>
+								<TableRow
+									key={monitor.id}
+									className={cn(
+										"group h-[72px] hover:bg-muted/40",
+										!monitor.active && "opacity-50 grayscale",
 									)}
-								</TableCell>
-								<TableCell className="w-[100px] font-medium text-muted-foreground text-sm">
-									<div className="flex items-center gap-2">
-										<PlayCircle className="h-4 w-4 opacity-50" />
-										{monitor.frequency}
-									</div>
-								</TableCell>
-								<TableCell className="w-[50px] pr-4">
-                                     <MonitorActions monitor={monitor} />
-								</TableCell>
-							</TableRow>
-						)))}
+								>
+									<TableCell className="w-[50px] pl-6">
+										<div
+											className={cn(
+												"h-2.5 w-2.5 rounded-full shadow-sm",
+												monitor.status === "up" &&
+													"bg-emerald-500 shadow-emerald-500/20",
+												monitor.status === "down" &&
+													"bg-red-500 shadow-red-500/20",
+												monitor.status === "degraded" &&
+													"bg-amber-500 shadow-amber-500/20",
+												monitor.status === "maintenance" &&
+													"bg-blue-500 shadow-blue-500/20",
+												monitor.status === "pending" &&
+													"bg-zinc-500 shadow-zinc-500/20",
+											)}
+										/>
+									</TableCell>
+									<TableCell>
+										<Link
+											href={`/monitors/${monitor.id}`}
+											className="block h-full w-full"
+										>
+											<div className="grid gap-1">
+												<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
+													{monitor.name}
+													{!monitor.active && (
+														<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+															PAUSED
+														</span>
+													)}
+												</span>
+												<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+													<span
+														className={cn(
+															monitor.status === "up" && "text-emerald-500",
+															monitor.status === "down" && "text-red-500",
+															monitor.status === "degraded" && "text-amber-500",
+															monitor.status === "maintenance" &&
+																"text-blue-500",
+															monitor.status === "pending" && "text-zinc-500",
+														)}
+													>
+														{monitor.statusText}
+													</span>
+													<span>·</span>
+													<span>{monitor.duration}</span>
+													<span>·</span>
+													<span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
+														Used on {monitor.usedOn} status page
+														{monitor.usedOn !== 1 ? "s" : ""}
+													</span>
+												</div>
+											</div>
+										</Link>
+									</TableCell>
+									<TableCell className="w-[200px]">
+										{monitor.hasIncident && (
+											<div className="inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
+												<ShieldAlert className="h-3.5 w-3.5" />
+												Ongoing Incident
+												<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
+											</div>
+										)}
+									</TableCell>
+									<TableCell className="w-[100px] font-medium text-muted-foreground text-sm">
+										<div className="flex items-center gap-2">
+											<PlayCircle className="h-4 w-4 opacity-50" />
+											{monitor.frequency}
+										</div>
+									</TableCell>
+									<TableCell className="w-[50px] pr-4">
+										<MonitorActions monitor={monitor} />
+									</TableCell>
+								</TableRow>
+							))
+						)}
 					</TableBody>
 				</Table>
 			</div>
@@ -181,62 +192,63 @@ export function MonitorsTable({ data }: MonitorsTableProps) {
 }
 
 function MonitorActions({ monitor }: { monitor: Monitor }) {
-    const queryClient = useQueryClient();
-    
-    const { mutate: deleteMonitor } = useMutation({
-        mutationFn: (id: string) => client.monitors.delete({ id }),
-        onSuccess: () => {
-             toast.success("Monitor deleted");
-             queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
-        },
-        onError: () => toast.error("Failed to delete monitor")
-    });
+	const queryClient = useQueryClient();
 
-    const { mutate: toggleMonitor } = useMutation({
-        mutationFn: ({ id, active }: { id: string; active: boolean }) => 
-            client.monitors.toggle({ id, active }),
-        onSuccess: () => {
-             toast.success("Monitor updated");
-             queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
-        },
-        onError: () => toast.error("Failed to update monitor")
-    });
+	const { mutate: deleteMonitor } = useMutation({
+		mutationFn: (id: string) => client.monitors.delete({ id }),
+		onSuccess: () => {
+			toast.success("Monitor deleted");
+			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+		},
+		onError: () => toast.error("Failed to delete monitor"),
+	});
 
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                >
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem>View details</DropdownMenuItem>
-                <DropdownMenuItem>Edit monitor</DropdownMenuItem>
-                <DropdownMenuItem
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMonitor({ id: monitor.id, active: !monitor.active });
-                    }}
-                >
-                    {monitor.active ? "Pause monitoring" : "Resume monitoring"}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                    className="text-red-500"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Are you sure?")) {
-                            deleteMonitor(monitor.id);
-                        }
-                    }}
-                >
-                    Delete
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
+	const { mutate: toggleMonitor } = useMutation({
+		mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+			client.monitors.toggle({ id, active }),
+		onSuccess: () => {
+			toast.success("Monitor updated");
+			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+		},
+		onError: () => toast.error("Failed to update monitor"),
+	});
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+				>
+					<MoreHorizontal className="h-4 w-4" />
+					<span className="sr-only">Open menu</span>
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end">
+				<DropdownMenuItem asChild>
+					<Link href={`/monitors/${monitor.id}`}>View details</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					onClick={(e) => {
+						e.stopPropagation();
+						toggleMonitor({ id: monitor.id, active: !monitor.active });
+					}}
+				>
+					{monitor.active ? "Pause monitoring" : "Resume monitoring"}
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="text-red-500"
+					onClick={(e) => {
+						e.stopPropagation();
+						if (confirm("Are you sure?")) {
+							deleteMonitor(monitor.id);
+						}
+					}}
+				>
+					Delete
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
 }

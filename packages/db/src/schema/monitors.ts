@@ -7,6 +7,8 @@ import {
 	pgTable,
 	text,
 	timestamp,
+	uuid,
+	varchar,
 } from "drizzle-orm/pg-core";
 import { organization } from "./auth";
 
@@ -34,14 +36,20 @@ export const monitor = pgTable(
 		organizationId: text("organization_id")
 			.notNull()
 			.references(() => organization.id, { onDelete: "cascade" }),
-		groupId: text("group_id").references(() => monitorGroup.id, { onDelete: "set null" }),
+		groupId: text("group_id").references(() => monitorGroup.id, {
+			onDelete: "set null",
+		}),
 		name: text("name").notNull(),
 		type: text("type").notNull(), // 'http', 'tcp', 'ping', 'dns', etc.
 		active: boolean("active").default(true).notNull(),
 		interval: integer("interval").default(60).notNull(), // in seconds
 		timeout: integer("timeout").default(30).notNull(), // in seconds
-		incidentPendingDuration: integer("incident_pending_duration").default(0).notNull(), // in seconds (confirmation period)
-		incidentRecoveryDuration: integer("incident_recovery_duration").default(0).notNull(), // in seconds (recovery period)
+		incidentPendingDuration: integer("incident_pending_duration")
+			.default(0)
+			.notNull(), // in seconds (confirmation period)
+		incidentRecoveryDuration: integer("incident_recovery_duration")
+			.default(0)
+			.notNull(), // in seconds (recovery period)
 		locations: json("locations").$type<string[]>().notNull(), // array of worker locations
 		config: json("config").notNull(), // flexible config: url, method, headers, body, etc.
 		successStatuses: json("success_statuses").$type<number[]>(), // e.g. [200, 201]
@@ -61,24 +69,38 @@ export const monitor = pgTable(
 export const monitorEvent = pgTable(
 	"monitor_event",
 	{
-		id: text("id").primaryKey(),
-		monitorId: text("monitor_id")
+		id: uuid("id").primaryKey().defaultRandom(),
+		monitorId: uuid("monitor_id")
 			.notNull()
 			.references(() => monitor.id, { onDelete: "cascade" }),
-		status: text("status").notNull(), // 'up', 'down', 'degraded'
-		latency: integer("latency").notNull(), // in ms
-		timestamp: timestamp("timestamp").defaultNow().notNull(),
+		status: varchar("status", { length: 20 }).notNull(), // up, down, degraded
+		latency: integer("latency").notNull(),
+		timestamp: timestamp("timestamp").notNull().defaultNow(),
 		statusCode: integer("status_code"),
-		error: text("error"), // short error summary
-		errorDetail: json("error_detail"), // full error object/stack
-		responseHeaders: json("response_headers"),
-		responseBody: text("response_body"),
-		location: text("location"), // which worker reported this
+		location: varchar("location", { length: 50 }),
+		error: text("error"),
 	},
-	(table) => [
-		index("monitor_event_monitorId_idx").on(table.monitorId),
-		index("monitor_event_timestamp_idx").on(table.timestamp),
-	],
+	(t) => ({
+		monitorIdx: index("monitor_event_monitor_idx").on(t.monitorId),
+		timestampIdx: index("monitor_event_timestamp_idx").on(t.timestamp),
+	}),
+);
+
+export const monitorChange = pgTable(
+	"monitor_change",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		monitorId: uuid("monitor_id")
+			.notNull()
+			.references(() => monitor.id, { onDelete: "cascade" }),
+		status: varchar("status", { length: 20 }).notNull(),
+		timestamp: timestamp("timestamp").notNull().defaultNow(),
+		location: varchar("location", { length: 50 }),
+	},
+	(t) => ({
+		monitorIdx: index("monitor_change_monitor_idx").on(t.monitorId),
+		timestampIdx: index("monitor_change_timestamp_idx").on(t.timestamp),
+	}),
 );
 
 export const monitorRelations = relations(monitor, ({ one, many }) => ({
@@ -91,15 +113,19 @@ export const monitorRelations = relations(monitor, ({ one, many }) => ({
 		references: [monitorGroup.id],
 	}),
 	events: many(monitorEvent),
+	changes: many(monitorChange),
 }));
 
-export const monitorGroupRelations = relations(monitorGroup, ({ one, many }) => ({
-	organization: one(organization, {
-		fields: [monitorGroup.organizationId],
-		references: [organization.id],
+export const monitorGroupRelations = relations(
+	monitorGroup,
+	({ one, many }) => ({
+		organization: one(organization, {
+			fields: [monitorGroup.organizationId],
+			references: [organization.id],
+		}),
+		monitors: many(monitor),
 	}),
-	monitors: many(monitor),
-}));
+);
 
 export const monitorEventRelations = relations(monitorEvent, ({ one }) => ({
 	monitor: one(monitor, {
