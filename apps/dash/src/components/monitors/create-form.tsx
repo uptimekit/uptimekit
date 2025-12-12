@@ -436,7 +436,14 @@ export function CreateMonitorForm() {
             incidentRecoveryDuration: 0,
             locations: [], // Will require validation to ensure at least one
             method: "GET",
-		},
+            url: "",
+            hostname: "",
+            port: 80,
+            keyword: "",
+            jsonPath: "",
+            body: "",
+            headers: [],
+		} as any,
 	});
 
     const router = useRouter();
