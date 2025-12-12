@@ -120,7 +120,7 @@ We welcome contributions! Please check out our [Contributing Guide](CONTRIBUTING
 
 ## 📄 License
 
-This project is licensed under a modified [MIT License](LICENSE). Please check the file for specific usage restrictions (Anti-SaaS).
+This project is licensed under a modified [MIT License](LICENSE). Please check the file for specific usage restrictions.
 
 ---
 
