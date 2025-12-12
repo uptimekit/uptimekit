@@ -574,16 +574,7 @@ export function CreateMonitorForm() {
                                                                                 form.setValue("type", type.id);
                                                                             }}
                                                                         >
-                                                                            <Check
-                                                                                className={cn(
-                                                                                    "mr-2 h-4 w-4",
-                                                                                    field.value ===
-                                                                                        type.id
-                                                                                        ? "opacity-100"
-                                                                                        : "opacity-0",
-                                                                                )}
-                                                                            />
-                                                                            <div className="flex items-center gap-2">
+                                                                            <div className="flex items-center gap-3">
                                                                                 <type.icon className="h-4 w-4 text-muted-foreground" />
                                                                                 <div className="flex flex-col">
                                                                                     <span>
@@ -594,6 +585,15 @@ export function CreateMonitorForm() {
                                                                                     </span>
                                                                                 </div>
                                                                             </div>
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "ml-auto h-4 w-4",
+                                                                                    field.value ===
+                                                                                        type.id
+                                                                                        ? "opacity-100"
+                                                                                        : "opacity-0",
+                                                                                )}
+                                                                            />
                                                                         </CommandItem>
                                                                     ),
                                                                 )}
