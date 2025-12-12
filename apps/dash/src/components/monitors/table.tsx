@@ -24,7 +24,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client, orpc } from "@/utils/orpc";
 import { toast } from "sonner";
 
-export type MonitorStatus = "up" | "down" | "degraded" | "maintenance";
+export type MonitorStatus = "up" | "down" | "degraded" | "maintenance" | "pending";
 
 export interface Monitor {
 	id: string;
@@ -116,6 +116,8 @@ export function MonitorsTable({ data }: MonitorsTableProps) {
 												"bg-amber-500 shadow-amber-500/20",
 											monitor.status === "maintenance" &&
 												"bg-blue-500 shadow-blue-500/20",
+                                            monitor.status === "pending" &&
+                                                "bg-zinc-500 shadow-zinc-500/20",
 										)}
 									/>
 								</TableCell>
@@ -136,6 +138,7 @@ export function MonitorsTable({ data }: MonitorsTableProps) {
 													monitor.status === "down" && "text-red-500",
 													monitor.status === "degraded" && "text-amber-500",
 													monitor.status === "maintenance" && "text-blue-500",
+                                                    monitor.status === "pending" && "text-zinc-500",
 												)}
 											>
 												{monitor.statusText}
