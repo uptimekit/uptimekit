@@ -1,0 +1,43 @@
+services:
+  dash:
+    build:
+      context: .
+      dockerfile: apps/dash/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
+      - BETTER_AUTH_SECRET=secret
+      - BETTER_AUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_SELFHOSTED=true
+      - NEXT_PUBLIC_URL=http://localhost:3000
+    depends_on:
+      - db
+    restart: always
+
+  status-page:
+    build:
+      context: .
+      dockerfile: apps/status-page/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: uptimekit
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  db_data:

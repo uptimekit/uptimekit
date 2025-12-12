@@ -21,7 +21,7 @@
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/zod": "catalog:",
-		"next": "^16.0.7",
+		"next": "^16.0.10",
 		"dotenv": "catalog:",
 		"zod": "catalog:",
 		"@uptimekit/auth": "workspace:*",
