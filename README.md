@@ -111,7 +111,7 @@ uptimekit/
 │   ├── auth/          # Authentication configuration
 │   ├── db/            # Database schema & Drizzle config
 │   └── ui/            # Shared UI components
-└── docker/            # Docker configuration (coming soon)
+└── ....
 ```
 
 ## 🤝 Contributing
