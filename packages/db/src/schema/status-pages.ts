@@ -63,6 +63,7 @@ export const statusPageMonitor = pgTable(
 		groupId: text("group_id").references(() => statusPageGroup.id, {
 			onDelete: "set null",
 		}),
+		style: text("style").default("history").notNull(), // 'history' | 'status'
 		order: integer("order").default(0).notNull(),
 	},
 	(table) => [

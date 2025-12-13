@@ -69,6 +69,7 @@ export const maintenanceRelations = relations(maintenance, ({ one, many }) => ({
 	}),
 	monitors: many(maintenanceMonitor),
 	statusPages: many(maintenanceStatusPage),
+	updates: many(maintenanceUpdate),
 }));
 
 export const maintenanceMonitorRelations = relations(
@@ -95,6 +96,36 @@ export const maintenanceStatusPageRelations = relations(
 		statusPage: one(statusPage, {
 			fields: [maintenanceStatusPage.statusPageId],
 			references: [statusPage.id],
+		}),
+	}),
+);
+
+export const maintenanceUpdate = pgTable(
+	"maintenance_update",
+	{
+		id: text("id").primaryKey(),
+		maintenanceId: text("maintenance_id")
+			.notNull()
+			.references(() => maintenance.id, { onDelete: "cascade" }),
+		message: text("message").notNull(),
+		status: text("status").notNull(), // 'scheduled', 'in_progress', 'completed' - status at the time of update
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at")
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		index("maintenance_update_maintenanceId_idx").on(table.maintenanceId),
+	],
+);
+
+export const maintenanceUpdateRelations = relations(
+	maintenanceUpdate,
+	({ one }) => ({
+		maintenance: one(maintenance, {
+			fields: [maintenanceUpdate.maintenanceId],
+			references: [maintenance.id],
 		}),
 	}),
 );

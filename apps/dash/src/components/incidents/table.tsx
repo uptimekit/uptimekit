@@ -9,8 +9,6 @@ import {
 	Search,
 	ShieldAlert,
 	Loader2,
-	AlertTriangle,
-	Clock,
 	HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -121,11 +119,21 @@ export function IncidentsTable() {
 							</TableRow>
 						) : incidents?.length === 0 ? (
 							<TableRow>
-								<TableCell
-									colSpan={3}
-									className="h-24 text-center text-muted-foreground"
-								>
-									No incidents found.
+								<TableCell colSpan={3} className="h-24 text-center">
+									<div className="flex flex-col items-center justify-center gap-2 py-6">
+										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+											<ShieldAlert className="h-6 w-6 text-muted-foreground" />
+										</div>
+										<p className="font-medium text-lg">No incidents found</p>
+										<p className="text-muted-foreground text-sm">
+											Get started by creating your first incident.
+										</p>
+										<div className="mt-2">
+											<Button asChild>
+												<Link href="/incidents/new">Create incident</Link>
+											</Button>
+										</div>
+									</div>
 								</TableCell>
 							</TableRow>
 						) : (
