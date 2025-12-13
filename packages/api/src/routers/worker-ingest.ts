@@ -1,10 +1,19 @@
 import { auth } from "@uptimekit/auth";
-import { monitorChange, monitorEvent } from "@uptimekit/db/schema/monitors";
+import {
+	incident,
+	incidentActivity,
+	incidentMonitor,
+} from "@uptimekit/db/schema/incidents";
+import {
+	monitor,
+	monitorChange,
+	monitorEvent,
+} from "@uptimekit/db/schema/monitors";
 import { worker } from "@uptimekit/db/schema/workers";
 import { db } from "@uptimekit/db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { z } from "zod";
-import { o, publicProcedure, protectedProcedure } from "../index";
+import { o, publicProcedure } from "../index";
 import { ORPCError } from "@orpc/server";
 
 const monitorEventInputSchema = z.object({
@@ -166,8 +175,46 @@ export const workerIngestRouter = {
 			}
 
 			const changesToInsert: (typeof monitorChange.$inferInsert)[] = [];
+			const incidentsToInsert: (typeof incident.$inferInsert)[] = [];
+			const incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[] =
+				[];
+			const activitiesToInsert: (typeof incidentActivity.$inferInsert)[] = [];
 
 			for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
+				// Fetch monitor config
+				const monitorConfig = await db.query.monitor.findFirst({
+					where: eq(monitor.id, monitorId),
+				});
+
+				if (!monitorConfig) {
+					console.warn(`Received events for unknown monitor: ${monitorId}`);
+					continue;
+				}
+
+				// Fetch active automatic incident
+				const activeIncidentList = await db
+					.select({
+						id: incident.id,
+						status: incident.status,
+						resolvedAt: incident.resolvedAt,
+						type: incident.type,
+					})
+					.from(incident)
+					.innerJoin(
+						incidentMonitor,
+						eq(incident.id, incidentMonitor.incidentId),
+					)
+					.where(
+						and(
+							eq(incidentMonitor.monitorId, monitorId),
+							eq(incident.type, "automatic"),
+							isNull(incident.resolvedAt),
+						),
+					)
+					.limit(1);
+
+				let activeIncident = activeIncidentList[0];
+
 				// Sort by timestamp asc to process in order
 				monitorEvents.sort(
 					(a, b) =>
@@ -178,18 +225,25 @@ export const workerIngestRouter = {
 				const lastEvent = await db.query.monitorEvent.findFirst({
 					where: (t, { eq }) => eq(t.monitorId, monitorId),
 					orderBy: (t, { desc }) => desc(t.timestamp),
-					columns: { status: true },
+					columns: { status: true, timestamp: true },
+				});
+
+				// Get last change from DB to determine duration of current status
+				const lastChangeRecord = await db.query.monitorChange.findFirst({
+					where: (t, { eq }) => eq(t.monitorId, monitorId),
+					orderBy: (t, { desc }) => desc(t.timestamp),
 				});
 
 				let currentStatus = lastEvent?.status;
+				// If we have a last change, use its timestamp. Otherwise fallback to lastEvent or now.
+				let lastChangeTime = lastChangeRecord?.timestamp
+					? new Date(lastChangeRecord.timestamp)
+					: lastEvent?.timestamp
+						? new Date(lastEvent.timestamp)
+						: new Date();
 
 				for (const event of monitorEvents) {
-					// Initialize currentStatus if it was undefined (first event ever)
-					// If first event ever, is it a change?
-					// Usually yes, from "unknown" to "something".
-					// But if strictly "change", maybe not?
-					// Let's record it if currentStatus is defined (change) OR if it is the first event ever (initial state).
-
+					const eventTime = new Date(event.timestamp);
 					const isChange =
 						currentStatus !== undefined && currentStatus !== event.status;
 					const isFirstEvent = currentStatus === undefined;
@@ -199,16 +253,94 @@ export const workerIngestRouter = {
 							id: crypto.randomUUID(),
 							monitorId: event.monitorId,
 							status: event.status,
-							timestamp: new Date(event.timestamp),
+							timestamp: eventTime,
 							location: event.location || "unknown",
 						});
 						currentStatus = event.status;
+						lastChangeTime = eventTime;
+					}
+
+					// Incident Logic
+					if (currentStatus === "down") {
+						const durationMs = eventTime.getTime() - lastChangeTime.getTime();
+						const pendingMs = monitorConfig.incidentPendingDuration * 1000;
+
+						if (durationMs >= pendingMs && !activeIncident) {
+							// Create Incident
+							const newIncidentId = crypto.randomUUID();
+							// Store new activeIncident in memory so we don't duplicate
+							activeIncident = {
+								id: newIncidentId,
+								status: "investigating",
+								resolvedAt: null,
+								type: "automatic",
+							};
+
+							incidentsToInsert.push({
+								id: newIncidentId,
+								organizationId: monitorConfig.organizationId,
+								title: `Monitor ${monitorConfig.name} is down`,
+								description: `Monitor ${monitorConfig.name} is down. \n\nError: ${event.error || "Unknown error"}`,
+								status: "investigating",
+								severity: "major",
+								type: "automatic",
+								createdAt: eventTime,
+								updatedAt: eventTime,
+							});
+
+							incidentMonitorsToInsert.push({
+								incidentId: newIncidentId,
+								monitorId: monitorId,
+							});
+
+							activitiesToInsert.push({
+								id: crypto.randomUUID(),
+								incidentId: newIncidentId,
+								message: `Incident opened automatically. Monitor reported down due to: ${event.error || "unknown error"}. (Region: ${event.location || "unknown"})`,
+								type: "event",
+								createdAt: eventTime,
+								userId: null,
+							});
+						}
+					} else if (currentStatus === "up" && activeIncident) {
+						// Resolve Incident
+						await db
+							.update(incident)
+							.set({
+								status: "resolved",
+								resolvedAt: eventTime,
+								updatedAt: eventTime,
+							})
+							.where(eq(incident.id, activeIncident.id));
+
+						activitiesToInsert.push({
+							id: crypto.randomUUID(),
+							incidentId: activeIncident.id,
+							message: "Monitor recovered. Incident resolved automatically.",
+							type: "event",
+							createdAt: eventTime,
+							userId: null,
+						});
+
+						(activeIncident as any) = null; // No longer active in this loop
 					}
 				}
 			}
 
 			if (changesToInsert.length > 0) {
 				await db.insert(monitorChange).values(changesToInsert);
+			}
+
+			if (incidentsToInsert.length > 0) {
+				await db.insert(incident).values(incidentsToInsert);
+			}
+
+			if (incidentMonitorsToInsert.length > 0) {
+				await db.insert(incidentMonitor).values(incidentMonitorsToInsert);
+			}
+
+			if (activitiesToInsert.length > 0) {
+				await db.insert(incidentActivity).values(activitiesToInsert);
 			}
 
 			if (events.length > 0) {

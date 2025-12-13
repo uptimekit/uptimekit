@@ -8,6 +8,10 @@ import {
 	Plus,
 	Search,
 	ShieldAlert,
+	Loader2,
+	AlertTriangle,
+	Clock,
+	HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,70 +23,50 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-
-type IncidentStatus = "ongoing" | "resolved";
-
-interface Incident {
-	id: string;
-	name: string;
-	message: string;
-	startedAt: string;
-	duration: string;
-	status: IncidentStatus;
-}
-
-const incidents: Incident[] = [
-	{
-		id: "1",
-		name: "free-pl1.cortano.cloud",
-		message: "Unexpected HTTP status code",
-		startedAt: "3 days ago",
-		duration: "Ongoing",
-		status: "ongoing",
-	},
-	{
-		id: "2",
-		name: "premium-pl1.cortano.cloud",
-		message: "Unexpected HTTP status code",
-		startedAt: "Nov 12 at 9:55pm CET",
-		duration: "Ongoing",
-		status: "ongoing",
-	},
-	{
-		id: "3",
-		name: "free-pl1.cortano.cloud",
-		message: "Unexpected HTTP status code",
-		startedAt: "1 week ago",
-		duration: "5 minutes",
-		status: "resolved",
-	},
-	{
-		id: "4",
-		name: "free-pl1.cortano.cloud",
-		message: "Timeout (no headers received)",
-		startedAt: "1 week ago",
-		duration: "2 minutes",
-		status: "resolved",
-	},
-	{
-		id: "5",
-		name: "api.cortano.cloud",
-		message: "Connection refused",
-		startedAt: "Nov 25 at 10:49pm CET",
-		duration: "17 minutes",
-		status: "resolved",
-	},
-	{
-		id: "6",
-		name: "auth.cortano.cloud",
-		message: "Timeout (> 5000ms)",
-		startedAt: "Nov 23 at 7:14pm CET",
-		duration: "5 minutes",
-		status: "resolved",
-	},
-];
+import { useQuery } from "@tanstack/react-query";
+import { orpc } from "@/utils/orpc";
+import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 export function IncidentsTable() {
+	const [statusFilter, setStatusFilter] = useState<"all" | "open" | "resolved">(
+		"all",
+	);
+
+	const { data: incidents, isLoading } = useQuery(
+		orpc.incidents.list.queryOptions({
+			input: { status: statusFilter, limit: 50 },
+		}),
+	);
+
+	const getStatusIcon = (status: string) => {
+		switch (status) {
+			case "resolved":
+				return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+			case "investigating":
+			case "identified":
+			case "monitoring":
+				return <ShieldAlert className="h-5 w-5 text-red-500" />;
+			default:
+				return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
+		}
+	};
+
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case "resolved":
+				return "border-emerald-500/20 bg-emerald-500/10 text-emerald-500";
+			case "investigating":
+			case "identified":
+			case "monitoring":
+				return "border-red-500/20 bg-red-500/10 text-red-500";
+			default:
+				return "border-muted bg-muted/50 text-muted-foreground";
+		}
+	};
+
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
@@ -92,12 +76,32 @@ export function IncidentsTable() {
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
 						<Input placeholder="Search" className="pl-8" />
 					</div>
-					<Button variant="outline" size="icon">
-						<Filter className="h-4 w-4" />
-					</Button>
-					<Button className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100">
-						<Plus className="h-4 w-4" />
-						Report a new incident
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="icon">
+								<Filter className="h-4 w-4" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onClick={() => setStatusFilter("all")}>
+								All
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setStatusFilter("open")}>
+								Open
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setStatusFilter("resolved")}>
+								Resolved
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<Button
+						className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100"
+						asChild
+					>
+						<Link href="/incidents/new">
+							<Plus className="h-4 w-4" />
+							Report a new incident
+						</Link>
 					</Button>
 				</div>
 			</div>
@@ -109,85 +113,116 @@ export function IncidentsTable() {
 				</div>
 				<Table>
 					<TableBody>
-						{incidents.map((incident) => (
-							<TableRow
-								key={incident.id}
-								className="group h-[72px] cursor-pointer hover:bg-muted/40"
-							>
-								<TableCell className="pl-6">
-									<div className="flex items-start gap-4">
-										<div
-											className={cn(
-												"mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors",
-												incident.status === "ongoing"
-													? "border-red-500/20 bg-red-500/10 text-red-500"
-													: "border-muted bg-muted/50 text-muted-foreground",
-											)}
-										>
-											{incident.status === "ongoing" ? (
-												<ShieldAlert className="h-5 w-5" />
-											) : (
-												<CheckCircle2 className="h-5 w-5" />
-											)}
-										</div>
-										<div className="grid gap-1">
-											<span className="font-semibold leading-none transition-colors group-hover:text-primary">
-												{incident.name}
-											</span>
-											<span className="text-muted-foreground text-sm">
-												{incident.message}
-											</span>
-										</div>
-									</div>
-								</TableCell>
-								<TableCell className="font-medium text-muted-foreground text-sm">
-									{incident.startedAt}
-								</TableCell>
-								<TableCell>
-									<div className="flex items-center gap-2">
-										<div
-											className={cn(
-												"h-2 w-2 rounded-full",
-												incident.status === "ongoing"
-													? "animate-pulse bg-red-500"
-													: "bg-muted-foreground/30",
-											)}
-										/>
-										<span
-											className={cn(
-												"font-medium text-sm",
-												incident.status === "ongoing"
-													? "text-red-500"
-													: "text-muted-foreground",
-											)}
-										>
-											{incident.duration}
-										</span>
-									</div>
-								</TableCell>
-								<TableCell>
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-											>
-												<MoreHorizontal className="h-4 w-4" />
-												<span className="sr-only">Open menu</span>
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem>View details</DropdownMenuItem>
-											<DropdownMenuItem>Edit incident</DropdownMenuItem>
-											<DropdownMenuItem className="text-red-500">
-												Delete
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
+						{isLoading ? (
+							<TableRow>
+								<TableCell colSpan={3} className="h-24 text-center">
+									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
-						))}
+						) : incidents?.length === 0 ? (
+							<TableRow>
+								<TableCell
+									colSpan={3}
+									className="h-24 text-center text-muted-foreground"
+								>
+									No incidents found.
+								</TableCell>
+							</TableRow>
+						) : (
+							incidents?.map((incident) => (
+								<TableRow
+									key={incident.id}
+									className="group h-[72px] cursor-pointer hover:bg-muted/40"
+								>
+									<TableCell className="pl-6">
+										<Link
+											href={`/incidents/${incident.id}`}
+											className="flex items-center gap-4"
+										>
+											<div
+												className={cn(
+													"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors",
+													getStatusColor(incident.status),
+												)}
+											>
+												{getStatusIcon(incident.status)}
+											</div>
+											<div className="grid gap-1">
+												<span className="font-semibold leading-none transition-colors group-hover:text-primary">
+													{incident.title}
+												</span>
+												<div className="flex items-center gap-2 text-muted-foreground text-sm">
+													{incident.monitors.length > 0 && (
+														<span className="flex items-center gap-1">
+															{incident.monitors.length === 1
+																? incident.monitors[0].monitor.name
+																: `${incident.monitors.length} monitors`}
+														</span>
+													)}
+													{incident.type === "automatic" && (
+														<Badge
+															variant="outline"
+															className="h-5 px-1.5 text-[10px]"
+														>
+															Auto
+														</Badge>
+													)}
+												</div>
+											</div>
+										</Link>
+									</TableCell>
+									<TableCell className="font-medium text-muted-foreground text-sm">
+										{formatDistanceToNow(new Date(incident.createdAt), {
+											addSuffix: true,
+										})}
+									</TableCell>
+									<TableCell>
+										<div className="flex items-center gap-2">
+											<div
+												className={cn(
+													"h-2 w-2 rounded-full",
+													incident.status !== "resolved"
+														? "animate-pulse bg-red-500"
+														: "bg-muted-foreground/30",
+												)}
+											/>
+											<span
+												className={cn(
+													"font-medium text-sm capitalize",
+													incident.status !== "resolved"
+														? "text-red-500"
+														: "text-muted-foreground",
+												)}
+											>
+												{incident.status}
+											</span>
+										</div>
+									</TableCell>
+									<TableCell>
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+												>
+													<MoreHorizontal className="h-4 w-4" />
+													<span className="sr-only">Open menu</span>
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem asChild>
+													<Link href={`/incidents/${incident.id}`}>
+														View details
+													</Link>
+												</DropdownMenuItem>
+												{/* Add more actions later */}
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</TableCell>
+								</TableRow>
+							))
+						)}
 					</TableBody>
 				</Table>
 			</div>

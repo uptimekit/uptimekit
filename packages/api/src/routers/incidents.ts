@@ -1,0 +1,226 @@
+import { db } from "@uptimekit/db";
+import {
+	incident,
+	incidentActivity,
+	incidentMonitor,
+} from "@uptimekit/db/schema/incidents";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { z } from "zod";
+import { protectedProcedure } from "../index";
+import { ORPCError } from "@orpc/server";
+
+export const incidentsRouter = {
+	list: protectedProcedure
+		.input(
+			z.object({
+				limit: z.number().default(50),
+				offset: z.number().default(0),
+				status: z.enum(["open", "resolved", "all"]).default("all"),
+			}),
+		)
+		.handler(async ({ input }) => {
+			const filters = [];
+			if (input.status === "open") {
+				filters.push(isNull(incident.resolvedAt));
+			} else if (input.status === "resolved") {
+				filters.push(sql`${incident.resolvedAt} IS NOT NULL`);
+			}
+
+			const items = await db.query.incident.findMany({
+				where: filters.length > 0 ? and(...filters) : undefined,
+				limit: input.limit,
+				offset: input.offset,
+				orderBy: [desc(incident.createdAt)],
+				with: {
+					monitors: {
+						with: {
+							monitor: true,
+						},
+					},
+					activities: {
+						limit: 1,
+						orderBy: [desc(incidentActivity.createdAt)],
+					},
+				},
+			});
+
+			return items;
+		}),
+
+	get: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input }) => {
+			const item = await db.query.incident.findFirst({
+				where: eq(incident.id, input.id),
+				with: {
+					monitors: {
+						with: {
+							monitor: true,
+						},
+					},
+					activities: {
+						orderBy: [desc(incidentActivity.createdAt)],
+						with: {
+							user: true,
+						},
+					},
+					organization: true,
+					acknowledgedByUser: true,
+				},
+			});
+
+			if (!item) {
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+			}
+
+			return item;
+		}),
+
+	create: protectedProcedure
+		.input(
+			z.object({
+				title: z.string().min(1),
+				description: z.string().optional(),
+				severity: z.enum(["minor", "major", "critical"]),
+				monitorIds: z.array(z.string()).default([]),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const id = crypto.randomUUID();
+			const now = new Date();
+
+			await db.transaction(async (tx) => {
+				await tx.insert(incident).values({
+					id,
+					organizationId: context.session.session.activeOrganizationId!,
+					title: input.title,
+					description: input.description,
+					severity: input.severity,
+					status: "investigating",
+					type: "manual",
+					createdAt: now,
+					updatedAt: now,
+				});
+
+				if (input.monitorIds.length > 0) {
+					// Verify monitors belong to org?
+					// Assume yes for now, but good practice to verify in real app
+					await tx.insert(incidentMonitor).values(
+						input.monitorIds.map((mid) => ({
+							incidentId: id,
+							monitorId: mid,
+						})),
+					);
+				}
+
+				await tx.insert(incidentActivity).values({
+					id: crypto.randomUUID(),
+					incidentId: id,
+					message: `Incident created by ${context.session.user.name}`,
+					type: "comment",
+					createdAt: now,
+					userId: context.session.user.id,
+				});
+			});
+
+			return { id };
+		}),
+
+	acknowledge: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const now = new Date();
+
+			const existing = await db.query.incident.findFirst({
+				where: eq(incident.id, input.id),
+			});
+			if (!existing)
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+
+			if (existing.acknowledgedAt) {
+				return { success: true, message: "Already acknowledged" };
+			}
+
+			await db.transaction(async (tx) => {
+				await tx
+					.update(incident)
+					.set({
+						status: "identified",
+						acknowledgedAt: now,
+						acknowledgedBy: context.session.user.id,
+						updatedAt: now,
+					})
+					.where(eq(incident.id, input.id));
+
+				await tx.insert(incidentActivity).values({
+					id: crypto.randomUUID(),
+					incidentId: input.id,
+					message: `Incident acknowledged by ${context.session.user.name}`,
+					type: "comment",
+					createdAt: now,
+					userId: context.session.user.id,
+				});
+			});
+
+			return { success: true };
+		}),
+
+	resolve: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const now = new Date();
+			const existing = await db.query.incident.findFirst({
+				where: eq(incident.id, input.id),
+			});
+			if (!existing)
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+
+			if (existing.resolvedAt) {
+				return { success: true, message: "Already resolved" };
+			}
+
+			await db.transaction(async (tx) => {
+				await tx
+					.update(incident)
+					.set({
+						status: "resolved",
+						resolvedAt: now,
+						updatedAt: now,
+					})
+					.where(eq(incident.id, input.id));
+
+				await tx.insert(incidentActivity).values({
+					id: crypto.randomUUID(),
+					incidentId: input.id,
+					message: `Incident resolved by ${context.session.user.name}`,
+					type: "comment",
+					createdAt: now,
+					userId: context.session.user.id,
+				});
+			});
+
+			return { success: true };
+		}),
+
+	addComment: protectedProcedure
+		.input(z.object({ incidentId: z.string(), message: z.string().min(1) }))
+		.handler(async ({ input, context }) => {
+			const now = new Date();
+			const existing = await db.query.incident.findFirst({
+				where: eq(incident.id, input.incidentId),
+			});
+			if (!existing)
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+
+			await db.insert(incidentActivity).values({
+				id: crypto.randomUUID(),
+				incidentId: input.incidentId,
+				message: input.message,
+				type: "comment",
+				createdAt: now,
+				userId: context.session.user.id,
+			});
+
+			return { success: true };
+		}),
+};

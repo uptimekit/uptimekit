@@ -7,7 +7,6 @@ import {
 	pgTable,
 	text,
 	timestamp,
-	uuid,
 	varchar,
 } from "drizzle-orm/pg-core";
 import { organization } from "./auth";
@@ -69,8 +68,8 @@ export const monitor = pgTable(
 export const monitorEvent = pgTable(
 	"monitor_event",
 	{
-		id: uuid("id").primaryKey().defaultRandom(),
-		monitorId: uuid("monitor_id")
+		id: text("id").primaryKey(),
+		monitorId: text("monitor_id")
 			.notNull()
 			.references(() => monitor.id, { onDelete: "cascade" }),
 		status: varchar("status", { length: 20 }).notNull(), // up, down, degraded
@@ -89,8 +88,8 @@ export const monitorEvent = pgTable(
 export const monitorChange = pgTable(
 	"monitor_change",
 	{
-		id: uuid("id").primaryKey().defaultRandom(),
-		monitorId: uuid("monitor_id")
+		id: text("id").primaryKey(),
+		monitorId: text("monitor_id")
 			.notNull()
 			.references(() => monitor.id, { onDelete: "cascade" }),
 		status: varchar("status", { length: 20 }).notNull(),
