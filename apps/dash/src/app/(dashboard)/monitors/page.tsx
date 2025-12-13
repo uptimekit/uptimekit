@@ -5,7 +5,10 @@ import { orpc } from "@/utils/orpc";
 import { useQuery } from "@tanstack/react-query";
 
 export default function MonitorsPage() {
-	const { data: monitors } = useQuery(orpc.monitors.list.queryOptions());
+	const { data: monitors } = useQuery({
+		...orpc.monitors.list.queryOptions(),
+		refetchInterval: 60_000,
+	});
 
 	const tableData: Monitor[] =
 		monitors?.map((m) => ({
