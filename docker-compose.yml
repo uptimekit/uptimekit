@@ -15,6 +15,17 @@ services:
       - db
     restart: always
 
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      - DASHBOARD_URL=http://dash:3000
+      - WORKER_API_KEY=change_me_to_real_worker_key
+    depends_on:
+      - dash
+    restart: always
+
   status-page:
     build:
       context: .
