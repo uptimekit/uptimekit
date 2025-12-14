@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { client, orpc } from "@/utils/orpc";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,11 +14,18 @@ import {
 	Clock,
 	Megaphone,
 	Wrench,
+	MoreHorizontal,
+	Pencil,
+	ExternalLink,
+	Plus,
+	Trash,
 } from "lucide-react";
-import { format } from "date-fns";
+import Link from "next/link";
+import { format, formatDistanceToNow } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Select,
 	SelectContent,
@@ -37,6 +45,31 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
+import { useState, useEffect } from "react";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const updateSchema = z.object({
 	message: z.string().min(1, "Message is required"),
@@ -49,42 +82,19 @@ export default function MaintenanceDetailsPage() {
 	const params = useParams();
 	const router = useRouter();
 	const maintenanceId = params.maintenanceId as string;
-	const queryClient = useQueryClient();
+	const [editingUpdate, setEditingUpdate] = useState<{
+		id: string;
+		message: string;
+		status: string;
+	} | null>(null);
+	const [postOpen, setPostOpen] = useState(false);
+	const [editingWindow, setEditingWindow] = useState(false);
 
 	const { data: maintenance, isLoading } = useQuery(
 		orpc.maintenance.get.queryOptions({
 			input: { maintenanceId },
 		}),
 	);
-
-	const form = useForm<UpdateFormValues>({
-		resolver: zodResolver(updateSchema),
-		defaultValues: {
-			message: "",
-			status: "in_progress",
-		},
-	});
-
-	const { mutate: createUpdate, isPending } = useMutation({
-		mutationFn: (values: UpdateFormValues) =>
-			client.maintenance.createUpdate({
-				maintenanceId,
-				...values,
-			}),
-		onSuccess: () => {
-			toast.success("Update posted successfully");
-			queryClient.invalidateQueries({
-				queryKey: orpc.maintenance.get.key({ input: { maintenanceId } }),
-			});
-			form.reset({
-				message: "",
-				status: form.getValues("status"), // Keep previous status or default?
-			});
-		},
-		onError: (err) => {
-			toast.error("Failed to post update: " + err.message);
-		},
-	});
 
 	if (isLoading) {
 		return (
@@ -96,20 +106,16 @@ export default function MaintenanceDetailsPage() {
 		return <div>Maintenance not found</div>;
 	}
 
-	function onSubmit(values: UpdateFormValues) {
-		createUpdate(values);
-	}
-
 	function getStatusColor(status: string) {
 		switch (status) {
 			case "in_progress":
-				return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+				return "bg-blue-500/10 border-blue-500/20 text-blue-500";
 			case "completed":
-				return "bg-green-500/10 text-green-500 border-green-500/20";
+				return "bg-emerald-500/10 border-emerald-500/20 text-emerald-500";
 			case "scheduled":
-				return "bg-orange-500/10 text-orange-500 border-orange-500/20";
+				return "bg-orange-500/10 border-orange-500/20 text-orange-500";
 			default:
-				return "bg-gray-500/10 text-gray-500 border-gray-500/20";
+				return "bg-gray-500/10 border-gray-500/20 text-gray-500";
 		}
 	}
 
@@ -164,173 +170,122 @@ export default function MaintenanceDetailsPage() {
 			</div>
 
 			<div className="grid gap-8 lg:grid-cols-3">
-				{/* Main Content: Updates & Timeline */}
-				<div className="space-y-8 lg:col-span-2">
+				<div className="space-y-6 lg:col-span-2">
 					<div className="flex items-center justify-between">
 						<h2 className="text-xl font-semibold tracking-tight">Timeline</h2>
+						{maintenance.status !== "completed" && (
+							<Button size="sm" onClick={() => setPostOpen(true)}>
+								<Plus className="mr-2 h-4 w-4" />
+								Post update
+							</Button>
+						)}
 					</div>
 
-					{/* Post Update Form */}
-					{maintenance.status !== "completed" && (
-						<Card className="border-muted bg-muted/30 shadow-none overflow-hidden">
-							<CardHeader className="bg-muted/50 pb-4">
-								<CardTitle className="flex items-center gap-2 text-base font-medium">
-									<Megaphone className="h-4 w-4 text-primary" />
-									Post an update
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="pt-6">
-								<Form {...form}>
-									<form
-										onSubmit={form.handleSubmit(onSubmit)}
-										className="space-y-4"
-									>
-										<FormField
-											control={form.control}
-											name="message"
-											render={({ field }) => (
-												<FormItem>
-													<FormControl>
-														<Textarea
-															placeholder="What's the latest status?"
-															className="min-h-[100px] resize-y bg-background"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<div className="flex items-center justify-between gap-4">
-											<FormField
-												control={form.control}
-												name="status"
-												render={({ field }) => (
-													<FormItem className="flex-1">
-														<Select
-															onValueChange={field.onChange}
-															defaultValue={field.value}
-														>
-															<FormControl>
-																<SelectTrigger className="bg-background">
-																	<SelectValue placeholder="Status" />
-																</SelectTrigger>
-															</FormControl>
-															<SelectContent>
-																<SelectItem value="scheduled">
-																	Scheduled
-																</SelectItem>
-																<SelectItem value="in_progress">
-																	In Progress
-																</SelectItem>
-																<SelectItem value="completed">
-																	Completed
-																</SelectItem>
-															</SelectContent>
-														</Select>
-														<FormMessage />
-													</FormItem>
-												)}
-											/>
-											<Button
-												type="submit"
-												disabled={isPending}
-												className="min-w-[120px]"
-											>
-												{isPending ? "Posting..." : "Post update"}
-											</Button>
-										</div>
-									</form>
-								</Form>
-							</CardContent>
-						</Card>
-					)}
-
-					<div className="space-y-0">
-						{/* Updates Timeline */}
-						{maintenance.updates?.map((update) => (
-							<div key={update.id} className="relative pb-12 pl-12">
-								{/* Vertical connecting line */}
-								<div
-									className="absolute bottom-0 left-4 top-8 -ml-px w-[2px] bg-border/50"
-									style={{ transform: "translateX(-0.5px)" }}
-								/>
-
-								{/* Icon */}
-								<div
-									className={cn(
-										"absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border bg-background shadow-sm ring-4 ring-background transition-all",
-										getStatusColor(update.status),
-									)}
-								>
-									{getStatusIcon(update.status)}
-								</div>
-
-								{/* Content */}
-								<div className="space-y-2 pt-1">
-									<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-										<h4 className="text-base font-medium leading-none">
-											{update.status === "completed"
-												? "Maintenance Completed"
-												: update.status === "in_progress"
-													? "Update Posted"
-													: "Status Update"}
-										</h4>
-										<span className="text-xs text-muted-foreground/70">
-											{format(
-												new Date(update.createdAt),
-												"MMM d, yyyy 'at' h:mma",
-											)}
-										</span>
-									</div>
-									<div className="prose prose-sm prose-neutral max-w-none text-muted-foreground dark:prose-invert">
-										<p className="whitespace-pre-wrap leading-relaxed">
-											{update.message}
-										</p>
-									</div>
-								</div>
-							</div>
-						))}
-
-						{/* Creation Event */}
-						<div className="relative pl-12">
-							{/* No connecting line for the last item */}
-
-							{/* Icon - Dashed for creation to differentiate/style as needed */}
-							<div className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border bg-background shadow-sm ring-4 ring-background">
-								<div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
-							</div>
-
-							{/* Content */}
-							<div className="space-y-2 pt-1">
-								<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-									<h4 className="text-base font-medium leading-none">
-										Maintenance Scheduled
-									</h4>
-									<span className="text-xs text-muted-foreground/70">
-										{format(
-											new Date(maintenance.createdAt),
-											"MMM d, yyyy 'at' h:mma",
-										)}
-									</span>
-								</div>
-								<div className="prose prose-sm prose-neutral max-w-none text-muted-foreground dark:prose-invert">
-									<p className="whitespace-pre-wrap leading-relaxed">
-										{maintenance.description || "No description provided."}
-									</p>
-								</div>
-							</div>
+					<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+						<div className="flex items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+							<Megaphone className="h-4 w-4" />
+							Maintenance updates
 						</div>
+						<Table>
+							<TableBody>
+								{maintenance.updates?.length === 0 ? (
+									<TableRow>
+										<TableCell
+											colSpan={3}
+											className="h-24 text-center text-muted-foreground"
+										>
+											No updates yet.
+										</TableCell>
+									</TableRow>
+								) : (
+									maintenance.updates?.map((update) => (
+										<TableRow
+											key={update.id}
+											className="group hover:bg-muted/40 transition-colors"
+										>
+											<TableCell className="w-[50px] pl-6 align-top py-4">
+												<div
+													className={cn(
+														"mt-1.5 h-2.5 w-2.5 rounded-full shadow-sm",
+														getStatusColor(update.status).includes("emerald") &&
+															"bg-emerald-500 shadow-emerald-500/20",
+														getStatusColor(update.status).includes("blue") &&
+															"bg-blue-500 shadow-blue-500/20",
+														getStatusColor(update.status).includes("orange") &&
+															"bg-orange-500 shadow-orange-500/20",
+														getStatusColor(update.status).includes("gray") &&
+															"bg-zinc-500 shadow-zinc-500/20",
+													)}
+												/>
+											</TableCell>
+											<TableCell className="align-top py-4">
+												<div className="space-y-1.5">
+													<div className="prose prose-sm prose-neutral max-w-none text-foreground dark:prose-invert">
+														<p className="whitespace-pre-wrap leading-relaxed">
+															{update.message}
+														</p>
+													</div>
+													<div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+														<span
+															className={cn(
+																getStatusColor(update.status).includes(
+																	"emerald",
+																) && "text-emerald-500",
+																getStatusColor(update.status).includes(
+																	"blue",
+																) && "text-blue-500",
+																getStatusColor(update.status).includes(
+																	"orange",
+																) && "text-orange-500",
+																getStatusColor(update.status).includes(
+																	"gray",
+																) && "text-zinc-500",
+															)}
+														>
+															{update.status === "completed"
+																? "Completed"
+																: update.status === "in_progress"
+																	? "In Progress"
+																	: "Scheduled"}
+														</span>
+														<span>·</span>
+														<span>
+															{formatDistanceToNow(new Date(update.createdAt), {
+																addSuffix: true,
+															})}
+														</span>
+													</div>
+												</div>
+											</TableCell>
+											<TableCell className="w-[50px] pr-4 align-top py-4 text-right">
+												<UpdateActions
+													update={update}
+													onEdit={() => setEditingUpdate(update)}
+												/>
+											</TableCell>
+										</TableRow>
+									))
+								)}
+							</TableBody>
+						</Table>
 					</div>
 				</div>
 
 				{/* Sidebar: Metadata */}
 				<div className="space-y-6 lg:col-span-1">
 					<Card>
-						<CardHeader className="pb-3">
+						<CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
 							<CardTitle className="text-sm font-medium text-muted-foreground">
 								Window
 							</CardTitle>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-6 w-6"
+								onClick={() => setEditingWindow(true)}
+							>
+								<Pencil className="h-3 w-3" />
+							</Button>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="flex items-start gap-3">
@@ -342,7 +297,7 @@ export default function MaintenanceDetailsPage() {
 									<p className="text-sm font-medium">
 										{format(new Date(maintenance.startAt), "MMM d, yyyy")}
 									</p>
-									<p className="text-xs text-muted-foreground">
+									<p className="text-sm text-muted-foreground">
 										{format(new Date(maintenance.startAt), "h:mm a")}
 									</p>
 								</div>
@@ -357,7 +312,7 @@ export default function MaintenanceDetailsPage() {
 									<p className="text-sm font-medium">
 										{format(new Date(maintenance.endAt), "MMM d, yyyy")}
 									</p>
-									<p className="text-xs text-muted-foreground">
+									<p className="text-sm text-muted-foreground">
 										{format(new Date(maintenance.endAt), "h:mm a")}
 									</p>
 								</div>
@@ -367,21 +322,20 @@ export default function MaintenanceDetailsPage() {
 
 					{maintenance.monitors.length > 0 && (
 						<Card>
-							<CardHeader className="pb-3">
-								<CardTitle className="text-sm font-medium text-muted-foreground">
+							<CardContent className="pt-6">
+								<h3 className="mb-1 text-sm font-medium text-muted-foreground">
 									Affected Services
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="flex flex-wrap gap-2">
+								</h3>
+								<div className="space-y-1">
 									{maintenance.monitors.map((m) => (
-										<Badge
+										<Link
 											key={m.monitor.id}
-											variant="secondary"
-											className="font-normal"
+											href={`/monitors/${m.monitor.id}`}
+											className="group flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary"
 										>
-											{m.monitor.name}
-										</Badge>
+											<span>{m.monitor.name}</span>
+											<ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 transition-all group-hover:opacity-100" />
+										</Link>
 									))}
 								</div>
 							</CardContent>
@@ -389,6 +343,451 @@ export default function MaintenanceDetailsPage() {
 					)}
 				</div>
 			</div>
+
+			<EditUpdateDialog
+				update={editingUpdate}
+				open={!!editingUpdate}
+				onOpenChange={(open) => !open && setEditingUpdate(null)}
+			/>
+
+			<PostUpdateDialog
+				open={postOpen}
+				onOpenChange={setPostOpen}
+				maintenanceId={maintenanceId}
+			/>
+			<EditWindowDialog
+				maintenanceId={maintenance.id}
+				startAt={new Date(maintenance.startAt)}
+				endAt={new Date(maintenance.endAt)}
+				open={editingWindow}
+				onOpenChange={setEditingWindow}
+			/>
 		</div>
+	);
+}
+
+function PostUpdateDialog({
+	open,
+	onOpenChange,
+	maintenanceId,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	maintenanceId: string;
+}) {
+	const queryClient = useQueryClient();
+	const form = useForm<UpdateFormValues>({
+		resolver: zodResolver(updateSchema),
+		defaultValues: {
+			message: "",
+			status: "in_progress",
+		},
+	});
+
+	const { mutate: createUpdate, isPending } = useMutation({
+		mutationFn: (values: UpdateFormValues) =>
+			client.maintenance.createUpdate({
+				maintenanceId,
+				...values,
+			}),
+		onSuccess: () => {
+			toast.success("Update posted successfully");
+			queryClient.invalidateQueries({
+				queryKey: orpc.maintenance.get.key({ input: { maintenanceId } }),
+			});
+			form.reset();
+			onOpenChange(false);
+		},
+		onError: (err) => {
+			toast.error("Failed to post update: " + err.message);
+		},
+	});
+
+	function onSubmit(values: UpdateFormValues) {
+		createUpdate(values);
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-xl">
+				<DialogHeader>
+					<DialogTitle>Post an update</DialogTitle>
+					<DialogDescription>
+						Keep your users informed about the current status.
+					</DialogDescription>
+				</DialogHeader>
+				<Form {...form}>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+						<FormField
+							control={form.control}
+							name="message"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Message</FormLabel>
+									<FormControl>
+										<Textarea
+											placeholder="What's the latest status?"
+											className="min-h-[100px] resize-y"
+											{...field}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="status"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Status</FormLabel>
+									<Select
+										onValueChange={field.onChange}
+										defaultValue={field.value}
+									>
+										<FormControl>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Status" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="scheduled">Scheduled</SelectItem>
+											<SelectItem value="in_progress">In Progress</SelectItem>
+											<SelectItem value="completed">Completed</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<div className="flex justify-end gap-2 pt-2">
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => onOpenChange(false)}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={isPending}>
+								{isPending ? "Posting..." : "Post update"}
+							</Button>
+						</div>
+					</form>
+				</Form>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function UpdateActions({
+	update,
+	onEdit,
+}: {
+	update: { id: string; message: string; status: string };
+	onEdit: () => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const queryClient = useQueryClient();
+	const { mutate: deleteUpdate, isPending } = useMutation({
+		mutationFn: async () => {
+			await client.maintenance.deleteUpdate({ updateId: update.id });
+		},
+		onSuccess: () => {
+			toast.success("Update deleted");
+			queryClient.invalidateQueries({
+				queryKey: orpc.maintenance.get.key(),
+			});
+			setOpen(false);
+		},
+		onError: () => {
+			toast.error("Failed to delete update");
+		},
+	});
+
+	return (
+		<>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+					>
+						<MoreHorizontal className="h-4 w-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={onEdit}>
+						<Pencil className="mr-2 h-4 w-4" />
+						Edit
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						className="text-red-600 focus:text-red-600"
+						onClick={() => setOpen(true)}
+					>
+						<Trash className="mr-2 h-4 w-4" />
+						Remove
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			<AlertDialog open={open} onOpenChange={setOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the
+							maintenance update.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault();
+								deleteUpdate();
+							}}
+							disabled={isPending}
+							className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+						>
+							{isPending ? "Deleting..." : "Delete"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
+	);
+}
+
+function EditUpdateDialog({
+	update,
+	open,
+	onOpenChange,
+}: {
+	update: { id: string; message: string; status: string } | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const queryClient = useQueryClient();
+	const form = useForm({
+		defaultValues: {
+			message: update?.message || "",
+			status: update?.status || "in_progress",
+		},
+	});
+
+	// Reset form when update changes
+	useEffect(() => {
+		if (update) {
+			form.reset({
+				message: update.message,
+				status: update.status,
+			});
+		}
+	}, [update, form]);
+
+	const { mutate: updateUpdate, isPending } = useMutation({
+		mutationFn: async (values: { message: string; status: string }) => {
+			if (!update) return;
+			await client.maintenance.updateUpdate({
+				updateId: update.id,
+				message: values.message,
+				status: values.status as "scheduled" | "in_progress" | "completed",
+			});
+		},
+		onSuccess: () => {
+			toast.success("Update saved");
+			queryClient.invalidateQueries({
+				queryKey: orpc.maintenance.get.key(),
+			});
+			onOpenChange(false);
+		},
+		onError: () => {
+			toast.error("Failed to save update");
+		},
+	});
+
+	const onSubmit = (values: { message: string; status: string }) => {
+		updateUpdate(values);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-xl">
+				<DialogHeader>
+					<DialogTitle>Edit maintenance update</DialogTitle>
+					<DialogDescription>
+						Update the message for this status update.
+					</DialogDescription>
+				</DialogHeader>
+				<Form {...form}>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+						<FormField
+							control={form.control}
+							name="message"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Message</FormLabel>
+									<FormControl>
+										<Textarea
+											{...field}
+											rows={5}
+											placeholder="Message..."
+											className="resize-none"
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="status"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Status</FormLabel>
+									<Select
+										onValueChange={field.onChange}
+										defaultValue={field.value}
+									>
+										<FormControl>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Status" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value="scheduled">Scheduled</SelectItem>
+											<SelectItem value="in_progress">In Progress</SelectItem>
+											<SelectItem value="completed">Completed</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<div className="flex justify-end gap-2 pt-2">
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => onOpenChange(false)}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={isPending}>
+								{isPending ? "Saving..." : "Save changes"}
+							</Button>
+						</div>
+					</form>
+				</Form>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function EditWindowDialog({
+	maintenanceId,
+	startAt,
+	endAt,
+	open,
+	onOpenChange,
+}: {
+	maintenanceId: string;
+	startAt: Date;
+	endAt: Date;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const queryClient = useQueryClient();
+	const form = useForm({
+		defaultValues: {
+			startAt: startAt,
+			endAt: endAt,
+		},
+	});
+
+	const { mutate: updateMaintenance, isPending } = useMutation({
+		mutationFn: async (values: { startAt: Date; endAt: Date }) => {
+			await client.maintenance.update({
+				maintenanceId,
+				startAt: values.startAt.toISOString(),
+				endAt: values.endAt.toISOString(),
+			});
+		},
+		onSuccess: () => {
+			toast.success("Maintenance window updated");
+			queryClient.invalidateQueries({
+				queryKey: orpc.maintenance.get.key(),
+			});
+			onOpenChange(false);
+		},
+		onError: () => {
+			toast.error("Failed to update maintenance window");
+		},
+	});
+
+	const onSubmit = (values: { startAt: Date; endAt: Date }) => {
+		updateMaintenance(values);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-md overflow-visible">
+				<DialogHeader>
+					<DialogTitle>Edit maintenance window</DialogTitle>
+					<DialogDescription>
+						Update the start and end time for this maintenance.
+					</DialogDescription>
+				</DialogHeader>
+				<Form {...form}>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+						<FormField
+							control={form.control}
+							name="startAt"
+							render={({ field }) => (
+								<FormItem className="flex flex-col">
+									<FormLabel>Start time</FormLabel>
+									<FormControl>
+										<DateTimePicker
+											date={field.value}
+											setDate={field.onChange}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="endAt"
+							render={({ field }) => (
+								<FormItem className="flex flex-col">
+									<FormLabel>End time</FormLabel>
+									<FormControl>
+										<DateTimePicker
+											date={field.value}
+											setDate={field.onChange}
+										/>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<div className="flex justify-end gap-2 pt-2">
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => onOpenChange(false)}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={isPending}>
+								{isPending ? "Saving..." : "Save changes"}
+							</Button>
+						</div>
+					</form>
+				</Form>
+			</DialogContent>
+		</Dialog>
 	);
 }

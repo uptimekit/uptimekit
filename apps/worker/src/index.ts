@@ -67,6 +67,9 @@ async function tick(api: ApiClient) {
 		await api.pushEvents(validResults);
 		console.log(`Pushed ${validResults.length} events.`);
 	}
+
+	// 4. Process maintenance updates
+	await api.processMaintenance();
 }
 
 main().catch(console.error);

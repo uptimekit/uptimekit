@@ -68,4 +68,14 @@ export class ApiClient {
 			}
 		}
 	}
+
+	async processMaintenance() {
+		try {
+			await this.client.post("api/rpc/workerIngest/processMaintenance", {
+				json: {},
+			});
+		} catch (error) {
+			console.error("Process maintenance failed", error);
+		}
+	}
 }

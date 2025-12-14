@@ -10,6 +10,7 @@ import {
 	monitorEvent,
 } from "@uptimekit/db/schema/monitors";
 import { worker } from "@uptimekit/db/schema/workers";
+import { maintenance } from "@uptimekit/db/schema/maintenance";
 import { db } from "@uptimekit/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -144,6 +145,52 @@ export const workerIngestRouter = {
 					body: config.body,
 				};
 			}),
+		};
+	}),
+	processMaintenance: workerProcedure.handler(async () => {
+		const now = new Date();
+
+		// 1. Process scheduled -> in_progress
+		const maintenanceToStart = await db.query.maintenance.findMany({
+			where: (t, { eq, and, lte }) =>
+				and(eq(t.status, "scheduled"), lte(t.startAt, now)),
+		});
+
+		for (const record of maintenanceToStart) {
+			await db.transaction(async (tx) => {
+				// Update status
+				await tx
+					.update(maintenance)
+					.set({
+						status: "in_progress",
+						updatedAt: now,
+					})
+					.where(eq(maintenance.id, record.id));
+			});
+		}
+
+		// 2. Process in_progress -> completed
+		const maintenanceToFinish = await db.query.maintenance.findMany({
+			where: (t, { eq, and, lte }) =>
+				and(eq(t.status, "in_progress"), lte(t.endAt, now)),
+		});
+
+		for (const record of maintenanceToFinish) {
+			await db.transaction(async (tx) => {
+				// Update status
+				await tx
+					.update(maintenance)
+					.set({
+						status: "completed",
+						updatedAt: now,
+					})
+					.where(eq(maintenance.id, record.id));
+			});
+		}
+
+		return {
+			started: maintenanceToStart.length,
+			completed: maintenanceToFinish.length,
 		};
 	}),
 

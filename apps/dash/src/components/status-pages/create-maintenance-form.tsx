@@ -38,6 +38,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Select,
 	SelectContent,
@@ -53,8 +54,8 @@ const formSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	description: z.string().min(1, "Description is required"),
 	status: z.enum(["scheduled", "in_progress", "completed"]),
-	startAt: z.string().min(1, "Start time is required"),
-	endAt: z.string().min(1, "End time is required"),
+	startAt: z.date({ required_error: "Start time is required" }),
+	endAt: z.date({ required_error: "End time is required" }),
 	monitorIds: z.array(z.string()).default([]),
 });
 
@@ -78,8 +79,6 @@ export function CreateMaintenanceForm({
 			title: "",
 			description: "",
 			status: "scheduled",
-			startAt: "",
-			endAt: "",
 			monitorIds: [],
 		},
 	});
@@ -91,8 +90,8 @@ export function CreateMaintenanceForm({
 			client.maintenance.create({
 				...data,
 				statusPageId,
-				startAt: new Date(data.startAt).toISOString(),
-				endAt: new Date(data.endAt).toISOString(),
+				startAt: data.startAt.toISOString(),
+				endAt: data.endAt.toISOString(),
 			}),
 		onSuccess: () => {
 			toast.success("Maintenance scheduled successfully");
@@ -267,10 +266,13 @@ export function CreateMaintenanceForm({
 								control={form.control}
 								name="startAt"
 								render={({ field }) => (
-									<FormItem>
+									<FormItem className="flex flex-col">
 										<FormLabel>Start Time</FormLabel>
 										<FormControl>
-											<Input type="datetime-local" {...field} />
+											<DateTimePicker
+												date={field.value}
+												setDate={field.onChange}
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -280,10 +282,13 @@ export function CreateMaintenanceForm({
 								control={form.control}
 								name="endAt"
 								render={({ field }) => (
-									<FormItem>
+									<FormItem className="flex flex-col">
 										<FormLabel>End Time</FormLabel>
 										<FormControl>
-											<Input type="datetime-local" {...field} />
+											<DateTimePicker
+												date={field.value}
+												setDate={field.onChange}
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>

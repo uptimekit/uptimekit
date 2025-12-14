@@ -1,15 +1,21 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Plus } from "lucide-react";
+import { ChevronDown, Clock, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { CreateMaintenanceForm } from "@/components/status-pages/create-maintenance-form";
 import { orpc } from "@/utils/orpc";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function MaintenancePage() {
 	const params = useParams();
@@ -22,16 +28,13 @@ export default function MaintenancePage() {
 		}),
 	);
 
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case "in_progress":
-				return "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20";
-			case "completed":
-				return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
-			default:
-				return "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20";
-		}
-	};
+	if (isLoading) {
+		return (
+			<div className="flex w-full items-center justify-center p-8">
+				<div className="text-muted-foreground">Loading...</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="space-y-6">
@@ -53,89 +56,147 @@ export default function MaintenancePage() {
 				</Button>
 			</div>
 
-			{isLoading ? (
-				<div className="py-8 text-center text-muted-foreground">Loading...</div>
-			) : maintenanceRecords?.length === 0 ? (
-				<Card className="border-dashed bg-muted/10 shadow-none">
-					<CardContent className="flex flex-col items-center justify-center py-16 text-center">
-						<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-							<Plus className="h-6 w-6 text-muted-foreground" />
-						</div>
-						<h3 className="text-lg font-medium">No maintenance scheduled</h3>
-						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
-							You can schedule maintenance ahead of time to let your users know
-							about upcoming downtime.
-						</p>
-					</CardContent>
-				</Card>
-			) : (
-				<div className="space-y-4">
-					{maintenanceRecords?.map(
-						(maintenance: {
-							id: string;
-							title: string;
-							startAt: Date;
-							endAt: Date;
-							status: string;
-							description: string | null;
-						}) => (
-							<Link
-								key={maintenance.id}
-								href={
-									`/status-pages/${statusPageId}/maintenance/${maintenance.id}` as any
-								}
-								className="block transition-all hover:opacity-80"
-							>
-								<Card>
-									<CardHeader>
-										<div className="flex items-center justify-between">
-											<div className="space-y-1">
-												<CardTitle className="text-base">
+			<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+				<div className="flex items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+					<ChevronDown className="h-4 w-4" />
+					Maintenance
+				</div>
+				<Table>
+					<TableBody>
+						{isLoading ? (
+							<TableRow>
+								<TableCell colSpan={4} className="h-24 text-center">
+									Loading...
+								</TableCell>
+							</TableRow>
+						) : maintenanceRecords?.length === 0 ? (
+							<TableRow>
+								<TableCell colSpan={4} className="h-24 text-center">
+									<div className="flex flex-col items-center justify-center gap-2 py-6">
+										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+											<Plus className="h-6 w-6 text-muted-foreground" />
+										</div>
+										<p className="font-medium text-lg">
+											No maintenance scheduled
+										</p>
+										<p className="text-muted-foreground text-sm">
+											Get started by creating your first maintenance window.
+										</p>
+										<div className="mt-2">
+											<Button onClick={() => setCreateOpen(true)}>
+												Schedule maintenance
+											</Button>
+										</div>
+									</div>
+								</TableCell>
+							</TableRow>
+						) : (
+							maintenanceRecords?.map((maintenance) => (
+								<TableRow
+									key={maintenance.id}
+									className="group h-[72px] hover:bg-muted/40"
+								>
+									<TableCell className="w-[50px] pl-6">
+										<div
+											className={cn(
+												"h-2.5 w-2.5 rounded-full shadow-sm",
+												maintenance.status === "completed" &&
+													"bg-emerald-500 shadow-emerald-500/20",
+												maintenance.status === "in_progress" &&
+													"bg-blue-500 shadow-blue-500/20",
+												maintenance.status === "scheduled" &&
+													"bg-zinc-500 shadow-zinc-500/20",
+											)}
+										/>
+									</TableCell>
+									<TableCell>
+										<Link
+											href={`/status-pages/${statusPageId}/maintenance/${maintenance.id}`}
+											className="block h-full w-full"
+										>
+											<div className="grid gap-1">
+												<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
 													{maintenance.title}
-												</CardTitle>
-												<div className="flex items-center gap-2 text-sm text-muted-foreground">
-													<div className="flex items-center gap-1">
-														<Calendar className="h-3 w-3" />
-														<span>
-															{new Date(
-																maintenance.startAt,
-															).toLocaleDateString()}
-														</span>
-													</div>
-													<span>•</span>
+												</span>
+												<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+													<span
+														className={cn(
+															maintenance.status === "completed" &&
+																"text-emerald-500",
+															maintenance.status === "in_progress" &&
+																"text-blue-500",
+															maintenance.status === "scheduled" &&
+																"text-zinc-500",
+														)}
+													>
+														{maintenance.status === "completed"
+															? "Completed"
+															: maintenance.status === "in_progress"
+																? "In Progress"
+																: "Scheduled"}
+													</span>
+													<span>·</span>
+													<span>
+														{new Date(maintenance.startAt).toLocaleDateString(
+															undefined,
+															{
+																month: "short",
+																day: "numeric",
+																hour: "numeric",
+																minute: "numeric",
+															},
+														)}
+													</span>
+													<span>·</span>
 													<div className="flex items-center gap-1">
 														<Clock className="h-3 w-3" />
 														<span>
-															{new Date(
-																maintenance.startAt,
-															).toLocaleTimeString()}{" "}
-															-{" "}
-															{new Date(maintenance.endAt).toLocaleTimeString()}
+															{new Date(maintenance.startAt).toLocaleTimeString(
+																[],
+																{
+																	hour: "2-digit",
+																	minute: "2-digit",
+																},
+															)}
 														</span>
 													</div>
 												</div>
 											</div>
-											<Badge
-												variant="secondary"
-												className={getStatusColor(maintenance.status)}
-											>
-												{maintenance.status.replace("_", " ")}
-											</Badge>
-										</div>
-									</CardHeader>
-									{maintenance.description && (
-										<CardContent>
-											<p className="text-sm text-muted-foreground">
-												{maintenance.description}
-											</p>
-										</CardContent>
-									)}
-								</Card>
-							</Link>
-						),
-					)}
-				</div>
-			)}
+										</Link>
+									</TableCell>
+									<TableCell className="w-[100px] text-right">
+										{/* Placeholder for future specific columns or just spacing */}
+									</TableCell>
+									<TableCell className="w-[50px] pr-4">
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+												>
+													<MoreHorizontal className="h-4 w-4" />
+													<span className="sr-only">Open menu</span>
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem asChild>
+													<Link
+														href={`/status-pages/${statusPageId}/maintenance/${maintenance.id}`}
+													>
+														View details
+													</Link>
+												</DropdownMenuItem>
+												{/* Future edit/delete actions can go here */}
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</TableCell>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	);
 }
