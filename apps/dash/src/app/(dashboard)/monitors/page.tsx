@@ -23,7 +23,9 @@ export default function MonitorsPage() {
 						? "Downtime"
 						: (m as any).status === "degraded"
 							? "Degraded"
-							: "Pending",
+							: (m as any).status === "maintenance"
+								? "Maintenance"
+								: "Pending",
 			duration: "0s",
 			usedOn: 0,
 			frequency: `${m.interval}s`,
