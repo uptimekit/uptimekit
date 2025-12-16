@@ -34,9 +34,6 @@ jobs:
       - name: Create Canary Version
         run: pnpm changeset version --snapshot canary
 
-      - name: Build
-        run: pnpm build
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
