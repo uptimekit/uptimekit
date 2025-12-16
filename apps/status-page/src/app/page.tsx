@@ -20,7 +20,6 @@ interface Monitor {
 	url?: string;
 }
 
-// Mock data - in real app this would come from API
 const monitors: Monitor[] = [
 	{
 		id: "1",
