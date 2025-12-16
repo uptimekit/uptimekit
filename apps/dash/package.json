@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/dash",
-	"version": "0.1.0",
+	"version": "0.0.0-canary-20251216082315",
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port=3000",
