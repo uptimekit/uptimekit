@@ -9,7 +9,7 @@ interface FooterProps {
 
 export function Footer({
 	companyName = "UptimeKit",
-	companyUrl = "#",
+	companyUrl = "https://github.com/stripsior/uptimekit",
 	className,
 }: FooterProps) {
 	return (

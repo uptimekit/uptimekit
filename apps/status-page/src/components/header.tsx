@@ -1,36 +1,41 @@
-import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "./theme-toggle";
 
 interface HeaderProps {
 	title?: string;
 	logoUrl?: string;
+	contactUrl?: string;
 	className?: string;
 }
 
 export function Header({
 	title = "System Status",
 	logoUrl,
+	contactUrl,
 	className,
 }: HeaderProps) {
+	const isMailto = contactUrl?.startsWith("mailto:");
+
 	return (
 		<header className={cn("relative", className)}>
-			{/* Decorative gradient */}
-			<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-
 			<div className="relative mx-auto max-w-4xl px-4 py-8">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						{logoUrl ? (
 							<img src={logoUrl} alt={title} className="h-8 w-auto" />
 						) : (
-							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-								<Activity className="h-5 w-5" />
-							</div>
+							<h1 className="font-bold text-foreground text-xl">{title}</h1>
 						)}
-						<h1 className="font-bold text-foreground text-xl">{title}</h1>
 					</div>
-					<ThemeToggle />
+					{contactUrl && (
+						<a
+							href={contactUrl}
+							target={isMailto ? undefined : "_blank"}
+							rel="noopener noreferrer"
+							className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-6 font-medium text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+						>
+							Get in touch
+						</a>
+					)}
 				</div>
 			</div>
 		</header>

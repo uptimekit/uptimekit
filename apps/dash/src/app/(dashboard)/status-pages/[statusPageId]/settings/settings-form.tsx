@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	ExternalLink,
 	Image as ImageIcon,
@@ -66,6 +66,7 @@ interface SettingsFormProps {
 
 // Settings form for status page configuration
 export function SettingsForm({ statusPageId }: SettingsFormProps) {
+	const queryClient = useQueryClient();
 	const { data: statusPage, isLoading } = useQuery(
 		orpc.statusPages.get.queryOptions({
 			input: { id: statusPageId },
@@ -75,7 +76,12 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 	const updateStatusPage = useMutation({
 		mutationFn: (data: Parameters<typeof client.statusPages.update>[0]) =>
 			client.statusPages.update(data),
-		onSuccess: () => {
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: orpc.statusPages.get.queryOptions({
+					input: { id: statusPageId },
+				}).queryKey,
+			});
 			toast.success("Status page updated successfully");
 		},
 		onError: (err: Error) => {

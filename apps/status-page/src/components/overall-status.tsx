@@ -54,50 +54,35 @@ const statusGradients: Record<StatusType, string> = {
 };
 
 export function OverallStatus({ status, className }: OverallStatusProps) {
-	const message = statusMessages[status];
+	// Custom simplified messages for the compact view
+	const title =
+		status === "operational"
+			? "All services are online"
+			: status === "maintenance"
+				? "Ongoing Maintenance"
+				: statusMessages[status].title;
 
 	return (
 		<div
 			className={cn(
-				"relative overflow-hidden rounded-2xl border border-border bg-card p-8 text-center",
+				"relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm",
 				className,
 			)}
 		>
-			{/* Gradient background */}
+			{/* Gradient background - keeping it subtle or removing if desired, but user asked for compact, not necessarily flat. 
+                Let's keep a very subtle hint or just standard card bg. 
+                The screenshot implies a clean dark bar. Let's stick to standard card bg with the gradient hint for flavor if active.
+            */}
 			<div
 				className={cn(
-					"absolute inset-0 bg-gradient-to-b",
+					"absolute inset-0 bg-gradient-to-r opacity-20",
 					statusGradients[status],
 				)}
 			/>
 
-			{/* Content */}
-			<div className="relative z-10">
-				<div className="mb-4 flex justify-center">
-					<StatusIndicator status={status} size="lg" showLabel={false} />
-				</div>
-				<h1 className="mb-2 animate-slide-up font-bold text-2xl text-card-foreground md:text-3xl">
-					{message.title}
-				</h1>
-				<p
-					className="mx-auto max-w-md animate-slide-up text-muted-foreground"
-					style={{ animationDelay: "0.1s" }}
-				>
-					{message.description}
-				</p>
-
-				{/* Last updated */}
-				<div className="mt-6 border-border border-t pt-6">
-					<p className="text-muted-foreground text-xs">
-						Last updated:{" "}
-						<time className="font-medium">
-							{new Date().toLocaleString("en-US", {
-								dateStyle: "medium",
-								timeStyle: "short",
-							})}
-						</time>
-					</p>
-				</div>
+			<div className="relative z-10 flex items-center gap-3">
+				<StatusIndicator status={status} size="md" showLabel={false} />
+				<h1 className="font-semibold text-card-foreground text-lg">{title}</h1>
 			</div>
 		</div>
 	);

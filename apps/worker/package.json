@@ -10,9 +10,10 @@
 	},
 	"dependencies": {
 		"dotenv": "^16.4.5",
+		"jsonata": "^2.1.0",
+		"ky": "^1.2.0",
 		"node-cron": "^3.0.3",
-		"zod": "^3.23.8",
-		"ky": "^1.2.0"
+		"zod": "^3.23.8"
 	},
 	"devDependencies": {
 		"@types/node": "^20",

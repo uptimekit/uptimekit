@@ -137,6 +137,8 @@ export const workerIngestRouter = {
 					headers?: Record<string, string>;
 					body?: string;
 					acceptedStatusCodes?: string;
+					keyword?: string;
+					jsonPath?: string;
 				};
 				return {
 					id: m.id,
@@ -148,6 +150,8 @@ export const workerIngestRouter = {
 					headers: config.headers || {},
 					body: config.body,
 					acceptedStatusCodes: config.acceptedStatusCodes,
+					keyword: config.keyword,
+					jsonPath: config.jsonPath,
 				};
 			}),
 		};
@@ -215,7 +219,7 @@ export const workerIngestRouter = {
 			}),
 		)
 		.output(z.object({ success: z.boolean(), count: z.number() }))
-		.handler(async ({ input, context }) => {
+		.handler(async ({ input }) => {
 			const events = input.events;
 
 			// Group events by monitor to handle ordering dependencies
@@ -399,7 +403,7 @@ export const workerIngestRouter = {
 							userId: null,
 						});
 
-						(activeIncident as any) = null; // No longer active in this loop
+						activeIncident = undefined; // No longer active in this loop
 					}
 				}
 			}

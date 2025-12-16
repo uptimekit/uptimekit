@@ -393,6 +393,9 @@ importers:
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
+      jsonata:
+        specifier: ^2.1.0
+        version: 2.1.0
       ky:
         specifier: ^1.2.0
         version: 1.14.1
@@ -3281,6 +3284,10 @@ packages:
 
   json-schema-typed@8.0.2:
     resolution: {integrity: sha512-fQhoXdcvc3V28x7C7BMs4P5+kNlgUURe2jmUT1T//oBRMDrqy1QPelJimwZGo7Hg9VPV3EQV5Bnq4hbFy2vetA==}
+
+  jsonata@2.1.0:
+    resolution: {integrity: sha512-OCzaRMK8HobtX8fp37uIVmL8CY1IGc/a6gLsDqz3quExFR09/U78HUzWYr7T31UEB6+Eu0/8dkVD5fFDOl9a8w==}
+    engines: {node: '>= 8'}
 
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
@@ -7336,6 +7343,8 @@ snapshots:
       argparse: 2.0.1
 
   json-schema-typed@8.0.2: {}
+
+  jsonata@2.1.0: {}
 
   jsonfile@4.0.0:
     optionalDependencies:

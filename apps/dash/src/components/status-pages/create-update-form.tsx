@@ -1,13 +1,21 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ExternalLink, X } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Check, X, ExternalLink } from "lucide-react";
+import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
 import {
 	Dialog,
 	DialogContent,
@@ -24,6 +32,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -31,26 +44,13 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 const formSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	status: z.enum(["investigating", "identified", "monitoring", "resolved"]),
-	severity: z.enum(["minor", "major", "critical", "maintenance"]),
+	severity: z.enum(["minor", "major", "critical"]),
 	message: z.string().min(1, "Message is required"),
 	monitors: z.array(
 		z.object({
@@ -119,7 +119,7 @@ export function CreateStatusUpdateForm({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+			<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[700px]">
 				<DialogHeader>
 					<DialogTitle>Post Status Update</DialogTitle>
 				</DialogHeader>
@@ -127,10 +127,10 @@ export function CreateStatusUpdateForm({
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 						{/* Basic Information Section */}
 						<div className="space-y-4">
-							<h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+							<h3 className="font-medium text-muted-foreground text-sm uppercase tracking-wider">
 								Basic information
 							</h3>
-							<div className="grid gap-4 p-4 border rounded-lg bg-card/50">
+							<div className="grid gap-4 rounded-lg border bg-card/50 p-4">
 								<FormField
 									control={form.control}
 									name="title"
@@ -145,7 +145,7 @@ export function CreateStatusUpdateForm({
 									)}
 								/>
 
-								<div className="grid grid-cols-2 gap-4">
+								<div className="grid gap-4">
 									<FormField
 										control={form.control}
 										name="status"
@@ -197,9 +197,6 @@ export function CreateStatusUpdateForm({
 														<SelectItem value="minor">Minor</SelectItem>
 														<SelectItem value="major">Major</SelectItem>
 														<SelectItem value="critical">Critical</SelectItem>
-														<SelectItem value="maintenance">
-															Maintenance
-														</SelectItem>
 													</SelectContent>
 												</Select>
 												<FormMessage />
@@ -231,7 +228,7 @@ export function CreateStatusUpdateForm({
 						{/* Affected Services Section */}
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+								<h3 className="font-medium text-muted-foreground text-sm uppercase tracking-wider">
 									Affected services
 								</h3>
 								<Popover>
@@ -297,7 +294,7 @@ export function CreateStatusUpdateForm({
 								</Popover>
 							</div>
 
-							<div className="border rounded-lg bg-card/50 divide-y">
+							<div className="divide-y rounded-lg border bg-card/50">
 								{form.watch("monitors").length === 0 ? (
 									<div className="p-8 text-center text-muted-foreground text-sm">
 										No services selected. The incident will be global.
@@ -326,7 +323,7 @@ export function CreateStatusUpdateForm({
 															form.setValue("monitors", [...current]);
 														}}
 													>
-														<SelectTrigger className="w-[140px] h-8 text-xs">
+														<SelectTrigger className="h-8 w-[140px] text-xs">
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
@@ -337,7 +334,7 @@ export function CreateStatusUpdateForm({
 																>
 																	<div className="flex items-center gap-2">
 																		<div
-																			className={`w-2 h-2 rounded-full bg-current ${status.color.replace("text-", "bg-")}`}
+																			className={`h-2 w-2 rounded-full bg-current ${status.color.replace("text-", "bg-")}`}
 																		/>
 																		{status.label}
 																	</div>

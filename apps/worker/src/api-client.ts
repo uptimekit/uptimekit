@@ -11,6 +11,8 @@ const MonitorSchema = z.object({
 	headers: z.record(z.string()).optional(),
 	body: z.any().optional(),
 	acceptedStatusCodes: z.string().optional(),
+	keyword: z.string().optional(),
+	jsonPath: z.string().optional(),
 });
 
 export type MonitorConfig = z.infer<typeof MonitorSchema>;
