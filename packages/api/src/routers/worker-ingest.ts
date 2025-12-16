@@ -294,7 +294,14 @@ export const workerIngestRouter = {
 					)
 					.limit(1);
 
-				let activeIncident = activeIncidentList[0];
+				let activeIncident:
+					| {
+							id: string;
+							status: string;
+							resolvedAt: Date | null;
+							type: string;
+					  }
+					| undefined = activeIncidentList[0];
 
 				// Sort by timestamp asc to process in order
 				monitorEvents.sort(

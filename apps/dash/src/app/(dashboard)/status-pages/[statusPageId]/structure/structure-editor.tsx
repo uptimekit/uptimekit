@@ -124,7 +124,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		}
 	}, [structure]);
 
-	const layout = "vertical";
+	const [layout] = useState<"vertical" | "horizontal">("vertical");
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -413,13 +413,14 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 								</div>
 							</SortableContext>
 
-							<div
+							<button
+								type="button"
 								onClick={addGroup}
-								className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-input border-dashed p-8 transition-colors hover:bg-accent/50 hover:text-accent-foreground"
+								className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-input border-dashed p-8 transition-colors hover:bg-accent/50 hover:text-accent-foreground"
 							>
 								<Plus className="h-4 w-4" />
 								<span className="font-medium text-sm">Add section</span>
-							</div>
+							</button>
 
 							{/* Overlay */}
 							<DragOverlay
@@ -530,7 +531,6 @@ function GroupCard({
 	onAddMonitor,
 	onRemoveMonitor,
 	onToggleStyle,
-	layout,
 }: any) {
 	return (
 		<Card

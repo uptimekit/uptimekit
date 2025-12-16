@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 		siteName: "UptimeKit",
 		images: [
 			{
-				url: "https://r2.uptimekit.dev/banners/banner.png",
+				url: "https://r2.uptimekit.dev/banners/background.png",
 				width: 1200,
 				height: 630,
 				alt: "UptimeKit",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 		title: "UptimeKit",
 		description:
 			"The modern status page and monitoring solution for your services.",
-		images: ["https://r2.uptimekit.dev/banners/banner.png"],
+		images: ["https://r2.uptimekit.dev/banners/background.png"],
 	},
 	icons: {
 		icon: [

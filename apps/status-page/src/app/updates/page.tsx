@@ -177,7 +177,7 @@ export default async function UpdatesPage() {
 											{date}
 										</div>
 										<div className="space-y-4">
-											{incidents.map((incident) => (
+											{incidents.map((incident: any) => (
 												<IncidentCard
 													key={incident.id}
 													incident={incident}

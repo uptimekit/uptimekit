@@ -160,17 +160,6 @@ export default async function StatusPage() {
 		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	);
 
-	// Helper to format duration
-	const formatDuration = (start: Date, end?: Date | null) => {
-		if (!end) return "Ongoing";
-		const diff = new Date(end).getTime() - new Date(start).getTime();
-		const minutes = Math.floor(diff / 1000 / 60);
-		const hours = Math.floor(minutes / 60);
-		const mins = minutes % 60;
-		if (hours > 0) return `${hours}h ${mins}m`;
-		return `${mins}m`;
-	};
-
 	// Fetch monitor data
 	const monitorsData = await Promise.all(
 		pageConfig.monitors.map(async (pm) => {
@@ -313,11 +302,7 @@ export default async function StatusPage() {
 			});
 
 			const knownDays = history.filter(
-				(d) =>
-					d.status !== "unknown" &&
-					d.status !== "maintenance" &&
-					// If the day is maintenance, don't count it towards uptime
-					!(d.uptime > 0 && d.uptime < 100 && d.status === "maintenance"),
+				(d) => d.status !== "unknown" && d.status !== "maintenance",
 			);
 			const avgUptime =
 				knownDays.length > 0
@@ -374,12 +359,7 @@ export default async function StatusPage() {
 
 		if (curr.currentStatus === "degraded") return "degraded";
 
-		if (
-			curr.currentStatus === "maintenance" &&
-			acc !== "major_outage" &&
-			acc !== "partial_outage" &&
-			acc !== "degraded"
-		)
+		if (curr.currentStatus === "maintenance" && acc !== "degraded")
 			return "maintenance";
 
 		return acc;
@@ -521,7 +501,6 @@ export default async function StatusPage() {
 										strokeLinecap="round"
 										strokeLinejoin="round"
 										className="lucide lucide-arrow-down-circle"
-										alt="Circle"
 									>
 										<circle cx="12" cy="12" r="10" />
 										<path d="M8 12l4 4 4-4" />
