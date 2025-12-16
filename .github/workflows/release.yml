@@ -1,0 +1,83 @@
+name: Production Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Generate Changeset from Commit
+        run: node scripts/generate-changeset.js
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+      - name: Version Packages
+        run: pnpm changeset version
+
+      - name: Build
+        run: pnpm build
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Docker Images
+        run: |
+          git diff --name-only | grep "apps/.*/package.json" | while read -r file; do
+             app_dir=$(dirname "$file")
+             app_name=$(basename "$app_dir")
+             version=$(grep '"version":' "$file" | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
+             
+             echo "Building Production Docker image for $app_name version $version"
+             
+             if [ -f "$app_dir/Dockerfile" ]; then
+                 # GHCR
+                 ghcr_base="ghcr.io/${{ github.repository_owner }}/uptimekit-$app_name"
+                 docker build -t "$ghcr_base:$version" -t "$ghcr_base:latest" -f "$app_dir/Dockerfile" .
+                 docker push "$ghcr_base:$version"
+                 docker push "$ghcr_base:latest"
+
+                 # Docker Hub
+                 docker_hub_base="${{ secrets.DOCKER_USERNAME }}/uptimekit-$app_name"
+                 docker tag "$ghcr_base:$version" "$docker_hub_base:$version"
+                 docker tag "$ghcr_base:$version" "$docker_hub_base:latest"
+                 docker push "$docker_hub_base:$version"
+                 docker push "$docker_hub_base:latest"
+             fi
+          done
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: release versions [skip ci]"
+          branch: main
+          tagging_message: "v${{ steps.get_version.outputs.version }}"

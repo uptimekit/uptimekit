@@ -1,0 +1,85 @@
+name: Canary Release
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Generate Changeset from Commit
+        run: node scripts/generate-changeset.js
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+      - name: Create Canary Version
+        run: pnpm changeset version --snapshot canary
+
+      - name: Build
+        run: pnpm build
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Docker Images
+        if: success()
+        run: |
+          git diff --name-only | grep "apps/.*/package.json" | while read -r file; do
+             app_dir=$(dirname "$file")
+             app_name=$(basename "$app_dir")
+             
+             # Extract version from package.json
+             version=$(grep '"version":' "$file" | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
+             
+             echo "Building Docker image for $app_name version $version"
+             
+             if [ -f "$app_dir/Dockerfile" ]; then
+                 # GHCR
+                 ghcr_tag="ghcr.io/${{ github.repository_owner }}/uptimekit-$app_name:$version"
+                 docker build -t "$ghcr_tag" -f "$app_dir/Dockerfile" .
+                 docker push "$ghcr_tag"
+
+                 # Docker Hub
+                 docker_hub_tag="${{ secrets.DOCKER_USERNAME }}/uptimekit-$app_name:$version"
+                 docker tag "$ghcr_tag" "$docker_hub_tag"
+                 docker push "$docker_hub_tag"
+             else
+                 echo "No Dockerfile found for $app_name"
+             fi
+          done
+
+      - name: Commit Canary Version
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: canary version bump [skip ci]"
+          branch: development
+          file_pattern: "apps/**/package.json packages/**/package.json"
