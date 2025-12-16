@@ -1,6 +1,6 @@
-import { BaseMonitor, type MonitorResult } from "./registry.js";
-import type { MonitorConfig } from "../api-client.js";
 import ky from "ky";
+import type { MonitorConfig } from "../api-client.js";
+import { BaseMonitor, type MonitorResult } from "./registry.js";
 
 export class HttpMonitor extends BaseMonitor {
 	async check(monitor: MonitorConfig): Promise<MonitorResult> {
@@ -10,7 +10,6 @@ export class HttpMonitor extends BaseMonitor {
 				throw new Error("Missing URL for HTTP monitor");
 			}
 
-			// Validate URL format
 			try {
 				new URL(monitor.url);
 			} catch {
@@ -29,8 +28,6 @@ export class HttpMonitor extends BaseMonitor {
 			const endTime = performance.now();
 			const latency = Math.round(endTime - startTime);
 
-			// Determine status based on config later (e.g. expected status codes)
-			// For now, 2xx is up.
 			const isUp = response.status >= 200 && response.status < 300;
 
 			return {

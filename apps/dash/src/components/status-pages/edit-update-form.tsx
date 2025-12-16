@@ -53,12 +53,17 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface AddUpdateFormProps {
+interface EditUpdateFormProps {
 	statusPageId: string;
-	reportId: string;
-	currentStatus: string;
-	initialMonitors: { id: string; status: string }[];
+	updateId: string;
+	reportId: string; // Needed for invalidation
+	initialValues: {
+		status: string;
+		message: string;
+		monitors: { id: string; status: string }[];
+	};
 	onSuccess?: () => void;
+	onCancel?: () => void;
 }
 
 const MONITOR_STATUSES = [
@@ -68,24 +73,25 @@ const MONITOR_STATUSES = [
 	{ label: "Not affected", value: "up", color: "text-gray-500" },
 ] as const;
 
-export function AddUpdateForm({
+export function EditUpdateForm({
 	statusPageId,
+	updateId,
 	reportId,
-	currentStatus,
-	initialMonitors,
+	initialValues,
 	onSuccess,
-}: AddUpdateFormProps) {
+	onCancel,
+}: EditUpdateFormProps) {
 	const queryClient = useQueryClient();
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
-			status: currentStatus as
+			status: initialValues.status as
 				| "investigating"
 				| "identified"
 				| "monitoring"
 				| "resolved",
-			message: "",
-			monitors: initialMonitors,
+			message: initialValues.message,
+			monitors: initialValues.monitors,
 		},
 	});
 
@@ -93,30 +99,22 @@ export function AddUpdateForm({
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: (data: FormValues) =>
-			client.statusUpdates.addUpdate({
+			client.statusUpdates.editUpdate({
 				...data,
 				statusPageId,
-				reportId,
+				updateId,
 			}),
 		onSuccess: () => {
-			toast.success("Update posted successfully");
+			toast.success("Update edited successfully");
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.get.key({
 					input: { statusPageId, reportId },
 				}),
 			});
-			queryClient.invalidateQueries({
-				queryKey: orpc.statusUpdates.list.key(),
-			});
-			form.reset({
-				status: form.getValues("status"), // Keep the new status
-				message: "", // Clear message
-				monitors: form.getValues("monitors"), // Keep monitors
-			});
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to post update: ${error.message}`);
+			toast.error(`Failed to edit update: ${error.message}`);
 		},
 	});
 
@@ -128,9 +126,6 @@ export function AddUpdateForm({
 		<Form {...form}>
 			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 				<div className="space-y-4">
-					<div className="flex items-center justify-between">
-						<h3 className="font-medium text-lg">Post Update</h3>
-					</div>
 					<FormField
 						control={form.control}
 						name="message"
@@ -144,7 +139,7 @@ export function AddUpdateForm({
 								</div>
 								<FormControl>
 									<Textarea
-										placeholder="Describe the latest development..."
+										placeholder="Describe the update..."
 										className="min-h-[120px] resize-y"
 										{...field}
 									/>
@@ -316,9 +311,17 @@ export function AddUpdateForm({
 					)}
 				</div>
 
-				<div className="flex justify-start">
+				<div className="flex justify-end gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={onCancel}
+						disabled={isPending}
+					>
+						Cancel
+					</Button>
 					<Button type="submit" disabled={isPending}>
-						{isPending ? "Posting..." : "Post Update"}
+						{isPending ? "Saving..." : "Save Changes"}
 					</Button>
 				</div>
 			</form>
