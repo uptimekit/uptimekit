@@ -1,6 +1,6 @@
 {
     "name": "@uptimekit/worker",
-    "version": "0.1.0",
+    "version": "0.0.0-canary-20251216084244",
     "type": "module",
     "private": true,
     "scripts": {
