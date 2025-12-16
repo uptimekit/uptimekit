@@ -1,5 +1,6 @@
 {
 	"name": "@uptimekit/api",
+	"version": "1.0.0",
 	"exports": {
 		".": {
 			"default": "./src/index.ts"
