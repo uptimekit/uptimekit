@@ -105,6 +105,7 @@ uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application
 │   ├── status-page/   # Public Status Page application
+│   ├── worker/        # Worker application
 │   └── docs/          # Documentation site
 ├── packages/
 │   ├── api/           # Shared API definition & logic
