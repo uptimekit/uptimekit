@@ -4,7 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const items = [
+type NavItem = {
+	title: string;
+	href: string;
+	disabled?: boolean;
+};
+
+const items: NavItem[] = [
 	{
 		title: "Settings",
 		href: "settings",
@@ -24,10 +30,12 @@ const items = [
 	{
 		title: "Subscribers",
 		href: "subscribers",
+		disabled: true,
 	},
 	{
 		title: "Translations",
 		href: "translations",
+		disabled: true,
 	},
 ];
 
@@ -45,21 +53,33 @@ export function StatusPageNav({
 	return (
 		<nav
 			className={cn(
-				"flex flex-wrap items-center gap-6 border-b border-border/40 px-1 pt-2",
+				"flex flex-wrap items-center gap-6 border-border/40 border-b px-1 pt-2",
 				className,
 			)}
 			{...props}
 		>
 			{items.map((item) => {
 				const href = `/status-pages/${statusPageId}/${item.href}`;
-				// Simple check if the path starts with the href, but strict equality is better for tabs
 				const isActive = pathname?.endsWith(`/${item.href}`);
+				const isDisabled = item.disabled;
+
+				if (isDisabled) {
+					return (
+						<span
+							key={item.href}
+							className="relative cursor-not-allowed pb-3 font-medium text-muted-foreground/50 text-sm"
+						>
+							{item.title}
+						</span>
+					);
+				}
+
 				return (
 					<Link
 						key={item.href}
 						href={href as any}
 						className={cn(
-							"relative pb-3 text-sm font-medium transition-colors hover:text-foreground",
+							"relative pb-3 font-medium text-sm transition-colors hover:text-foreground",
 							isActive
 								? "text-foreground after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-primary"
 								: "text-muted-foreground",
