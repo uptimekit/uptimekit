@@ -1,32 +1,45 @@
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { client, orpc } from "@/utils/orpc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+	AU,
+	BR,
+	DE,
+	EU,
+	FR,
+	GB,
+	IN,
+	JP,
+	SG,
+	US,
+} from "country-flag-icons/react/3x2";
+import {
+	Activity,
+	Braces,
+	Check,
+	ChevronRight,
+	ChevronsUpDown,
+	Folder,
+	Globe,
+	Network,
+	Plus,
+	Search,
+	Server,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Command,
 	CommandEmpty,
@@ -37,44 +50,31 @@ import {
 	CommandSeparator,
 } from "@/components/ui/command";
 import {
+	Form,
+	FormControl,
+	FormDescription,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Card, CardContent } from "@/components/ui/card";
 import {
-	Check,
-	ChevronsUpDown,
-	Globe,
-	Search,
-	Activity,
-	Server,
-	Network,
-	Braces,
-	Plus,
-	Folder,
-	ChevronRight,
-} from "lucide-react";
-import { useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-	US,
-	EU,
-	DE,
-	SG,
-	GB,
-	FR,
-	JP,
-	BR,
-	AU,
-	IN,
-} from "country-flag-icons/react/3x2";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { client, orpc } from "@/utils/orpc";
 
 const REGION_MAPPING: Record<
 	string,
@@ -110,6 +110,7 @@ const httpSchema = z.object({
 	method: z
 		.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"])
 		.default("GET"),
+	acceptedStatusCodes: z.string().optional(),
 });
 
 const httpJsonSchema = z.object({
@@ -122,6 +123,7 @@ const httpJsonSchema = z.object({
 	method: z
 		.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"])
 		.default("GET"),
+	acceptedStatusCodes: z.string().optional(),
 });
 
 const keywordSchema = z.object({
@@ -134,6 +136,7 @@ const keywordSchema = z.object({
 	method: z
 		.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"])
 		.default("GET"),
+	acceptedStatusCodes: z.string().optional(),
 });
 
 const pingSchema = z.object({
@@ -353,7 +356,7 @@ const HttpAdvancedFields = ({ form }: { form: any }) => {
 				control={form.control}
 				name="checkSsl"
 				render={({ field }) => (
-					<FormItem className="flex flex-row items-center justify-between rounded-lg p-4 bg-muted/50">
+					<FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
 						<div className="space-y-0.5">
 							<FormLabel className="text-base">
 								SSL & domain verification
@@ -365,6 +368,24 @@ const HttpAdvancedFields = ({ form }: { form: any }) => {
 						<FormControl>
 							<Switch checked={field.value} onCheckedChange={field.onChange} />
 						</FormControl>
+					</FormItem>
+				)}
+			/>
+
+			<FormField
+				control={form.control}
+				name="acceptedStatusCodes"
+				render={({ field }) => (
+					<FormItem>
+						<FormLabel>Accepted Status Codes</FormLabel>
+						<FormControl>
+							<Input placeholder="200-299, 301, 302" {...field} />
+						</FormControl>
+						<FormDescription>
+							Define which HTTP status codes are considered "Up". Example:
+							"200-204, 301, 302". Default is 200-299.
+						</FormDescription>
+						<FormMessage />
 					</FormItem>
 				)}
 			/>
@@ -433,7 +454,7 @@ const HttpAdvancedFields = ({ form }: { form: any }) => {
 								onValueChange={(val) => form.setValue("method", val)}
 								defaultValue={form.getValues("method") || "GET"}
 							>
-								<SelectTrigger className="w-[100px] h-8">
+								<SelectTrigger className="h-8 w-[100px]">
 									<SelectValue placeholder="Method" />
 								</SelectTrigger>
 								<SelectContent>
@@ -499,6 +520,7 @@ export function CreateMonitorForm({
 			jsonPath: defaults.jsonPath || "",
 			body: defaults.body || "",
 			headers: defaults.headers || [],
+			acceptedStatusCodes: defaults.acceptedStatusCodes || "",
 		} as any,
 	});
 
@@ -590,10 +612,10 @@ export function CreateMonitorForm({
 				{/* Section: What to monitor */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="col-span-1">
-						<h2 className="text-lg font-semibold leading-tight tracking-tight">
+						<h2 className="font-semibold text-lg leading-tight tracking-tight">
 							What to monitor
 						</h2>
-						<p className="mt-1 text-sm text-muted-foreground">
+						<p className="mt-1 text-muted-foreground text-sm">
 							Select the type of monitor and enter the target details.
 						</p>
 					</div>
@@ -697,10 +719,10 @@ export function CreateMonitorForm({
 				{/* Section: General Settings */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="col-span-1">
-						<h2 className="text-lg font-semibold leading-tight tracking-tight">
+						<h2 className="font-semibold text-lg leading-tight tracking-tight">
 							General settings
 						</h2>
-						<p className="mt-1 text-sm text-muted-foreground">
+						<p className="mt-1 text-muted-foreground text-sm">
 							Configure the display name and monitoring frequency.
 						</p>
 					</div>
@@ -782,7 +804,7 @@ export function CreateMonitorForm({
 															return (
 																<FormItem
 																	key={region}
-																	className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-4 bg-muted/50"
+																	className="flex flex-row items-start space-x-3 space-y-0 rounded-md bg-muted/50 p-4"
 																>
 																	<FormControl>
 																		<Checkbox
@@ -801,11 +823,11 @@ export function CreateMonitorForm({
 																			}}
 																		/>
 																	</FormControl>
-																	<div className="space-y-1 leading-none flex items-center gap-2">
-																		<div className="w-5 h-3.5 relative overflow-hidden rounded-[2px] shadow-sm">
-																			<Flag className="w-full h-full object-cover" />
+																	<div className="flex items-center gap-2 space-y-1 leading-none">
+																		<div className="relative h-3.5 w-5 overflow-hidden rounded-[2px] shadow-sm">
+																			<Flag className="h-full w-full object-cover" />
 																		</div>
-																		<FormLabel className="font-normal cursor-pointer">
+																		<FormLabel className="cursor-pointer font-normal">
 																			{regionInfo.label}
 																		</FormLabel>
 																	</div>
@@ -834,7 +856,7 @@ export function CreateMonitorForm({
 						<CollapsibleTrigger asChild>
 							<Button
 								variant="ghost"
-								className="pl-0 hover:bg-transparent text-lg font-semibold leading-tight tracking-tight flex items-center gap-2"
+								className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
 							>
 								<ChevronRight
 									className={cn(
@@ -846,7 +868,7 @@ export function CreateMonitorForm({
 							</Button>
 						</CollapsibleTrigger>
 						{isAdvancedOpen && (
-							<p className="mt-1 text-sm text-muted-foreground">
+							<p className="mt-1 text-muted-foreground text-sm">
 								Detailed configurations for requests, timeouts, and headers.
 							</p>
 						)}

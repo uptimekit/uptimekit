@@ -1,24 +1,24 @@
+import { ORPCError } from "@orpc/server";
 import { auth } from "@uptimekit/auth";
+import { db } from "@uptimekit/db";
 import {
 	incident,
 	incidentActivity,
 	incidentMonitor,
 } from "@uptimekit/db/schema/incidents";
 import {
+	maintenance,
+	maintenanceMonitor,
+} from "@uptimekit/db/schema/maintenance";
+import {
 	monitor,
 	monitorChange,
 	monitorEvent,
 } from "@uptimekit/db/schema/monitors";
 import { worker } from "@uptimekit/db/schema/workers";
-import {
-	maintenance,
-	maintenanceMonitor,
-} from "@uptimekit/db/schema/maintenance";
-import { db } from "@uptimekit/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { o, publicProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
 
 const monitorEventInputSchema = z.object({
 	monitorId: z.string(),
@@ -136,6 +136,7 @@ export const workerIngestRouter = {
 					method?: string;
 					headers?: Record<string, string>;
 					body?: string;
+					acceptedStatusCodes?: string;
 				};
 				return {
 					id: m.id,
@@ -146,6 +147,7 @@ export const workerIngestRouter = {
 					method: config.method || "GET",
 					headers: config.headers || {},
 					body: config.body,
+					acceptedStatusCodes: config.acceptedStatusCodes,
 				};
 			}),
 		};

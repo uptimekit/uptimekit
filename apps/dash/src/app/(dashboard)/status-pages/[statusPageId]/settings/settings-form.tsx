@@ -1,9 +1,21 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+	ExternalLink,
+	Image as ImageIcon,
+	LayoutGrid,
+	LayoutList,
+	Loader2,
+} from "lucide-react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import * as z from "zod";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -14,6 +26,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
 	Select,
 	SelectContent,
@@ -21,23 +34,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import {
-	Check,
-	Copy,
-	ExternalLink,
-	Image as ImageIcon,
-	LayoutTemplate,
-	LayoutList,
-	Loader2,
-} from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { orpc, client } from "@/utils/orpc";
-import { toast } from "sonner";
-import { useEffect } from "react";
+import { client, orpc } from "@/utils/orpc";
 
 const settingsSchema = z.object({
 	name: z.string().min(1, "Company name is required"),
@@ -57,6 +55,7 @@ const settingsSchema = z.object({
 	theme: z.enum(["light", "dark"]),
 	headerLayout: z.enum(["vertical", "horizontal"]),
 	customDomain: z.string().optional().or(z.literal("")),
+	isPrivate: z.boolean(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -95,6 +94,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			theme: "light",
 			headerLayout: "vertical",
 			customDomain: "",
+			isPrivate: false,
 		},
 	});
 
@@ -110,6 +110,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				theme: design.theme || "light",
 				headerLayout: design.headerLayout || "vertical",
 				customDomain: statusPage.domain || "",
+				isPrivate: !statusPage.public,
 			});
 		}
 	}, [statusPage, form]);
@@ -120,6 +121,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			name: data.name,
 			slug: data.slug,
 			domain: data.customDomain || null,
+			public: !data.isPrivate,
 			design: {
 				logoUrl: data.logoUrl,
 				websiteUrl: data.websiteUrl,
@@ -133,7 +135,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 	if (isLoading) {
 		return (
 			<div className="flex justify-center p-10">
-				<Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
@@ -145,24 +147,24 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
 						<div className="flex items-center gap-2">
-							<h2 className="text-lg font-semibold leading-none tracking-tight">
+							<h2 className="font-semibold text-lg leading-none tracking-tight">
 								Basic information
 							</h2>
 						</div>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							A public status page informs your users about the uptime of your
 							services.
 						</p>
 					</div>
 					<Card className="md:col-span-2">
 						<CardContent className="grid gap-6 p-6">
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 								<FormField
 									control={form.control}
 									name="name"
 									render={({ field }) => (
-										<FormItem className="flex flex-col h-full">
-											<FormLabel className="h-6 flex items-end pb-1">
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
 												Company name *
 											</FormLabel>
 											<FormControl>
@@ -176,17 +178,17 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 									control={form.control}
 									name="slug"
 									render={({ field }) => (
-										<FormItem className="flex flex-col h-full">
-											<FormLabel className="h-6 flex items-end pb-1">
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
 												Subdomain *
 											</FormLabel>
-											<div className="flex rounded-md shadow-sm ring-1 ring-inset ring-input">
+											<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset">
 												<Input
 													placeholder="acme"
 													{...field}
-													className="rounded-r-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 min-w-0"
+													className="min-w-0 rounded-r-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
 												/>
-												<div className="flex select-none items-center px-3 text-muted-foreground bg-muted/50 rounded-r-md border-l text-sm">
+												<div className="flex select-none items-center rounded-r-md border-l bg-muted/50 px-3 text-muted-foreground text-sm">
 													.uptimekit.com
 												</div>
 											</div>
@@ -207,23 +209,23 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				{/* Links & URLs */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
-						<h2 className="text-lg font-semibold leading-none tracking-tight">
+						<h2 className="font-semibold text-lg leading-none tracking-tight">
 							Links & URLs
 						</h2>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							Where should we point your users when they want to visit your
 							website?
 						</p>
 					</div>
 					<Card className="md:col-span-2">
 						<CardContent className="grid gap-6 p-6">
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 								<FormField
 									control={form.control}
 									name="websiteUrl"
 									render={({ field }) => (
-										<FormItem className="flex flex-col h-full">
-											<FormLabel className="h-11 flex items-end pb-1">
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-11 items-end pb-1">
 												What URL should your logo point to?
 											</FormLabel>
 											<FormControl>
@@ -240,8 +242,8 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 									control={form.control}
 									name="contactUrl"
 									render={({ field }) => (
-										<FormItem className="flex flex-col h-full">
-											<FormLabel className="h-11 flex items-end pb-1">
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-11 items-end pb-1">
 												Get in touch URL
 											</FormLabel>
 											<div className="relative">
@@ -249,7 +251,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													placeholder="mailto:support@example.com"
 													{...field}
 												/>
-												<div className="absolute right-3 top-2.5 text-muted-foreground">
+												<div className="absolute top-2.5 right-3 text-muted-foreground">
 													<ExternalLink className="h-4 w-4" />
 												</div>
 											</div>
@@ -271,42 +273,55 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				{/* Personalization */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
-						<h2 className="text-lg font-semibold leading-none tracking-tight">
+						<h2 className="font-semibold text-lg leading-none tracking-tight">
 							Personalization
 						</h2>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							Upload your logo to personalize the look & feel of your status
 							page.
 						</p>
-						<p className="text-sm text-muted-foreground pt-2">
+						<p className="pt-2 text-muted-foreground text-sm">
 							Use modern look for refreshed design with latest features like
 							dark theme, translations, and custom favicon.
 						</p>
 					</div>
 					<Card className="md:col-span-2">
 						<CardContent className="grid gap-6 p-6">
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-								<FormItem className="flex flex-col h-full">
-									<FormLabel className="h-6 flex items-end pb-1">
-										Status page design
-									</FormLabel>
-									<Select defaultValue="modern" disabled>
-										<SelectTrigger>
-											<SelectValue placeholder="Select design" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="modern">Modern look</SelectItem>
-											<SelectItem value="classic">Classic look</SelectItem>
-										</SelectContent>
-									</Select>
-								</FormItem>
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+								<FormField
+									control={form.control}
+									name="isPrivate"
+									render={({ field }) => (
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
+												Status page visibility
+											</FormLabel>
+											<Select
+												onValueChange={(val) =>
+													field.onChange(val === "private")
+												}
+												defaultValue={field.value ? "private" : "public"}
+												value={field.value ? "private" : "public"}
+											>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select visibility" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="public">Public</SelectItem>
+													<SelectItem value="private">Private</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
 								<FormField
 									control={form.control}
 									name="theme"
 									render={({ field }) => (
-										<FormItem className="flex flex-col h-full">
-											<FormLabel className="h-6 flex items-end pb-1">
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
 												Color theme
 											</FormLabel>
 											<Select
@@ -314,7 +329,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												defaultValue={field.value}
 												value={field.value}
 											>
-												<SelectTrigger>
+												<SelectTrigger className="w-full">
 													<SelectValue placeholder="Select theme" />
 												</SelectTrigger>
 												<SelectContent>
@@ -333,33 +348,33 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 								name="headerLayout"
 								render={({ field }) => (
 									<FormItem className="space-y-3">
-										<FormLabel>Header layout</FormLabel>
+										<FormLabel>Page design</FormLabel>
 										<FormControl>
 											<RadioGroup
 												onValueChange={field.onChange}
 												defaultValue={field.value}
 												value={field.value}
-												className="grid grid-cols-1 md:grid-cols-2 gap-4"
+												className="grid grid-cols-1 gap-4 md:grid-cols-2"
 											>
 												<FormItem>
-													<FormLabel className="[&:has([data-state=checked])>div]:border-primary pb-2">
+													<FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
 																value="vertical"
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className="rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all">
+														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
 															<div className="flex items-center gap-4">
-																<div className="h-10 w-16 rounded bg-muted/20 flex items-center justify-center">
-																	<LayoutTemplate className="h-5 w-5 text-muted-foreground/50" />
+																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
+																	<LayoutList className="h-5 w-5 text-muted-foreground/50" />
 																</div>
 																<div className="space-y-1">
 																	<div className="font-medium leading-none">
-																		Vertical layout
+																		List layout
 																	</div>
-																	<div className="text-xs text-muted-foreground">
-																		Prominently display your overall status
+																	<div className="text-muted-foreground text-xs">
+																		Standard vertical list view of your services
 																	</div>
 																</div>
 																<div
@@ -370,24 +385,33 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													</FormLabel>
 												</FormItem>
 												<FormItem>
-													<FormLabel className="[&:has([data-state=checked])>div]:border-primary">
+													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
 																value="horizontal"
 																className="sr-only"
+																disabled
 															/>
 														</FormControl>
-														<div className="rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-all">
+														<div className="relative cursor-not-allowed rounded-lg border-2 border-muted bg-popover p-4 opacity-50">
+															<div className="absolute top-2 right-2 origin-top-right scale-75">
+																<Badge
+																	variant="secondary"
+																	className="pointer-events-none text-[10px]"
+																>
+																	Soon
+																</Badge>
+															</div>
 															<div className="flex items-center gap-4">
-																<div className="h-10 w-16 rounded bg-muted/20 flex items-center justify-center">
-																	<LayoutList className="h-5 w-5 text-muted-foreground/50" />
+																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
+																	<LayoutGrid className="h-5 w-5 text-muted-foreground/50" />
 																</div>
 																<div className="space-y-1">
 																	<div className="font-medium leading-none">
-																		Horizontal layout
+																		Grid layout
 																	</div>
-																	<div className="text-xs text-muted-foreground">
-																		Save vertical space to show more content
+																	<div className="text-muted-foreground text-xs">
+																		Grid view to show more services at once
 																	</div>
 																</div>
 																<div
@@ -410,7 +434,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Logo URL</FormLabel>
-										<div className="flex items-center gap-4 p-4 border rounded-lg bg-card">
+										<div className="flex items-center gap-4 rounded-lg border bg-card p-4">
 											{field.value ? (
 												<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
 													{/* eslint-disable-next-line @next/next/no-img-element */}
@@ -427,7 +451,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											)}
 											<div className="flex-1 space-y-2">
 												<Input placeholder="https://..." {...field} />
-												<p className="text-xs text-muted-foreground">
+												<p className="text-muted-foreground text-xs">
 													Enter a direct link to your logo image (PNG, JPG,
 													SVG).
 												</p>
@@ -445,10 +469,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				{/* Custom Domain */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
-						<h2 className="text-lg font-semibold leading-none tracking-tight">
+						<h2 className="font-semibold text-lg leading-none tracking-tight">
 							Custom domain
 						</h2>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							Deploy your status page to a custom subdomain for a branded
 							experience.
 						</p>
@@ -515,22 +539,16 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 					</Card>
 				</div>
 
-				<div className=" fixed bottom-0 left-0 right-0 p-4 border-t bg-background/80 backdrop-blur-sm z-10">
-					<div className="max-w-7xl mx-auto flex justify-end gap-4">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => form.reset()}
-						>
-							Discard
-						</Button>
-						<Button type="submit" disabled={updateStatusPage.isPending}>
-							{updateStatusPage.isPending && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							)}
-							Save changes
-						</Button>
-					</div>
+				<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
+					<Button type="button" variant="outline" onClick={() => form.reset()}>
+						Discard
+					</Button>
+					<Button type="submit" disabled={updateStatusPage.isPending}>
+						{updateStatusPage.isPending && (
+							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+						)}
+						Save changes
+					</Button>
 				</div>
 			</form>
 		</Form>

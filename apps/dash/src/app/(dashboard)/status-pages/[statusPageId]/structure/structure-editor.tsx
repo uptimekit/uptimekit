@@ -1,22 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import {
+	DndContext,
+	type DragEndEvent,
+	type DragOverEvent,
+	DragOverlay,
+	type DragStartEvent,
+	defaultDropAnimationSideEffects,
+	KeyboardSensor,
+	PointerSensor,
+	rectIntersection,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import {
+	arrayMove,
+	rectSortingStrategy,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	GripHorizontal,
 	GripVertical,
-	Plus,
-	Trash2,
-	ChevronDown,
-	ChevronUp,
-	BarChart,
-	Activity,
-	Settings2,
 	Loader2,
+	Plus,
+	Search,
+	Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Command,
 	CommandEmpty,
@@ -25,6 +44,8 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Popover,
 	PopoverContent,
@@ -32,35 +53,37 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
-import { toast } from "sonner";
 
 // Types
 type MonitorStyle = "history" | "status";
 
-interface Monitor {
-	id: string;
+interface MonitorItem {
+	instanceId: string;
+	id: string; // real monitor id
 	name: string;
 	style: MonitorStyle;
 }
 
-interface Group {
-	id: string; // group UUID or temporary ID
+interface GroupItem {
+	id: string;
 	name: string;
-	monitors: Monitor[];
-	isCollapsed?: boolean;
+	monitors: MonitorItem[];
 }
 
 interface StructureEditorProps {
 	statusPageId: string;
 }
 
-export function StructureEditor({ statusPageId }: StructureEditorProps) {
-	const { data: structure, isLoading: isStructureLoading } = useQuery(
-		orpc.statusPages.getStructure.queryOptions({
-			input: { id: statusPageId },
-		}),
-	);
+const generateId = () => Math.random().toString(36).substring(2, 9);
 
+export function StructureEditor({ statusPageId }: StructureEditorProps) {
+	const queryClient = useQueryClient();
+	const { isLoading: isPageLoading } = useQuery(
+		orpc.statusPages.get.queryOptions({ input: { id: statusPageId } }),
+	);
+	const { data: structure, isLoading: isStructureLoading } = useQuery(
+		orpc.statusPages.getStructure.queryOptions({ input: { id: statusPageId } }),
+	);
 	const { data: allMonitors, isLoading: isMonitorsLoading } = useQuery(
 		orpc.monitors.list.queryOptions({}),
 	);
@@ -69,15 +92,21 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		orpc.statusPages.updateStructure.mutationOptions({
 			onSuccess: () => {
 				toast.success("Structure saved successfully");
+				queryClient.invalidateQueries({
+					queryKey: orpc.statusPages.getStructure.key({
+						input: { id: statusPageId },
+					}),
+				});
 			},
-			onError: (err) => {
-				toast.error(err.message);
-			},
+			onError: (err) => toast.error(err.message),
 		}),
 	);
 
-	const [groups, setGroups] = useState<Group[]>([]);
+	const [groups, setGroups] = useState<GroupItem[]>([]);
+	const [activeId, setActiveId] = useState<string | null>(null);
+	const [activeItem, setActiveItem] = useState<any>(null);
 
+	// Sync structure -> local state
 	useEffect(() => {
 		if (structure) {
 			setGroups(
@@ -85,6 +114,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 					id: g.id,
 					name: g.name,
 					monitors: g.monitors.map((m) => ({
+						instanceId: generateId(),
 						id: m.id,
 						name: m.name,
 						style: m.style as MonitorStyle,
@@ -94,39 +124,151 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		}
 	}, [structure]);
 
-	const moveGroup = (index: number, direction: "up" | "down") => {
-		if (direction === "up" && index > 0) {
-			const newGroups = [...groups];
-			[newGroups[index - 1], newGroups[index]] = [
-				newGroups[index],
-				newGroups[index - 1],
-			];
-			setGroups(newGroups);
-		} else if (direction === "down" && index < groups.length - 1) {
-			const newGroups = [...groups];
-			[newGroups[index + 1], newGroups[index]] = [
-				newGroups[index],
-				newGroups[index + 1],
-			];
-			setGroups(newGroups);
+	const layout = "vertical";
+
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		}),
+	);
+
+	const handleDragStart = (event: DragStartEvent) => {
+		const { active } = event;
+		setActiveId(active.id as string);
+
+		// Find what we are dragging
+		const group = groups.find((g) => g.id === active.id);
+		if (group) {
+			setActiveItem({ type: "Group", data: group });
+			return;
+		}
+
+		const flatMonitors = groups.flatMap((g) => g.monitors);
+		const monitor = flatMonitors.find((m) => m.instanceId === active.id);
+		if (monitor) {
+			setActiveItem({ type: "Monitor", data: monitor });
+		}
+	};
+
+	const handleDragOver = (event: DragOverEvent) => {
+		const { active, over } = event;
+		if (!over) return;
+		if (active.id === over.id) return;
+
+		const activeType = activeItem?.type;
+		if (activeType !== "Monitor") return;
+
+		const overId = over.id;
+
+		// Find items
+		const activeGroupIdx = groups.findIndex((g) =>
+			g.monitors.some((m) => m.instanceId === active.id),
+		);
+		let overGroupIdx = groups.findIndex((g) =>
+			g.monitors.some((m) => m.instanceId === overId),
+		);
+
+		// If over a group directly
+		if (overGroupIdx === -1) {
+			overGroupIdx = groups.findIndex((g) => g.id === overId);
+		}
+
+		if (activeGroupIdx === -1 || overGroupIdx === -1) return;
+		if (activeGroupIdx === overGroupIdx) return; // Same container handled by DragEnd (reorder) or native sortable? dnd-kit recommends doing it here for inter-container
+
+		// Moving between containers
+		setGroups((prev) => {
+			const next = [...prev];
+			const sourceGroup = next[activeGroupIdx];
+			const targetGroup = next[overGroupIdx];
+
+			const monitorIdx = sourceGroup.monitors.findIndex(
+				(m) => m.instanceId === active.id,
+			);
+			const monitor = sourceGroup.monitors[monitorIdx];
+
+			// Remove from source
+			const newSourceMonitors = [...sourceGroup.monitors];
+			newSourceMonitors.splice(monitorIdx, 1);
+
+			// Add to target
+			const newTargetMonitors = [...targetGroup.monitors];
+			const isOverGroup = overId === targetGroup.id;
+			let newIndex = newTargetMonitors.length;
+
+			if (!isOverGroup) {
+				const overMonitorIdx = newTargetMonitors.findIndex(
+					(m) => m.instanceId === overId,
+				);
+				if (overMonitorIdx >= 0) newIndex = overMonitorIdx; // Insert before
+			}
+
+			newTargetMonitors.splice(newIndex, 0, monitor);
+
+			next[activeGroupIdx] = { ...sourceGroup, monitors: newSourceMonitors };
+			next[overGroupIdx] = { ...targetGroup, monitors: newTargetMonitors };
+
+			return next;
+		});
+	};
+
+	const handleDragEnd = (event: DragEndEvent) => {
+		const { active, over } = event;
+		setActiveId(null);
+		setActiveItem(null);
+
+		if (!over) return;
+
+		// Reordering Groups
+		if (activeItem?.type === "Group" && active.id !== over.id) {
+			const oldIndex = groups.findIndex((g) => g.id === active.id);
+			const newIndex = groups.findIndex((g) => g.id === over.id);
+			if (oldIndex !== -1 && newIndex !== -1) {
+				setGroups(arrayMove(groups, oldIndex, newIndex));
+			}
+			return;
+		}
+
+		// Reordering Monitors within same group
+		if (activeItem?.type === "Monitor") {
+			const groupIdx = groups.findIndex((g) =>
+				g.monitors.some((m) => m.instanceId === active.id),
+			);
+			if (groupIdx !== -1) {
+				const group = groups[groupIdx];
+				const oldIndex = group.monitors.findIndex(
+					(m) => m.instanceId === active.id,
+				);
+				const newIndex = group.monitors.findIndex(
+					(m) => m.instanceId === over.id,
+				);
+
+				if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+					const newGroups = [...groups];
+					newGroups[groupIdx] = {
+						...group,
+						monitors: arrayMove(group.monitors, oldIndex, newIndex),
+					};
+					setGroups(newGroups);
+				}
+			}
 		}
 	};
 
 	const addGroup = () => {
 		setGroups([
 			...groups,
-			{ id: `temp-g-${Date.now()}`, name: "New Group", monitors: [] },
+			{ id: `temp-${generateId()}`, name: "", monitors: [] },
 		]);
 	};
 
-	const removeGroup = (groupId: string) => {
-		setGroups(groups.filter((g) => g.id !== groupId));
+	const removeGroup = (id: string) => {
+		setGroups(groups.filter((g) => g.id !== id));
 	};
 
-	const updateGroupName = (groupId: string, newName: string) => {
-		setGroups(
-			groups.map((g) => (g.id === groupId ? { ...g, name: newName } : g)),
-		);
+	const updateGroupName = (id: string, name: string) => {
+		setGroups(groups.map((g) => (g.id === id ? { ...g, name } : g)));
 	};
 
 	const addMonitorToGroup = (
@@ -136,11 +278,20 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		setGroups(
 			groups.map((g) => {
 				if (g.id === groupId) {
-					// Check if already exists
-					if (g.monitors.find((m) => m.id === monitor.id)) return g;
+					// Allow multiple instances? Original allowed only unique per group.
+					const exists = g.monitors.some((m) => m.id === monitor.id);
+					if (exists) return g;
 					return {
 						...g,
-						monitors: [...g.monitors, { ...monitor, style: "history" }],
+						monitors: [
+							...g.monitors,
+							{
+								instanceId: generateId(),
+								id: monitor.id,
+								name: monitor.name,
+								style: "history",
+							},
+						],
 					};
 				}
 				return g;
@@ -148,13 +299,13 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		);
 	};
 
-	const removeMonitorFromGroup = (groupId: string, monitorId: string) => {
+	const removeMonitor = (groupId: string, instanceId: string) => {
 		setGroups(
 			groups.map((g) => {
 				if (g.id === groupId) {
 					return {
 						...g,
-						monitors: g.monitors.filter((m) => m.id !== monitorId),
+						monitors: g.monitors.filter((m) => m.instanceId !== instanceId),
 					};
 				}
 				return g;
@@ -162,44 +313,14 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		);
 	};
 
-	const moveMonitor = (
-		groupId: string,
-		monitorIndex: number,
-		direction: "up" | "down",
-	) => {
-		setGroups(
-			groups.map((g) => {
-				if (g.id === groupId) {
-					const newMonitors = [...g.monitors];
-					if (direction === "up" && monitorIndex > 0) {
-						[newMonitors[monitorIndex - 1], newMonitors[monitorIndex]] = [
-							newMonitors[monitorIndex],
-							newMonitors[monitorIndex - 1],
-						];
-					} else if (
-						direction === "down" &&
-						monitorIndex < newMonitors.length - 1
-					) {
-						[newMonitors[monitorIndex + 1], newMonitors[monitorIndex]] = [
-							newMonitors[monitorIndex],
-							newMonitors[monitorIndex + 1],
-						];
-					}
-					return { ...g, monitors: newMonitors };
-				}
-				return g;
-			}),
-		);
-	};
-
-	const toggleMonitorStyle = (groupId: string, monitorId: string) => {
+	const toggleMonitorStyle = (groupId: string, instanceId: string) => {
 		setGroups(
 			groups.map((g) => {
 				if (g.id === groupId) {
 					return {
 						...g,
 						monitors: g.monitors.map((m) =>
-							m.id === monitorId
+							m.instanceId === instanceId
 								? { ...m, style: m.style === "history" ? "status" : "history" }
 								: m,
 						),
@@ -215,208 +336,293 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 			id: statusPageId,
 			groups: groups.map((g) => ({
 				id: g.id.startsWith("temp-") ? undefined : g.id,
-				name: g.name,
-				monitors: g.monitors.map((m) => ({
-					id: m.id,
-					style: m.style,
-				})),
+				name: g.name || "Untitled Section",
+				monitors: g.monitors.map((m) => ({ id: m.id, style: m.style })),
 			})),
 		});
 	};
 
-	if (isStructureLoading || isMonitorsLoading) {
+	if (isStructureLoading || isMonitorsLoading || isPageLoading) {
 		return (
 			<div className="flex justify-center p-10">
-				<Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 			</div>
 		);
 	}
 
 	return (
-		<div className="space-y-6 pb-20">
-			<div className="flex justify-between items-center">
-				<div>
-					<h2 className="text-lg font-medium">Structure</h2>
-					<p className="text-sm text-muted-foreground">
-						Organize your monitors into groups and customize their display.
-					</p>
-				</div>
-				<Button onClick={addGroup} size="sm" className="gap-2">
-					<Plus className="h-4 w-4" /> Add Group
-				</Button>
-			</div>
-
-			<div className="space-y-4">
-				{groups.map((group, groupIndex) => (
-					<Card
-						key={group.id}
-						className="relative group/card transition-all hover:border-primary/50"
-					>
-						<CardHeader className="flex flex-row items-center space-y-0 gap-4 py-3 px-4 bg-muted/30">
-							<div className="flex flex-col gap-1">
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-6 w-6 text-muted-foreground hover:text-foreground"
-									disabled={groupIndex === 0}
-									onClick={() => moveGroup(groupIndex, "up")}
-								>
-									<ChevronUp className="h-4 w-4" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-6 w-6 text-muted-foreground hover:text-foreground"
-									disabled={groupIndex === groups.length - 1}
-									onClick={() => moveGroup(groupIndex, "down")}
-								>
-									<ChevronDown className="h-4 w-4" />
-								</Button>
-							</div>
-
-							<div className="flex-1">
-								<Input
-									value={group.name}
-									onChange={(e) => updateGroupName(group.id, e.target.value)}
-									className="h-8 font-medium bg-transparent border-transparent hover:border-input focus:bg-background focus:border-input transition-colors w-full max-w-[300px]"
-								/>
-							</div>
-
-							<AddMonitorButton
-								existingMonitorIds={new Set(group.monitors.map((m) => m.id))}
-								availableMonitors={allMonitors || []}
-								onAdd={(m) => addMonitorToGroup(group.id, m)}
-							/>
-
-							<Button
-								variant="ghost"
-								size="icon"
-								className="h-8 w-8 text-muted-foreground hover:text-destructive"
-								onClick={() => removeGroup(group.id)}
-							>
-								<Trash2 className="h-4 w-4" />
-							</Button>
-						</CardHeader>
-						<CardContent className="p-2 pt-0">
-							{group.monitors.length === 0 ? (
-								<div className="p-8 text-center text-sm text-muted-foreground border-t border-dashed bg-muted/10">
-									No monitors in this group. Add one to get started.
-								</div>
-							) : (
-								<div className="divide-y border-t">
-									{group.monitors.map((monitor, index) => (
-										<div
-											key={monitor.id}
-											className="flex items-center gap-4 p-3 hover:bg-muted/20"
-										>
-											<div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-5 w-5"
-													disabled={index === 0}
-													onClick={() => moveMonitor(group.id, index, "up")}
-												>
-													<ChevronUp className="h-3 w-3" />
-												</Button>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-5 w-5"
-													disabled={index === group.monitors.length - 1}
-													onClick={() => moveMonitor(group.id, index, "down")}
-												>
-													<ChevronDown className="h-3 w-3" />
-												</Button>
-											</div>
-
-											<div className="flex-1 text-sm font-medium">
-												{monitor.name}
-											</div>
-
-											<div className="flex items-center gap-2">
-												<div
-													className="flex cursor-pointer select-none items-center gap-2 rounded-md bg-muted px-2 py-1 text-muted-foreground text-xs hover:bg-muted/80"
-													onClick={() =>
-														toggleMonitorStyle(group.id, monitor.id)
-													}
-												>
-													{monitor.style === "history" ? (
-														<>
-															<BarChart className="h-3 w-3" />
-															<span>History</span>
-														</>
-													) : (
-														<>
-															<Activity className="h-3 w-3" />
-															<span>Status only</span>
-														</>
-													)}
-												</div>
-
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8 text-muted-foreground hover:text-destructive"
-													onClick={() =>
-														removeMonitorFromGroup(group.id, monitor.id)
-													}
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
-											</div>
-										</div>
-									))}
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				))}
-
-				{groups.length === 0 && (
-					<div
-						onClick={addGroup}
-						className="border-2 border-dashed rounded-lg p-12 text-center hover:bg-muted/50 cursor-pointer transition-colors"
-					>
-						<div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-							<Settings2 className="h-6 w-6 text-muted-foreground" />
-						</div>
-						<h3 className="text-lg font-medium">No groups defined</h3>
-						<p className="text-sm text-muted-foreground mt-1">
-							Create a group to start adding monitors.
+		<>
+			<div className="flex flex-col gap-8 pb-20">
+				{/* Header / Intro */}
+				<div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+					<div>
+						<h2 className="font-semibold text-lg leading-none tracking-tight">
+							Monitors & heartbeats
+						</h2>
+						<p className="mt-2 text-muted-foreground text-sm">
+							Pick the monitors and heartbeats you want to display on your
+							status page.
+						</p>
+						<p className="mt-2 text-muted-foreground text-sm">
+							You can re-order the monitors by dragging the cards, as well as
+							give each monitor a public name.
 						</p>
 					</div>
-				)}
-			</div>
 
-			<div className=" fixed bottom-0 left-0 right-0 p-4 border-t bg-background/80 backdrop-blur-sm z-10">
-				<div className="max-w-7xl mx-auto flex justify-end gap-4">
-					<Button
-						onClick={handleSave}
-						disabled={updateStructureMutation.isPending}
-					>
-						{updateStructureMutation.isPending && (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-						)}
-						Save structure
-					</Button>
+					<div className="space-y-6 md:col-span-2">
+						<DndContext
+							sensors={sensors}
+							collisionDetection={rectIntersection} // Better for grid
+							onDragStart={handleDragStart}
+							onDragOver={handleDragOver}
+							onDragEnd={handleDragEnd}
+						>
+							<SortableContext
+								items={groups.map((g) => g.id)}
+								strategy={
+									layout === "horizontal"
+										? rectSortingStrategy
+										: verticalListSortingStrategy
+								}
+							>
+								<div
+									className={cn(
+										"grid gap-4",
+										layout === "horizontal"
+											? "grid-cols-1 xl:grid-cols-2"
+											: "grid-cols-1",
+									)}
+								>
+									{groups.map((group) => (
+										<SortableGroup
+											key={group.id}
+											group={group}
+											allMonitors={allMonitors || []}
+											onRemove={() => removeGroup(group.id)}
+											onUpdateName={(name) => updateGroupName(group.id, name)}
+											onAddMonitor={(m) => addMonitorToGroup(group.id, m)}
+											onRemoveMonitor={(m) =>
+												removeMonitor(group.id, m.instanceId)
+											}
+											onToggleStyle={(m) =>
+												toggleMonitorStyle(group.id, m.instanceId)
+											}
+											layout={layout}
+										/>
+									))}
+								</div>
+							</SortableContext>
+
+							<div
+								onClick={addGroup}
+								className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-input border-dashed p-8 transition-colors hover:bg-accent/50 hover:text-accent-foreground"
+							>
+								<Plus className="h-4 w-4" />
+								<span className="font-medium text-sm">Add section</span>
+							</div>
+
+							{/* Overlay */}
+							<DragOverlay
+								dropAnimation={{
+									sideEffects: defaultDropAnimationSideEffects({
+										styles: { active: { opacity: "0.5" } },
+									}),
+								}}
+							>
+								{activeId && activeItem?.type === "Group" ? (
+									<GroupCard
+										group={activeItem.data}
+										isOverlay
+										layout={layout}
+									/>
+								) : activeId && activeItem?.type === "Monitor" ? (
+									<MonitorRow monitor={activeItem.data} isOverlay />
+								) : null}
+							</DragOverlay>
+						</DndContext>
+					</div>
 				</div>
 			</div>
+
+			<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end border-t bg-background/80 p-4 backdrop-blur-sm">
+				<Button
+					onClick={handleSave}
+					disabled={updateStructureMutation.isPending}
+				>
+					{updateStructureMutation.isPending && (
+						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+					)}
+					Save changes
+				</Button>
+			</div>
+		</>
+	);
+}
+
+// Components
+
+function SortableGroup({
+	group,
+	allMonitors,
+	onRemove,
+	onUpdateName,
+	onAddMonitor,
+	onRemoveMonitor,
+	onToggleStyle,
+	layout,
+}: {
+	group: GroupItem;
+	allMonitors: { id: string; name: string }[];
+	onRemove: () => void;
+	onUpdateName: (val: string) => void;
+	onAddMonitor: (m: { id: string; name: string }) => void;
+	onRemoveMonitor: (m: MonitorItem) => void;
+	onToggleStyle: (m: MonitorItem) => void;
+	layout: "vertical" | "horizontal";
+}) {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({
+		id: group.id,
+		data: { type: "Group", group },
+	});
+
+	const style = {
+		transform: CSS.Translate.toString(transform),
+		transition,
+		zIndex: isDragging ? 10 : undefined,
+	};
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={style}
+			{...attributes}
+			className={cn("h-full", isDragging && "opacity-50")}
+		>
+			<GroupCard
+				group={group}
+				listeners={listeners}
+				allMonitors={allMonitors}
+				onRemove={onRemove}
+				onUpdateName={onUpdateName}
+				onAddMonitor={onAddMonitor}
+				onRemoveMonitor={onRemoveMonitor}
+				onToggleStyle={onToggleStyle}
+				layout={layout}
+			/>
 		</div>
 	);
 }
 
-function AddMonitorButton({
-	existingMonitorIds,
-	availableMonitors,
-	onAdd,
-}: {
-	existingMonitorIds: Set<string>;
-	availableMonitors: { id: string; name: string }[];
-	onAdd: (m: { id: string; name: string }) => void;
-}) {
-	const [open, setOpen] = useState(false);
+function GroupCard({
+	group,
+	isOverlay,
+	listeners,
+	allMonitors,
+	onRemove,
+	onUpdateName,
+	onAddMonitor,
+	onRemoveMonitor,
+	onToggleStyle,
+	layout,
+}: any) {
+	return (
+		<Card
+			className={cn(
+				"group/card relative overflow-hidden border-border bg-card shadow-sm",
+				isOverlay && "shadow-xl ring-2 ring-primary ring-opacity-50",
+			)}
+		>
+			<div
+				{...listeners}
+				className="absolute top-0 right-0 left-0 z-10 flex h-4 cursor-grab items-center justify-center transition-colors hover:bg-muted/50 active:cursor-grabbing"
+			>
+				<GripHorizontal className="h-4 w-4 text-muted-foreground/30 transition-colors group-hover/card:text-muted-foreground/60" />
+			</div>
 
+			<CardContent className="relative space-y-6 p-6 pt-6">
+				{onRemove && (
+					<div className="absolute top-[44px] right-4 z-20">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 text-muted-foreground/50 opacity-0 transition-opacity hover:text-destructive group-hover/card:opacity-100"
+							onClick={onRemove}
+							onPointerDown={(e) => e.stopPropagation()}
+						>
+							<Trash2 className="h-4 w-4" />
+						</Button>
+					</div>
+				)}
+
+				{/* Header / Config */}
+				<div className="space-y-4">
+					<div className="space-y-1.5 pr-10">
+						{" "}
+						{/* pr-10 for trash icon space */}
+						<Label className="font-normal text-muted-foreground text-xs">
+							Section name
+						</Label>
+						<Input
+							value={group.name}
+							onChange={(e) => onUpdateName && onUpdateName(e.target.value)}
+							placeholder="e.g. Core Services"
+							className="border-input/50 bg-muted/30"
+							onPointerDown={(e) => e.stopPropagation()}
+						/>
+					</div>
+
+					{/* Resources Input (Search to add) */}
+					<div className="space-y-1.5">
+						<Label className="font-normal text-muted-foreground text-xs">
+							Resources
+						</Label>
+						{onAddMonitor && (
+							<AddMonitorInput
+								onAdd={onAddMonitor}
+								availableMonitors={allMonitors}
+								existingMonitorIds={group.monitors.map((m: any) => m.id)}
+							/>
+						)}
+					</div>
+				</div>
+
+				{/* Monitor List */}
+				<div className="space-y-1">
+					<SortableContext
+						items={group.monitors.map((m: any) => m.instanceId)}
+						strategy={verticalListSortingStrategy}
+					>
+						{group.monitors.map((monitor: any) => (
+							<SortableMonitor
+								key={monitor.instanceId}
+								monitor={monitor}
+								onRemove={() => onRemoveMonitor(monitor)}
+								onToggleStyle={() => onToggleStyle(monitor)}
+							/>
+						))}
+					</SortableContext>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function AddMonitorInput({
+	onAdd,
+	availableMonitors,
+	existingMonitorIds,
+}: any) {
+	const [open, setOpen] = useState(false);
+	const existingSet = new Set(existingMonitorIds);
+
+	// This simulates the "Search to add resources" box from screenshot
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
@@ -424,25 +630,26 @@ function AddMonitorButton({
 					variant="outline"
 					role="combobox"
 					aria-expanded={open}
-					className="h-8 justify-between text-xs"
+					className="w-full justify-start border-input/50 bg-muted/30 font-normal text-muted-foreground"
+					onPointerDown={(e) => e.stopPropagation()}
 				>
-					<Plus className="mr-2 h-3 w-3" />
-					Add Monitor
+					<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+					Search to add resources
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="p-0 w-[200px]" align="start">
+			<PopoverContent className="w-[400px] p-0" align="start">
 				<Command>
-					<CommandInput placeholder="Search monitors..." className="h-9" />
+					<CommandInput placeholder="Search monitors..." />
 					<CommandList>
 						<CommandEmpty>No monitor found.</CommandEmpty>
 						<CommandGroup>
 							{availableMonitors
-								.filter((m) => !existingMonitorIds.has(m.id))
-								.map((monitor) => (
+								.filter((m: any) => !existingSet.has(m.id))
+								.map((monitor: any) => (
 									<CommandItem
 										key={monitor.id}
 										value={monitor.name}
-										onSelect={(currentValue) => {
+										onSelect={() => {
 											onAdd(monitor);
 											setOpen(false);
 										}}
@@ -455,5 +662,98 @@ function AddMonitorButton({
 				</Command>
 			</PopoverContent>
 		</Popover>
+	);
+}
+
+function SortableMonitor({ monitor, onRemove, onToggleStyle }: any) {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({
+		id: monitor.instanceId,
+		data: { type: "Monitor", monitor },
+	});
+
+	const style = {
+		transform: CSS.Translate.toString(transform),
+		transition,
+		zIndex: isDragging ? 20 : undefined,
+	};
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={style}
+			{...attributes}
+			className={cn("relative", isDragging && "z-50")}
+		>
+			<MonitorRow
+				monitor={monitor}
+				listeners={listeners}
+				onRemove={onRemove}
+				onToggleStyle={onToggleStyle}
+				isDragging={isDragging}
+			/>
+		</div>
+	);
+}
+
+function MonitorRow({
+	monitor,
+	isOverlay,
+	isDragging,
+	listeners,
+	onRemove,
+	onToggleStyle,
+}: any) {
+	return (
+		<div
+			className={cn(
+				"group flex items-center gap-3 rounded-md p-3 transition-all hover:bg-muted/40",
+				isOverlay && "border bg-background shadow-lg",
+				isDragging && "opacity-50",
+			)}
+		>
+			{/* Drag Handle */}
+			<div
+				{...listeners}
+				className="cursor-grab text-muted-foreground/30 active:cursor-grabbing group-hover:text-muted-foreground"
+			>
+				<GripVertical className="h-4 w-4" />
+			</div>
+
+			{/* Icon + Name */}
+			<div className="flex min-w-0 flex-1 items-center gap-3">
+				{/* We could add status icons here if we had them in monitor data */}
+				{/* <Activity className="h-4 w-4 text-emerald-500 shrink-0" /> */}
+				<span className="truncate font-medium text-sm">{monitor.name}</span>
+			</div>
+
+			{/* Actions */}
+			<div className="flex items-center gap-2">
+				<Badge
+					variant="secondary"
+					className="hidden h-6 cursor-pointer gap-1 font-normal text-xs transition-colors hover:bg-secondary/80 sm:flex"
+					onClick={onToggleStyle}
+					onPointerDown={(e) => e.stopPropagation()}
+				>
+					{monitor.style === "history" ? "With status history" : "Status only"}
+				</Badge>
+
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-8 w-8 text-muted-foreground/30 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+					onClick={onRemove}
+					onPointerDown={(e) => e.stopPropagation()}
+				>
+					<Trash2 className="h-4 w-4" />
+				</Button>
+			</div>
+		</div>
 	);
 }

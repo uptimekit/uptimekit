@@ -28,7 +28,40 @@ export class HttpMonitor extends BaseMonitor {
 			const endTime = performance.now();
 			const latency = Math.round(endTime - startTime);
 
-			const isUp = response.status >= 200 && response.status < 300;
+			let isUp = false;
+			if (monitor.acceptedStatusCodes) {
+				const ranges = monitor.acceptedStatusCodes
+					.split(",")
+					.map((s) => s.trim());
+				for (const range of ranges) {
+					if (range.includes("-")) {
+						const parts = range.split("-").map((p) => Number(p.trim()));
+						if (parts.length === 2) {
+							const min = parts[0];
+							const max = parts[1];
+							if (
+								min !== undefined &&
+								max !== undefined &&
+								!Number.isNaN(min) &&
+								!Number.isNaN(max) &&
+								response.status >= min &&
+								response.status <= max
+							) {
+								isUp = true;
+								break;
+							}
+						}
+					} else {
+						const code = Number(range);
+						if (!Number.isNaN(code) && response.status === code) {
+							isUp = true;
+							break;
+						}
+					}
+				}
+			} else {
+				isUp = response.status >= 200 && response.status < 300;
+			}
 
 			return {
 				monitorId: monitor.id,
