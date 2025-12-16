@@ -22,16 +22,24 @@ export function MonitorCards({
 	incidentCount,
 }: MonitorCardsProps) {
 	const isUp = status === "up";
+	const isMaintenance = status === "maintenance";
 
 	return (
 		<div className="grid gap-4 md:grid-cols-3 mb-8">
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 					<CardTitle className="text-sm font-medium">
-						Currently {isUp ? "up" : "down"} for
+						Currently{" "}
+						{isUp ? "up" : isMaintenance ? "under maintenance" : "down"} for
 					</CardTitle>
 					<Activity
-						className={`h-4 w-4 ${isUp ? "text-green-500" : "text-red-500"}`}
+						className={`h-4 w-4 ${
+							isUp
+								? "text-green-500"
+								: isMaintenance
+									? "text-blue-500"
+									: "text-red-500"
+						}`}
 					/>
 				</CardHeader>
 				<CardContent>
@@ -39,7 +47,11 @@ export function MonitorCards({
 						{currentStatusDuration || "-"}
 					</div>
 					<p className="text-xs text-muted-foreground">
-						{isUp ? "Monitor is operational" : "Monitor is facing issues"}
+						{isUp
+							? "Monitor is operational"
+							: isMaintenance
+								? "Maintenance in progress"
+								: "Monitor is facing issues"}
 					</p>
 				</CardContent>
 			</Card>

@@ -10,7 +10,10 @@ import {
 	monitorEvent,
 } from "@uptimekit/db/schema/monitors";
 import { worker } from "@uptimekit/db/schema/workers";
-import { maintenance } from "@uptimekit/db/schema/maintenance";
+import {
+	maintenance,
+	maintenanceMonitor,
+} from "@uptimekit/db/schema/maintenance";
 import { db } from "@uptimekit/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -236,6 +239,31 @@ export const workerIngestRouter = {
 				if (!monitorConfig) {
 					console.warn(`Received events for unknown monitor: ${monitorId}`);
 					continue;
+				}
+
+				// Check for active maintenance
+				const activeMaintenance = await db
+					.select({
+						id: maintenance.id,
+						title: maintenance.title,
+					})
+					.from(maintenance)
+					.innerJoin(
+						maintenanceMonitor,
+						eq(maintenance.id, maintenanceMonitor.maintenanceId),
+					)
+					.where(
+						and(
+							eq(maintenanceMonitor.monitorId, monitorId),
+							eq(maintenance.status, "in_progress"),
+						),
+					)
+					.limit(1);
+
+				if (activeMaintenance.length > 0) {
+					for (const event of monitorEvents) {
+						event.status = "maintenance";
+					}
 				}
 
 				// Fetch active automatic incident

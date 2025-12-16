@@ -258,7 +258,10 @@ export const maintenanceRouter = {
 				}
 
 				if (input.status === "completed") {
-					updates.endAt = now;
+					// If completing early, update endAt to now
+					if (record.endAt > now) {
+						updates.endAt = now;
+					}
 				}
 
 				// Update maintenance status and updatedAt

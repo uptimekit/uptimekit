@@ -472,8 +472,12 @@ export const monitorsRouter = {
 					const time = change.timestamp.getTime();
 					const duration = time - lastTime;
 
-					if (currentStatus !== "up") {
-						// assuming anything non-up is down
+					if (
+						currentStatus === "down" ||
+						currentStatus === "degraded" ||
+						currentStatus === "pending"
+					) {
+						// only count actual downtime/issues, not maintenance
 						downtimeMs += duration;
 					}
 
@@ -493,7 +497,11 @@ export const monitorsRouter = {
 
 				// Add time from last events until NOW
 				const durationSinceLast = NOW - lastTime;
-				if (currentStatus !== "up") {
+				if (
+					currentStatus === "down" ||
+					currentStatus === "degraded" ||
+					currentStatus === "pending"
+				) {
 					downtimeMs += durationSinceLast;
 				}
 
@@ -518,8 +526,8 @@ export const monitorsRouter = {
 				for (const change of timeline) {
 					const time = change.timestamp.getTime();
 
-					if (change.status !== "up") {
-						if (simStatus === "up") {
+					if (change.status !== "up" && change.status !== "maintenance") {
+						if (simStatus === "up" || simStatus === "maintenance") {
 							// New incident start
 							incidentStart = time;
 						}
@@ -535,7 +543,11 @@ export const monitorsRouter = {
 				}
 
 				// Ongoing incident?
-				if (simStatus !== "up" && incidentStart !== null) {
+				if (
+					simStatus !== "up" &&
+					simStatus !== "maintenance" &&
+					incidentStart !== null
+				) {
 					const dur = NOW - incidentStart;
 					incidents.push(dur);
 				}

@@ -1,17 +1,34 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, CheckCircle, AlertTriangle, AlertOctagon } from "lucide-react";
-import { useParams } from "next/navigation";
+import {
+	AlertOctagon,
+	AlertTriangle,
+	CheckCircle,
+	ChevronDown,
+	MessageSquare,
+	MoreHorizontal,
+	Plus,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+
 import { CreateStatusUpdateForm } from "@/components/status-pages/create-update-form";
+import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
-import { Badge } from "@/components/ui/badge";
 
 export default function StatusUpdatesPage() {
 	const params = useParams();
+	const router = useRouter();
 	const statusPageId = params.statusPageId as string;
 	const [createOpen, setCreateOpen] = useState(false);
 
@@ -21,7 +38,11 @@ export default function StatusUpdatesPage() {
 		}),
 	);
 
-	const getSeverityIcon = (severity: string) => {
+	const getSeverityIcon = (severity: string, status: string) => {
+		if (status === "resolved") {
+			return <CheckCircle className="h-4 w-4 text-green-500" />;
+		}
+
 		switch (severity) {
 			case "critical":
 				return <AlertOctagon className="h-4 w-4 text-red-500" />;
@@ -33,6 +54,14 @@ export default function StatusUpdatesPage() {
 				return <CheckCircle className="h-4 w-4 text-green-500" />;
 		}
 	};
+
+	if (isLoading) {
+		return (
+			<div className="flex w-full items-center justify-center p-8">
+				<div className="text-muted-foreground">Loading...</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="space-y-6">
@@ -54,61 +83,126 @@ export default function StatusUpdatesPage() {
 				</Button>
 			</div>
 
-			{isLoading ? (
-				<div className="py-8 text-center text-muted-foreground">Loading...</div>
-			) : updates?.length === 0 ? (
-				<Card className="border-dashed bg-muted/10 shadow-none">
-					<CardContent className="flex flex-col items-center justify-center py-16 text-center">
-						<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-							<Plus className="h-6 w-6 text-muted-foreground" />
-						</div>
-						<h3 className="text-lg font-medium">No updates found</h3>
-						<p className="mt-1 max-w-sm text-sm text-muted-foreground">
-							Keep your users in the loop by posting status updates when
-							something goes wrong (or right).
-						</p>
-					</CardContent>
-				</Card>
-			) : (
-				<div className="space-y-4">
-					{updates?.map((report) => (
-						<Card key={report.id}>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<div className="flex items-center gap-2">
-									{getSeverityIcon(report.severity)}
-									<CardTitle className="text-base">{report.title}</CardTitle>
-									<Badge variant="outline" className="capitalize">
-										{report.status}
-									</Badge>
-								</div>
-								<div className="text-muted-foreground text-sm">
-									{new Date(report.createdAt).toLocaleDateString()}
-								</div>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-4 pt-2">
-									{report.updates.map((update) => (
-										<div key={update.id} className="relative border-l-2 pl-4">
-											<div className="mb-1 flex items-center gap-2">
-												<Badge
-													variant="secondary"
-													className="text-xs uppercase"
-												>
-													{update.status}
-												</Badge>
-												<span className="text-muted-foreground text-xs">
-													{new Date(update.createdAt).toLocaleString()}
-												</span>
-											</div>
-											<p className="text-sm">{update.message}</p>
-										</div>
-									))}
-								</div>
-							</CardContent>
-						</Card>
-					))}
+			<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+				<div className="flex items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+					<ChevronDown className="h-4 w-4" />
+					Updates
 				</div>
-			)}
+				<Table>
+					<TableBody>
+						{isLoading ? (
+							<TableRow>
+								<TableCell colSpan={4} className="h-24 text-center">
+									Loading...
+								</TableCell>
+							</TableRow>
+						) : updates?.length === 0 ? (
+							<TableRow>
+								<TableCell colSpan={4} className="h-24 text-center">
+									<div className="flex flex-col items-center justify-center gap-2 py-6">
+										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+											<MessageSquare className="h-6 w-6 text-muted-foreground" />
+										</div>
+										<p className="font-medium text-lg">No updates found</p>
+										<p className="text-muted-foreground text-sm">
+											Keep your users in the loop by posting status updates.
+										</p>
+										<div className="mt-2">
+											<Button onClick={() => setCreateOpen(true)}>
+												Post update
+											</Button>
+										</div>
+									</div>
+								</TableCell>
+							</TableRow>
+						) : (
+							updates?.map((report) => (
+								<TableRow
+									key={report.id}
+									className="group h-[72px] cursor-pointer hover:bg-muted/40"
+									onClick={() =>
+										router.push(
+											`/status-pages/${statusPageId}/status-updates/${report.id}`,
+										)
+									}
+								>
+									<TableCell className="w-[50px] pl-6 text-center">
+										{getSeverityIcon(report.severity, report.status)}
+									</TableCell>
+									<TableCell>
+										<div className="grid gap-1">
+											<span className="font-semibold leading-none transition-colors group-hover:text-primary">
+												{report.title}
+											</span>
+											<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+												<span
+													className={cn(
+														"capitalize",
+														report.status === "resolved" && "text-emerald-500",
+														report.status === "investigating" && "text-red-500",
+														report.status === "identified" && "text-orange-500",
+														report.status === "monitoring" && "text-blue-500",
+													)}
+												>
+													{report.status}
+												</span>
+												<span>·</span>
+												<span>
+													{new Date(report.createdAt).toLocaleDateString(
+														undefined,
+														{
+															month: "short",
+															day: "numeric",
+														},
+													)}
+												</span>
+												<span>·</span>
+												<div className="flex items-center gap-1">
+													<MessageSquare className="h-3 w-3" />
+													<span>{report.updates.length} updates</span>
+												</div>
+											</div>
+										</div>
+									</TableCell>
+									<TableCell className="w-[100px] text-right">
+										{/* Spacer to match maintenance layout */}
+									</TableCell>
+									<TableCell className="w-[50px] pr-4">
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+													onClick={(e) => e.stopPropagation()}
+												>
+													<MoreHorizontal className="h-4 w-4" />
+													<span className="sr-only">Open menu</span>
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end">
+												<DropdownMenuItem
+													asChild
+													onClick={(e) => e.stopPropagation()}
+												>
+													<Link
+														href={`/status-pages/${statusPageId}/status-updates/${report.id}`}
+													>
+														Manage
+													</Link>
+												</DropdownMenuItem>
+												<DropdownMenuItem className="text-red-500">
+													Delete
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</TableCell>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	);
 }
