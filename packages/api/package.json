@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/api",
-	"version": "1.0.0",
+	"version": "0.0.0-canary-20251216152758",
 	"exports": {
 		".": {
 			"default": "./src/index.ts"
