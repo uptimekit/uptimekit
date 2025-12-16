@@ -58,7 +58,9 @@ export default function IncidentDetailsPage() {
 		onSuccess: () => {
 			toast.success("Update edited successfully");
 			queryClient.invalidateQueries({
-				queryKey: orpc.statusUpdates.get.key({ statusPageId, reportId }),
+				queryKey: orpc.statusUpdates.get.key({
+					input: { statusPageId, reportId },
+				}),
 			});
 			setEditingUpdate(null);
 		},

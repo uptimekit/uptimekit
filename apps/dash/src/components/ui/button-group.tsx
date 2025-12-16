@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Separator } from "@/components/ui/separator";
@@ -29,7 +30,7 @@ function ButtonGroup({
 		<div
 			role="group"
 			data-slot="button-group"
-			data-orientation={orientation}
+			data-orientation={orientation ?? undefined}
 			className={cn(buttonGroupVariants({ orientation }), className)}
 			{...props}
 		/>

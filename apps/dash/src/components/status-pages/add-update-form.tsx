@@ -43,14 +43,12 @@ import { client, orpc } from "@/utils/orpc";
 const formSchema = z.object({
 	status: z.enum(["investigating", "identified", "monitoring", "resolved"]),
 	message: z.string().min(1, "Message is required"),
-	monitors: z
-		.array(
-			z.object({
-				id: z.string(),
-				status: z.string(),
-			}),
-		)
-		.default([]),
+	monitors: z.array(
+		z.object({
+			id: z.string(),
+			status: z.string(),
+		}),
+	),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -103,7 +101,7 @@ export function AddUpdateForm({
 		onSuccess: () => {
 			toast.success("Update posted successfully");
 			queryClient.invalidateQueries({
-				queryKey: orpc.statusUpdates.get.key({ statusPageId, reportId }),
+				queryKey: orpc.statusUpdates.get.key({ input: { statusPageId, reportId } }),
 			});
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.list.key(),

@@ -52,14 +52,12 @@ const formSchema = z.object({
 	status: z.enum(["investigating", "identified", "monitoring", "resolved"]),
 	severity: z.enum(["minor", "major", "critical", "maintenance"]),
 	message: z.string().min(1, "Message is required"),
-	monitors: z
-		.array(
-			z.object({
-				id: z.string(),
-				status: z.string(),
-			}),
-		)
-		.default([]),
+	monitors: z.array(
+		z.object({
+			id: z.string(),
+			status: z.string(),
+		}),
+	),
 });
 
 type FormValues = z.infer<typeof formSchema>;

@@ -53,7 +53,7 @@ const schema = z.object({
 	title: z.string().min(1, "Title is required"),
 	description: z.string().optional(),
 	severity: z.enum(["minor", "major", "critical"]),
-	monitorIds: z.array(z.string()).default([]),
+	monitorIds: z.array(z.string()),
 });
 
 type FormValues = z.infer<typeof schema>;
