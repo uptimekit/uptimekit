@@ -6,66 +6,99 @@ import {
 	monitorGroup,
 } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
 
 export const monitorsRouter = {
-	list: protectedProcedure.handler(async ({ context }) => {
-		const monitors = await db
-			.select()
-			.from(monitor)
-			.leftJoin(monitorGroup, eq(monitor.groupId, monitorGroup.id))
-			.where(
+	list: protectedProcedure
+		.input(
+			z
+				.object({
+					q: z.string().optional(),
+					active: z.boolean().optional(),
+					type: z
+						.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"])
+						.optional(),
+					status: z
+						.enum(["up", "down", "degraded", "maintenance", "pending"])
+						.optional(),
+				})
+				.optional(),
+		)
+		.handler(async ({ input, context }) => {
+			const filters = [
 				eq(
 					monitor.organizationId,
 					context.session.session.activeOrganizationId!,
 				),
-			)
-			.orderBy(desc(monitor.createdAt));
+			];
 
-		const usageCounts = await db
-			.select({
-				monitorId: statusPageMonitor.monitorId,
-				count: sql<number>`count(*)`.mapWith(Number),
-			})
-			.from(statusPageMonitor)
-			.innerJoin(monitor, eq(statusPageMonitor.monitorId, monitor.id))
-			.where(
-				eq(
-					monitor.organizationId,
-					context.session.session.activeOrganizationId!,
-				),
-			)
-			.groupBy(statusPageMonitor.monitorId);
+			if (input?.q) {
+				filters.push(ilike(monitor.name, `%${input.q}%`));
+			}
 
-		const usageMap = new Map(usageCounts.map((c) => [c.monitorId, c.count]));
+			if (input?.active !== undefined) {
+				filters.push(eq(monitor.active, input.active));
+			}
 
-		const monitorsWithStatus = await Promise.all(
-			monitors.map(async (row) => {
-				const latestEvent = await db.query.monitorEvent.findFirst({
-					where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
-					orderBy: (t, { desc }) => desc(t.timestamp),
-				});
+			if (input?.type) {
+				filters.push(eq(monitor.type, input.type));
+			}
 
-				const latestChange = await db.query.monitorChange.findFirst({
-					where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
-					orderBy: (t, { desc }) => desc(t.timestamp),
-				});
+			const monitors = await db
+				.select()
+				.from(monitor)
+				.leftJoin(monitorGroup, eq(monitor.groupId, monitorGroup.id))
+				.where(and(...filters))
+				.orderBy(desc(monitor.createdAt));
 
-				return {
-					...row.monitor,
-					group: row.monitor_group || null,
-					status: latestEvent?.status || "pending",
-					lastCheck: latestEvent?.timestamp || null,
-					lastStatusChange: latestChange?.timestamp || null,
-					usedOn: usageMap.get(row.monitor.id) || 0,
-				};
-			}),
-		);
+			const usageCounts = await db
+				.select({
+					monitorId: statusPageMonitor.monitorId,
+					count: sql<number>`count(*)`.mapWith(Number),
+				})
+				.from(statusPageMonitor)
+				.innerJoin(monitor, eq(statusPageMonitor.monitorId, monitor.id))
+				.where(
+					eq(
+						monitor.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				)
+				.groupBy(statusPageMonitor.monitorId);
 
-		return monitorsWithStatus;
-	}),
+			const usageMap = new Map(usageCounts.map((c) => [c.monitorId, c.count]));
+
+			const monitorsWithStatus = await Promise.all(
+				monitors.map(async (row) => {
+					const latestEvent = await db.query.monitorEvent.findFirst({
+						where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
+						orderBy: (t, { desc }) => desc(t.timestamp),
+					});
+
+					const latestChange = await db.query.monitorChange.findFirst({
+						where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
+						orderBy: (t, { desc }) => desc(t.timestamp),
+					});
+
+					return {
+						...row.monitor,
+						group: row.monitor_group || null,
+						status: latestEvent?.status || "pending",
+						lastCheck: latestEvent?.timestamp || null,
+						lastStatusChange: latestChange?.timestamp || null,
+						usedOn: usageMap.get(row.monitor.id) || 0,
+					};
+				}),
+			);
+
+			if (input?.status) {
+				return monitorsWithStatus.filter((m) => m.status === input.status);
+			}
+
+			return monitorsWithStatus;
+		}),
 
 	listGroups: protectedProcedure.handler(async ({ context }) => {
 		const groups = await db

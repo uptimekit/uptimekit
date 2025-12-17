@@ -1,16 +1,22 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 import {
+	Check,
 	CheckCircle2,
 	ChevronDown,
 	Filter,
+	HelpCircle,
+	Loader2,
 	MoreHorizontal,
 	Plus,
 	Search,
 	ShieldAlert,
-	Loader2,
-	HelpCircle,
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -21,21 +27,37 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
-import { formatDistanceToNow } from "date-fns";
-import Link from "next/link";
-import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
 
 export function IncidentsTable() {
-	const [statusFilter, setStatusFilter] = useState<"all" | "open" | "resolved">(
-		"all",
-	);
+	const [statusFilter, setStatusFilter] = useState<
+		"all" | "open" | "resolved" | undefined
+	>("all");
+	const [severityFilter, setSeverityFilter] = useState<
+		"minor" | "major" | "critical" | undefined
+	>(undefined);
+	const [typeFilter, setTypeFilter] = useState<
+		"manual" | "automatic" | undefined
+	>(undefined);
+	const [search, setSearch] = useState("");
+	const [debouncedSearch, setDebouncedSearch] = useState("");
+
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearch(search);
+		}, 500);
+		return () => clearTimeout(timer);
+	}, [search]);
 
 	const { data: incidents, isLoading } = useQuery(
 		orpc.incidents.list.queryOptions({
-			input: { status: statusFilter, limit: 50 },
+			input: {
+				status: statusFilter === "all" ? "all" : statusFilter || "all",
+				limit: 50,
+				q: debouncedSearch || undefined,
+				severity: severityFilter,
+				type: typeFilter,
+			},
 		}),
 	);
 
@@ -65,6 +87,19 @@ export function IncidentsTable() {
 		}
 	};
 
+	const clearFilters = () => {
+		setSearch("");
+		setStatusFilter("all");
+		setSeverityFilter(undefined);
+		setTypeFilter(undefined);
+	};
+
+	const activeFilterCount = [
+		statusFilter !== "all",
+		severityFilter !== undefined,
+		typeFilter !== undefined,
+	].filter(Boolean).length;
+
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
@@ -72,24 +107,124 @@ export function IncidentsTable() {
 				<div className="flex items-center gap-2">
 					<div className="relative w-64">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
-						<Input placeholder="Search" className="pl-8" />
+						<Input
+							placeholder="Search incidents..."
+							className="pl-8"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+						/>
 					</div>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="icon">
+							<Button variant="outline" size="icon" className="relative">
 								<Filter className="h-4 w-4" />
+								{activeFilterCount > 0 && (
+									<span className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+										{activeFilterCount}
+									</span>
+								)}
 							</Button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem onClick={() => setStatusFilter("all")}>
+						<DropdownMenuContent align="end" className="w-56 p-2">
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Status
+							</div>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("all")}
+								className="flex justify-between"
+							>
 								All
+								{statusFilter === "all" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setStatusFilter("open")}>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("open")}
+								className="flex justify-between"
+							>
 								Open
+								{statusFilter === "open" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setStatusFilter("resolved")}>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("resolved")}
+								className="flex justify-between"
+							>
 								Resolved
+								{statusFilter === "resolved" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
+
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Severity
+							</div>
+							<DropdownMenuItem
+								onClick={() => setSeverityFilter(undefined)}
+								className="flex justify-between"
+							>
+								All Severities
+								{!severityFilter && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setSeverityFilter("minor")}
+								className="flex justify-between"
+							>
+								Minor
+								{severityFilter === "minor" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setSeverityFilter("major")}
+								className="flex justify-between"
+							>
+								Major
+								{severityFilter === "major" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setSeverityFilter("critical")}
+								className="flex justify-between"
+							>
+								Critical
+								{severityFilter === "critical" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Type
+							</div>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter(undefined)}
+								className="flex justify-between"
+							>
+								All Types
+								{!typeFilter && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("manual")}
+								className="flex justify-between"
+							>
+								Manual
+								{typeFilter === "manual" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("automatic")}
+								className="flex justify-between"
+							>
+								Automatic
+								{typeFilter === "automatic" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+
+							{(statusFilter !== "all" ||
+								severityFilter !== undefined ||
+								typeFilter !== undefined) && (
+								<>
+									<div className="my-2 h-px bg-muted" />
+									<DropdownMenuItem
+										onClick={clearFilters}
+										className="justify-center text-red-500 hover:text-red-600"
+									>
+										Clear filters
+									</DropdownMenuItem>
+								</>
+							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button
@@ -126,13 +261,23 @@ export function IncidentsTable() {
 										</div>
 										<p className="font-medium text-lg">No incidents found</p>
 										<p className="text-muted-foreground text-sm">
-											Get started by creating your first incident.
+											{search ||
+											statusFilter !== "all" ||
+											severityFilter ||
+											typeFilter
+												? "Try adjusting your filters"
+												: "Get started by creating your first incident."}
 										</p>
-										<div className="mt-2">
-											<Button asChild>
-												<Link href="/incidents/new">Create incident</Link>
-											</Button>
-										</div>
+										{!search &&
+											statusFilter === "all" &&
+											!severityFilter &&
+											!typeFilter && (
+												<div className="mt-2">
+													<Button asChild>
+														<Link href="/incidents/new">Create incident</Link>
+													</Button>
+												</div>
+											)}
 									</div>
 								</TableCell>
 							</TableRow>
@@ -173,6 +318,22 @@ export function IncidentsTable() {
 															className="h-5 px-1.5 text-[10px]"
 														>
 															Auto
+														</Badge>
+													)}
+													{incident.severity && (
+														<Badge
+															variant="outline"
+															className={cn(
+																"h-5 border-none px-1.5 text-[10px] uppercase",
+																incident.severity === "minor" &&
+																	"bg-blue-500/10 text-blue-500",
+																incident.severity === "major" &&
+																	"bg-amber-500/10 text-amber-500",
+																incident.severity === "critical" &&
+																	"bg-red-500/10 text-red-500",
+															)}
+														>
+															{incident.severity}
 														</Badge>
 													)}
 												</div>
@@ -224,7 +385,6 @@ export function IncidentsTable() {
 														View details
 													</Link>
 												</DropdownMenuItem>
-												{/* Add more actions later */}
 											</DropdownMenuContent>
 										</DropdownMenu>
 									</TableCell>
