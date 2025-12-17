@@ -98,5 +98,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin development
           git checkout development
-          git merge --no-ff -X theirs origin/release -m "chore: sync release to development"
+          git merge --no-ff --allow-unrelated-histories -X theirs origin/release -m "chore: sync release to development"
           git push origin development

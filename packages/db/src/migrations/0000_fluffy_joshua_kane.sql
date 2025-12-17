@@ -112,6 +112,7 @@ CREATE TABLE "incident" (
 	"description" text,
 	"status" text NOT NULL,
 	"severity" text DEFAULT 'major' NOT NULL,
+	"type" text DEFAULT 'manual' NOT NULL,
 	"acknowledged_at" timestamp,
 	"acknowledged_by" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -123,8 +124,25 @@ CREATE TABLE "incident_activity" (
 	"id" text PRIMARY KEY NOT NULL,
 	"incident_id" text NOT NULL,
 	"message" text NOT NULL,
+	"type" text DEFAULT 'comment' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"user_id" text NOT NULL
+	"user_id" text
+);
+--> statement-breakpoint
+CREATE TABLE "incident_monitor" (
+	"incident_id" text NOT NULL,
+	"monitor_id" text NOT NULL,
+	CONSTRAINT "incident_monitor_incident_id_monitor_id_pk" PRIMARY KEY("incident_id","monitor_id")
+);
+--> statement-breakpoint
+CREATE TABLE "integration_config" (
+	"id" text PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"type" text NOT NULL,
+	"config" json NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "maintenance" (
@@ -149,6 +167,15 @@ CREATE TABLE "maintenance_status_page" (
 	"status_page_id" text NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "maintenance_update" (
+	"id" text PRIMARY KEY NOT NULL,
+	"maintenance_id" text NOT NULL,
+	"message" text NOT NULL,
+	"status" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "monitor" (
 	"id" text PRIMARY KEY NOT NULL,
 	"organization_id" text NOT NULL,
@@ -167,18 +194,23 @@ CREATE TABLE "monitor" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "monitor_change" (
+	"id" text PRIMARY KEY NOT NULL,
+	"monitor_id" text NOT NULL,
+	"status" varchar(20) NOT NULL,
+	"timestamp" timestamp DEFAULT now() NOT NULL,
+	"location" varchar(50)
+);
+--> statement-breakpoint
 CREATE TABLE "monitor_event" (
 	"id" text PRIMARY KEY NOT NULL,
 	"monitor_id" text NOT NULL,
-	"status" text NOT NULL,
+	"status" varchar(20) NOT NULL,
 	"latency" integer NOT NULL,
 	"timestamp" timestamp DEFAULT now() NOT NULL,
 	"status_code" integer,
-	"error" text,
-	"error_detail" json,
-	"response_headers" json,
-	"response_body" text,
-	"location" text
+	"location" varchar(50),
+	"error" text
 );
 --> statement-breakpoint
 CREATE TABLE "monitor_group" (
@@ -216,6 +248,7 @@ CREATE TABLE "status_page_monitor" (
 	"status_page_id" text NOT NULL,
 	"monitor_id" text NOT NULL,
 	"group_id" text,
+	"style" text DEFAULT 'history' NOT NULL,
 	"order" integer DEFAULT 0 NOT NULL
 );
 --> statement-breakpoint
@@ -269,13 +302,18 @@ ALTER TABLE "incident" ADD CONSTRAINT "incident_organization_id_organization_id_
 ALTER TABLE "incident" ADD CONSTRAINT "incident_acknowledged_by_user_id_fk" FOREIGN KEY ("acknowledged_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "incident_activity" ADD CONSTRAINT "incident_activity_incident_id_incident_id_fk" FOREIGN KEY ("incident_id") REFERENCES "public"."incident"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "incident_activity" ADD CONSTRAINT "incident_activity_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "incident_monitor" ADD CONSTRAINT "incident_monitor_incident_id_incident_id_fk" FOREIGN KEY ("incident_id") REFERENCES "public"."incident"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "incident_monitor" ADD CONSTRAINT "incident_monitor_monitor_id_monitor_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."monitor"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "integration_config" ADD CONSTRAINT "integration_config_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "maintenance" ADD CONSTRAINT "maintenance_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "maintenance_monitor" ADD CONSTRAINT "maintenance_monitor_maintenance_id_maintenance_id_fk" FOREIGN KEY ("maintenance_id") REFERENCES "public"."maintenance"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "maintenance_monitor" ADD CONSTRAINT "maintenance_monitor_monitor_id_monitor_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."monitor"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "maintenance_status_page" ADD CONSTRAINT "maintenance_status_page_maintenance_id_maintenance_id_fk" FOREIGN KEY ("maintenance_id") REFERENCES "public"."maintenance"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "maintenance_status_page" ADD CONSTRAINT "maintenance_status_page_status_page_id_status_page_id_fk" FOREIGN KEY ("status_page_id") REFERENCES "public"."status_page"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "maintenance_update" ADD CONSTRAINT "maintenance_update_maintenance_id_maintenance_id_fk" FOREIGN KEY ("maintenance_id") REFERENCES "public"."maintenance"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "monitor" ADD CONSTRAINT "monitor_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "monitor" ADD CONSTRAINT "monitor_group_id_monitor_group_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."monitor_group"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "monitor_change" ADD CONSTRAINT "monitor_change_monitor_id_monitor_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."monitor"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "monitor_event" ADD CONSTRAINT "monitor_event_monitor_id_monitor_id_fk" FOREIGN KEY ("monitor_id") REFERENCES "public"."monitor"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "monitor_group" ADD CONSTRAINT "monitor_group_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "status_page" ADD CONSTRAINT "status_page_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -301,6 +339,10 @@ CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("ident
 CREATE INDEX "incident_organization_idx" ON "incident" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "incident_status_idx" ON "incident" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "incident_activity_incidentId_idx" ON "incident_activity" USING btree ("incident_id");--> statement-breakpoint
+CREATE INDEX "incident_monitor_incident_idx" ON "incident_monitor" USING btree ("incident_id");--> statement-breakpoint
+CREATE INDEX "incident_monitor_monitor_idx" ON "incident_monitor" USING btree ("monitor_id");--> statement-breakpoint
+CREATE INDEX "integration_config_org_idx" ON "integration_config" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "integration_config_type_idx" ON "integration_config" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "maintenance_organizationId_idx" ON "maintenance" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "maintenance_status_idx" ON "maintenance" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "maintenance_startAt_idx" ON "maintenance" USING btree ("start_at");--> statement-breakpoint
@@ -309,10 +351,13 @@ CREATE INDEX "maintenance_monitor_maintenanceId_idx" ON "maintenance_monitor" US
 CREATE INDEX "maintenance_monitor_monitorId_idx" ON "maintenance_monitor" USING btree ("monitor_id");--> statement-breakpoint
 CREATE INDEX "maintenance_status_page_maintenanceId_idx" ON "maintenance_status_page" USING btree ("maintenance_id");--> statement-breakpoint
 CREATE INDEX "maintenance_status_page_statusPageId_idx" ON "maintenance_status_page" USING btree ("status_page_id");--> statement-breakpoint
+CREATE INDEX "maintenance_update_maintenanceId_idx" ON "maintenance_update" USING btree ("maintenance_id");--> statement-breakpoint
 CREATE INDEX "monitor_organization_idx" ON "monitor" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "monitor_active_idx" ON "monitor" USING btree ("active");--> statement-breakpoint
 CREATE INDEX "monitor_group_idx" ON "monitor" USING btree ("group_id");--> statement-breakpoint
-CREATE INDEX "monitor_event_monitorId_idx" ON "monitor_event" USING btree ("monitor_id");--> statement-breakpoint
+CREATE INDEX "monitor_change_monitor_idx" ON "monitor_change" USING btree ("monitor_id");--> statement-breakpoint
+CREATE INDEX "monitor_change_timestamp_idx" ON "monitor_change" USING btree ("timestamp");--> statement-breakpoint
+CREATE INDEX "monitor_event_monitor_idx" ON "monitor_event" USING btree ("monitor_id");--> statement-breakpoint
 CREATE INDEX "monitor_event_timestamp_idx" ON "monitor_event" USING btree ("timestamp");--> statement-breakpoint
 CREATE INDEX "monitor_group_organization_idx" ON "monitor_group" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "status_page_organization_idx" ON "status_page" USING btree ("organization_id");--> statement-breakpoint

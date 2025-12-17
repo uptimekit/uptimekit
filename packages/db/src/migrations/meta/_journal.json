@@ -5,22 +5,8 @@
 		{
 			"idx": 0,
 			"version": "7",
-			"when": 1765536246898,
-			"tag": "0000_slippery_falcon",
-			"breakpoints": true
-		},
-		{
-			"idx": 1,
-			"version": "7",
-			"when": 1765582012061,
-			"tag": "0001_huge_black_tarantula",
-			"breakpoints": true
-		},
-		{
-			"idx": 2,
-			"version": "7",
-			"when": 1765996335935,
-			"tag": "0002_yellow_sue_storm",
+			"when": 1766002898706,
+			"tag": "0000_fluffy_joshua_kane",
 			"breakpoints": true
 		}
 	]
