@@ -35,6 +35,10 @@ jobs:
       - name: Version Packages
         run: pnpm changeset version
 
+      - name: Generate Release Info
+        id: get_version
+        run: node scripts/generate-release-info.js
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -78,6 +82,14 @@ jobs:
           commit_message: "chore: release versions [skip ci]"
           branch: release
           tagging_message: "v${{ steps.get_version.outputs.version }}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: steps.get_version.outputs.version != ''
+        with:
+          tag_name: "v${{ steps.get_version.outputs.version }}"
+          body_path: release_notes.md
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sync to development
         run: |
