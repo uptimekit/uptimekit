@@ -34,6 +34,7 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 			{/* Flex container for the bar segments */}
 			<div className="flex h-8 w-full gap-[3px]">
 				{days.map((day, index) => (
+					// biome-ignore lint/a11y/noStaticElementInteractions: This div acts as a visual container for a bar segment that triggers a tooltip on mouse hover. It is not intended to be a keyboard-navigable or actionable interactive control, so adding roles like `button` or `link` or `tabIndex` would be semantically incorrect and misleading for assistive technologies.
 					<div
 						key={day.date}
 						className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"

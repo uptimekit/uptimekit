@@ -490,6 +490,7 @@ export default async function StatusPage() {
 							<div className="mt-8 cursor-pointer rounded-lg bg-card/50 p-4 text-center transition-colors hover:bg-card/80">
 								<span className="flex items-center justify-center gap-2 font-medium text-muted-foreground text-sm">
 									Previous updates
+									{/** biome-ignore lint/a11y/noSvgWithoutTitle: This SVG is used as an arrow icon to indicate a link to previous updates. It is not intended to be a keyboard-navigable or actionable interactive control, so adding roles like `button` or `link` or `tabIndex` would be semantically incorrect and misleading for assistive technologies. */}
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
 										width="16"
