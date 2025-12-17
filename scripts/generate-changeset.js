@@ -45,19 +45,36 @@ function getChangedPackagesAndDependents() {
 	const changedPackages = new Set();
 
 	try {
-		const currentCommit = execSync("git rev-parse HEAD").toString().trim();
-		const files = execSync(
-			`git diff-tree --no-commit-id --name-only -r ${currentCommit}`,
-		)
-			.toString()
-			.trim()
-			.split("\n");
+		const before = process.env.BEFORE_SHA;
+		const after = process.env.AFTER_SHA || "HEAD";
+
+		let diffCommand = `git diff --name-only ${after}`;
+		if (before && before !== "0000000000000000000000000000000000000000") {
+			diffCommand = `git diff --name-only ${before}...${after}`;
+		}
+
+		console.log(`Running: ${diffCommand}`);
+		const files = execSync(diffCommand).toString().trim().split("\n");
 
 		for (const file of files) {
 			if (!file) continue;
+
+			// Normalize file path to use forward slashes for consistent comparison
+			const normalizedFile = file.replace(/\\/g, "/");
+
 			for (const [pkgName, info] of allPackages.entries()) {
-				const relPath = path.relative(process.cwd(), path.dirname(info.path));
-				if (file.startsWith(relPath + path.sep) || file === relPath) {
+				// info.path is absolute. Get its directory then relative to process.cwd()
+				const pkgDir = path.dirname(info.path);
+				const relPkgDir = path
+					.relative(process.cwd(), pkgDir)
+					.replace(/\\/g, "/");
+
+				// Check if the file is inside the package directory
+				// It should either start with "path/" or be exactly "path"
+				if (
+					normalizedFile.startsWith(relPkgDir + "/") ||
+					normalizedFile === relPkgDir
+				) {
 					changedPackages.add(pkgName);
 				}
 			}
@@ -91,15 +108,24 @@ function getChangedPackagesAndDependents() {
 
 function getBumpType(message) {
 	const lowerMsg = message.toLowerCase();
+	if (lowerMsg.includes("[major]")) return "major";
+	if (lowerMsg.includes("[minor]")) return "minor";
+	if (lowerMsg.includes("[patch]") || lowerMsg.includes("[hotfix]"))
+		return "patch";
+
+	// Fallback to searching without brackets if not found
 	if (lowerMsg.includes("major")) return "major";
 	if (lowerMsg.includes("minor")) return "minor";
 	if (lowerMsg.includes("hotfix")) return "patch";
+
 	return "patch";
 }
 
 function generateChangeset() {
-	const commitMsg = process.env.COMMIT_MESSAGE || tryGetGitMessage();
-	const bumpType = getBumpType(commitMsg);
+	const commitMsgs = tryGetGitMessages();
+	const bumpType = getBumpType(commitMsgs);
+
+	console.log(`Analyzing messages:\n${commitMsgs}`);
 
 	if (!bumpType) {
 		console.log("No version bump determination possible. Skipping.");
@@ -120,7 +146,7 @@ function generateChangeset() {
 ${packages.map((p) => `"${p}": ${bumpType}`).join("\n")}
 ---
 
-${commitMsg.trim()}
+${commitMsgs.trim()}
 `;
 
 	// Create .changeset directory if it doesn't exist (it should)
@@ -137,8 +163,16 @@ ${commitMsg.trim()}
 	console.log(`Generated changeset: ${filePath}`);
 }
 
-function tryGetGitMessage() {
+function tryGetGitMessages() {
 	try {
+		const before = process.env.BEFORE_SHA;
+		const after = process.env.AFTER_SHA || "HEAD";
+
+		if (before && before !== "0000000000000000000000000000000000000000") {
+			// Get all commit messages between before and after
+			return execSync(`git log ${before}...${after} --pretty=%B`).toString();
+		}
+
 		return execSync("git log -1 --pretty=%B").toString();
 	} catch (e) {
 		return "";

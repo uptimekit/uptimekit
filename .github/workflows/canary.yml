@@ -29,7 +29,8 @@ jobs:
       - name: Generate Changeset from Commit
         run: node scripts/generate-changeset.js
         env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
 
       - name: Create Canary Version
         run: pnpm changeset version --snapshot canary
@@ -50,7 +51,7 @@ jobs:
       - name: Build and Push Docker Images
         if: success()
         run: |
-          git diff --name-only | grep "apps/.*/package.json" | while read -r file; do
+          find apps -maxdepth 2 -name "package.json" | while read -r file; do
              app_dir=$(dirname "$file")
              app_name=$(basename "$app_dir")
              
