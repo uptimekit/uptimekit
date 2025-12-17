@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/db",
-	"version": "0.0.0-canary-20251217194817",
+	"version": "0.0.0-canary-20251217202251",
 	"type": "module",
 	"exports": {
 		".": {

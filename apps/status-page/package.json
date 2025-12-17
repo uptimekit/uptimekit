@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/status-page",
-	"version": "0.0.0-canary-20251217194817",
+	"version": "0.0.0-canary-20251217202251",
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port=3001",
