@@ -1,5 +1,10 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
+import { Check, Copy, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -12,11 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { orpc } from "@/utils/orpc";
-import { useMutation } from "@tanstack/react-query";
-import { Copy, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
 
 interface WorkerApiKeyManagerProps {
 	workerId: string;
@@ -25,6 +25,7 @@ interface WorkerApiKeyManagerProps {
 export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 	const [newKey, setNewKey] = useState<string | null>(null);
 	const [showConfirm, setShowConfirm] = useState(false);
+	const [isRevealed, setIsRevealed] = useState(false);
 	const router = useRouter();
 
 	const { mutate, isPending } = useMutation({
@@ -32,7 +33,6 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 		onSuccess: (data: { key: string }) => {
 			setNewKey(data.key);
 			toast.success("API Key rotated successfully");
-			router.refresh(); // Refresh page to update key status/prefix if needed
 		},
 		onError: (error: Error) => {
 			console.error(error);
@@ -43,6 +43,20 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 	const handleRotate = () => {
 		setShowConfirm(false);
 		mutate({ id: workerId });
+	};
+
+	const handleCopy = () => {
+		if (newKey) {
+			navigator.clipboard.writeText(newKey);
+			setIsRevealed(true);
+			toast.success("Copied to clipboard");
+		}
+	};
+
+	const handleCloseNewKeyDialog = () => {
+		setNewKey(null);
+		setIsRevealed(false);
+		router.refresh();
 	};
 
 	return (
@@ -83,7 +97,10 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 			</Dialog>
 
 			{/* New Key Display Dialog */}
-			<Dialog open={!!newKey} onOpenChange={(open) => !open && setNewKey(null)}>
+			<Dialog
+				open={!!newKey}
+				onOpenChange={(open) => !open && handleCloseNewKeyDialog()}
+			>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>New API Key Generated</DialogTitle>
@@ -97,23 +114,29 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 							<Label htmlFor="link" className="sr-only">
 								Link
 							</Label>
-							<Input id="link" defaultValue={newKey || ""} readOnly />
+							<Input
+								id="link"
+								value={newKey || ""}
+								readOnly
+								type={isRevealed ? "text" : "password"}
+							/>
 						</div>
 						<Button
 							type="submit"
 							size="sm"
 							className="px-3"
-							onClick={() => {
-								navigator.clipboard.writeText(newKey || "");
-								toast.success("Copied to clipboard");
-							}}
+							onClick={handleCopy}
 						>
 							<span className="sr-only">Copy</span>
-							<Copy className="h-4 w-4" />
+							{isRevealed ? (
+								<Check className="h-4 w-4" />
+							) : (
+								<Copy className="h-4 w-4" />
+							)}
 						</Button>
 					</div>
 					<DialogFooter>
-						<Button onClick={() => setNewKey(null)}>Done</Button>
+						<Button onClick={handleCloseNewKeyDialog}>Done</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

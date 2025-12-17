@@ -1,5 +1,10 @@
 "use client";
 
+import { AQ, AU, BR, CA, EU, HK, US, ZA } from "country-flag-icons/react/3x2";
+import { formatDistanceToNow } from "date-fns";
+import { ChevronDown, MoreHorizontal, Search } from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,12 +14,15 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { AQ, AU, BR, CA, EU, HK, US, ZA } from "country-flag-icons/react/3x2";
-import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, MoreHorizontal, RotateCcw, Search } from "lucide-react";
-import Link from "next/link";
 
 interface Worker {
 	id: string;
@@ -43,6 +51,27 @@ function getRegionFlag(location: string) {
 }
 
 export function WorkersTable({ initialWorkers }: WorkersTableProps) {
+	const [searchQuery, setSearchQuery] = useState("");
+	const [statusFilter, setStatusFilter] = useState("all");
+
+	const filteredWorkers = useMemo(() => {
+		return initialWorkers.filter((worker) => {
+			const matchesSearch =
+				worker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				worker.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+			if (!matchesSearch) return false;
+
+			if (statusFilter === "online")
+				return worker.lastHeartbeat && worker.active;
+			if (statusFilter === "offline")
+				return worker.lastHeartbeat && !worker.active;
+			if (statusFilter === "unknown") return !worker.lastHeartbeat;
+
+			return true;
+		});
+	}, [initialWorkers, searchQuery, statusFilter]);
+
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
@@ -50,8 +79,24 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 				<div className="flex items-center gap-2">
 					<div className="relative w-64">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
-						<Input placeholder="Search" className="pl-8" />
+						<Input
+							placeholder="Search"
+							className="pl-8"
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+						/>
 					</div>
+					<Select value={statusFilter} onValueChange={setStatusFilter}>
+						<SelectTrigger className="w-[150px]">
+							<SelectValue placeholder="Status" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Statuses</SelectItem>
+							<SelectItem value="online">Online</SelectItem>
+							<SelectItem value="offline">Offline</SelectItem>
+							<SelectItem value="unknown">Unknown</SelectItem>
+						</SelectContent>
+					</Select>
 					<CreateWorkerDialog />
 				</div>
 			</div>
@@ -80,8 +125,18 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 									</div>
 								</TableCell>
 							</TableRow>
+						) : filteredWorkers.length === 0 ? (
+							<TableRow>
+								<TableCell colSpan={4} className="h-24 text-center">
+									<div className="flex flex-col items-center justify-center gap-2 py-6">
+										<p className="text-muted-foreground text-sm">
+											No workers matching your search.
+										</p>
+									</div>
+								</TableCell>
+							</TableRow>
 						) : (
-							initialWorkers.map((worker) => (
+							filteredWorkers.map((worker) => (
 								<TableRow
 									key={worker.id}
 									className="group h-[72px] cursor-pointer hover:bg-muted/40"
@@ -147,7 +202,7 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 											</div>
 										</div>
 									</TableCell>
-									<TableCell className="w-[200px] text-right font-medium text-sm text-muted-foreground" />
+									<TableCell className="w-[200px] text-right font-medium text-muted-foreground text-sm" />
 									<TableCell className="w-[50px] pr-4">
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
