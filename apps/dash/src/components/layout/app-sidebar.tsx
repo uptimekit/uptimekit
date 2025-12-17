@@ -3,15 +3,17 @@
 import {
 	Activity,
 	AlertTriangle,
-	Building2,
 	ChevronDown,
+	Grid2X2,
 	LayoutDashboard,
+	Plus,
 	Settings,
 	ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type * as React from "react";
+import * as React from "react";
+import { CreateOrganizationDialog } from "@/components/layout/create-organization-dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -35,6 +37,7 @@ import {
 	SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
+import { queryClient } from "@/utils/orpc";
 
 // import { UserMenu } from "@/components/layout/user-menu"; // Unused as we defined a local component for now to match structure
 
@@ -55,6 +58,11 @@ const mainNav = [
 		url: "/status-pages",
 		icon: LayoutDashboard,
 	},
+	{
+		title: "Integrations",
+		url: "/integrations",
+		icon: Grid2X2,
+	},
 ];
 
 const configNav = [
@@ -72,6 +80,9 @@ const configNav = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
+	const router = useRouter(); // Use useRouter from next/navigation
+	const [showCreateOrgModal, setShowCreateOrgModal] = React.useState(false);
+
 	const { data: organizations, isPending: isLoadingOrgs } =
 		authClient.useListOrganizations();
 	const { data: activeOrg } = authClient.useActiveOrganization();
@@ -129,9 +140,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 										<DropdownMenuItem
 											key={org.id}
 											onClick={() => {
-												authClient.organization.setActive({
-													organizationId: org.id,
-												});
+												authClient.organization.setActive(
+													{
+														organizationId: org.id,
+													},
+													{
+														onSuccess: async () => {
+															await queryClient.invalidateQueries();
+															router.refresh();
+															router.push("/");
+														},
+													},
+												);
 											}}
 											className="gap-2 p-2"
 										>
@@ -155,10 +175,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									))
 								)}
 								<DropdownMenuSeparator />
-								{/* Placeholder for creating new org if needed */}
-								<DropdownMenuItem className="gap-2 p-2" disabled>
+								<DropdownMenuItem
+									className="cursor-pointer gap-2 p-2"
+									onSelect={() => setShowCreateOrgModal(true)}
+								>
 									<div className="flex size-6 items-center justify-center rounded-md border bg-background">
-										<Building2 className="size-4" />
+										<Plus className="size-4" />
 									</div>
 									<div className="font-medium text-muted-foreground">
 										Add Organization
@@ -234,6 +256,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				</SidebarMenu>
 			</SidebarFooter>
 			<SidebarRail />
+			<CreateOrganizationDialog
+				open={showCreateOrgModal}
+				setOpen={setShowCreateOrgModal}
+			/>
 		</Sidebar>
 	);
 }
@@ -303,9 +329,11 @@ function UserMenuComponent() {
 					</div>
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem>
-					<User className="mr-2 h-4 w-4" />
-					Account
+				<DropdownMenuItem asChild>
+					<Link href={"/account" as any}>
+						<User className="mr-2 h-4 w-4" />
+						Account
+					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem

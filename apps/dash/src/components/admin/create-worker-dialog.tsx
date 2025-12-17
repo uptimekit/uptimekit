@@ -1,5 +1,11 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
+import { AQ, BR, CA, EU, HK } from "country-flag-icons/react/3x2";
+import { Check, Copy, Loader2, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -20,12 +26,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { orpc } from "@/utils/orpc";
-import { useMutation } from "@tanstack/react-query";
-import { AQ, BR, CA, EU, HK } from "country-flag-icons/react/3x2";
-import { Check, Copy, Loader2, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast } from "sonner";
 
 const REGIONS = [
 	{
@@ -58,6 +58,7 @@ const REGIONS = [
 export function CreateWorkerDialog() {
 	const [open, setOpen] = useState(false);
 	const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);
+	const [isRevealed, setIsRevealed] = useState(false);
 	const router = useRouter();
 
 	const { mutate, isPending } = useMutation({
@@ -65,7 +66,6 @@ export function CreateWorkerDialog() {
 		onSuccess: (data) => {
 			toast.success("Worker created successfully");
 			setNewWorkerKey(data.key);
-			router.refresh();
 		},
 		onError: (error: Error) => {
 			toast.error(error.message);
@@ -84,6 +84,7 @@ export function CreateWorkerDialog() {
 	const handleCopy = () => {
 		if (newWorkerKey) {
 			navigator.clipboard.writeText(newWorkerKey);
+			setIsRevealed(true);
 			toast.success("API Key copied to clipboard");
 		}
 	};
@@ -91,9 +92,13 @@ export function CreateWorkerDialog() {
 	const handleOpenChange = (isOpen: boolean) => {
 		setOpen(isOpen);
 		if (!isOpen) {
+			if (newWorkerKey) {
+				router.refresh();
+			}
 			// Reset state after a short delay to allow animation to finish
 			setTimeout(() => {
 				setNewWorkerKey(null);
+				setIsRevealed(false);
 			}, 300);
 		}
 	};
@@ -101,7 +106,7 @@ export function CreateWorkerDialog() {
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
-				<Button size="sm" className="h-8 gap-1" onClick={() => setOpen(true)}>
+				<Button size="sm" className="h-8 gap-1">
 					<Plus className="h-3.5 w-3.5" />
 					<span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
 						Add Worker
@@ -127,11 +132,20 @@ export function CreateWorkerDialog() {
 								<Label htmlFor="link" className="sr-only">
 									API Key
 								</Label>
-								<Input id="link" defaultValue={newWorkerKey} readOnly />
+								<Input
+									id="link"
+									value={newWorkerKey}
+									readOnly
+									type={isRevealed ? "text" : "password"}
+								/>
 							</div>
 							<Button size="sm" className="px-3" onClick={handleCopy}>
 								<span className="sr-only">Copy</span>
-								<Copy className="h-4 w-4" />
+								{isRevealed ? (
+									<Check className="h-4 w-4" />
+								) : (
+									<Copy className="h-4 w-4" />
+								)}
 							</Button>
 						</div>
 					</div>

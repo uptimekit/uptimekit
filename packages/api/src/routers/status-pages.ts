@@ -1,48 +1,67 @@
+import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import {
 	statusPage,
 	statusPageGroup,
 	statusPageMonitor,
 } from "@uptimekit/db/schema/status-pages";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
 
 export const statusPagesRouter = {
-	list: protectedProcedure.handler(async ({ context }) => {
-		const pages = await db
-			.select()
-			.from(statusPage)
-			.where(
+	list: protectedProcedure
+		.input(
+			z
+				.object({
+					q: z.string().optional(),
+					public: z.boolean().optional(),
+				})
+				.optional(),
+		)
+		.handler(async ({ input, context }) => {
+			const filters = [
 				eq(
 					statusPage.organizationId,
 					context.session.session.activeOrganizationId!,
 				),
-			)
-			.orderBy(desc(statusPage.createdAt));
+			];
 
-		const pagesWithCounts = await Promise.all(
-			pages.map(async (page) => {
-				const monitorCount = await db
-					.select({ count: statusPageMonitor.monitorId })
-					.from(statusPageMonitor)
-					.where(eq(statusPageMonitor.statusPageId, page.id))
-					.then((r) => r.length);
+			if (input?.q) {
+				filters.push(ilike(statusPage.name, `%${input.q}%`));
+			}
 
-				// TODO: Implement subscriber count when subscribers table is ready
-				const subscriberCount = 0;
+			if (input?.public !== undefined) {
+				filters.push(eq(statusPage.public, input.public));
+			}
 
-				return {
-					...page,
-					monitorsCount: monitorCount,
-					subscribers: subscriberCount,
-				};
-			}),
-		);
+			const pages = await db
+				.select()
+				.from(statusPage)
+				.where(and(...filters))
+				.orderBy(desc(statusPage.createdAt));
 
-		return pagesWithCounts;
-	}),
+			const pagesWithCounts = await Promise.all(
+				pages.map(async (page) => {
+					const monitorCount = await db
+						.select({ count: statusPageMonitor.monitorId })
+						.from(statusPageMonitor)
+						.where(eq(statusPageMonitor.statusPageId, page.id))
+						.then((r) => r.length);
+
+					// TODO: Implement subscriber count when subscribers table is ready
+					const subscriberCount = 0;
+
+					return {
+						...page,
+						monitorsCount: monitorCount,
+						subscribers: subscriberCount,
+					};
+				}),
+			);
+
+			return pagesWithCounts;
+		}),
 
 	create: protectedProcedure
 		.input(

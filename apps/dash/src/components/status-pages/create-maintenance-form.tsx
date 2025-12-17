@@ -54,9 +54,9 @@ const formSchema = z.object({
 	title: z.string().min(1, "Title is required"),
 	description: z.string().min(1, "Description is required"),
 	status: z.enum(["scheduled", "in_progress", "completed"]),
-	startAt: z.date({ required_error: "Start time is required" }),
-	endAt: z.date({ required_error: "End time is required" }),
-	monitorIds: z.array(z.string()).default([]),
+	startAt: z.date(),
+	endAt: z.date(),
+	monitorIds: z.array(z.string()),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -80,6 +80,8 @@ export function CreateMaintenanceForm({
 			description: "",
 			status: "scheduled",
 			monitorIds: [],
+			startAt: new Date(),
+			endAt: new Date(Date.now() + 60 * 60 * 1000),
 		},
 	});
 

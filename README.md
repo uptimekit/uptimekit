@@ -24,7 +24,7 @@
 <br/>
 
 > [!CAUTION]
-> This project is not ready for use. It is still in development and may not work as expected.
+> This project is in early stage of development and some problems can occur. Please open issue for all bugs and feature requests.
 
 ## ✨ Features
 
@@ -64,7 +64,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 1.  **Clone the repository**
 
     ```bash
-    git clone https://github.com/yourusername/uptimekit.git
+    git clone https://github.com/stripsior/uptimekit.git
     cd uptimekit
     ```
 
@@ -105,6 +105,7 @@ uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application
 │   ├── status-page/   # Public Status Page application
+│   ├── worker/        # Worker application
 │   └── docs/          # Documentation site
 ├── packages/
 │   ├── api/           # Shared API definition & logic

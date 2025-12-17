@@ -73,12 +73,12 @@ uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application (Next.js)
 │   ├── status-page/   # Public Status Page application (Next.js)
+│   ├── worker/        # Worker application (Node.js)
 │   └── docs/          # Documentation (Next.js)
 ├── packages/
 │   ├── api/           # Shared API definition & logic (oRPC)
 │   ├── auth/          # Authentication configuration (Better-Auth)
 │   ├── db/            # Database schema & Drizzle config
-│   ├── ui/            # Shared UI components & Tailwind config
 │   └── config/        # Shared configuration (TS, ESLint, etc.)
 └── ...
 ```

@@ -1,14 +1,20 @@
-import cron from "node-cron";
 import dotenv from "dotenv";
+import cron from "node-cron";
 import { ApiClient, type MonitorConfig } from "./api-client.js";
-import { registry } from "./monitors/registry.js";
 import { HttpMonitor } from "./monitors/http.js";
+import { HttpJsonMonitor } from "./monitors/http-json.js";
+import { IcmpMonitor } from "./monitors/icmp.js";
+import { KeywordMonitor } from "./monitors/keyword.js";
+import { registry } from "./monitors/registry.js";
+import { TcpMonitor } from "./monitors/tcp.js";
 
 dotenv.config();
 
-// Register monitors
 registry.register("http", new HttpMonitor());
-// registry.register("tcp", new TcpMonitor()); // To be implemented
+registry.register("keyword", new KeywordMonitor());
+registry.register("http-json", new HttpJsonMonitor());
+registry.register("tcp", new TcpMonitor());
+registry.register("icmp", new IcmpMonitor());
 
 async function main() {
 	const apiKey = process.env.WORKER_API_KEY;
@@ -23,10 +29,8 @@ async function main() {
 
 	console.log("Worker started. Scheduling checks every minute.");
 
-	// Run immediately on startup
 	await tick(api);
 
-	// Schedule cron
 	cron.schedule("* * * * *", () => {
 		tick(api);
 	});
@@ -35,13 +39,11 @@ async function main() {
 async function tick(api: ApiClient) {
 	console.log(`[${new Date().toISOString()}] Starting tick...`);
 
-	// 1. Heartbeat to get config
 	const monitors = await api.heartbeat();
 	console.log(`Received ${monitors.length} monitors.`);
 
 	if (monitors.length === 0) return;
 
-	// 2. Run checks
 	const results = await Promise.all(
 		monitors.map(async (monitor: MonitorConfig) => {
 			const checker = registry.get(monitor.type);
@@ -59,16 +61,13 @@ async function tick(api: ApiClient) {
 		}),
 	);
 
-	// Filter nulls
 	const validResults = results.filter((r) => r !== null);
 
-	// 3. Push events
 	if (validResults.length > 0) {
 		await api.pushEvents(validResults);
 		console.log(`Pushed ${validResults.length} events.`);
 	}
 
-	// 4. Process maintenance updates
 	await api.processMaintenance();
 }
 

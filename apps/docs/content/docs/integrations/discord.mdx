@@ -1,0 +1,38 @@
+---
+title: Discord Integration
+description: Receive incident alerts in Discord
+---
+
+The Discord integration allows you to receive real-time notifications about incidents directly in a Discord channel.
+
+## Configuration
+
+To set up the Discord integration, you need to provide the following configuration:
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| **Webhook URL** | The webhook URL from your Discord channel settings. | Yes |
+
+### How to get a Webhook URL
+
+1. Open your Discord server and navigate to the channel where you want to receive notifications.
+2. Click on the **Edit Channel** (gear icon) next to the channel name.
+3. Go to **Integrations** > **Webhooks**.
+4. Click **New Webhook**.
+5. Customize the name and avatar if desired, then click **Copy Webhook URL**.
+
+### Setup in UptimeKit
+
+1. Go to **Settings > Integrations** in your UptimeKit dashboard.
+2. Find **Discord** in the list and click **Configure**.
+3. Paste the copied **Webhook URL** into the field.
+4. Click **Save Changes**.
+
+## Events
+
+You will be notified for the following events:
+
+- **Incident Created**: When a new incident is reported.
+- **Incident Acknowledged**: When a team member acknowledges an incident.
+- **Incident Updated**: When a comment or update is added.
+- **Incident Resolved**: When the incident is marked as resolved.

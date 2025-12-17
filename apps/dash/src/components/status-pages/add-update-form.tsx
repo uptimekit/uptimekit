@@ -1,29 +1,13 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ExternalLink, X } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Check, X, ExternalLink } from "lucide-react";
+import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
 	Command,
 	CommandEmpty,
@@ -33,24 +17,38 @@ import {
 	CommandList,
 } from "@/components/ui/command";
 import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 const formSchema = z.object({
 	status: z.enum(["investigating", "identified", "monitoring", "resolved"]),
 	message: z.string().min(1, "Message is required"),
-	monitors: z
-		.array(
-			z.object({
-				id: z.string(),
-				status: z.string(),
-			}),
-		)
-		.default([]),
+	monitors: z.array(
+		z.object({
+			id: z.string(),
+			status: z.string(),
+		}),
+	),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -103,7 +101,9 @@ export function AddUpdateForm({
 		onSuccess: () => {
 			toast.success("Update posted successfully");
 			queryClient.invalidateQueries({
-				queryKey: orpc.statusUpdates.get.key({ statusPageId, reportId }),
+				queryKey: orpc.statusUpdates.get.key({
+					input: { statusPageId, reportId },
+				}),
 			});
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.list.key(),
@@ -138,7 +138,7 @@ export function AddUpdateForm({
 							<FormItem>
 								<div className="flex items-center justify-between">
 									<FormLabel>Message</FormLabel>
-									<span className="text-xs text-muted-foreground">
+									<span className="text-muted-foreground text-xs">
 										Markdown supported
 									</span>
 								</div>
@@ -165,7 +165,7 @@ export function AddUpdateForm({
 									defaultValue={field.value}
 								>
 									<FormControl>
-										<SelectTrigger>
+										<SelectTrigger className="w-full">
 											<SelectValue placeholder="Select status" />
 										</SelectTrigger>
 									</FormControl>
@@ -184,7 +184,7 @@ export function AddUpdateForm({
 
 				<div className="space-y-4">
 					<div className="flex items-center justify-between">
-						<h3 className="font-medium text-sm text-foreground">
+						<h3 className="font-medium text-foreground text-sm">
 							Affected Services
 						</h3>
 						<Popover>

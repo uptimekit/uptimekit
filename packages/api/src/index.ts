@@ -1,4 +1,9 @@
 import { ORPCError, os } from "@orpc/server";
+
+export * from "./pkg/integrations/definitions/discord";
+export * from "./pkg/integrations/definitions/webhook";
+export * from "./pkg/integrations/registry";
+
 import type { Context } from "./context";
 
 export const o = os.$context<Context>();

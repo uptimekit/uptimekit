@@ -1,13 +1,14 @@
+import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import {
 	incident,
 	incidentActivity,
 	incidentMonitor,
 } from "@uptimekit/db/schema/incidents";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
+import { eventBus } from "../lib/events";
 
 export const incidentsRouter = {
 	list: protectedProcedure
@@ -16,18 +17,39 @@ export const incidentsRouter = {
 				limit: z.number().default(50),
 				offset: z.number().default(0),
 				status: z.enum(["open", "resolved", "all"]).default("all"),
+				q: z.string().optional(),
+				severity: z.enum(["minor", "major", "critical"]).optional(),
+				type: z.enum(["manual", "automatic"]).optional(),
 			}),
 		)
-		.handler(async ({ input }) => {
-			const filters = [];
+		.handler(async ({ input, context }) => {
+			const filters = [
+				eq(
+					incident.organizationId,
+					context.session.session.activeOrganizationId!,
+				),
+			];
 			if (input.status === "open") {
 				filters.push(isNull(incident.resolvedAt));
 			} else if (input.status === "resolved") {
 				filters.push(sql`${incident.resolvedAt} IS NOT NULL`);
 			}
 
+			if (input.q) {
+				filters.push(ilike(incident.title, `%${input.q}%`));
+			}
+
+			if (input.severity) {
+				filters.push(eq(incident.severity, input.severity));
+			}
+
+			if (input.type) {
+				filters.push(eq(incident.type, input.type));
+			}
+
 			const items = await db.query.incident.findMany({
-				where: filters.length > 0 ? and(...filters) : undefined,
+				where: and(...filters),
+
 				limit: input.limit,
 				offset: input.offset,
 				orderBy: [desc(incident.createdAt)],
@@ -123,6 +145,14 @@ export const incidentsRouter = {
 				});
 			});
 
+			eventBus.emit("incident.created", {
+				incidentId: id,
+				organizationId: context.session.session.activeOrganizationId!,
+				title: input.title,
+				description: input.description,
+				severity: input.severity,
+			});
+
 			return { id };
 		}),
 
@@ -162,6 +192,14 @@ export const incidentsRouter = {
 				});
 			});
 
+			eventBus.emit("incident.acknowledged", {
+				incidentId: input.id,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				description: existing.description,
+				severity: existing.severity as any,
+			});
+
 			return { success: true };
 		}),
 
@@ -199,6 +237,14 @@ export const incidentsRouter = {
 				});
 			});
 
+			eventBus.emit("incident.resolved", {
+				incidentId: input.id,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				description: existing.description,
+				severity: existing.severity as any,
+			});
+
 			return { success: true };
 		}),
 
@@ -219,6 +265,14 @@ export const incidentsRouter = {
 				type: "comment",
 				createdAt: now,
 				userId: context.session.user.id,
+			});
+
+			eventBus.emit("incident.comment_added", {
+				incidentId: input.incidentId,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				message: input.message,
+				severity: existing.severity as any,
 			});
 
 			return { success: true };

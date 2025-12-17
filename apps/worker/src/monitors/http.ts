@@ -1,6 +1,6 @@
-import { BaseMonitor, type MonitorResult } from "./registry.js";
-import type { MonitorConfig } from "../api-client.js";
 import ky from "ky";
+import type { MonitorConfig } from "../api-client.js";
+import { BaseMonitor, type MonitorResult } from "./registry.js";
 
 export class HttpMonitor extends BaseMonitor {
 	async check(monitor: MonitorConfig): Promise<MonitorResult> {
@@ -10,7 +10,6 @@ export class HttpMonitor extends BaseMonitor {
 				throw new Error("Missing URL for HTTP monitor");
 			}
 
-			// Validate URL format
 			try {
 				new URL(monitor.url);
 			} catch {
@@ -29,9 +28,40 @@ export class HttpMonitor extends BaseMonitor {
 			const endTime = performance.now();
 			const latency = Math.round(endTime - startTime);
 
-			// Determine status based on config later (e.g. expected status codes)
-			// For now, 2xx is up.
-			const isUp = response.status >= 200 && response.status < 300;
+			let isUp = false;
+			if (monitor.acceptedStatusCodes) {
+				const ranges = monitor.acceptedStatusCodes
+					.split(",")
+					.map((s) => s.trim());
+				for (const range of ranges) {
+					if (range.includes("-")) {
+						const parts = range.split("-").map((p) => Number(p.trim()));
+						if (parts.length === 2) {
+							const min = parts[0];
+							const max = parts[1];
+							if (
+								min !== undefined &&
+								max !== undefined &&
+								!Number.isNaN(min) &&
+								!Number.isNaN(max) &&
+								response.status >= min &&
+								response.status <= max
+							) {
+								isUp = true;
+								break;
+							}
+						}
+					} else {
+						const code = Number(range);
+						if (!Number.isNaN(code) && response.status === code) {
+							isUp = true;
+							break;
+						}
+					}
+				}
+			} else {
+				isUp = response.status >= 200 && response.status < 300;
+			}
 
 			return {
 				monitorId: monitor.id,

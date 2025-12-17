@@ -1,14 +1,14 @@
+import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
+import { statusPage } from "@uptimekit/db/schema/status-pages";
 import {
 	statusPageReport,
 	statusPageReportMonitor,
 	statusPageReportUpdate,
 } from "@uptimekit/db/schema/status-updates";
-import { statusPage } from "@uptimekit/db/schema/status-pages";
-import { eq, and, desc } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
 
 export const statusUpdatesRouter = {
 	list: protectedProcedure
@@ -289,6 +289,20 @@ export const statusUpdatesRouter = {
 				statusPageId: z.string(),
 				updateId: z.string(),
 				message: z.string().min(1),
+				status: z.enum([
+					"investigating",
+					"identified",
+					"monitoring",
+					"resolved",
+				]),
+				monitors: z
+					.array(
+						z.object({
+							id: z.string(),
+							status: z.string(),
+						}),
+					)
+					.default([]),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -300,8 +314,7 @@ export const statusUpdatesRouter = {
 				});
 			}
 
-			// Verify ownership via status page lookup (indirectly)
-			// We can join or just query status page first. Querying status page is safer/easier reusing existing logic.
+			// Verify ownership via status page lookup
 			const page = await db.query.statusPage.findFirst({
 				where: and(
 					eq(statusPage.id, input.statusPageId),
@@ -312,15 +325,6 @@ export const statusUpdatesRouter = {
 			if (!page) {
 				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
 			}
-
-			// Verify the update exists and belongs to a report on this status page
-			// We can do a join or simple two-step check.
-			// Let's rely on the ID being unique and just check if it exists,
-			// but for security we should ensure it links back to the status page owned by the org.
-			// Ideally we query the update, join report, join status page.
-			// For now, simpler: check if update exists, get reportId, check report, check status page.
-			// OR just assume if they have the IDs they can edit if they own the status page.
-			// But `updateId` is globally unique. Let's strictly verify hierarchy.
 
 			const update = await db.query.statusPageReportUpdate.findFirst({
 				where: eq(statusPageReportUpdate.id, input.updateId),
@@ -339,12 +343,43 @@ export const statusUpdatesRouter = {
 				});
 			}
 
-			await db
-				.update(statusPageReportUpdate)
-				.set({
-					message: input.message,
-				})
-				.where(eq(statusPageReportUpdate.id, input.updateId));
+			const now = new Date();
+
+			await db.transaction(async (tx) => {
+				// 1. Update the update record
+				await tx
+					.update(statusPageReportUpdate)
+					.set({
+						message: input.message,
+						status: input.status,
+					})
+					.where(eq(statusPageReportUpdate.id, input.updateId));
+
+				// 2. Update the parent report status
+				await tx
+					.update(statusPageReport)
+					.set({
+						status: input.status,
+						updatedAt: now,
+						resolvedAt: input.status === "resolved" ? now : null,
+					})
+					.where(eq(statusPageReport.id, update.reportId));
+
+				// 3. Update monitor statuses
+				await tx
+					.delete(statusPageReportMonitor)
+					.where(eq(statusPageReportMonitor.reportId, update.reportId));
+
+				if (input.monitors.length > 0) {
+					await tx.insert(statusPageReportMonitor).values(
+						input.monitors.map((m) => ({
+							reportId: update.reportId,
+							monitorId: m.id,
+							status: m.status,
+						})),
+					);
+				}
+			});
 
 			return { success: true };
 		}),

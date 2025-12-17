@@ -1,42 +1,65 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { StatusDot, type StatusType } from "./status-indicator";
 
-interface IncidentUpdate {
+// We need to match the shape coming from db-queries
+// Since we don't have strict shared types exported for the query result easily available without type generation build step running,
+// we'll define a compatible interface or use 'any' if we must, but let's try to match schema.
+
+interface IncidentActivity {
 	id: string;
-	status: "investigating" | "identified" | "monitoring" | "resolved";
 	message: string;
-	timestamp: Date;
+	createdAt: Date;
+	type: string;
+}
+
+interface IncidentMonitor {
+	monitor: {
+		name: string;
+	};
 }
 
 interface Incident {
 	id: string;
 	title: string;
-	status: StatusType;
-	updates: IncidentUpdate[];
-	affectedServices: string[];
-	startedAt: Date;
-	resolvedAt?: Date;
+	status: string; // 'investigating', 'identified', 'monitoring', 'resolved'
+	severity: string; // 'minor', 'major', 'critical'
+	activities: IncidentActivity[];
+	monitors: IncidentMonitor[];
+	createdAt: Date;
+	resolvedAt?: Date | null;
 }
 
 interface IncidentCardProps {
 	incident: Incident;
 	isExpanded?: boolean;
 	onToggle?: () => void;
+	detailsLink?: string;
 	className?: string;
 }
 
-const updateStatusColors: Record<IncidentUpdate["status"], string> = {
-	investigating: "text-status-major-outage",
-	identified: "text-status-partial-outage",
-	monitoring: "text-status-degraded",
-	resolved: "text-status-operational",
-};
+// Map severity to StatusDot type
+function getSeverityStatus(severity: string): StatusType {
+	switch (severity) {
+		case "critical":
+			return "major_outage";
+		case "major":
+			return "partial_outage";
+		case "minor":
+			return "degraded";
+		case "maintenance":
+			return "maintenance";
+		default:
+			return "unknown"; // or 'operational' if resolved?
+	}
+}
 
 export function IncidentCard({
 	incident,
 	isExpanded = false,
 	onToggle,
+	detailsLink,
 	className,
 }: IncidentCardProps) {
 	return (
@@ -47,19 +70,15 @@ export function IncidentCard({
 				className,
 			)}
 		>
-			<button
-				type="button"
-				onClick={onToggle}
-				className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-muted/50"
-			>
+			<div className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-muted/50">
 				<div className="flex items-center gap-3">
-					<StatusDot status={incident.status} />
+					<StatusDot status={getSeverityStatus(incident.severity)} />
 					<div>
 						<h3 className="font-semibold text-card-foreground">
 							{incident.title}
 						</h3>
 						<p className="mt-0.5 text-muted-foreground text-xs">
-							{incident.startedAt.toLocaleDateString("en-US", {
+							{new Date(incident.createdAt).toLocaleDateString("en-US", {
 								month: "short",
 								day: "numeric",
 								year: "numeric",
@@ -68,147 +87,118 @@ export function IncidentCard({
 						</p>
 					</div>
 				</div>
-				{isExpanded ? (
-					<ChevronUp className="h-5 w-5 text-muted-foreground" />
-				) : (
-					<ChevronDown className="h-5 w-5 text-muted-foreground" />
-				)}
-			</button>
 
-			{isExpanded && (
+				{detailsLink ? (
+					<Link
+						href={detailsLink as any}
+						className="rounded-full p-2 transition-colors hover:bg-muted"
+					>
+						<ChevronDown className="-rotate-90 h-5 w-5 text-muted-foreground" />
+					</Link>
+				) : (
+					<button
+						type="button"
+						onClick={onToggle}
+						className="rounded-full p-2 transition-colors hover:bg-muted"
+					>
+						{isExpanded ? (
+							<ChevronUp className="h-5 w-5 text-muted-foreground" />
+						) : (
+							<ChevronDown className="h-5 w-5 text-muted-foreground" />
+						)}
+					</button>
+				)}
+			</div>
+
+			{isExpanded && !detailsLink && (
 				<div className="animate-slide-up border-border border-t px-5 pt-4 pb-5">
 					{/* Affected services */}
-					<div className="mb-4">
-						<h4 className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-							Affected Services
-						</h4>
-						<div className="flex flex-wrap gap-2">
-							{incident.affectedServices.map((service) => (
-								<span
-									key={service}
-									className="inline-flex items-center rounded-md bg-secondary px-2.5 py-1 font-medium text-secondary-foreground text-xs"
-								>
-									{service}
-								</span>
-							))}
+					{incident.monitors && incident.monitors.length > 0 && (
+						<div className="mb-4">
+							<h4 className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
+								Affected Services
+							</h4>
+							<div className="flex flex-wrap gap-2">
+								{incident.monitors.map((m) => (
+									<span
+										key={m.monitor.name}
+										className="inline-flex items-center rounded-md bg-secondary px-2.5 py-1 font-medium text-secondary-foreground text-xs"
+									>
+										{m.monitor.name}
+									</span>
+								))}
+							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Updates timeline */}
-					<div>
-						<h4 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-							Updates
-						</h4>
-						<div className="space-y-4">
-							{incident.updates.map((update, index) => (
-								<div key={update.id} className="relative pl-6">
-									{/* Timeline line */}
-									{index < incident.updates.length - 1 && (
-										<div className="absolute top-4 bottom-0 left-[7px] w-px bg-border" />
-									)}
-									{/* Timeline dot */}
+					{incident.activities && incident.activities.length > 0 && (
+						<div>
+							<h4 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
+								Updates
+							</h4>
+							<div className="">
+								{incident.activities.map((activity, index) => (
 									<div
-										className={cn(
-											"absolute top-1.5 left-0 h-3.5 w-3.5 rounded-full border-2 border-background",
-											update.status === "resolved"
-												? "bg-status-operational"
-												: update.status === "monitoring"
-													? "bg-status-degraded"
-													: update.status === "identified"
-														? "bg-status-partial-outage"
-														: "bg-status-major-outage",
+										key={activity.id}
+										className="relative pb-6 pl-6 last:pb-0"
+									>
+										{/* Timeline line */}
+										{incident.activities.length > 1 && (
+											<div
+												className="absolute left-[7px] w-px bg-border"
+												style={{
+													top: index === 0 ? "13px" : "0",
+													bottom:
+														index === incident.activities.length - 1
+															? "auto"
+															: "0",
+													height:
+														index === incident.activities.length - 1
+															? "13px"
+															: "auto",
+												}}
+											/>
 										)}
-									/>
-									<div>
-										<div className="mb-1 flex items-center gap-2">
-											<span
-												className={cn(
-													"font-semibold text-xs uppercase",
-													updateStatusColors[update.status],
-												)}
-											>
-												{update.status}
-											</span>
-											<span className="text-muted-foreground text-xs">
-												{update.timestamp.toLocaleString("en-US", {
-													month: "short",
-													day: "numeric",
-													hour: "numeric",
-													minute: "2-digit",
-												})}
-											</span>
+										{/* Timeline dot */}
+										<div
+											className={cn(
+												"absolute top-1.5 left-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-card-foreground",
+												// Since activity doesn't store status, we use a neutral dot or maybe based on incident status?
+												// Let's use neutral for generic comments/activities
+												"bg-muted-foreground/30",
+											)}
+										/>
+										<div>
+											<div className="mb-1 flex items-center gap-2">
+												{/* 
+                                                    If activity had a 'status' field we'd label it. 
+                                                    For now just showing timestamp. 
+                                                */}
+												<span className="text-muted-foreground text-xs">
+													{new Date(activity.createdAt).toLocaleString(
+														"en-US",
+														{
+															month: "short",
+															day: "numeric",
+															hour: "numeric",
+															minute: "2-digit",
+															timeZone: "UTC", // Or user local? Next.js server side uses UTC by default commonly
+														},
+													)}
+												</span>
+											</div>
+											<p className="text-card-foreground text-sm">
+												{activity.message}
+											</p>
 										</div>
-										<p className="text-card-foreground text-sm">
-											{update.message}
-										</p>
 									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
-					</div>
+					)}
 				</div>
 			)}
 		</div>
 	);
-}
-
-export function generateMockIncidents(): Incident[] {
-	const now = new Date();
-
-	return [
-		{
-			id: "1",
-			title: "API Response Time Degradation",
-			status: "degraded",
-			affectedServices: ["API Gateway", "Authentication Service"],
-			startedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-			updates: [
-				{
-					id: "1-3",
-					status: "monitoring",
-					message:
-						"We have deployed a fix and are monitoring the situation. Response times are improving.",
-					timestamp: new Date(now.getTime() - 30 * 60 * 1000),
-				},
-				{
-					id: "1-2",
-					status: "identified",
-					message:
-						"The issue has been identified as a database connection pool exhaustion. We are working on a fix.",
-					timestamp: new Date(now.getTime() - 1 * 60 * 60 * 1000),
-				},
-				{
-					id: "1-1",
-					status: "investigating",
-					message:
-						"We are investigating reports of increased API response times.",
-					timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-				},
-			],
-		},
-		{
-			id: "2",
-			title: "Scheduled Database Maintenance",
-			status: "maintenance",
-			affectedServices: ["Database", "Data Processing"],
-			startedAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-			resolvedAt: new Date(now.getTime() - 20 * 60 * 60 * 1000),
-			updates: [
-				{
-					id: "2-2",
-					status: "resolved",
-					message:
-						"Maintenance completed successfully. All systems are back to normal.",
-					timestamp: new Date(now.getTime() - 20 * 60 * 60 * 1000),
-				},
-				{
-					id: "2-1",
-					status: "investigating",
-					message:
-						"Starting scheduled database maintenance. Some services may experience brief interruptions.",
-					timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000),
-				},
-			],
-		},
-	];
 }

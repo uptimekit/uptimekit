@@ -1,45 +1,37 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
 import {
+	AlertOctagon,
+	AlertTriangle,
 	ArrowLeft,
 	CheckCircle,
-	AlertTriangle,
-	AlertOctagon,
 	Pencil,
-	Loader2,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { Button } from "@/components/ui/button";
-import { orpc, client } from "@/utils/orpc";
-import { Badge } from "@/components/ui/badge";
 import { AddUpdateForm } from "@/components/status-pages/add-update-form";
-
+import { EditUpdateForm } from "@/components/status-pages/edit-update-form";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
-	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { orpc } from "@/utils/orpc";
 
 export default function IncidentDetailsPage() {
 	const params = useParams();
 	const router = useRouter();
-	const queryClient = useQueryClient();
 	const statusPageId = params.statusPageId as string;
 	const reportId = params.reportId as string;
 
 	const [editingUpdate, setEditingUpdate] = useState<{
 		id: string;
 		message: string;
+		status: string;
 	} | null>(null);
 
 	const { data: report, isLoading } = useQuery(
@@ -47,25 +39,6 @@ export default function IncidentDetailsPage() {
 			input: { statusPageId, reportId },
 		}),
 	);
-
-	const editMutation = useMutation({
-		mutationFn: (data: { updateId: string; message: string }) =>
-			client.statusUpdates.editUpdate({
-				statusPageId,
-				updateId: data.updateId,
-				message: data.message,
-			}),
-		onSuccess: () => {
-			toast.success("Update edited successfully");
-			queryClient.invalidateQueries({
-				queryKey: orpc.statusUpdates.get.key({ statusPageId, reportId }),
-			});
-			setEditingUpdate(null);
-		},
-		onError: (error: Error) => {
-			toast.error(`Failed to edit update: ${error.message}`);
-		},
-	});
 
 	const getSeverityIcon = (severity: string, status: string) => {
 		if (status === "resolved") {
@@ -81,6 +54,21 @@ export default function IncidentDetailsPage() {
 				return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
 			default:
 				return <CheckCircle className="h-5 w-5 text-green-500" />;
+		}
+	};
+
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case "investigating":
+				return "bg-red-500 ring-red-100 dark:ring-red-900/30";
+			case "identified":
+				return "bg-orange-500 ring-orange-100 dark:ring-orange-900/30";
+			case "monitoring":
+				return "bg-blue-500 ring-blue-100 dark:ring-blue-900/30";
+			case "resolved":
+				return "bg-green-500 ring-green-100 dark:ring-green-900/30";
+			default:
+				return "bg-gray-500 ring-gray-100 dark:ring-gray-900/30";
 		}
 	};
 
@@ -109,11 +97,11 @@ export default function IncidentDetailsPage() {
 					<ArrowLeft className="h-4 w-4" />
 				</Button>
 				<div>
-					<h2 className="text-xl font-medium flex items-center gap-2">
+					<h2 className="flex items-center gap-2 font-medium text-xl">
 						{getSeverityIcon(report.severity, report.status)}
 						{report.title}
 					</h2>
-					<p className="text-sm text-muted-foreground">
+					<p className="text-muted-foreground text-sm">
 						Started on {new Date(report.createdAt).toLocaleString()}
 					</p>
 				</div>
@@ -140,35 +128,38 @@ export default function IncidentDetailsPage() {
 
 				<div className="space-y-6">
 					<h3 className="font-medium text-lg">Timeline</h3>
-					<div className="relative space-y-8 border-l-2 pl-6 ml-3">
+					<div className="relative ml-3 space-y-8 border-l-2 pl-6">
 						{report.updates.map((update, index) => (
-							<div key={update.id} className="relative group">
+							<div key={update.id} className="group relative">
 								{/* Mask the timeline line for the last item */}
 								{index === report.updates.length - 1 && (
 									<div
-										className="absolute -left-[27px] top-3.5 h-full w-2 bg-background"
+										className="-left-[27px] absolute top-3.5 h-full w-2 bg-background"
 										aria-hidden="true"
 									/>
 								)}
-								<div className="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full bg-border ring-4 ring-background" />
+								<div
+									className={`-left-[31px] absolute top-1.5 h-3 w-3 rounded-full ring-4 ${getStatusColor(update.status)}`}
+								/>
 								<div className="mb-2 flex flex-col gap-1">
 									<div className="flex items-center justify-between gap-2">
 										<div className="flex items-center gap-2">
 											<Badge variant="secondary" className="text-xs uppercase">
 												{update.status}
 											</Badge>
-											<span className="text-xs text-muted-foreground">
+											<span className="text-muted-foreground text-xs">
 												{new Date(update.createdAt).toLocaleString()}
 											</span>
 										</div>
 										<Button
 											variant="ghost"
 											size="icon"
-											className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+											className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
 											onClick={() =>
 												setEditingUpdate({
 													id: update.id,
 													message: update.message,
+													status: update.status,
 												})
 											}
 										>
@@ -176,7 +167,7 @@ export default function IncidentDetailsPage() {
 										</Button>
 									</div>
 								</div>
-								<div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+								<div className="prose prose-sm dark:prose-invert max-w-none text-sm">
 									<p className="whitespace-pre-wrap leading-relaxed">
 										{update.message}
 									</p>
@@ -191,53 +182,27 @@ export default function IncidentDetailsPage() {
 				open={!!editingUpdate}
 				onOpenChange={(open) => !open && setEditingUpdate(null)}
 			>
-				<DialogContent>
+				<DialogContent className="max-w-xl">
 					<DialogHeader>
 						<DialogTitle>Edit Update</DialogTitle>
-						<DialogDescription>
-							Change the message for this timeline update.
-						</DialogDescription>
 					</DialogHeader>
-					<div className="grid gap-4 py-4">
-						<div className="grid gap-2">
-							<Label htmlFor="message">Message</Label>
-							<Textarea
-								id="message"
-								value={editingUpdate?.message || ""}
-								onChange={(e) =>
-									setEditingUpdate((prev) =>
-										prev ? { ...prev, message: e.target.value } : null,
-									)
-								}
-								rows={5}
-							/>
-						</div>
-					</div>
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setEditingUpdate(null)}
-							disabled={editMutation.isPending}
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={() => {
-								if (editingUpdate) {
-									editMutation.mutate({
-										updateId: editingUpdate.id,
-										message: editingUpdate.message,
-									});
-								}
+					{editingUpdate && (
+						<EditUpdateForm
+							statusPageId={statusPageId}
+							updateId={editingUpdate.id}
+							reportId={reportId}
+							initialValues={{
+								message: editingUpdate.message,
+								status: editingUpdate.status,
+								monitors: report.affectedMonitors.map((m) => ({
+									id: m.monitorId,
+									status: m.status || "degraded",
+								})),
 							}}
-							disabled={editMutation.isPending}
-						>
-							{editMutation.isPending && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							)}
-							Save custom message
-						</Button>
-					</DialogFooter>
+							onSuccess={() => setEditingUpdate(null)}
+							onCancel={() => setEditingUpdate(null)}
+						/>
+					)}
 				</DialogContent>
 			</Dialog>
 		</div>

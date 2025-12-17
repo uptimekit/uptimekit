@@ -3,7 +3,7 @@ name: Production Release
 on:
   push:
     branches:
-      - main
+      - release
 
 jobs:
   release:
@@ -35,8 +35,9 @@ jobs:
       - name: Version Packages
         run: pnpm changeset version
 
-      - name: Build
-        run: pnpm build
+      - name: Generate Release Info
+        id: get_version
+        run: node scripts/generate-release-info.js
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -79,5 +80,22 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: release versions [skip ci]"
-          branch: main
+          branch: release
           tagging_message: "v${{ steps.get_version.outputs.version }}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: steps.get_version.outputs.version != ''
+        with:
+          tag_name: "v${{ steps.get_version.outputs.version }}"
+          body_path: release_notes.md
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync to development
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin development
+          git checkout development
+          git merge --no-ff -X theirs origin/release -m "chore: sync release to development"
+          git push origin development

@@ -1,11 +1,14 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
 	BarChart,
+	Check,
 	ChevronDown,
 	ExternalLink,
 	Filter,
 	Globe,
+	Loader2,
 	Lock,
 	MoreHorizontal,
 	Plus,
@@ -13,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -22,17 +26,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { useState } from "react";
-import { CreateStatusPageForm } from "./create-form";
 import { orpc } from "@/utils/orpc";
-import { useQuery } from "@tanstack/react-query";
+import { CreateStatusPageForm } from "./create-form";
 
 export function StatusPagesTable() {
 	const router = useRouter();
 	const [createOpen, setCreateOpen] = useState(false);
-	const { data: statusPages, isLoading } = useQuery(
-		orpc.statusPages.list.queryOptions({}),
+	const [publicFilter, setPublicFilter] = useState<boolean | undefined>(
+		undefined,
 	);
+	const [search, setSearch] = useState("");
+	const [debouncedSearch, setDebouncedSearch] = useState("");
+
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearch(search);
+		}, 500);
+		return () => clearTimeout(timer);
+	}, [search]);
+
+	const { data: statusPages, isLoading } = useQuery(
+		orpc.statusPages.list.queryOptions({
+			input: {
+				q: debouncedSearch || undefined,
+				public: publicFilter,
+			},
+		}),
+	);
+
+	const clearFilters = () => {
+		setSearch("");
+		setPublicFilter(undefined);
+	};
+
+	const activeFilterCount = [publicFilter !== undefined].filter(Boolean).length;
 
 	return (
 		<div className="space-y-4">
@@ -42,11 +69,62 @@ export function StatusPagesTable() {
 				<div className="flex items-center gap-2">
 					<div className="relative w-64">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
-						<Input placeholder="Search" className="pl-8" />
+						<Input
+							placeholder="Search status pages..."
+							className="pl-8"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+						/>
 					</div>
-					<Button variant="outline" size="icon">
-						<Filter className="h-4 w-4" />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="icon" className="relative">
+								<Filter className="h-4 w-4" />
+								{activeFilterCount > 0 && (
+									<span className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+										{activeFilterCount}
+									</span>
+								)}
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56 p-2">
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Visibility
+							</div>
+							<DropdownMenuItem
+								onClick={() => setPublicFilter(undefined)}
+								className="flex justify-between"
+							>
+								All
+								{publicFilter === undefined && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setPublicFilter(true)}
+								className="flex justify-between"
+							>
+								Public
+								{publicFilter === true && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setPublicFilter(false)}
+								className="flex justify-between"
+							>
+								Private
+								{publicFilter === false && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							{publicFilter !== undefined && (
+								<>
+									<div className="my-2 h-px bg-muted" />
+									<DropdownMenuItem
+										onClick={clearFilters}
+										className="justify-center text-red-500 hover:text-red-600"
+									>
+										Clear filters
+									</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 					<Button
 						className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100"
 						onClick={() => setCreateOpen(true)}
@@ -67,7 +145,7 @@ export function StatusPagesTable() {
 						{isLoading ? (
 							<TableRow>
 								<TableCell colSpan={3} className="py-8 text-center">
-									Loading...
+									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
 						) : statusPages?.length === 0 ? (
@@ -79,13 +157,17 @@ export function StatusPagesTable() {
 										</div>
 										<p className="font-medium text-lg">No status pages found</p>
 										<p className="text-muted-foreground text-sm">
-											Get started by creating your first status page.
+											{search || publicFilter !== undefined
+												? "Try adjusting your filters"
+												: "Get started by creating your first status page."}
 										</p>
-										<div className="mt-2">
-											<Button onClick={() => setCreateOpen(true)}>
-												Create status page
-											</Button>
-										</div>
+										{!search && publicFilter === undefined && (
+											<div className="mt-2">
+												<Button onClick={() => setCreateOpen(true)}>
+													Create status page
+												</Button>
+											</div>
+										)}
 									</div>
 								</TableCell>
 							</TableRow>

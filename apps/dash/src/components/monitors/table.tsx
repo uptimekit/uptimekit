@@ -1,7 +1,13 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 import {
+	Check,
 	ChevronDown,
 	ChevronRight,
 	Filter,
+	Loader2,
 	MoreHorizontal,
 	PlayCircle,
 	Plus,
@@ -9,6 +15,8 @@ import {
 	ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -19,9 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client, orpc } from "@/utils/orpc";
-import { toast } from "sonner";
 
 export type MonitorStatus =
 	| "up"
@@ -39,28 +45,246 @@ export interface Monitor {
 	duration: string;
 	usedOn: number;
 	frequency: string;
-	hasIncident?: boolean;
+	hasIncident: boolean;
 	active: boolean;
 }
 
-interface MonitorsTableProps {
-	data: Monitor[];
-}
+export function MonitorsTable() {
+	const [search, setSearch] = useState("");
+	const [activeFilter, setActiveFilter] = useState<boolean | undefined>(
+		undefined,
+	);
+	const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+	const [statusFilter, setStatusFilter] = useState<string | undefined>(
+		undefined,
+	);
 
-export function MonitorsTable({ data }: MonitorsTableProps) {
+	// Debounce search
+	const [debouncedSearch, setDebouncedSearch] = useState("");
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearch(search);
+		}, 500);
+		return () => clearTimeout(timer);
+	}, [search]);
+
+	const { data: monitors, isLoading } = useQuery({
+		...orpc.monitors.list.queryOptions({
+			input: {
+				q: debouncedSearch || undefined,
+				active: activeFilter,
+				type: typeFilter as any,
+				status: statusFilter as any,
+			},
+		}),
+		refetchInterval: 60_000,
+	});
+
+	const tableData: Monitor[] =
+		monitors?.map((m) => ({
+			id: m.id,
+			name: m.name,
+			url: (m.config as { url: string }).url || "",
+			status: (m as any).status || "pending",
+			statusText:
+				(m as any).status === "up"
+					? "Operational"
+					: (m as any).status === "down"
+						? "Downtime"
+						: (m as any).status === "degraded"
+							? "Degraded"
+							: (m as any).status === "maintenance"
+								? "Maintenance"
+								: "Pending",
+			duration: ((monitor: any) => {
+				if (monitor.status === "up") {
+					if (monitor.lastStatusChange) {
+						return formatDistanceToNow(new Date(monitor.lastStatusChange));
+					}
+					if (monitor.createdAt) {
+						return formatDistanceToNow(new Date(monitor.createdAt));
+					}
+				} else if (monitor.lastStatusChange) {
+					return formatDistanceToNow(new Date(monitor.lastStatusChange));
+				}
+				return "0s";
+			})(m),
+			usedOn: (m as any).usedOn || 0,
+			frequency: `${m.interval}s`,
+			hasIncident: false,
+			active: m.active,
+		})) ?? [];
+
+	const clearFilters = () => {
+		setSearch("");
+		setActiveFilter(undefined);
+		setTypeFilter(undefined);
+		setStatusFilter(undefined);
+	};
+
+	const activeFilterCount = [
+		activeFilter !== undefined,
+		typeFilter !== undefined,
+		statusFilter !== undefined,
+	].filter(Boolean).length;
+
 	return (
 		<div className="space-y-4">
-			{/* ... existing header ... */}
 			<div className="flex items-center justify-between">
 				<h1 className="font-bold text-2xl tracking-tight">Monitors</h1>
 				<div className="flex items-center gap-2">
 					<div className="relative w-64">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
-						<Input placeholder="Search" className="pl-8" />
+						<Input
+							placeholder="Search monitors..."
+							className="pl-8"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+						/>
 					</div>
-					<Button variant="outline" size="icon">
-						<Filter className="h-4 w-4" />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="icon" className="relative">
+								<Filter className="h-4 w-4" />
+								{activeFilterCount > 0 && (
+									<span className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+										{activeFilterCount}
+									</span>
+								)}
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56 p-2">
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Status
+							</div>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter(undefined)}
+								className="flex justify-between"
+							>
+								All Statuses
+								{!statusFilter && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("up")}
+								className="flex justify-between"
+							>
+								Up
+								{statusFilter === "up" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("down")}
+								className="flex justify-between"
+							>
+								Down
+								{statusFilter === "down" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("degraded")}
+								className="flex justify-between"
+							>
+								Degraded
+								{statusFilter === "degraded" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setStatusFilter("maintenance")}
+								className="flex justify-between"
+							>
+								Maintenance
+								{statusFilter === "maintenance" && (
+									<Check className="h-4 w-4" />
+								)}
+							</DropdownMenuItem>
+
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Type
+							</div>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter(undefined)}
+								className="flex justify-between"
+							>
+								All Types
+								{!typeFilter && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("http")}
+								className="flex justify-between"
+							>
+								HTTP
+								{typeFilter === "http" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("ping")}
+								className="flex justify-between"
+							>
+								Ping
+								{typeFilter === "ping" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("tcp")}
+								className="flex justify-between"
+							>
+								TCP
+								{typeFilter === "tcp" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("dns")}
+								className="flex justify-between"
+							>
+								DNS
+								{typeFilter === "dns" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setTypeFilter("keyword")}
+								className="flex justify-between"
+							>
+								Keyword
+								{typeFilter === "keyword" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Active
+							</div>
+							<DropdownMenuItem
+								onClick={() => setActiveFilter(undefined)}
+								className="flex justify-between"
+							>
+								All
+								{activeFilter === undefined && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setActiveFilter(true)}
+								className="flex justify-between"
+							>
+								Active
+								{activeFilter === true && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setActiveFilter(false)}
+								className="flex justify-between"
+							>
+								Paused
+								{activeFilter === false && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+
+							{(activeFilter !== undefined ||
+								typeFilter !== undefined ||
+								statusFilter !== undefined) && (
+								<>
+									<div className="my-2 h-px bg-muted" />
+									<DropdownMenuItem
+										onClick={clearFilters}
+										className="justify-center text-red-500 hover:text-red-600"
+									>
+										Clear filters
+									</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 					<Button
 						asChild
 						className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100"
@@ -80,7 +304,13 @@ export function MonitorsTable({ data }: MonitorsTableProps) {
 				</div>
 				<Table>
 					<TableBody>
-						{data.length === 0 ? (
+						{isLoading ? (
+							<TableRow>
+								<TableCell colSpan={6} className="h-24 text-center">
+									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+								</TableCell>
+							</TableRow>
+						) : tableData.length === 0 ? (
 							<TableRow>
 								<TableCell colSpan={6} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
@@ -89,18 +319,28 @@ export function MonitorsTable({ data }: MonitorsTableProps) {
 										</div>
 										<p className="font-medium text-lg">No monitors found</p>
 										<p className="text-muted-foreground text-sm">
-											Get started by creating your first monitor.
+											{search ||
+											activeFilter !== undefined ||
+											typeFilter ||
+											statusFilter
+												? "Try adjusting your filters"
+												: "Get started by creating your first monitor."}
 										</p>
-										<div className="mt-2">
-											<Button asChild>
-												<Link href="/monitors/new">Create monitor</Link>
-											</Button>
-										</div>
+										{!search &&
+											activeFilter === undefined &&
+											!typeFilter &&
+											!statusFilter && (
+												<div className="mt-2">
+													<Button asChild>
+														<Link href="/monitors/new">Create monitor</Link>
+													</Button>
+												</div>
+											)}
 									</div>
 								</TableCell>
 							</TableRow>
 						) : (
-							data.map((monitor) => (
+							tableData.map((monitor) => (
 								<TableRow
 									key={monitor.id}
 									className={cn(

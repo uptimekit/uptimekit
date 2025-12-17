@@ -1,0 +1,117 @@
+---
+title: General Installation
+description: How to install UptimeKit
+---
+
+You can install UptimeKit using Docker Compose (recommended) or by building it from source.
+
+## Docker Compose
+
+This is the easiest way to get UptimeKit up and running. We provide official Docker images for all components.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed on your machine.
+- [Docker Compose](https://docs.docker.com/compose/install/) installed on your machine.
+
+### Setup
+
+1. Create a `docker-compose.yml` file with the following content:
+
+```yaml title="docker-compose.yml"
+services:
+  dash:
+    image: strikx/uptimekit-dash:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
+      - BETTER_AUTH_SECRET=change_me_to_a_secure_random_string
+      - BETTER_AUTH_URL=http://localhost:3000
+      - NEXT_PUBLIC_SELFHOSTED=true
+      - NEXT_PUBLIC_URL=http://localhost:3000
+    depends_on:
+      - db
+    restart: always
+
+  status-page:
+    image: strikx/uptimekit-status-page:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: uptimekit
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  db_data:
+```
+
+2. Generate a secure secret for `BETTER_AUTH_SECRET`. You can use `openssl rand -base64 32` to generate one.
+3. Update the `WORKER_API_KEY` in both `dash` and `worker` services (configure in dashboard settings later if needed or via env).
+4. Run the following command to start the services:
+
+```bash
+docker-compose up -d
+```
+
+Your UptimeKit dashboard will be available at `http://localhost:3000` and the status page at `http://localhost:3001`.
+
+## Manual Build
+
+If you prefer to build UptimeKit from source, follow these steps.
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (version 18 or higher)
+- [pnpm](https://pnpm.io/) package manager
+- [PostgreSQL](https://www.postgresql.org/) database
+
+### Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/strikx/uptimekit.git
+cd uptimekit
+```
+
+2. Install dependencies:
+
+```bash
+pnpm install
+```
+
+3. Configure environment variables.
+   You will need to set up `.env` files for `apps/dash`, `apps/worker`, and `apps/status-page`. Refer to the `.env.example` file in the root or respective directories for required variables.
+
+4. Push the database schema:
+
+```bash
+pnpm run db:push
+```
+
+5. Build the applications:
+
+```bash
+pnpm build
+```
+
+6. Start the applications. You can start them individually or all together using Turbo:
+
+```bash
+pnpm start
+```

@@ -1,5 +1,6 @@
 export * from "./auth";
 export * from "./incidents";
+export * from "./integrations";
 export * from "./maintenance";
 export * from "./monitors";
 export * from "./status-pages";

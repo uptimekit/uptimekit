@@ -1,0 +1,63 @@
+---
+title: Worker Installation
+description: How to install and configure the UptimeKit Worker
+---
+
+## How it works
+
+The Worker checks (polls or listens to) the main UptimeKit Dashboard to fetch the list of monitors it needs to check. It then executes these checks concurrently and reports the status (Up/Down) and response time back to the Dashboard.
+
+This architecture allows you to distribute monitoring agents worldwide without needing to replicate the entire database or dashboard infrastructure.
+
+## Installation
+
+### Using Docker (Recommended)
+
+You can run the worker as a standalone container anywhere Docker is available. This is ideal for adding monitoring nodes in different regions.
+
+1. Create a `docker-compose.yml` file (or run via `docker run`):
+
+```yaml title="docker-compose.yml"
+services:
+  worker:
+    image: strikx/uptimekit-worker:latest
+    environment:
+      # The URL where your main UptimeKit Dashboard is reachable
+      - DASHBOARD_URL=https://uptime.yourdomain.com
+      
+      # Get it from admin dashboard settings
+      - WORKER_API_KEY=your_shared_secret_key
+    restart: always
+```
+
+2. Start the worker:
+
+```bash
+docker-compose up -d
+```
+
+### Manual Build
+
+If you are not using Docker, you can run the worker using Node.js:
+
+1. Clone the repository and navigate to the worker app.
+2. Install dependencies (`pnpm install`).
+3. Build the worker (`pnpm build`).
+4. Set the environment variables:
+   ```bash
+   export DASHBOARD_URL=https://uptime.yourdomain.com
+   export WORKER_API_KEY=your_shared_secret_key
+   ```
+5. Start the worker:
+   ```bash
+   pnpm start
+   ```
+
+## Configuration
+
+The Worker relies on the following environment variables:
+
+| Variable | Description | Required |
+| --- | --- | --- |
+| `DASHBOARD_URL` | The full URL of your UptimeKit Dashboard instance. The worker will send HTTP requests to this URL. | Yes |
+| `WORKER_API_KEY` | A secret key used to authenticate the Worker with the Dashboard. This must match the key configured on the Dashboard side. | Yes |
