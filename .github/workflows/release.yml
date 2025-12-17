@@ -101,7 +101,7 @@ jobs:
           git merge --no-ff --allow-unrelated-histories -X theirs origin/release -m "chore: sync release to development"
           
           # Bump version for next cycle to avoid staying on same version
-          pnpm -r exec npm version patch --no-git-tag-version
+          node scripts/bump-version.js
           pnpm install --no-frozen-lockfile
           git add .
           git commit -m "chore: bump version for next development cycle [skip ci]"
