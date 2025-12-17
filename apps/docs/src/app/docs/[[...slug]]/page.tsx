@@ -3,11 +3,11 @@ import {
 	DocsDescription,
 	DocsPage,
 	DocsTitle,
-} from "fumadocs-ui/layouts/docs/page";
+} from "fumadocs-ui/layouts/notebook/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPageImage, source } from "@/lib/source";
+import { source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
@@ -18,7 +18,9 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 	const MDX = page.data.body;
 
 	return (
-		<DocsPage toc={page.data.toc} full={page.data.full}>
+		<DocsPage toc={page.data.toc} tableOfContent={{
+			style: "clerk"
+		}} full={page.data.full}>
 			<DocsTitle>{page.data.title}</DocsTitle>
 			<DocsDescription>{page.data.description}</DocsDescription>
 			<DocsBody>
@@ -48,7 +50,17 @@ export async function generateMetadata(
 		title: page.data.title,
 		description: page.data.description,
 		openGraph: {
-			images: getPageImage(page).url,
+			title: page.data.title,
+			description: page.data.description,
+			url: `/docs/${(await params).slug?.join("/")}`,
+			images: ["https://r2.uptimekit.dev/banners/background.png"],
+			type: "article",
+		},
+		twitter: {
+			card: "summary_large_image",
+			title: page.data.title,
+			description: page.data.description,
+			images: ["https://r2.uptimekit.dev/banners/background.png"],
 		},
 	};
 }

@@ -1,0 +1,10 @@
+{
+    "pages": [
+        "index",
+        "---Installation---",
+        "installation/getting-started",
+        "installation/worker",
+        "sdk",
+        "api"
+    ]
+}
