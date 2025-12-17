@@ -1,13 +1,14 @@
+import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import {
 	monitor,
-	monitorGroup,
 	monitorEvent,
+	monitorGroup,
 } from "@uptimekit/db/schema/monitors";
-import { eq, desc, and, gte, sql } from "drizzle-orm";
+import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
 
 export const monitorsRouter = {
 	list: protectedProcedure.handler(async ({ context }) => {
@@ -23,9 +24,31 @@ export const monitorsRouter = {
 			)
 			.orderBy(desc(monitor.createdAt));
 
+		const usageCounts = await db
+			.select({
+				monitorId: statusPageMonitor.monitorId,
+				count: sql<number>`count(*)`.mapWith(Number),
+			})
+			.from(statusPageMonitor)
+			.innerJoin(monitor, eq(statusPageMonitor.monitorId, monitor.id))
+			.where(
+				eq(
+					monitor.organizationId,
+					context.session.session.activeOrganizationId!,
+				),
+			)
+			.groupBy(statusPageMonitor.monitorId);
+
+		const usageMap = new Map(usageCounts.map((c) => [c.monitorId, c.count]));
+
 		const monitorsWithStatus = await Promise.all(
 			monitors.map(async (row) => {
 				const latestEvent = await db.query.monitorEvent.findFirst({
+					where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
+					orderBy: (t, { desc }) => desc(t.timestamp),
+				});
+
+				const latestChange = await db.query.monitorChange.findFirst({
 					where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
 					orderBy: (t, { desc }) => desc(t.timestamp),
 				});
@@ -35,6 +58,8 @@ export const monitorsRouter = {
 					group: row.monitor_group || null,
 					status: latestEvent?.status || "pending",
 					lastCheck: latestEvent?.timestamp || null,
+					lastStatusChange: latestChange?.timestamp || null,
+					usedOn: usageMap.get(row.monitor.id) || 0,
 				};
 			}),
 		);
@@ -257,7 +282,7 @@ export const monitorsRouter = {
 			}
 
 			const now = new Date();
-			let startDate = new Date();
+			const startDate = new Date();
 			if (input.range === "24h") startDate.setHours(now.getHours() - 24);
 			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
@@ -341,7 +366,7 @@ export const monitorsRouter = {
 				orderBy: (t, { desc }) => desc(t.timestamp),
 			});
 
-			let nextCursor: number | undefined = undefined;
+			let nextCursor: number | undefined;
 			if (changes.length > limit) {
 				const nextItem = changes.pop();
 				nextCursor = nextItem!.timestamp.getTime();
@@ -382,7 +407,7 @@ export const monitorsRouter = {
 			}
 
 			const now = new Date();
-			let startDate = new Date();
+			const startDate = new Date();
 			if (input.range === "24h") startDate.setHours(now.getHours() - 24);
 			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
@@ -516,7 +541,7 @@ export const monitorsRouter = {
 
 				// Re-simulate with robust tracking
 				let simStatus = initialStatus;
-				let simTime = START;
+				const simTime = START;
 
 				// If starting in down state, we are in an incident (from before start)
 				if (simStatus !== "up") {

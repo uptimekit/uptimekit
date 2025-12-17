@@ -1,8 +1,9 @@
 "use client";
 
-import { MonitorsTable, type Monitor } from "@/components/monitors/table";
-import { orpc } from "@/utils/orpc";
 import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { type Monitor, MonitorsTable } from "@/components/monitors/table";
+import { orpc } from "@/utils/orpc";
 
 export default function MonitorsPage() {
 	const { data: monitors } = useQuery({
@@ -26,8 +27,20 @@ export default function MonitorsPage() {
 							: (m as any).status === "maintenance"
 								? "Maintenance"
 								: "Pending",
-			duration: "0s",
-			usedOn: 0,
+			duration: ((monitor: any) => {
+				if (monitor.status === "up") {
+					if (monitor.lastStatusChange) {
+						return formatDistanceToNow(new Date(monitor.lastStatusChange));
+					}
+					if (monitor.createdAt) {
+						return formatDistanceToNow(new Date(monitor.createdAt));
+					}
+				} else if (monitor.lastStatusChange) {
+					return formatDistanceToNow(new Date(monitor.lastStatusChange));
+				}
+				return "0s";
+			})(m),
+			usedOn: (m as any).usedOn || 0,
 			frequency: `${m.interval}s`,
 			hasIncident: false,
 			active: m.active,
