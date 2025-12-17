@@ -5,6 +5,7 @@ import {
 	AlertTriangle,
 	Building2,
 	ChevronDown,
+	Grid2X2,
 	LayoutDashboard,
 	Settings,
 	ShieldAlert,
@@ -55,12 +56,17 @@ const mainNav = [
 		url: "/status-pages",
 		icon: LayoutDashboard,
 	},
+	{
+		title: "Integrations",
+		url: "/settings/integrations",
+		icon: Grid2X2,
+	},
 ];
 
 const configNav = [
 	{
 		title: "Settings",
-		url: "/settings",
+		url: "/settings/integrations",
 		icon: Settings,
 	},
 	{

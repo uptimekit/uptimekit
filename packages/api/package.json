@@ -7,6 +7,9 @@
 		},
 		"./*": {
 			"default": "./src/*.ts"
+		},
+		"./pkg/*": {
+			"default": "./src/pkg/*.ts"
 		}
 	},
 	"type": "module",

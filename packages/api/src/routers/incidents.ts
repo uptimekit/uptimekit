@@ -8,6 +8,7 @@ import {
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
+import { eventBus } from "../lib/events";
 
 export const incidentsRouter = {
 	list: protectedProcedure
@@ -138,6 +139,14 @@ export const incidentsRouter = {
 				});
 			});
 
+			eventBus.emit("incident.created", {
+				incidentId: id,
+				organizationId: context.session.session.activeOrganizationId!,
+				title: input.title,
+				description: input.description,
+				severity: input.severity,
+			});
+
 			return { id };
 		}),
 
@@ -177,6 +186,14 @@ export const incidentsRouter = {
 				});
 			});
 
+			eventBus.emit("incident.acknowledged", {
+				incidentId: input.id,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				description: existing.description,
+				severity: existing.severity as any,
+			});
+
 			return { success: true };
 		}),
 
@@ -214,6 +231,14 @@ export const incidentsRouter = {
 				});
 			});
 
+			eventBus.emit("incident.resolved", {
+				incidentId: input.id,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				description: existing.description,
+				severity: existing.severity as any,
+			});
+
 			return { success: true };
 		}),
 
@@ -234,6 +259,14 @@ export const incidentsRouter = {
 				type: "comment",
 				createdAt: now,
 				userId: context.session.user.id,
+			});
+
+			eventBus.emit("incident.comment_added", {
+				incidentId: input.incidentId,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				message: input.message,
+				severity: existing.severity as any,
 			});
 
 			return { success: true };

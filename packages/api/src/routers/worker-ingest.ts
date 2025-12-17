@@ -19,6 +19,7 @@ import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { o, publicProcedure } from "../index";
+import { eventBus } from "../lib/events";
 
 const monitorEventInputSchema = z.object({
 	monitorId: z.string(),
@@ -401,6 +402,14 @@ export const workerIngestRouter = {
 							})
 							.where(eq(incident.id, activeIncident.id));
 
+						eventBus.emit("incident.resolved", {
+							incidentId: activeIncident.id,
+							organizationId: monitorConfig.organizationId,
+							title: `Monitor ${monitorConfig.name} recovered`,
+							description: "Monitor is back up.",
+							severity: "major", // Was major when created
+						});
+
 						activitiesToInsert.push({
 							id: crypto.randomUUID(),
 							incidentId: activeIncident.id,
@@ -421,6 +430,16 @@ export const workerIngestRouter = {
 
 			if (incidentsToInsert.length > 0) {
 				await db.insert(incident).values(incidentsToInsert);
+				// Emit events
+				for (const inc of incidentsToInsert) {
+					eventBus.emit("incident.created", {
+						incidentId: inc.id,
+						organizationId: inc.organizationId,
+						title: inc.title,
+						description: inc.description,
+						severity: inc.severity as any,
+					});
+				}
 			}
 
 			if (incidentMonitorsToInsert.length > 0) {
