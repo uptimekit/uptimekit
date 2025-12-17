@@ -22,8 +22,13 @@ export const incidentsRouter = {
 				type: z.enum(["manual", "automatic"]).optional(),
 			}),
 		)
-		.handler(async ({ input }) => {
-			const filters = [];
+		.handler(async ({ input, context }) => {
+			const filters = [
+				eq(
+					incident.organizationId,
+					context.session.session.activeOrganizationId!,
+				),
+			];
 			if (input.status === "open") {
 				filters.push(isNull(incident.resolvedAt));
 			} else if (input.status === "resolved") {
@@ -43,7 +48,8 @@ export const incidentsRouter = {
 			}
 
 			const items = await db.query.incident.findMany({
-				where: filters.length > 0 ? and(...filters) : undefined,
+				where: and(...filters),
+
 				limit: input.limit,
 				offset: input.offset,
 				orderBy: [desc(incident.createdAt)],
