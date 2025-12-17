@@ -1,10 +1,14 @@
 {
-    "pages": [
-        "index",
-        "---Installation---",
-        "installation/getting-started",
-        "installation/worker",
-        "sdk",
-        "api"
-    ]
+	"pages": [
+		"index",
+		"---Installation---",
+		"installation/getting-started",
+		"installation/worker",
+		"---Integrations---",
+		"integrations/index",
+		"integrations/discord",
+		"integrations/webhook",
+		"sdk",
+		"api"
+	]
 }
