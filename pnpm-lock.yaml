@@ -399,6 +399,9 @@ importers:
       ky:
         specifier: ^1.2.0
         version: 1.14.1
+      net-ping:
+        specifier: ^1.2.4
+        version: 1.2.4
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
@@ -3599,6 +3602,9 @@ packages:
     resolution: {integrity: sha512-WC/Eo7NzFrOV/RRrTaI0fxKVbNCzEy76j2VqNV8SxDf9D69gSE2Lh0QwYvDlhiYmheBYExAvEAxVf5NoN0cj2A==}
     engines: {node: '>=20'}
 
+  nan@2.19.0:
+    resolution: {integrity: sha512-nO1xXxfh/RWNxfd/XPfbIfFk5vgLsAxUR9y5O0cHMJu/AW9U95JLXqthYHjEp+8gQ5p96K9jUp8nbVOxCdRbtw==}
+
   nano-spawn@2.0.0:
     resolution: {integrity: sha512-tacvGzUY5o2D8CBh2rrwxyNojUsZNU2zjNTzKQrkgGJQTbGAfArVWXSKMBokBeeg6C7OLRGUEyoFlYbfeWQIqw==}
     engines: {node: '>=20.17'}
@@ -3615,6 +3621,9 @@ packages:
   negotiator@1.0.0:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
+
+  net-ping@1.2.4:
+    resolution: {integrity: sha512-9IbIgPonxYj5HMkgCYXFqHF/pz462qsxA7RVLA6sI604eQyaecxVKl3yrDGHajjKZpUL1r2VBMwd0KVMnPO5Rw==}
 
   next-themes@0.4.6:
     resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
@@ -3827,6 +3836,9 @@ packages:
         optional: true
       '@types/react-dom':
         optional: true
+
+  raw-socket@1.8.1:
+    resolution: {integrity: sha512-AjadKwsmroOZkAy/t9xm3wkHWN/WOJZMSryHAqABwE8A2j5DmqJevgdYR1das5xOWyoL11UFPRu7TYEDFs9vdw==}
 
   react-day-picker@9.12.0:
     resolution: {integrity: sha512-t8OvG/Zrciso5CQJu5b1A7yzEmebvST+S3pOVQJWxwjjVngyG/CA2htN/D15dLI4uTEuLLkbZyS4YYt480FAtA==}
@@ -7904,6 +7916,8 @@ snapshots:
 
   ms@4.0.0-nightly.202508271359: {}
 
+  nan@2.19.0: {}
+
   nano-spawn@2.0.0: {}
 
   nanoid@3.3.11: {}
@@ -7911,6 +7925,10 @@ snapshots:
   nanostores@1.1.0: {}
 
   negotiator@1.0.0: {}
+
+  net-ping@1.2.4:
+    dependencies:
+      raw-socket: 1.8.1
 
   next-themes@0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1):
     dependencies:
@@ -8153,6 +8171,10 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.2
       '@types/react-dom': 19.2.2(@types/react@19.2.2)
+
+  raw-socket@1.8.1:
+    dependencies:
+      nan: 2.19.0
 
   react-day-picker@9.12.0(react@19.2.1):
     dependencies:

@@ -3,14 +3,18 @@ import cron from "node-cron";
 import { ApiClient, type MonitorConfig } from "./api-client.js";
 import { HttpMonitor } from "./monitors/http.js";
 import { HttpJsonMonitor } from "./monitors/http-json.js";
+import { IcmpMonitor } from "./monitors/icmp.js";
 import { KeywordMonitor } from "./monitors/keyword.js";
 import { registry } from "./monitors/registry.js";
+import { TcpMonitor } from "./monitors/tcp.js";
 
 dotenv.config();
 
 registry.register("http", new HttpMonitor());
 registry.register("keyword", new KeywordMonitor());
 registry.register("http-json", new HttpJsonMonitor());
+registry.register("tcp", new TcpMonitor());
+registry.register("icmp", new IcmpMonitor());
 
 async function main() {
 	const apiKey = process.env.WORKER_API_KEY;
