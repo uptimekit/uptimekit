@@ -7,6 +7,7 @@ import {
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { LLMCopyButton, ViewOptions } from "@/components/page-actions";
 import { source } from "@/lib/source";
 import { getMDXComponents } from "@/mdx-components";
 
@@ -18,11 +19,22 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 	const MDX = page.data.body;
 
 	return (
-		<DocsPage toc={page.data.toc} tableOfContent={{
-			style: "clerk"
-		}} full={page.data.full}>
+		<DocsPage
+			toc={page.data.toc}
+			tableOfContent={{
+				style: "clerk",
+			}}
+			full={page.data.full}
+		>
 			<DocsTitle>{page.data.title}</DocsTitle>
 			<DocsDescription>{page.data.description}</DocsDescription>
+			<div className="-mt-8 flex flex-row items-center gap-2 border-b pb-6">
+				<LLMCopyButton markdownUrl={`${page.url}.mdx`} />
+				<ViewOptions
+					markdownUrl={`${page.url}.mdx`}
+					githubUrl={`https://github.com/stripsior/uptimekit/blob/release/apps/docs/content/docs/${page.path}`}
+				/>
+			</div>
 			<DocsBody>
 				<MDX
 					components={getMDXComponents({

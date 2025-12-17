@@ -1,0 +1,34 @@
+---
+title: Environment Variables
+description: Configuration reference for UptimeKit services
+---
+
+This guide lists all environment variables used by the different services in UptimeKit.
+
+## Dashboard (`apps/dash`)
+
+These variables are used by the main dashboard application.
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Connection string for the PostgreSQL database. | `postgresql://user:pass@localhost:5432/uptimekit` |
+| `BETTER_AUTH_SECRET` | Secret key used for authentication encryption. Should be a random string. | `openssl rand -base64 32` |
+| `NEXT_PUBLIC_SELFHOSTED` | Set to `true` to enable self-hosted mode features. | `true` |
+| `NEXT_PUBLIC_URL` | The public URL where the dashboard is accessible. | `http://localhost:3000` |
+
+## Worker (`apps/worker`)
+
+These variables are required for the monitoring worker service.
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `WORKER_API_KEY` | Secret API key used to authenticate with the dashboard. | `dvuOaV...` |
+| `DASHBOARD_URL` | The URL of the dashboard API (typically the same as `NEXT_PUBLIC_URL`). | `http://localhost:3000` |
+
+## Status Page (`apps/status-page`)
+
+These variables are used by the public status page application.
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Connection string for the PostgreSQL database. | `postgresql://user:pass@localhost:5432/uptimekit` |
