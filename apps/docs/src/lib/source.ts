@@ -9,8 +9,6 @@ export const source = loader({
 	plugins: [lucideIconsPlugin()],
 });
 
-
-
 export async function getLLMText(page: InferPageType<typeof source>) {
 	const processed = await page.data.getText("processed");
 

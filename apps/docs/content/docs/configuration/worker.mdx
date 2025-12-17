@@ -1,0 +1,39 @@
+---
+title: Worker(s)
+description: How to configure a worker in the dashboard
+---
+
+To connect a worker instance to your UptimeKit dashboard, you need to first create a worker identity in the admin panel and generate an API key. This key secures the communication between your worker and the dashboard.
+
+## Creating a Worker
+
+1. Navigate to the **Workers** page in the Admin Dashboard.
+2. Click the **Add Worker** button located at the top right of the table.
+
+![Dashboard Workers Page showing the Add Worker button](/workers-page.png)
+
+3. In the dialog that appears, fill in the details for your new worker:
+   - **Name**: A descriptive name for your worker (e.g., "US East Node").
+   - **Location**: Select the geographical region where your worker is hosted (e.g., "North America", "Europe"). This helps in identifying the source of monitoring requests and providing accurate latency data.
+
+![Create Worker Dialog with Name and Location fields](/create-worker-dialog.png)
+
+4. Click the **Create Worker** button to confirm.
+
+## Getting the API Key
+
+Once the worker is successfully created, a confirmation dialog will appear displaying your new **API Key**.
+
+> **Important**: This API key is only shown once. Make sure to copy it immediately and store it securely. If you lose it, you will need to regenerate a new key, which requires updating your worker's configuration.
+
+![Worker Created Dialog displaying the API Key](/worker-created-key.png)
+
+1. Click the **Copy** icon next to the API key field to copy it to your clipboard.
+2. Store this key safely. You will need to set it as the `WORKER_API_KEY` environment variable when running your worker instance.
+3. Click **Done** to close the dialog.
+
+## Next Steps
+
+With the API Key generated, you are ready to launch your worker.
+
+- [Install the Worker](/docs/installation/worker): Learn how to run the worker using Docker or Node.js.

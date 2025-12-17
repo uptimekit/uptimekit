@@ -73,7 +73,7 @@ export default async function Layout({
 			{...baseOptions()}
 			sidebar={{
 				banner: <DocsSwitcher />,
-				collapsible: true,
+				collapsible: false,
 			}}
 		>
 			{children}
