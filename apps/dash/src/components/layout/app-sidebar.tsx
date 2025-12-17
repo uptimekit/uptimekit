@@ -60,7 +60,7 @@ const mainNav = [
 	},
 	{
 		title: "Integrations",
-		url: "/settings/integrations",
+		url: "/integrations",
 		icon: Grid2X2,
 	},
 ];
@@ -68,7 +68,7 @@ const mainNav = [
 const configNav = [
 	{
 		title: "Settings",
-		url: "/settings/integrations",
+		url: "/settings",
 		icon: Settings,
 	},
 	{
@@ -329,9 +329,11 @@ function UserMenuComponent() {
 					</div>
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				<DropdownMenuItem>
-					<User className="mr-2 h-4 w-4" />
-					Account
+				<DropdownMenuItem asChild>
+					<Link href={"/account" as any}>
+						<User className="mr-2 h-4 w-4" />
+						Account
+					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
