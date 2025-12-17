@@ -41,12 +41,10 @@
 }
 
 
-/* Custom Sidebar Gap */
 .fd-sidebar-item {
   margin-bottom: 4px !important;
 }
 
-/* Fallback for Fumadocs sidebar links if class name doesn't match */
 aside nav a {
   margin-bottom: 4px !important;
 }

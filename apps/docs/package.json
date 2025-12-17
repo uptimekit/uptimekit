@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/docs",
-	"version": "0.0.0-canary-20251217105406",
+	"version": "0.0.0-canary-20251217194817",
 	"private": true,
 	"scripts": {
 		"build": "next build",
