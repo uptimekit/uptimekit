@@ -24,7 +24,7 @@
 <br/>
 
 > [!CAUTION]
-> This project is not ready for use. It is still in development and may not work as expected.
+> This project is in early stage of development and some problems can occur. Please open issue for all bugs and feature requests.
 
 ## ✨ Features
 
