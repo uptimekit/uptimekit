@@ -3,7 +3,7 @@ name: Production Release
 on:
   push:
     branches:
-      - main
+      - release
 
 jobs:
   release:
@@ -76,5 +76,14 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: release versions [skip ci]"
-          branch: main
+          branch: release
           tagging_message: "v${{ steps.get_version.outputs.version }}"
+
+      - name: Sync to development
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin development
+          git checkout development
+          git merge --no-ff -X theirs origin/release -m "chore: sync release to development"
+          git push origin development
