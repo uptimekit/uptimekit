@@ -119,79 +119,86 @@ export default function SettingsPage() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="font-bold text-2xl tracking-tight">
-					Organization Settings
-				</h1>
-				<p className="text-muted-foreground">
-					Manage your organization details.
-				</p>
-			</div>
-			<Separator />
+		<div className="flex flex-1 flex-col py-8">
+			<div className="mx-auto w-full max-w-6xl space-y-4 px-4">
+				<div className="flex flex-col gap-6">
+					<div>
+						<h1 className="font-bold text-2xl tracking-tight">
+							Organization Settings
+						</h1>
+						<p className="text-muted-foreground">
+							Manage your organization details.
+						</p>
+					</div>
+					<Separator />
 
-			<Card>
-				<CardHeader>
-					<CardTitle>General</CardTitle>
-					<CardDescription>
-						Update your organization's public information.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-							<FormField
-								control={form.control}
-								name="name"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Name</FormLabel>
-										<FormControl>
-											<Input placeholder="Acme Corp" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="slug"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Slug</FormLabel>
-										<FormControl>
-											<Input placeholder="acme-corp" {...field} />
-										</FormControl>
-										<FormDescription>
-											This is your organizations unique identifier.
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="logo"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Icon URL</FormLabel>
-										<FormControl>
-											<Input placeholder="https://..." {...field} />
-										</FormControl>
-										<FormDescription>
-											A URL to your organizations logo.
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<div className="flex justify-end">
-								<Button type="submit">Save Changes</Button>
-							</div>
-						</form>
-					</Form>
-				</CardContent>
-			</Card>
+					<Card>
+						<CardHeader>
+							<CardTitle>General</CardTitle>
+							<CardDescription>
+								Update your organization's public information.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<Form {...form}>
+								<form
+									onSubmit={form.handleSubmit(onSubmit)}
+									className="space-y-4"
+								>
+									<FormField
+										control={form.control}
+										name="name"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Name</FormLabel>
+												<FormControl>
+													<Input placeholder="Acme Corp" {...field} />
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="slug"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Slug</FormLabel>
+												<FormControl>
+													<Input placeholder="acme-corp" {...field} />
+												</FormControl>
+												<FormDescription>
+													This is your organizations unique identifier.
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="logo"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Icon URL</FormLabel>
+												<FormControl>
+													<Input placeholder="https://..." {...field} />
+												</FormControl>
+												<FormDescription>
+													A URL to your organizations logo.
+												</FormDescription>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<div className="flex justify-end">
+										<Button type="submit">Save Changes</Button>
+									</div>
+								</form>
+							</Form>
+						</CardContent>
+					</Card>
+				</div>
+			</div>
 		</div>
 	);
 }

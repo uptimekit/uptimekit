@@ -1,11 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronsUpDown, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Check, ChevronsUpDown, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,11 +17,7 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 import {
 	Dialog,
@@ -38,7 +34,11 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -85,7 +85,10 @@ export function CreateMaintenanceForm({
 		},
 	});
 
-	const { data: monitors } = useQuery(orpc.monitors.list.queryOptions());
+	const { data: monitorsData } = useQuery(
+		orpc.monitors.list.queryOptions({ limit: 100 }),
+	);
+	const monitors = monitorsData?.items;
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: (data: FormValues) =>
@@ -212,7 +215,7 @@ export function CreateMaintenanceForm({
 											</Command>
 										</PopoverContent>
 									</Popover>
-									<div className="flex flex-wrap gap-2 mt-2">
+									<div className="mt-2 flex flex-wrap gap-2">
 										{field.value?.map((id) => {
 											const monitor = monitors?.find((m) => m.id === id);
 											if (!monitor) return null;
@@ -221,7 +224,7 @@ export function CreateMaintenanceForm({
 													{monitor.name}
 													<button
 														type="button"
-														className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+														className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
 														onClick={() => {
 															field.onChange(
 																field.value.filter((val) => val !== id),

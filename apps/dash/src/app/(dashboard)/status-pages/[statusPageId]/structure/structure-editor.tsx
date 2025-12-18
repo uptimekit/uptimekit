@@ -84,9 +84,10 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	const { data: structure, isLoading: isStructureLoading } = useQuery(
 		orpc.statusPages.getStructure.queryOptions({ input: { id: statusPageId } }),
 	);
-	const { data: allMonitors, isLoading: isMonitorsLoading } = useQuery(
-		orpc.monitors.list.queryOptions({}),
+	const { data: monitorsData, isLoading: isMonitorsLoading } = useQuery(
+		orpc.monitors.list.queryOptions({ limit: 100 }),
 	);
+	const allMonitors = monitorsData?.items || [];
 
 	const updateStructureMutation = useMutation(
 		orpc.statusPages.updateStructure.mutationOptions({

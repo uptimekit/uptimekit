@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { orpc } from "@/utils/orpc";
+import { DataPagination } from "../ui/data-pagination";
 import { CreateStatusPageForm } from "./create-form";
 
 export function StatusPagesTable() {
@@ -37,32 +38,42 @@ export function StatusPagesTable() {
 	);
 	const [search, setSearch] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");
+	const [page, setPage] = useState(1);
+	const pageSize = 10;
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setDebouncedSearch(search);
+			setPage(1);
 		}, 500);
 		return () => clearTimeout(timer);
 	}, [search]);
 
-	const { data: statusPages, isLoading } = useQuery(
+	const { data, isLoading } = useQuery(
 		orpc.statusPages.list.queryOptions({
 			input: {
 				q: debouncedSearch || undefined,
 				public: publicFilter,
+				limit: pageSize,
+				offset: (page - 1) * pageSize,
 			},
 		}),
 	);
 
+	const statusPages = data?.items;
+	const total = data?.total || 0;
+	const totalPages = Math.ceil(total / pageSize);
+
 	const clearFilters = () => {
 		setSearch("");
 		setPublicFilter(undefined);
+		setPage(1);
 	};
 
 	const activeFilterCount = [publicFilter !== undefined].filter(Boolean).length;
 
 	return (
-		<div className="space-y-4">
+		<div className="mx-auto w-full max-w-6xl space-y-4">
 			<CreateStatusPageForm open={createOpen} onOpenChange={setCreateOpen} />
 			<div className="flex items-center justify-between">
 				<h1 className="font-bold text-2xl tracking-tight">Status Pages</h1>
@@ -92,21 +103,30 @@ export function StatusPagesTable() {
 								Visibility
 							</div>
 							<DropdownMenuItem
-								onClick={() => setPublicFilter(undefined)}
+								onClick={() => {
+									setPublicFilter(undefined);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All
 								{publicFilter === undefined && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setPublicFilter(true)}
+								onClick={() => {
+									setPublicFilter(true);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Public
 								{publicFilter === true && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setPublicFilter(false)}
+								onClick={() => {
+									setPublicFilter(false);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Private
@@ -148,7 +168,7 @@ export function StatusPagesTable() {
 									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
-						) : statusPages?.length === 0 ? (
+						) : !statusPages || statusPages.length === 0 ? (
 							<TableRow>
 								<TableCell colSpan={3} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
@@ -172,7 +192,7 @@ export function StatusPagesTable() {
 								</TableCell>
 							</TableRow>
 						) : (
-							statusPages?.map(
+							statusPages.map(
 								(page: {
 									id: string;
 									name: string;
@@ -271,6 +291,8 @@ export function StatusPagesTable() {
 						)}
 					</TableBody>
 				</Table>
+
+				<DataPagination page={page} totalPages={totalPages} setPage={setPage} />
 			</div>
 		</div>
 	);

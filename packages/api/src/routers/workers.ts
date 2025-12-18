@@ -1,14 +1,79 @@
+import { ORPCError } from "@orpc/server";
 import { auth } from "@uptimekit/auth";
 import { db } from "@uptimekit/db";
 import { worker } from "@uptimekit/db/schema/workers";
-import { eq, type InferSelectModel } from "drizzle-orm";
+import {
+	and,
+	desc,
+	eq,
+	type InferSelectModel,
+	ilike,
+	isNotNull,
+	isNull,
+	or,
+} from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
 
 type Worker = InferSelectModel<typeof worker>;
 
 export const workersRouter = {
+	list: protectedProcedure
+		.input(
+			z
+				.object({
+					q: z.string().optional(),
+					status: z
+						.enum(["online", "offline", "unknown", "all"])
+						.default("all"),
+					limit: z.number().default(50),
+					offset: z.number().default(0),
+				})
+				.optional(),
+		)
+		.handler(async ({ input, context }) => {
+			if (context.session.user.role !== "admin") {
+				throw new ORPCError("UNAUTHORIZED");
+			}
+
+			const filters = [];
+
+			if (input?.q) {
+				filters.push(
+					or(
+						ilike(worker.name, `%${input.q}%`),
+						ilike(worker.id, `%${input.q}%`),
+					),
+				);
+			}
+
+			if (input?.status) {
+				if (input.status === "online") {
+					filters.push(
+						and(eq(worker.active, true), isNotNull(worker.lastHeartbeat)),
+					);
+				} else if (input.status === "offline") {
+					filters.push(
+						and(eq(worker.active, false), isNotNull(worker.lastHeartbeat)),
+					);
+				} else if (input.status === "unknown") {
+					filters.push(isNull(worker.lastHeartbeat));
+				}
+			}
+
+			const [items, total] = await Promise.all([
+				db
+					.select()
+					.from(worker)
+					.where(and(...filters))
+					.orderBy(desc(worker.createdAt))
+					.limit(input?.limit || 50)
+					.offset(input?.offset || 0),
+				db.$count(worker, and(...filters)),
+			]);
+
+			return { items, total };
+		}),
 	create: protectedProcedure
 		.input(
 			z.object({

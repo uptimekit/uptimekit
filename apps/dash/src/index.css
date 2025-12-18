@@ -12,6 +12,7 @@
 
 html,
 body {
+	scrollbar-gutter: stable;
 	@media (prefers-color-scheme: dark) {
 		color-scheme: dark;
 	}

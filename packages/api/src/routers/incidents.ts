@@ -47,26 +47,32 @@ export const incidentsRouter = {
 				filters.push(eq(incident.type, input.type));
 			}
 
-			const items = await db.query.incident.findMany({
-				where: and(...filters),
+			const [total, items] = await Promise.all([
+				db.$count(incident, and(...filters)),
+				db.query.incident.findMany({
+					where: and(...filters),
 
-				limit: input.limit,
-				offset: input.offset,
-				orderBy: [desc(incident.createdAt)],
-				with: {
-					monitors: {
-						with: {
-							monitor: true,
+					limit: input.limit,
+					offset: input.offset,
+					orderBy: [desc(incident.createdAt)],
+					with: {
+						monitors: {
+							with: {
+								monitor: true,
+							},
+						},
+						activities: {
+							limit: 1,
+							orderBy: [desc(incidentActivity.createdAt)],
 						},
 					},
-					activities: {
-						limit: 1,
-						orderBy: [desc(incidentActivity.createdAt)],
-					},
-				},
-			});
+				}),
+			]);
 
-			return items;
+			return {
+				items,
+				total,
+			};
 		}),
 
 	get: protectedProcedure

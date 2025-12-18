@@ -109,39 +109,43 @@ export default function AccountPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 p-8">
-			<div>
-				<h1 className="font-bold text-2xl tracking-tight">Account Settings</h1>
-				<p className="text-muted-foreground">
-					Manage your account details and security.
-				</p>
+		<div className="flex flex-1 flex-col py-8">
+			<div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4">
+				<div>
+					<h1 className="font-bold text-2xl tracking-tight">
+						Account Settings
+					</h1>
+					<p className="text-muted-foreground">
+						Manage your account details and security.
+					</p>
+				</div>
+
+				<Tabs defaultValue="general" className="w-full gap-6">
+					<TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-6 rounded-none border-border/40 border-b bg-transparent p-0 px-1 pt-2">
+						<TabsTrigger
+							value="general"
+							className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
+						>
+							General
+						</TabsTrigger>
+						<TabsTrigger
+							value="security"
+							className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
+						>
+							Security
+						</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="general" className="mt-6">
+						<ProfileSettings session={session} />
+					</TabsContent>
+
+					<TabsContent value="security" className="mt-6 space-y-6">
+						<TwoFactorSettings session={session} />
+						<PasswordSettings />
+					</TabsContent>
+				</Tabs>
 			</div>
-
-			<Tabs defaultValue="general" className="w-full gap-6">
-				<TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-6 rounded-none border-border/40 border-b bg-transparent p-0 px-1 pt-2">
-					<TabsTrigger
-						value="general"
-						className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-					>
-						General
-					</TabsTrigger>
-					<TabsTrigger
-						value="security"
-						className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-					>
-						Security
-					</TabsTrigger>
-				</TabsList>
-
-				<TabsContent value="general" className="mt-6">
-					<ProfileSettings session={session} />
-				</TabsContent>
-
-				<TabsContent value="security" className="mt-6 space-y-6">
-					<TwoFactorSettings session={session} />
-					<PasswordSettings />
-				</TabsContent>
-			</Tabs>
 		</div>
 	);
 }

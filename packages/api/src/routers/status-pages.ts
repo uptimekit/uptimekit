@@ -16,6 +16,8 @@ export const statusPagesRouter = {
 				.object({
 					q: z.string().optional(),
 					public: z.boolean().optional(),
+					limit: z.number().default(50),
+					offset: z.number().default(0),
 				})
 				.optional(),
 		)
@@ -35,13 +37,18 @@ export const statusPagesRouter = {
 				filters.push(eq(statusPage.public, input.public));
 			}
 
-			const pages = await db
-				.select()
-				.from(statusPage)
-				.where(and(...filters))
-				.orderBy(desc(statusPage.createdAt));
+			const [pages, total] = await Promise.all([
+				db
+					.select()
+					.from(statusPage)
+					.where(and(...filters))
+					.orderBy(desc(statusPage.createdAt))
+					.limit(input?.limit || 50)
+					.offset(input?.offset || 0),
+				db.$count(statusPage, and(...filters)),
+			]);
 
-			const pagesWithCounts = await Promise.all(
+			const items = await Promise.all(
 				pages.map(async (page) => {
 					const monitorCount = await db
 						.select({ count: statusPageMonitor.monitorId })
@@ -60,7 +67,10 @@ export const statusPagesRouter = {
 				}),
 			);
 
-			return pagesWithCounts;
+			return {
+				items,
+				total,
+			};
 		}),
 
 	create: protectedProcedure

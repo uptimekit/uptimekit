@@ -5,7 +5,9 @@ import { formatDistanceToNow } from "date-fns";
 import {
 	Check,
 	ChevronDown,
+	ChevronLeftIcon,
 	ChevronRight,
+	ChevronRightIcon,
 	Filter,
 	Loader2,
 	MoreHorizontal,
@@ -25,6 +27,12 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+} from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
@@ -58,27 +66,36 @@ export function MonitorsTable() {
 	const [statusFilter, setStatusFilter] = useState<string | undefined>(
 		undefined,
 	);
+	const [page, setPage] = useState(1);
+	const pageSize = 10;
 
 	// Debounce search
 	const [debouncedSearch, setDebouncedSearch] = useState("");
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setDebouncedSearch(search);
+			setPage(1);
 		}, 500);
 		return () => clearTimeout(timer);
 	}, [search]);
 
-	const { data: monitors, isLoading } = useQuery({
+	const { data, isLoading } = useQuery({
 		...orpc.monitors.list.queryOptions({
 			input: {
 				q: debouncedSearch || undefined,
 				active: activeFilter,
 				type: typeFilter as any,
 				status: statusFilter as any,
+				limit: pageSize,
+				offset: (page - 1) * pageSize,
 			},
 		}),
 		refetchInterval: 60_000,
 	});
+
+	const monitors = data?.items;
+	const total = data?.total || 0;
+	const totalPages = Math.ceil(total / pageSize);
 
 	const tableData: Monitor[] =
 		monitors?.map((m) => ({
@@ -120,6 +137,7 @@ export function MonitorsTable() {
 		setActiveFilter(undefined);
 		setTypeFilter(undefined);
 		setStatusFilter(undefined);
+		setPage(1);
 	};
 
 	const activeFilterCount = [
@@ -129,7 +147,7 @@ export function MonitorsTable() {
 	].filter(Boolean).length;
 
 	return (
-		<div className="space-y-4">
+		<div className="mx-auto w-full max-w-6xl space-y-4">
 			<div className="flex items-center justify-between">
 				<h1 className="font-bold text-2xl tracking-tight">Monitors</h1>
 				<div className="flex items-center gap-2">
@@ -158,35 +176,50 @@ export function MonitorsTable() {
 								Status
 							</div>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter(undefined)}
+								onClick={() => {
+									setStatusFilter(undefined);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All Statuses
 								{!statusFilter && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("up")}
+								onClick={() => {
+									setStatusFilter("up");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Up
 								{statusFilter === "up" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("down")}
+								onClick={() => {
+									setStatusFilter("down");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Down
 								{statusFilter === "down" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("degraded")}
+								onClick={() => {
+									setStatusFilter("degraded");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Degraded
 								{statusFilter === "degraded" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("maintenance")}
+								onClick={() => {
+									setStatusFilter("maintenance");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Maintenance
@@ -201,42 +234,60 @@ export function MonitorsTable() {
 								Type
 							</div>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter(undefined)}
+								onClick={() => {
+									setTypeFilter(undefined);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All Types
 								{!typeFilter && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("http")}
+								onClick={() => {
+									setTypeFilter("http");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								HTTP
 								{typeFilter === "http" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("ping")}
+								onClick={() => {
+									setTypeFilter("ping");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Ping
 								{typeFilter === "ping" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("tcp")}
+								onClick={() => {
+									setTypeFilter("tcp");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								TCP
 								{typeFilter === "tcp" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("dns")}
+								onClick={() => {
+									setTypeFilter("dns");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								DNS
 								{typeFilter === "dns" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("keyword")}
+								onClick={() => {
+									setTypeFilter("keyword");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Keyword
@@ -249,21 +300,30 @@ export function MonitorsTable() {
 								Active
 							</div>
 							<DropdownMenuItem
-								onClick={() => setActiveFilter(undefined)}
+								onClick={() => {
+									setActiveFilter(undefined);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All
 								{activeFilter === undefined && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setActiveFilter(true)}
+								onClick={() => {
+									setActiveFilter(true);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Active
 								{activeFilter === true && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setActiveFilter(false)}
+								onClick={() => {
+									setActiveFilter(false);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Paused
@@ -310,7 +370,7 @@ export function MonitorsTable() {
 									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
-						) : tableData.length === 0 ? (
+						) : !tableData || tableData.length === 0 ? (
 							<TableRow>
 								<TableCell colSpan={6} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
@@ -426,6 +486,68 @@ export function MonitorsTable() {
 						)}
 					</TableBody>
 				</Table>
+
+				{totalPages > 1 && (
+					<div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
+						<Pagination className="mx-0 w-auto">
+							<PaginationContent>
+								<PaginationItem>
+									<Button
+										variant="ghost"
+										size="icon"
+										disabled={page === 1}
+										onClick={() => setPage(page - 1)}
+									>
+										<ChevronLeftIcon className="h-4 w-4" />
+									</Button>
+								</PaginationItem>
+								{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+									(p) => {
+										// Simple windowing logic
+										if (
+											totalPages > 7 &&
+											(p < page - 2 || p > page + 2) &&
+											p !== 1 &&
+											p !== totalPages
+										) {
+											if (p === page - 3 || p === page + 3) {
+												return (
+													<PaginationItem key={p}>
+														<PaginationEllipsis />
+													</PaginationItem>
+												);
+											}
+											return null;
+										}
+
+										return (
+											<PaginationItem key={p}>
+												<Button
+													variant={p === page ? "outline" : "ghost"}
+													size="icon"
+													onClick={() => setPage(p)}
+													className="h-8 w-8"
+												>
+													{p}
+												</Button>
+											</PaginationItem>
+										);
+									},
+								)}
+								<PaginationItem>
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => setPage(page + 1)}
+										disabled={page === totalPages}
+									>
+										<ChevronRightIcon className="h-4 w-4" />
+									</Button>
+								</PaginationItem>
+							</PaginationContent>
+						</Pagination>
+					</div>
+				)}
 			</div>
 		</div>
 	);

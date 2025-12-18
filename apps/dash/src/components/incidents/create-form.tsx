@@ -1,29 +1,13 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { orpc } from "@/utils/orpc";
+import { Check, ChevronsUpDown, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -41,13 +25,29 @@ import {
 	CommandList,
 } from "@/components/ui/command";
 import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { orpc } from "@/utils/orpc";
 
 const schema = z.object({
 	title: z.string().min(1, "Title is required"),
@@ -71,7 +71,10 @@ export function CreateIncidentForm() {
 		},
 	});
 
-	const { data: monitors } = useQuery(orpc.monitors.list.queryOptions());
+	const { data: monitorsData } = useQuery(
+		orpc.monitors.list.queryOptions({ limit: 100 }),
+	);
+	const monitors = monitorsData?.items;
 
 	const createIncident = useMutation(
 		orpc.incidents.create.mutationOptions({
@@ -207,7 +210,7 @@ export function CreateIncidentForm() {
 											</Command>
 										</PopoverContent>
 									</Popover>
-									<div className="flex flex-wrap gap-2 mt-2">
+									<div className="mt-2 flex flex-wrap gap-2">
 										{field.value?.map((id) => {
 											const monitor = monitors?.find((m) => m.id === id);
 											if (!monitor) return null;
@@ -216,7 +219,7 @@ export function CreateIncidentForm() {
 													{monitor.name}
 													<button
 														type="button"
-														className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+														className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
 														onClick={() => {
 															field.onChange(
 																field.value.filter((val) => val !== id),
