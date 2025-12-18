@@ -1,5 +1,4 @@
 import type { RouterClient } from "@orpc/server";
-import { protectedProcedure, publicProcedure } from "../index";
 import { incidentsRouter } from "./incidents";
 import { integrationsRouter } from "./integrations";
 import { maintenanceRouter } from "./maintenance";
@@ -11,15 +10,6 @@ import { workersRouter } from "./workers";
 import "../pkg/integrations/service"; // Initialize integration service
 
 export const appRouter = {
-	healthCheck: publicProcedure.handler(() => {
-		return "OK";
-	}),
-	privateData: protectedProcedure.handler(({ context }) => {
-		return {
-			message: "This is private",
-			user: context.session?.user,
-		};
-	}),
 	workers: workersRouter,
 	workerIngest: workerIngestRouter,
 	monitors: monitorsRouter,
