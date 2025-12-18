@@ -8,6 +8,8 @@ on:
 jobs:
   calculate-version:
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
