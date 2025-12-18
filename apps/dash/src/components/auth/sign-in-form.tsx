@@ -50,11 +50,15 @@ export default function SignInForm({
 					password: value.password,
 				},
 				{
-					onSuccess: () => {
-						router.push("/");
-						toast.success("Sign in successful");
+					onSuccess: (ctx: any) => {
+						if (ctx.data.twoFactorRedirect) {
+							router.push("/two-factor" as any);
+						} else {
+							router.push("/");
+							toast.success("Sign in successful");
+						}
 					},
-					onError: (error) => {
+					onError: (error: any) => {
 						toast.error(error.error.message || error.error.statusText);
 					},
 				},
