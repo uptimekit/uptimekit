@@ -23,7 +23,7 @@ interface StatusIndicatorProps {
 	className?: string;
 }
 
-const statusConfig: Record<
+export const statusConfig: Record<
 	StatusType,
 	{
 		label: string;
@@ -51,7 +51,7 @@ const statusConfig: Record<
 		icon: AlertCircle,
 	},
 	major_outage: {
-		label: "Major Outage",
+		label: "Outage",
 		color: "text-status-major-outage",
 		bgColor: "bg-status-major-outage",
 		icon: XCircle,

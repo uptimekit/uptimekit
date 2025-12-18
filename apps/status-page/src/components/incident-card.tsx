@@ -43,11 +43,9 @@ interface IncidentCardProps {
 function getSeverityStatus(severity: string): StatusType {
 	switch (severity) {
 		case "critical":
-			return "major_outage";
 		case "major":
-			return "partial_outage";
 		case "minor":
-			return "degraded";
+			return "major_outage";
 		case "maintenance":
 			return "maintenance";
 		default:
