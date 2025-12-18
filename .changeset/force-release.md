@@ -1,8 +1,0 @@
----
-"@uptimekit/dash": patch
-"@uptimekit/status-page": patch
-"@uptimekit/worker": patch
-"@uptimekit/docs": patch
----
-
-Force release for CI testing
