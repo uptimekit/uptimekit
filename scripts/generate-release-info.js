@@ -1,4 +1,4 @@
-import { execSync, execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -19,11 +19,16 @@ function getPreviousVersion(filePath) {
 		const relativePath = path
 			.relative(process.cwd(), filePath)
 			.replace(/\\/g, "/");
-		const content = execFileSync(
-			"git",
-			["show", `HEAD:${relativePath}`],
-			{ encoding: "utf-8" }
-		);
+
+		const ref =
+			process.env.BEFORE_SHA &&
+			process.env.BEFORE_SHA !== "0000000000000000000000000000000000000000"
+				? process.env.BEFORE_SHA
+				: "HEAD";
+
+		const content = execFileSync("git", ["show", `${ref}:${relativePath}`], {
+			encoding: "utf-8",
+		});
 		return JSON.parse(content).version;
 	} catch (e) {
 		return null;

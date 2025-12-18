@@ -62,6 +62,12 @@ function getChangedPackagesAndDependents() {
 			// Normalize file path to use forward slashes for consistent comparison
 			const normalizedFile = file.replace(/\\/g, "/");
 
+			if (
+				normalizedFile.endsWith("package.json") ||
+				normalizedFile.endsWith("CHANGELOG.md")
+			)
+				continue;
+
 			for (const [pkgName, info] of allPackages.entries()) {
 				// info.path is absolute. Get its directory then relative to process.cwd()
 				const pkgDir = path.dirname(info.path);
