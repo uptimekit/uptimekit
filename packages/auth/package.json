@@ -1,6 +1,7 @@
 {
 	"name": "@uptimekit/auth",
 	"version": "0.0.4",
+	"private": true,
 	"exports": {
 		".": {
 			"default": "./src/index.ts"
