@@ -1,0 +1,50 @@
+---
+title: Social Login
+description: Configure social authentication providers
+---
+
+UptimeKit supports authentication via social providers using [Better Auth](https://www.better-auth.com/). Currently, Discord and GitHub are supported.
+
+## How it works
+
+When configured, users will see options to "Sign in with Discord" or "Sign in with GitHub" on the login page. This allows users to authenticate without creating a separate password.
+
+To enable these providers, you need to create OAuth applications on the respective developer portals and provide the credentials as environment variables.
+
+## Configuration
+
+### GitHub Provider
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/apps) and create a new OAuth App.
+
+   > **Note:** You can also use a standard **GitHub App**. If you choose this method, after creating your app, go to **Permissions and Events > Account Permissions > Email Addresses** and select **"Read-Only"**.
+2. Set the **Authorization callback URL** to:
+   ```
+   <YOUR_APP_URL>/api/auth/callback/github
+   ```
+   *(Replace `<YOUR_APP_URL>` with your actual domain, e.g., `https://uptimekit.example.com` or `http://localhost:3000` for development)*
+
+3. Add the following environment variables to your `.env` file (or deployment configuration) for the `dash` service:
+
+| Variable | Description |
+| :--- | :--- |
+| `GITHUB_CLIENT_ID` | The Client ID from your GitHub OAuth App. |
+| `GITHUB_CLIENT_SECRET` | The Client Secret from your GitHub OAuth App. |
+
+### Discord Provider
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a new Application.
+2. Navigate to **OAuth2** and add a redirect to:
+   ```
+   <YOUR_APP_URL>/api/auth/callback/discord
+   ```
+3. Add the following environment variables:
+
+| Variable | Description |
+| :--- | :--- |
+| `DISCORD_CLIENT_ID` | The Client ID from your Discord Application. |
+| `DISCORD_CLIENT_SECRET` | The Client Secret from your Discord Application. |
+
+## Disabling Social Login
+
+If you do not provide the environment variables for a specific provider, that provider will automatically be disabled and hidden from the login page.
