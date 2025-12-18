@@ -12,9 +12,9 @@ export interface IntegrationDefinition<Config = unknown> {
 }
 
 class IntegrationRegistry {
-	private integrations = new Map<string, IntegrationDefinition>();
+	private integrations = new Map<string, IntegrationDefinition<any>>();
 
-	register(integration: IntegrationDefinition) {
+	register(integration: IntegrationDefinition<any>) {
 		this.integrations.set(integration.id, integration);
 	}
 
