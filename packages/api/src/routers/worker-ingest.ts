@@ -111,14 +111,14 @@ const workerProcedure = publicProcedure.use(requireWorkerAuth);
 export const workerIngestRouter = {
 	heartbeat: workerProcedure.handler(async ({ context }) => {
 		const workerLocation = context.worker.location;
-		console.log(`Worker Heartbeat: ${context.worker.name} (${workerLocation})`);
+		// console.log(`Worker Heartbeat: ${context.worker.name} (${workerLocation})`);
 
 		// Return active monitors that match the worker's location
 		const allActiveMonitors = await db.query.monitor.findMany({
 			where: (t, { eq }) => eq(t.active, true),
 		});
 
-		console.log(`Found ${allActiveMonitors.length} active monitors total.`);
+		// console.log(`Found ${allActiveMonitors.length} active monitors total.`);
 
 		const assignedMonitors = allActiveMonitors.filter((m) => {
 			const locations = m.locations as string[];
@@ -126,9 +126,9 @@ export const workerIngestRouter = {
 			return locations.includes(workerLocation);
 		});
 
-		console.log(
-			`Assigned ${assignedMonitors.length} monitors to worker ${workerLocation}`,
-		);
+		// console.log(
+		// 	`Assigned ${assignedMonitors.length} monitors to worker ${workerLocation}`,
+		// );
 
 		return {
 			monitors: assignedMonitors.map((m) => {

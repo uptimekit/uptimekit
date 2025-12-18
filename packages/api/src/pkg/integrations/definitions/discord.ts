@@ -11,7 +11,7 @@ export const discordIntegration: IntegrationDefinition<
 > = {
 	...discordIntegrationMeta,
 	handler: async (config, event, payload: any) => {
-		console.log(`[Discord] Sending ${event} to ${config.webhookUrl}`);
+		// console.log(`[Discord] Sending ${event} to ${config.webhookUrl}`);
 
 		try {
 			// Fetch full incident data to get monitors
@@ -27,9 +27,9 @@ export const discordIntegration: IntegrationDefinition<
 			});
 
 			if (!incidentData) {
-				console.warn(
-					`[Discord] Could not find incident ${payload.incidentId} for event ${event}`,
-				);
+				// console.warn(
+				// 	`[Discord] Could not find incident ${payload.incidentId} for event ${event}`,
+				// );
 				return;
 			}
 
@@ -137,10 +137,10 @@ export const discordIntegration: IntegrationDefinition<
 				}),
 			});
 		} catch (error) {
-			console.error(
-				`[Discord] Failed to send webhook to ${config.webhookUrl}`,
-				error,
-			);
+			// console.error(
+			// 	`[Discord] Failed to send webhook to ${config.webhookUrl}`,
+			// 	error,
+			// );
 		}
 	},
 };
