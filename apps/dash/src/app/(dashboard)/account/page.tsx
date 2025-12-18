@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -42,6 +42,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { setUserPassword } from "@/lib/actions/auth-actions";
 import { authClient } from "@/lib/auth-client";
 
 const profileFormSchema = z.object({
@@ -57,7 +58,21 @@ const profileFormSchema = z.object({
 		.or(z.literal("")),
 });
 
-const passwordFormSchema = z
+const setPasswordSchema = z
+	.object({
+		newPassword: z.string().min(8, {
+			message: "Password must be at least 8 characters.",
+		}),
+		confirmPassword: z.string().min(8, {
+			message: "Password must be at least 8 characters.",
+		}),
+	})
+	.refine((data) => data.newPassword === data.confirmPassword, {
+		message: "Passwords do not match",
+		path: ["confirmPassword"],
+	});
+
+const changePasswordSchema = z
 	.object({
 		currentPassword: z.string().min(1, {
 			message: "Current password is required.",
@@ -220,8 +235,38 @@ function ProfileSettings({ session }: { session: any }) {
 }
 
 function PasswordSettings() {
-	const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
-		resolver: zodResolver(passwordFormSchema),
+	const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+
+	// Check if user has a password set
+	useEffect(() => {
+		authClient.listAccounts().then((res) => {
+			if (res.data) {
+				const hasCredential = res.data.some(
+					(acc) => acc.providerId === "credential",
+				);
+				setHasPassword(hasCredential);
+			}
+		});
+	}, []);
+
+	if (hasPassword === null) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Password</CardTitle>
+					<CardDescription>Loading password settings...</CardDescription>
+				</CardHeader>
+			</Card>
+		);
+	}
+
+	return <PasswordForm hasPassword={hasPassword} />;
+}
+
+function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
+	const schema = hasPassword ? changePasswordSchema : setPasswordSchema;
+	const passwordForm = useForm<z.infer<typeof changePasswordSchema>>({
+		resolver: zodResolver(schema) as any,
 		defaultValues: {
 			currentPassword: "",
 			newPassword: "",
@@ -229,7 +274,23 @@ function PasswordSettings() {
 		},
 	});
 
-	async function onPasswordSubmit(values: z.infer<typeof passwordFormSchema>) {
+	async function onPasswordSubmit(
+		values: z.infer<typeof changePasswordSchema>,
+	) {
+		if (!hasPassword) {
+			const res = await setUserPassword(values.newPassword);
+			if (res.success) {
+				toast.success("Password set successfully");
+				passwordForm.reset();
+				// Ideally reload window or re-fetch accounts to update state,
+				// but simplistic approach:
+				window.location.reload();
+			} else {
+				toast.error(res.error || "Failed to set password");
+			}
+			return;
+		}
+
 		await authClient.changePassword(
 			{
 				currentPassword: values.currentPassword,
@@ -251,8 +312,14 @@ function PasswordSettings() {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Password</CardTitle>
-				<CardDescription>Update your password.</CardDescription>
+				<CardTitle>
+					{hasPassword ? "Change Password" : "Set Password"}
+				</CardTitle>
+				<CardDescription>
+					{hasPassword
+						? "Update your password."
+						: "Set a password to login with email."}
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<Form {...passwordForm}>
@@ -260,20 +327,22 @@ function PasswordSettings() {
 						onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
 						className="space-y-4"
 					>
-						<FormField
-							control={passwordForm.control}
-							name="currentPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Current Password</FormLabel>
-									<FormControl>
-										<Input type="password" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<Separator />
+						{hasPassword && (
+							<FormField
+								control={passwordForm.control}
+								name="currentPassword"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Current Password</FormLabel>
+										<FormControl>
+											<Input type="password" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						)}
+						{hasPassword && <Separator />}
 						<FormField
 							control={passwordForm.control}
 							name="newPassword"
@@ -301,7 +370,9 @@ function PasswordSettings() {
 							)}
 						/>
 						<div className="flex justify-end">
-							<Button type="submit">Update Password</Button>
+							<Button type="submit">
+								{hasPassword ? "Update Password" : "Set Password"}
+							</Button>
 						</div>
 					</form>
 				</Form>
