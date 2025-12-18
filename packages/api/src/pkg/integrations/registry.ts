@@ -1,13 +1,13 @@
 import type { z } from "zod";
 
 export interface IntegrationDefinition<Config = any> {
-	id: string; // 'webhook', 'slack', etc.
+	id: string;
 	name: string;
-	type: "export" | "import"; // Distinguish between outgoing notifications and incoming data
-	logo?: string; // Path to image in public folder, e.g. '/integrations/webhook.png'
+	type: "export" | "import";
+	logo?: string;
 	description: string;
 	configSchema: z.ZodSchema<Config>;
-	events: string[]; // List of events this integration supports/subscribes to
+	events: string[];
 	handler: (config: Config, event: string, payload: any) => Promise<void>;
 }
 

@@ -31,10 +31,16 @@ jobs:
 
       - name: Create Canary Version
         # This updates package.json files in-place with 0.0.x-canary-tag
+        env:
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           # Ensure git user is set for changeset to work if it needs to commit (though we won't push)
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+          
+          # Check for changes and create a temporary changeset if none exist
+          node scripts/generate-canary-changeset.js
           
           # Apply snapshot versioning
           pnpm changeset version --snapshot canary
