@@ -111,7 +111,7 @@ uptimekit/
 │   ├── api/           # Shared API definition & logic
 │   ├── auth/          # Authentication configuration
 │   ├── db/            # Database schema & Drizzle config
-│   └── ui/            # Shared UI components
+│   └── config/        # Shared configuration (TS, ESLint, etc.)
 └── ....
 ```
 
