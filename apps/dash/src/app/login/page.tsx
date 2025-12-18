@@ -23,7 +23,11 @@ export default async function LoginPage() {
 
 	return (
 		<div className="flex min-h-screen w-full items-center justify-center p-4">
-			<SignInForm showRegister={showRegister} />
+			<SignInForm
+				showRegister={showRegister}
+				showDiscordLogin={!!process.env.DISCORD_CLIENT_ID}
+				showGithubLogin={!!process.env.GITHUB_CLIENT_ID}
+			/>
 		</div>
 	);
 }
