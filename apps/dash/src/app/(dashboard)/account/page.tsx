@@ -6,15 +6,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -26,7 +19,6 @@ import {
 import {
 	Form,
 	FormControl,
-	FormDescription,
 	FormField,
 	FormItem,
 	FormLabel,
@@ -44,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { setUserPassword } from "@/lib/actions/auth-actions";
 import { authClient } from "@/lib/auth-client";
+import { AvatarEditor } from "./avatar-editor";
 
 const profileFormSchema = z.object({
 	name: z.string().min(2, {
@@ -109,7 +102,7 @@ export default function AccountPage() {
 	}
 
 	return (
-		<div className="flex flex-1 flex-col py-8">
+		<div className="flex flex-1 flex-col py-8 pb-20">
 			<div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4">
 				<div>
 					<h1 className="font-bold text-2xl tracking-tight">
@@ -140,8 +133,9 @@ export default function AccountPage() {
 						<ProfileSettings session={session} />
 					</TabsContent>
 
-					<TabsContent value="security" className="mt-6 space-y-6">
+					<TabsContent value="security" className="mt-6 space-y-10">
 						<TwoFactorSettings session={session} />
+						<Separator />
 						<PasswordSettings />
 					</TabsContent>
 				</Tabs>
@@ -163,7 +157,8 @@ function ProfileSettings({ session }: { session: any }) {
 		await authClient.updateUser(
 			{
 				name: values.name,
-				image: values.image || undefined,
+				// Send empty string to clear the image, undefined does nothing
+				image: values.image || "",
 			},
 			{
 				onSuccess: () => {
@@ -177,71 +172,99 @@ function ProfileSettings({ session }: { session: any }) {
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Profile</CardTitle>
-				<CardDescription>Update your personal information.</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Form {...profileForm}>
-					<form
-						onSubmit={profileForm.handleSubmit(onProfileSubmit)}
-						className="space-y-4"
-					>
-						<div className="flex items-center gap-4">
-							<Avatar className="h-16 w-16">
-								<AvatarImage
-									src={profileForm.watch("image") || session.user.image || ""}
-									alt={session.user.name}
-								/>
-								<AvatarFallback>
-									{session.user.name.slice(0, 2).toUpperCase()}
-								</AvatarFallback>
-							</Avatar>
-						</div>
-						<FormField
-							control={profileForm.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Name</FormLabel>
-									<FormControl>
-										<Input placeholder="John Doe" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={profileForm.control}
-							name="image"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Avatar URL</FormLabel>
-									<FormControl>
-										<Input placeholder="https://..." {...field} />
-									</FormControl>
-									<FormDescription>
-										A URL to your profile picture.
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="flex justify-end">
-							<Button type="submit">Save Profile</Button>
-						</div>
-					</form>
-				</Form>
-			</CardContent>
-		</Card>
+		<Form {...profileForm}>
+			<form
+				onSubmit={profileForm.handleSubmit(onProfileSubmit)}
+				className="space-y-10"
+			>
+				{/* Public Profile Section */}
+				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+					<div className="space-y-2">
+						<h2 className="font-semibold text-lg leading-none tracking-tight">
+							Public Profile
+						</h2>
+						<p className="text-muted-foreground text-sm">
+							Update your public information.
+						</p>
+					</div>
+
+					<Card className="md:col-span-2">
+						<CardContent className="grid gap-6 p-6">
+							<FormField
+								control={profileForm.control}
+								name="name"
+								render={({ field }) => (
+									<FormItem className="flex h-full flex-col">
+										<FormLabel className="flex h-6 items-end pb-1">
+											Name
+										</FormLabel>
+										<FormControl>
+											<Input placeholder="John Doe" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</CardContent>
+					</Card>
+				</div>
+
+				<Separator />
+
+				{/* Avatar Section */}
+				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+					<div className="space-y-2">
+						<h2 className="font-semibold text-lg leading-none tracking-tight">
+							Avatar
+						</h2>
+						<p className="text-muted-foreground text-sm">
+							This is your avatar. Click on the avatar to upload a custom one
+							from a link.
+						</p>
+					</div>
+
+					<Card className="md:col-span-2">
+						<CardContent className="grid gap-6 p-6">
+							<FormField
+								control={profileForm.control}
+								name="image"
+								render={({ field }) => (
+									<FormItem>
+										{/* <FormLabel>Avatar</FormLabel> */}
+										<FormControl>
+											<div className="flex items-center gap-4">
+												<AvatarEditor
+													value={field.value}
+													onChange={field.onChange}
+													name={session.user.name}
+												/>
+												<div className="text-muted-foreground text-sm">
+													<p>Upload a profile picture.</p>
+													<p className="text-xs">
+														Recommended size: 256x256px.
+													</p>
+												</div>
+											</div>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</CardContent>
+					</Card>
+				</div>
+
+				<div className="flex justify-end">
+					<Button type="submit">Save Profile</Button>
+				</div>
+			</form>
+		</Form>
 	);
 }
 
 function PasswordSettings() {
 	const [hasPassword, setHasPassword] = useState<boolean | null>(null);
 
-	// Check if user has a password set
 	useEffect(() => {
 		authClient.listAccounts().then((res) => {
 			if (res.data) {
@@ -255,12 +278,21 @@ function PasswordSettings() {
 
 	if (hasPassword === null) {
 		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Password</CardTitle>
-					<CardDescription>Loading password settings...</CardDescription>
-				</CardHeader>
-			</Card>
+			<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+				<div className="space-y-2">
+					<h2 className="font-semibold text-lg leading-none tracking-tight">
+						Password
+					</h2>
+					<p className="text-muted-foreground text-sm">
+						Manage your password settings.
+					</p>
+				</div>
+				<Card className="md:col-span-2">
+					<CardContent className="p-6">
+						<div className="text-muted-foreground text-sm">Loading...</div>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
@@ -286,8 +318,6 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
 			if (res.success) {
 				toast.success("Password set successfully");
 				passwordForm.reset();
-				// Ideally reload window or re-fetch accounts to update state,
-				// but simplistic approach:
 				window.location.reload();
 			} else {
 				toast.error(res.error || "Failed to set password");
@@ -314,30 +344,47 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
 	}
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>
-					{hasPassword ? "Change Password" : "Set Password"}
-				</CardTitle>
-				<CardDescription>
+		<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+			<div className="space-y-2">
+				<h2 className="font-semibold text-lg leading-none tracking-tight">
+					Password
+				</h2>
+				<p className="text-muted-foreground text-sm">
 					{hasPassword
-						? "Update your password."
-						: "Set a password to login with email."}
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Form {...passwordForm}>
-					<form
-						onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
-						className="space-y-4"
-					>
-						{hasPassword && (
+						? "Change your password securely."
+						: "Set a password to login via email."}
+				</p>
+			</div>
+
+			<Card className="md:col-span-2">
+				<CardContent className="p-6">
+					<Form {...passwordForm}>
+						<form
+							onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
+							className="space-y-4"
+						>
+							{hasPassword && (
+								<FormField
+									control={passwordForm.control}
+									name="currentPassword"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Current Password</FormLabel>
+											<FormControl>
+												<Input type="password" {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
+							{hasPassword && <Separator />}
 							<FormField
 								control={passwordForm.control}
-								name="currentPassword"
+								name="newPassword"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Current Password</FormLabel>
+										<FormLabel>New Password</FormLabel>
 										<FormControl>
 											<Input type="password" {...field} />
 										</FormControl>
@@ -345,43 +392,29 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
 									</FormItem>
 								)}
 							/>
-						)}
-						{hasPassword && <Separator />}
-						<FormField
-							control={passwordForm.control}
-							name="newPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>New Password</FormLabel>
-									<FormControl>
-										<Input type="password" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={passwordForm.control}
-							name="confirmPassword"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Confirm New Password</FormLabel>
-									<FormControl>
-										<Input type="password" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="flex justify-end">
-							<Button type="submit">
-								{hasPassword ? "Update Password" : "Set Password"}
-							</Button>
-						</div>
-					</form>
-				</Form>
-			</CardContent>
-		</Card>
+							<FormField
+								control={passwordForm.control}
+								name="confirmPassword"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Confirm New Password</FormLabel>
+										<FormControl>
+											<Input type="password" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<div className="flex justify-end">
+								<Button type="submit">
+									{hasPassword ? "Update Password" : "Set Password"}
+								</Button>
+							</div>
+						</form>
+					</Form>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
 
@@ -446,15 +479,10 @@ function TwoFactorSettings({ session }: { session: any }) {
 	};
 
 	const handleDisableTwoFactor = async () => {
-		// Implement disable logic with password prompt if needed.
-		// For simplicity, we might just call disable if better-auth allows it, or need password.
-		// Better auth 'disable' usually requires password.
-		// We'll use a simple prompt for now or expand this component.
-		// Given complexity limit, I'll assume we can call disable or reuse the dialog.
 		toast.info("Disabling 2FA...");
 		await authClient.twoFactor.disable(
 			{
-				password: password, // We need to ask for password again.
+				password: password,
 			},
 			{
 				onSuccess: () => {
@@ -468,7 +496,6 @@ function TwoFactorSettings({ session }: { session: any }) {
 		);
 	};
 
-	// Reset state when closing/opening
 	const onOpenChange = (open: boolean) => {
 		setIsOpen(open);
 		if (!open) {
@@ -478,193 +505,201 @@ function TwoFactorSettings({ session }: { session: any }) {
 		}
 	};
 
-	if (session.user.twoFactorEnabled && step !== "backup") {
-		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Two-Factor Authentication</CardTitle>
-					<CardDescription>
-						Add an extra layer of security to your account.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
+	return (
+		<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+			<div className="space-y-2">
+				<h2 className="font-semibold text-lg leading-none tracking-tight">
+					Two-Factor Authentication
+				</h2>
+				<p className="text-muted-foreground text-sm">
+					Add an extra layer of security to your account.
+				</p>
+			</div>
+
+			<Card className="md:col-span-2">
+				<CardContent className="p-6">
 					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<Check className="h-4 w-4 text-green-500" />
-							<span className="font-medium">
-								Two-factor authentication is enabled.
+						{session.user.twoFactorEnabled ? (
+							<div className="flex items-center gap-2">
+								<Check className="h-4 w-4 text-green-500" />
+								<span className="font-medium">
+									Two-factor authentication is enabled.
+								</span>
+							</div>
+						) : (
+							<span className="text-muted-foreground text-sm">
+								Two-factor authentication is currently disabled.
 							</span>
-						</div>
-						<Button variant="destructive" onClick={() => setIsOpen(true)}>
-							Disable 2FA
+						)}
+
+						<Button
+							variant={
+								session.user.twoFactorEnabled ? "destructive" : "default"
+							}
+							onClick={() => setIsOpen(true)}
+						>
+							{session.user.twoFactorEnabled ? "Disable 2FA" : "Enable 2FA"}
 						</Button>
 					</div>
-				</CardContent>
 
-				<Dialog open={isOpen} onOpenChange={onOpenChange}>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Disable Two-Factor Authentication</DialogTitle>
-							<DialogDescription>
-								Enter your password to disable two-factor authentication.
-							</DialogDescription>
-						</DialogHeader>
-						<div className="space-y-4 py-4">
-							<div className="space-y-2">
-								<Label>Password</Label>
-								<Input
-									type="password"
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-								/>
-							</div>
-						</div>
-						<DialogFooter>
-							<Button variant="outline" onClick={() => setIsOpen(false)}>
-								Cancel
-							</Button>
-							<Button
-								variant="destructive"
-								onClick={handleDisableTwoFactor}
-								disabled={!password || isSubmitting}
-							>
-								{isSubmitting ? "Disabling..." : "Disable 2FA"}
-							</Button>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-			</Card>
-		);
-	}
+					<Dialog open={isOpen} onOpenChange={onOpenChange}>
+						<DialogContent>
+							{!session.user.twoFactorEnabled && (
+								<>
+									<DialogHeader>
+										<DialogTitle>
+											{step === "password" &&
+												"Enable Two-Factor Authentication"}
+											{step === "qr" && "Scan QR Code"}
+											{step === "backup" && "Backup Codes"}
+										</DialogTitle>
+										<DialogDescription>
+											{step === "password" &&
+												"Enter your password to continue."}
+											{step === "qr" &&
+												"Scan the QR code with your authenticator app."}
+											{step === "backup" &&
+												"Save these backup codes in a safe place."}
+										</DialogDescription>
+									</DialogHeader>
 
-	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>Two-Factor Authentication</CardTitle>
-				<CardDescription>
-					Add an extra layer of security to your account.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<div className="flex items-center justify-between">
-					<span className="text-muted-foreground text-sm">
-						Two-factor authentication is currently disabled.
-					</span>
-					<Button onClick={() => setIsOpen(true)}>Enable 2FA</Button>
-				</div>
-			</CardContent>
+									<div className="py-4">
+										{step === "password" && (
+											<div className="space-y-2">
+												<Label>Password</Label>
+												<Input
+													type="password"
+													value={password}
+													onChange={(e) => setPassword(e.target.value)}
+												/>
+											</div>
+										)}
 
-			<Dialog open={isOpen} onOpenChange={onOpenChange}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{step === "password" && "Enable Two-Factor Authentication"}
-							{step === "qr" && "Scan QR Code"}
-							{step === "backup" && "Backup Codes"}
-						</DialogTitle>
-						<DialogDescription>
-							{step === "password" && "Enter your password to continue."}
-							{step === "qr" && "Scan the QR code with your authenticator app."}
-							{step === "backup" && "Save these backup codes in a safe place."}
-						</DialogDescription>
-					</DialogHeader>
+										{step === "qr" && (
+											<div className="flex flex-col items-center gap-4">
+												<div className="overflow-hidden rounded-lg border bg-white p-2">
+													{/* eslint-disable-next-line @next/next/no-img-element */}
+													<img
+														src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpURI)}`}
+														alt="QR Code"
+														className="h-48 w-48"
+													/>
+												</div>
+												<div className="w-full space-y-2">
+													<Label className="block text-center">
+														Verification Code
+													</Label>
+													<div className="flex justify-center">
+														<InputOTP
+															maxLength={6}
+															value={verificationCode}
+															onChange={setVerificationCode}
+														>
+															<InputOTPGroup>
+																<InputOTPSlot index={0} />
+																<InputOTPSlot index={1} />
+																<InputOTPSlot index={2} />
+															</InputOTPGroup>
+															<InputOTPSeparator />
+															<InputOTPGroup>
+																<InputOTPSlot index={3} />
+																<InputOTPSlot index={4} />
+																<InputOTPSlot index={5} />
+															</InputOTPGroup>
+														</InputOTP>
+													</div>
+												</div>
+											</div>
+										)}
 
-					<div className="py-4">
-						{step === "password" && (
-							<div className="space-y-2">
-								<Label>Password</Label>
-								<Input
-									type="password"
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-								/>
-							</div>
-						)}
-
-						{step === "qr" && (
-							<div className="flex flex-col items-center gap-4">
-								<div className="overflow-hidden rounded-lg border bg-white p-2">
-									{/* Use external API for QR code generation to avoid new dependencies */}
-									<img
-										src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpURI)}`}
-										alt="QR Code"
-										className="h-48 w-48"
-									/>
-								</div>
-								<div className="w-full space-y-2">
-									<Label className="block text-center">Verification Code</Label>
-									<div className="flex justify-center">
-										<InputOTP
-											maxLength={6}
-											value={verificationCode}
-											onChange={setVerificationCode}
-										>
-											<InputOTPGroup>
-												<InputOTPSlot index={0} />
-												<InputOTPSlot index={1} />
-												<InputOTPSlot index={2} />
-											</InputOTPGroup>
-											<InputOTPSeparator />
-											<InputOTPGroup>
-												<InputOTPSlot index={3} />
-												<InputOTPSlot index={4} />
-												<InputOTPSlot index={5} />
-											</InputOTPGroup>
-										</InputOTP>
+										{step === "backup" && (
+											<div className="space-y-4">
+												<div className="grid grid-cols-2 gap-2">
+													{backupCodes.map((code) => (
+														<div
+															key={code}
+															className="rounded bg-muted p-2 text-center font-mono text-sm"
+														>
+															{code}
+														</div>
+													))}
+												</div>
+												<Button
+													variant="outline"
+													className="w-full"
+													onClick={() => {
+														navigator.clipboard.writeText(
+															backupCodes.join("\n"),
+														);
+														toast.success("Copied to clipboard");
+													}}
+												>
+													<Copy className="mr-2 h-4 w-4" /> Copy Codes
+												</Button>
+											</div>
+										)}
 									</div>
-								</div>
-							</div>
-						)}
 
-						{step === "backup" && (
-							<div className="space-y-4">
-								<div className="grid grid-cols-2 gap-2">
-									{backupCodes.map((code) => (
-										<div
-											key={code}
-											className="rounded bg-muted p-2 text-center font-mono text-sm"
-										>
-											{code}
+									<DialogFooter>
+										{step === "password" && (
+											<Button
+												onClick={handleEnableTwoFactor}
+												disabled={!password || isSubmitting}
+											>
+												{isSubmitting ? "Verifying..." : "Continue"}
+											</Button>
+										)}
+										{step === "qr" && (
+											<Button
+												onClick={handleVerifyTwoFactor}
+												disabled={verificationCode.length < 6 || isSubmitting}
+											>
+												{isSubmitting ? "Activating..." : "Activate"}
+											</Button>
+										)}
+										{step === "backup" && (
+											<Button onClick={() => onOpenChange(false)}>Done</Button>
+										)}
+									</DialogFooter>
+								</>
+							)}
+
+							{session.user.twoFactorEnabled && (
+								<>
+									<DialogHeader>
+										<DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+										<DialogDescription>
+											Enter your password to disable two-factor authentication.
+										</DialogDescription>
+									</DialogHeader>
+									<div className="space-y-4 py-4">
+										<div className="space-y-2">
+											<Label>Password</Label>
+											<Input
+												type="password"
+												value={password}
+												onChange={(e) => setPassword(e.target.value)}
+											/>
 										</div>
-									))}
-								</div>
-								<Button
-									variant="outline"
-									className="w-full"
-									onClick={() => {
-										navigator.clipboard.writeText(backupCodes.join("\n"));
-										toast.success("Copied to clipboard");
-									}}
-								>
-									<Copy className="mr-2 h-4 w-4" /> Copy Codes
-								</Button>
-							</div>
-						)}
-					</div>
-
-					<DialogFooter>
-						{step === "password" && (
-							<Button
-								onClick={handleEnableTwoFactor}
-								disabled={!password || isSubmitting}
-							>
-								{isSubmitting ? "Verifying..." : "Continue"}
-							</Button>
-						)}
-						{step === "qr" && (
-							<Button
-								onClick={handleVerifyTwoFactor}
-								disabled={verificationCode.length < 6 || isSubmitting}
-							>
-								{isSubmitting ? "Activating..." : "Activate"}
-							</Button>
-						)}
-						{step === "backup" && (
-							<Button onClick={() => onOpenChange(false)}>Done</Button>
-						)}
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</Card>
+									</div>
+									<DialogFooter>
+										<Button variant="outline" onClick={() => setIsOpen(false)}>
+											Cancel
+										</Button>
+										<Button
+											variant="destructive"
+											onClick={handleDisableTwoFactor}
+											disabled={!password || isSubmitting}
+										>
+											{isSubmitting ? "Disabling..." : "Disable 2FA"}
+										</Button>
+									</DialogFooter>
+								</>
+							)}
+						</DialogContent>
+					</Dialog>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
