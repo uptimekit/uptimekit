@@ -1,6 +1,7 @@
 {
 	"name": "@uptimekit/db",
 	"version": "0.0.4",
+	"private": true,
 	"type": "module",
 	"exports": {
 		".": {
