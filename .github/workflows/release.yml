@@ -1,25 +1,36 @@
-name: Production Release
+name: Release
 
 on:
   push:
     branches:
       - release
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  REGISTRY: ghcr.io
+  # We'll use the repository owner/name as the base image path.
+  # Adjust if you want a specific org or repo name format.
+  IMAGE_BASE: ghcr.io/${{ github.repository }}
+
 jobs:
   release:
+    name: Release Changeset
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-      packages: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
@@ -27,84 +38,106 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
-      - name: Generate Changeset from Commit
-        run: node scripts/generate-changeset.js
+      - name: Create Release Pull Request
+        id: changesets
+        uses: changesets/action@v1
         env:
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.event.after }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # This runs `pnpm run release` which maps to `changeset publish`
+          publish: pnpm run release
 
-      - name: Version Packages
-        run: pnpm changeset version
+  publish-docker:
+    name: Publish Docker Images
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.release.outputs.publishedPackages) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Generate Release Info
-        id: get_version
-        run: node scripts/generate-release-info.js
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
+      - name: Prepare Docker Metadata
+        id: prep
+        run: |
+            PACKAGE_NAME="${{ matrix.package.name }}"
+            # Remove scope if present (e.g. @uptimekit/dash -> dash)
+            APP_NAME=${PACKAGE_NAME#@*/}
+            APP_NAME=${APP_NAME#*/}
+            
+            # Construct image name
+            IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/uptimekit-${APP_NAME}
+            # Lowercase just in case
+            IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+            
+            echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+            echo "app_name_clean=$APP_NAME" >> $GITHUB_OUTPUT
+            
+            # Find directory - assumes standard structure apps/[name]
+            # We can try to find it via package.json location but that info isn't in matrix.package
+            # So we rely on convention or search
+            APP_DIR="apps/$APP_NAME"
+            if [ ! -d "$APP_DIR" ]; then
+                echo "Directory $APP_DIR does not exist, searching..."
+                APP_DIR=$(find apps -name "package.json" -print0 | xargs -0 grep -l "\"name\": \"$PACKAGE_NAME\"" | xargs dirname)
+            fi
+            
+            echo "app_dir=$APP_DIR" >> $GITHUB_OUTPUT
 
-      - name: Log in to GitHub Container Registry
+            if [ -z "$APP_DIR" ] || [ ! -f "$APP_DIR/Dockerfile" ]; then
+                echo "skip=true" >> $GITHUB_OUTPUT
+            else
+                echo "skip=false" >> $GITHUB_OUTPUT
+            fi
+
+      - name: Docker meta
+        id: meta
+        if: steps.prep.outputs.skip != 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ steps.prep.outputs.image_name }}
+            ${{ secrets.DOCKER_USERNAME }}/uptimekit-${{ steps.prep.outputs.app_name_clean }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ matrix.package.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.package.version }}
+            type=semver,pattern={{major}},value=${{ matrix.package.version }}
+
+      - name: Set up QEMU
+        if: steps.prep.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.prep.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login to GHCR
+        if: steps.prep.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
+      - name: Docker Login to Docker Hub
+        if: steps.prep.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and Push Docker Images
-        run: |
-          find apps -maxdepth 2 -name "package.json" | while read -r file; do
-             app_dir=$(dirname "$file")
-             app_name=$(basename "$app_dir")
-             version=$(grep '"version":' "$file" | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
-             
-             echo "Building Production Docker image for $app_name version $version"
-             
-             if [ -f "$app_dir/Dockerfile" ]; then
-                 # GHCR
-                 ghcr_base="ghcr.io/${{ github.repository_owner }}/uptimekit-$app_name"
-                 docker build -t "$ghcr_base:$version" -t "$ghcr_base:latest" -f "$app_dir/Dockerfile" .
-                 docker push "$ghcr_base:$version"
-                 docker push "$ghcr_base:latest"
-
-                 # Docker Hub
-                 docker_hub_base="${{ secrets.DOCKER_USERNAME }}/uptimekit-$app_name"
-                 docker tag "$ghcr_base:$version" "$docker_hub_base:$version"
-                 docker tag "$ghcr_base:$version" "$docker_hub_base:latest"
-                 docker push "$docker_hub_base:$version"
-                 docker push "$docker_hub_base:latest"
-             fi
-          done
-
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Docker Image Publish
+        if: steps.prep.outputs.skip != 'true'
+        uses: docker/build-push-action@v5
         with:
-          commit_message: "chore: release versions [skip ci]"
-          branch: release
-          tagging_message: "v${{ steps.get_version.outputs.version }}"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        if: steps.get_version.outputs.version != ''
-        with:
-          tag_name: "v${{ steps.get_version.outputs.version }}"
-          body_path: release_notes.md
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Sync and Bump Development Version
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin development
-          git checkout development
-          git merge --no-ff --allow-unrelated-histories -X theirs origin/release -m "chore: sync release to development"
-          
-          # Bump version for next cycle to avoid staying on same version
-          node scripts/bump-version.js
-          pnpm install --no-frozen-lockfile
-          git add .
-          git commit -m "chore: bump version for next development cycle [skip ci]"
-          git push origin development
+          context: .
+          file: ${{ steps.prep.outputs.app_dir }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

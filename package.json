@@ -19,7 +19,8 @@
 		"db:studio": "turbo -F @uptimekit/db db:studio",
 		"db:generate": "turbo -F @uptimekit/db db:generate",
 		"db:migrate": "turbo -F @uptimekit/db db:migrate",
-		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
+		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only",
+		"release": "changeset publish"
 	},
 	"dependencies": {
 		"dotenv": "^17.2.2",

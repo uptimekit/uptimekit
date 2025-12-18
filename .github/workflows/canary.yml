@@ -6,12 +6,12 @@ on:
       - development
 
 jobs:
-  canary:
+  calculate-version:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_changes: ${{ steps.check_changes.outputs.has_changes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,63 +27,137 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
-      - name: Generate Changeset from Commit
-        run: node scripts/generate-changeset.js
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.event.after }}
-
       - name: Create Canary Version
-        run: pnpm changeset version --snapshot canary
+        # This updates package.json files in-place with 0.0.x-canary-tag
+        run: |
+          # Ensure git user is set for changeset to work if it needs to commit (though we won't push)
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          # Apply snapshot versioning
+          pnpm changeset version --snapshot canary
 
-      - name: Log in to GitHub Container Registry
+      - name: Check for changes
+        id: check_changes
+        run: |
+          # Check if any package.json files were modified
+          if git diff --name-only | grep "package.json"; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Archive Package Configs
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+            # Create a tarball of all package.json files to preserve versions for the build job
+            # We find all package.json files (ignoring node_modules)
+            find . -name "package.json" -not -path "*/node_modules/*" -print0 | xargs -0 tar -czf package-configs.tar.gz
+
+      - name: Upload Package Configs
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-configs
+          path: package-configs.tar.gz
+          retention-days: 1
+
+      - name: Calculate Matrix
+        id: set-matrix
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+            MATRIX_JSON="[]"
+            # Inspect valid apps
+            APPS=$(find apps -maxdepth 2 -name "package.json")
+            
+            for file in $APPS; do
+                DIR=$(dirname "$file")
+                if [ -f "$DIR/Dockerfile" ]; then
+                    NAME=$(node -p "require('./$file').name")
+                    VERSION=$(node -p "require('./$file').version")
+                    
+                    # Only include if version is a canary version (meaning it was bumped or checked as such)
+                    if [[ "$VERSION" == *"canary"* ]]; then
+                        APP_NAME_CLEAN=${NAME#@*/}
+                        APP_NAME_CLEAN=${APP_NAME_CLEAN#*/}
+                        
+                        ITEM_JSON=$(jq -n \
+                            --arg name "$NAME" \
+                            --arg version "$VERSION" \
+                            --arg dir "$DIR" \
+                            --arg app_name_clean "$APP_NAME_CLEAN" \
+                            '{name: $name, version: $version, app_dir: $dir, app_name_clean: $app_name_clean}')
+                        
+                        MATRIX_JSON=$(echo "$MATRIX_JSON" | jq ". + [$ITEM_JSON]")
+                    fi
+                fi
+            done
+            
+            echo "matrix=$(echo "$MATRIX_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+
+  publish-docker:
+    needs: calculate-version
+    if: needs.calculate-version.outputs.has_changes == 'true' && needs.calculate-version.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.calculate-version.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # We checkout the original state (clean)
+
+      - name: Download Package Configs
+        uses: actions/download-artifact@v4
+        with:
+          name: package-configs
+      
+      - name: Apply Canary Versions
+        run: |
+            # Extract the package.json files, overwriting the checked-out ones
+            tar -xzf package-configs.tar.gz
+            rm package-configs.tar.gz
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/uptimekit-${{ matrix.app.app_name_clean }}
+            ${{ secrets.DOCKER_USERNAME }}/uptimekit-${{ matrix.app.app_name_clean }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ matrix.app.version }}
+            type=sha
+            type=raw,value=canary
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
+      - name: Docker Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and Push Docker Images
-        if: success()
-        run: |
-          find apps -maxdepth 2 -name "package.json" | while read -r file; do
-             app_dir=$(dirname "$file")
-             app_name=$(basename "$app_dir")
-             
-             # Extract version from package.json
-             version=$(grep '"version":' "$file" | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
-             
-             echo "Building Docker image for $app_name version $version"
-
-             if [[ "$version" != *"canary"* ]]; then
-                 echo "Skipping $app_name build: Version $version is not a canary version."
-                 continue
-             fi
-             
-             if [ -f "$app_dir/Dockerfile" ]; then
-                 # GHCR
-                 ghcr_tag="ghcr.io/${{ github.repository_owner }}/uptimekit-$app_name:$version"
-                 docker build -t "$ghcr_tag" -f "$app_dir/Dockerfile" .
-                 docker push "$ghcr_tag"
-
-                 # Docker Hub
-                 docker_hub_tag="${{ secrets.DOCKER_USERNAME }}/uptimekit-$app_name:$version"
-                 docker tag "$ghcr_tag" "$docker_hub_tag"
-                 docker push "$docker_hub_tag"
-             else
-                 echo "No Dockerfile found for $app_name"
-             fi
-          done
-
-      - name: Commit Canary Version
-        uses: stefanzweifel/git-auto-commit-action@v5
+      - name: Docker Image Publish
+        uses: docker/build-push-action@v5
         with:
-          commit_message: "chore: canary version bump [skip ci]"
-          branch: development
-          file_pattern: "apps/**/package.json packages/**/package.json"
+          context: .
+          file: ${{ matrix.app.app_dir }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
