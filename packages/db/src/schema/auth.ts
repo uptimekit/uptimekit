@@ -23,6 +23,7 @@ export const user = pgTable("user", {
 	banned: boolean("banned").default(false),
 	banReason: text("ban_reason"),
 	banExpires: timestamp("ban_expires"),
+	twoFactorEnabled: boolean("two_factor_enabled").default(false),
 });
 
 export const session = pgTable(
@@ -84,6 +85,19 @@ export const verification = pgTable(
 			.notNull(),
 	},
 	(table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+export const twoFactor = pgTable(
+	"twoFactor",
+	{
+		id: text("id").primaryKey(),
+		secret: text("secret").notNull(),
+		backupCodes: text("backup_codes").notNull(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+	},
+	(table) => [index("twoFactor_userId_idx").on(table.userId)],
 );
 
 export const apikey = pgTable(
@@ -175,6 +189,7 @@ export const userRelations = relations(user, ({ many }) => ({
 	apikeys: many(apikey),
 	members: many(member),
 	invitations: many(invitation),
+	twoFactors: many(twoFactor),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -221,6 +236,13 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
 	}),
 	user: one(user, {
 		fields: [invitation.inviterId],
+		references: [user.id],
+	}),
+}));
+
+export const twoFactorRelations = relations(twoFactor, ({ one }) => ({
+	user: one(user, {
+		fields: [twoFactor.userId],
 		references: [user.id],
 	}),
 }));

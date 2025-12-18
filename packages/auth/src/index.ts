@@ -3,7 +3,7 @@ import * as schema from "@uptimekit/db/schema/auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { admin, apiKey, organization } from "better-auth/plugins";
+import { admin, apiKey, organization, twoFactor } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 // Helper to create slug from email
@@ -22,7 +22,31 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 	},
-	plugins: [nextCookies(), admin(), apiKey(), organization()],
+	plugins: [
+		nextCookies(),
+		admin(),
+		apiKey(),
+		organization(),
+		twoFactor({
+			issuer: "UptimeKit",
+		}),
+	],
+	socialProviders: {
+		discord: {
+			clientId: process.env.DISCORD_CLIENT_ID || "",
+			clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+			enabled: !!(
+				process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET
+			),
+		},
+		github: {
+			clientId: process.env.GITHUB_CLIENT_ID || "",
+			clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+			enabled: !!(
+				process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+			),
+		},
+	},
 	databaseHooks: {
 		user: {
 			create: {
