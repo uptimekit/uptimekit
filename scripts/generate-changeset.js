@@ -96,6 +96,14 @@ function getChangedPackagesAndDependents() {
 				const dependsOnChanged = deps.some((d) => changedPackages.has(d));
 
 				if (dependsOnChanged) {
+					// Skip if the only changed dependency is docs
+					if (
+						changedPackages.size === 1 &&
+						changedPackages.has("@uptimekit/docs")
+					) {
+						continue;
+					}
+
 					changedPackages.add(pkgName);
 					added = true;
 					console.log(

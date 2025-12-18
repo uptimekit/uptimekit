@@ -60,6 +60,11 @@ jobs:
              version=$(grep '"version":' "$file" | head -1 | awk -F: '{ print $2 }' | sed 's/[", ]//g')
              
              echo "Building Docker image for $app_name version $version"
+
+             if [[ "$version" != *"canary"* ]]; then
+                 echo "Skipping $app_name build: Version $version is not a canary version."
+                 continue
+             fi
              
              if [ -f "$app_dir/Dockerfile" ]; then
                  # GHCR
