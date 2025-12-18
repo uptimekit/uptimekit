@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-export interface IntegrationDefinition<Config = any> {
+export interface IntegrationDefinition<Config = unknown> {
 	id: string;
 	name: string;
 	type: "export" | "import";
@@ -8,7 +8,7 @@ export interface IntegrationDefinition<Config = any> {
 	description: string;
 	configSchema: z.ZodSchema<Config>;
 	events: string[];
-	handler: (config: Config, event: string, payload: any) => Promise<void>;
+	handler: (config: Config, event: string, payload: unknown) => Promise<void>;
 }
 
 class IntegrationRegistry {

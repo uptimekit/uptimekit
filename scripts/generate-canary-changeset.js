@@ -1,6 +1,7 @@
-const fs = require("node:fs");
-const { execSync } = require("node:child_process");
-const path = require("node:path");
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
 
 try {
 	// Check if there are existing unreleased changesets (excluding readme/config)
@@ -40,7 +41,7 @@ try {
 			const pkgPath = path.join(dir, "package.json");
 			if (fs.existsSync(pkgPath)) {
 				try {
-					const pkg = JSON.parse(fs.readFileSync(pkgPath));
+					const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
 					if (!pkg.private || pkg.private === true) {
 						if (pkg.name) packages.add(pkg.name);
 					}
