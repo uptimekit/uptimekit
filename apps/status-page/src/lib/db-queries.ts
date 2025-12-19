@@ -124,25 +124,24 @@ export const getMonitorUptime = async (monitorId: string, days = 90) => {
 
 			const result = await db.execute(sql`
                 SELECT 
-                    to_char(timestamp, 'YYYY-MM-DD') as date,
-                    count(*) as total_checks,
-                    count(case when status = 'up' then 1 end) as up_checks,
-                    avg(latency) as avg_latency
-                FROM ${monitorEvent}
-                WHERE ${eq(monitorEvent.monitorId, monitorId)}
-                AND timestamp >= ${startDate}
-                GROUP BY 1
-                ORDER BY 1 DESC
+                    					to_char(timestamp, 'YYYY-MM-DD HH24') as date_hour,
+					count(*) as total_checks,
+					count(case when status = 'up' then 1 end) as up_checks,
+					avg(latency) as avg_latency
+				FROM ${monitorEvent}
+				WHERE ${eq(monitorEvent.monitorId, monitorId)}
+				AND timestamp >= ${startDate}
+				GROUP BY 1
+				ORDER BY 1 DESC
             `);
 
 			// Handle different DB driver return types (e.g. valid array vs object with .rows)
 			// Some drivers return { rows: [...] }, others return Array-like objects
 			const rows = Array.isArray(result) ? result : (result as any).rows || [];
 
-			// Fill in missing days?
-			// For now, mapping the result
+			// Return hourly data
 			return rows as unknown as {
-				date: string;
+				date_hour: string;
 				total_checks: number;
 				up_checks: number;
 				avg_latency: number;

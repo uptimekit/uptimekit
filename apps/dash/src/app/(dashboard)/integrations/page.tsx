@@ -6,11 +6,9 @@ import { webhookIntegration } from "@uptimekit/api/pkg/integrations/definitions/
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
 import { Settings2, Webhook } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { z } from "zod";
 import { ConfigDialog } from "@/components/integrations/config-dialog";
 import { IntegrationCard } from "@/components/integrations/integration-card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { client } from "@/utils/orpc";
@@ -63,163 +61,169 @@ export default function IntegrationsPage() {
 
 	if (isLoadingAvailable || isLoadingConfigured) {
 		return (
-			<div className="space-y-4 p-6">
-				<Skeleton className="h-8 w-48" />
-				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-					<Skeleton className="h-48" />
-					<Skeleton className="h-48" />
+			<div className="flex flex-1 flex-col py-8">
+				<div className="mx-auto w-full max-w-6xl space-y-4 px-4">
+					<Skeleton className="h-8 w-48" />
+					<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+						<Skeleton className="h-48" />
+						<Skeleton className="h-48" />
+					</div>
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="p-6">
-			<div className="mb-6">
-				<h1 className="font-bold text-2xl">Integrations</h1>
-				<p className="text-muted-foreground">
-					Connect your monitoring with external tools.
-				</p>
-			</div>
+		<div className="flex flex-1 flex-col py-8">
+			<div className="mx-auto w-full max-w-6xl space-y-4 px-4">
+				<div className="mb-6">
+					<h1 className="font-bold text-2xl">Integrations</h1>
+					<p className="text-muted-foreground">
+						Connect your monitoring with external tools.
+					</p>
+				</div>
 
-			<div className="mb-6 flex space-x-4 border-b">
-				<button
-					type="button"
-					onClick={() => setActiveTab("popular")}
-					className={cn(
-						"border-b-2 px-4 py-2 font-medium text-sm transition-colors",
-						activeTab === "popular"
-							? "border-primary text-primary"
-							: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
-					)}
-				>
-					Popular
-				</button>
-				<button
-					type="button"
-					onClick={() => setActiveTab("import")}
-					className={cn(
-						"border-b-2 px-4 py-2 font-medium text-sm transition-colors",
-						activeTab === "import"
-							? "border-primary text-primary"
-							: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
-					)}
-				>
-					Importing data
-				</button>
-				<button
-					type="button"
-					onClick={() => setActiveTab("export")}
-					className={cn(
-						"border-b-2 px-4 py-2 font-medium text-sm transition-colors",
-						activeTab === "export"
-							? "border-primary text-primary"
-							: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
-					)}
-				>
-					Exporting data
-				</button>
-			</div>
+				<div className="mb-6 flex space-x-4 border-b">
+					<button
+						type="button"
+						onClick={() => setActiveTab("popular")}
+						className={cn(
+							"border-b-2 px-4 py-2 font-medium text-sm transition-colors",
+							activeTab === "popular"
+								? "border-primary text-primary"
+								: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
+						)}
+					>
+						Popular
+					</button>
+					<button
+						type="button"
+						onClick={() => setActiveTab("import")}
+						className={cn(
+							"border-b-2 px-4 py-2 font-medium text-sm transition-colors",
+							activeTab === "import"
+								? "border-primary text-primary"
+								: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
+						)}
+					>
+						Importing data
+					</button>
+					<button
+						type="button"
+						onClick={() => setActiveTab("export")}
+						className={cn(
+							"border-b-2 px-4 py-2 font-medium text-sm transition-colors",
+							activeTab === "export"
+								? "border-primary text-primary"
+								: "border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground",
+						)}
+					>
+						Exporting data
+					</button>
+				</div>
 
-			{(() => {
-				const filteredIntegrations = availableIntegrations?.filter(
-					(integration: any) => {
-						const def = (frontendRegistry as any)[integration.id];
-						const type = def?.type || integration.type;
+				{(() => {
+					const filteredIntegrations = availableIntegrations?.filter(
+						(integration: any) => {
+							const def = (frontendRegistry as any)[integration.id];
+							const type = def?.type || integration.type;
 
-						if (activeTab === "popular") return true;
-						if (activeTab === "import") return type === "import";
-						if (activeTab === "export") return type === "export";
-						return true;
-					},
-				);
-
-				if (!filteredIntegrations || filteredIntegrations.length === 0) {
-					return (
-						<div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/10 py-12 text-center">
-							<p className="font-medium text-lg">No integrations found</p>
-							<p className="text-muted-foreground text-sm">
-								There are no integrations available in this category.
-							</p>
-						</div>
+							if (activeTab === "popular") return true;
+							if (activeTab === "import") return type === "import";
+							if (activeTab === "export") return type === "export";
+							return true;
+						},
 					);
-				}
 
-				return (
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-						{filteredIntegrations.map((integrationMeta: any) => {
-							const config = configuredConfigs?.find(
-								(c: any) => c.type === integrationMeta.id,
-							);
-							// Use the imported definition to get the schema
-							const fullDef = (frontendRegistry as any)[integrationMeta.id] || {
-								// Fallback if not found locally but exists on backend (shouldn't happen if synced)
-								...integrationMeta,
-								configSchema: {
-									parse: () => {},
-									shape: { url: z.string() },
-								} as any,
-							};
+					if (!filteredIntegrations || filteredIntegrations.length === 0) {
+						return (
+							<div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/10 py-12 text-center">
+								<p className="font-medium text-lg">No integrations found</p>
+								<p className="text-muted-foreground text-sm">
+									There are no integrations available in this category.
+								</p>
+							</div>
+						);
+					}
 
-							// Icon mapping
-							let Icon: React.ReactNode;
-							if (fullDef.logo) {
-								Icon = (
-									<div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-										<img
-											src={fullDef.logo}
-											alt={fullDef.name}
-											className="h-8 w-8 object-contain"
-										/>
-									</div>
+					return (
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2">
+							{filteredIntegrations.map((integrationMeta: any) => {
+								const config = configuredConfigs?.find(
+									(c: any) => c.type === integrationMeta.id,
 								);
-							} else {
-								Icon =
-									integrationMeta.id === "webhook" ? (
-										<div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-muted">
-											<Webhook className="h-6 w-6" />
-										</div>
-									) : (
-										<div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-muted">
-											<Settings2 className="h-6 w-6" />
+								// Use the imported definition to get the schema
+								const fullDef = (frontendRegistry as any)[
+									integrationMeta.id
+								] || {
+									// Fallback if not found locally but exists on backend (shouldn't happen if synced)
+									...integrationMeta,
+									configSchema: {
+										parse: () => {},
+										shape: { url: z.string() },
+									} as any,
+								};
+
+								// Icon mapping
+								let Icon: React.ReactNode;
+								if (fullDef.logo) {
+									Icon = (
+										<div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+											<img
+												src={fullDef.logo}
+												alt={fullDef.name}
+												className="h-8 w-8 object-contain"
+											/>
 										</div>
 									);
-							}
+								} else {
+									Icon =
+										integrationMeta.id === "webhook" ? (
+											<div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-muted">
+												<Webhook className="h-6 w-6" />
+											</div>
+										) : (
+											<div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-muted">
+												<Settings2 className="h-6 w-6" />
+											</div>
+										);
+								}
 
-							return (
-								<IntegrationCard
-									key={integrationMeta.id}
-									integration={fullDef}
-									configured={!!config}
-									active={config?.active}
-									icon={Icon}
-									category={fullDef.type === "export" ? "Export" : "Import"}
-									onConfigure={() => setSelectedIntegration(fullDef)}
-								/>
-							);
-						})}
-					</div>
-				);
-			})()}
+								return (
+									<IntegrationCard
+										key={integrationMeta.id}
+										integration={fullDef}
+										configured={!!config}
+										active={config?.active}
+										icon={Icon}
+										category={fullDef.type === "export" ? "Export" : "Import"}
+										onConfigure={() => setSelectedIntegration(fullDef)}
+									/>
+								);
+							})}
+						</div>
+					);
+				})()}
 
-			{selectedIntegration && (
-				<ConfigDialog
-					open={!!selectedIntegration}
-					onOpenChange={(open) => !open && setSelectedIntegration(null)}
-					integration={selectedIntegration}
-					initialConfig={
-						configuredConfigs?.find((c) => c.type === selectedIntegration.id)
-							?.config
-					}
-					onSave={async (config) => {
-						await configureMutation.mutateAsync({
-							type: selectedIntegration.id,
-							config,
-						});
-						setSelectedIntegration(null);
-					}}
-				/>
-			)}
+				{selectedIntegration && (
+					<ConfigDialog
+						open={!!selectedIntegration}
+						onOpenChange={(open) => !open && setSelectedIntegration(null)}
+						integration={selectedIntegration}
+						initialConfig={
+							configuredConfigs?.find((c) => c.type === selectedIntegration.id)
+								?.config
+						}
+						onSave={async (config) => {
+							await configureMutation.mutateAsync({
+								type: selectedIntegration.id,
+								config,
+							});
+							setSelectedIntegration(null);
+						}}
+					/>
+				)}
+			</div>
 		</div>
 	);
 }

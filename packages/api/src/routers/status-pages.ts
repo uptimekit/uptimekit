@@ -8,6 +8,7 @@ import {
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
+import { isSelfHosted, MAX_STATUS_PAGES } from "../lib/limits";
 
 export const statusPagesRouter = {
 	list: protectedProcedure
@@ -16,6 +17,8 @@ export const statusPagesRouter = {
 				.object({
 					q: z.string().optional(),
 					public: z.boolean().optional(),
+					limit: z.number().default(50),
+					offset: z.number().default(0),
 				})
 				.optional(),
 		)
@@ -35,13 +38,18 @@ export const statusPagesRouter = {
 				filters.push(eq(statusPage.public, input.public));
 			}
 
-			const pages = await db
-				.select()
-				.from(statusPage)
-				.where(and(...filters))
-				.orderBy(desc(statusPage.createdAt));
+			const [pages, total] = await Promise.all([
+				db
+					.select()
+					.from(statusPage)
+					.where(and(...filters))
+					.orderBy(desc(statusPage.createdAt))
+					.limit(input?.limit || 50)
+					.offset(input?.offset || 0),
+				db.$count(statusPage, and(...filters)),
+			]);
 
-			const pagesWithCounts = await Promise.all(
+			const items = await Promise.all(
 				pages.map(async (page) => {
 					const monitorCount = await db
 						.select({ count: statusPageMonitor.monitorId })
@@ -60,7 +68,10 @@ export const statusPagesRouter = {
 				}),
 			);
 
-			return pagesWithCounts;
+			return {
+				items,
+				total,
+			};
 		}),
 
 	create: protectedProcedure
@@ -72,6 +83,22 @@ export const statusPagesRouter = {
 			}),
 		)
 		.handler(async ({ input, context }) => {
+			if (!isSelfHosted()) {
+				const currentCount = await db.$count(
+					statusPage,
+					eq(
+						statusPage.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				);
+
+				if (currentCount >= MAX_STATUS_PAGES) {
+					throw new ORPCError("FORBIDDEN", {
+						message: `Plan limit reached. You can only create up to ${MAX_STATUS_PAGES} status page.`,
+					});
+				}
+			}
+
 			// Check for duplicate slug globally or per org? Usually globally for subdomains.
 			const existing = await db.query.statusPage.findFirst({
 				where: eq(statusPage.slug, input.slug),

@@ -111,14 +111,14 @@ const workerProcedure = publicProcedure.use(requireWorkerAuth);
 export const workerIngestRouter = {
 	heartbeat: workerProcedure.handler(async ({ context }) => {
 		const workerLocation = context.worker.location;
-		console.log(`Worker Heartbeat: ${context.worker.name} (${workerLocation})`);
+		// console.log(`Worker Heartbeat: ${context.worker.name} (${workerLocation})`);
 
 		// Return active monitors that match the worker's location
 		const allActiveMonitors = await db.query.monitor.findMany({
 			where: (t, { eq }) => eq(t.active, true),
 		});
 
-		console.log(`Found ${allActiveMonitors.length} active monitors total.`);
+		// console.log(`Found ${allActiveMonitors.length} active monitors total.`);
 
 		const assignedMonitors = allActiveMonitors.filter((m) => {
 			const locations = m.locations as string[];
@@ -126,14 +126,15 @@ export const workerIngestRouter = {
 			return locations.includes(workerLocation);
 		});
 
-		console.log(
-			`Assigned ${assignedMonitors.length} monitors to worker ${workerLocation}`,
-		);
+		// console.log(
+		// 	`Assigned ${assignedMonitors.length} monitors to worker ${workerLocation}`,
+		// );
 
 		return {
 			monitors: assignedMonitors.map((m) => {
 				const config = m.config as {
-					url: string;
+					url?: string;
+					hostname?: string;
 					method?: string;
 					headers?: Record<string, string>;
 					body?: string;
@@ -144,7 +145,7 @@ export const workerIngestRouter = {
 				return {
 					id: m.id,
 					type: m.type,
-					url: config.url,
+					url: config.url || config.hostname || "",
 					interval: m.interval,
 					timeout: m.timeout,
 					method: config.method || "GET",

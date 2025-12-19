@@ -3,9 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
+	ArrowRight,
 	Check,
 	CheckCircle2,
 	ChevronDown,
+	ChevronLeftIcon,
+	ChevronRightIcon,
 	Filter,
 	HelpCircle,
 	Loader2,
@@ -18,6 +21,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -25,6 +29,12 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+} from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -40,26 +50,35 @@ export function IncidentsTable() {
 		"manual" | "automatic" | undefined
 	>(undefined);
 	const [search, setSearch] = useState("");
+	const [searchOpen, setSearchOpen] = useState(false);
 	const [debouncedSearch, setDebouncedSearch] = useState("");
+	const [page, setPage] = useState(1);
+	const pageSize = 10;
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setDebouncedSearch(search);
+			setPage(1); // Reset page on search change
 		}, 500);
 		return () => clearTimeout(timer);
 	}, [search]);
 
-	const { data: incidents, isLoading } = useQuery(
+	const { data, isLoading } = useQuery(
 		orpc.incidents.list.queryOptions({
 			input: {
 				status: statusFilter === "all" ? "all" : statusFilter || "all",
-				limit: 50,
+				limit: pageSize,
+				offset: (page - 1) * pageSize,
 				q: debouncedSearch || undefined,
 				severity: severityFilter,
 				type: typeFilter,
 			},
 		}),
 	);
+
+	const incidents = data?.items;
+	const total = data?.total || 0;
+	const totalPages = Math.ceil(total / pageSize);
 
 	const getStatusIcon = (status: string) => {
 		switch (status) {
@@ -92,6 +111,7 @@ export function IncidentsTable() {
 		setStatusFilter("all");
 		setSeverityFilter(undefined);
 		setTypeFilter(undefined);
+		setPage(1);
 	};
 
 	const activeFilterCount = [
@@ -101,11 +121,37 @@ export function IncidentsTable() {
 	].filter(Boolean).length;
 
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between">
+		<div className="mx-auto w-full max-w-6xl space-y-4">
+			<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+				<DialogContent className="flex items-center justify-center border-none bg-transparent p-0 shadow-none sm:max-w-[425px]">
+					<DialogTitle className="sr-only">Search</DialogTitle>
+					<div className="relative w-full">
+						<Input
+							autoFocus
+							placeholder="Search incidents..."
+							className="h-12 rounded-full border-muted bg-background pr-12 pl-6 shadow-lg"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									setSearchOpen(false);
+								}
+							}}
+						/>
+						<Button
+							size="icon"
+							className="absolute top-1 right-1 h-10 w-10 rounded-full"
+							onClick={() => setSearchOpen(false)}
+						>
+							<ArrowRight className="h-4 w-4" />
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+			<div className="flex items-center justify-between gap-4">
 				<h1 className="font-bold text-2xl tracking-tight">Incidents</h1>
 				<div className="flex items-center gap-2">
-					<div className="relative w-64">
+					<div className="relative hidden w-64 md:block">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
 						<Input
 							placeholder="Search incidents..."
@@ -114,6 +160,17 @@ export function IncidentsTable() {
 							onChange={(e) => setSearch(e.target.value)}
 						/>
 					</div>
+					<Button
+						variant="outline"
+						size="icon"
+						className="relative md:hidden"
+						onClick={() => setSearchOpen(true)}
+					>
+						<Search className="h-4 w-4" />
+						{search && (
+							<span className="-right-1 -top-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+						)}
+					</Button>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="icon" className="relative">
@@ -130,21 +187,30 @@ export function IncidentsTable() {
 								Status
 							</div>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("all")}
+								onClick={() => {
+									setStatusFilter("all");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All
 								{statusFilter === "all" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("open")}
+								onClick={() => {
+									setStatusFilter("open");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Open
 								{statusFilter === "open" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setStatusFilter("resolved")}
+								onClick={() => {
+									setStatusFilter("resolved");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Resolved
@@ -157,28 +223,40 @@ export function IncidentsTable() {
 								Severity
 							</div>
 							<DropdownMenuItem
-								onClick={() => setSeverityFilter(undefined)}
+								onClick={() => {
+									setSeverityFilter(undefined);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All Severities
 								{!severityFilter && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setSeverityFilter("minor")}
+								onClick={() => {
+									setSeverityFilter("minor");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Minor
 								{severityFilter === "minor" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setSeverityFilter("major")}
+								onClick={() => {
+									setSeverityFilter("major");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Major
 								{severityFilter === "major" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setSeverityFilter("critical")}
+								onClick={() => {
+									setSeverityFilter("critical");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Critical
@@ -191,21 +269,30 @@ export function IncidentsTable() {
 								Type
 							</div>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter(undefined)}
+								onClick={() => {
+									setTypeFilter(undefined);
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								All Types
 								{!typeFilter && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("manual")}
+								onClick={() => {
+									setTypeFilter("manual");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Manual
 								{typeFilter === "manual" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
-								onClick={() => setTypeFilter("automatic")}
+								onClick={() => {
+									setTypeFilter("automatic");
+									setPage(1);
+								}}
 								className="flex justify-between"
 							>
 								Automatic
@@ -228,12 +315,12 @@ export function IncidentsTable() {
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button
-						className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100"
+						className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
 						asChild
 					>
 						<Link href="/incidents/new">
 							<Plus className="h-4 w-4" />
-							Report a new incident
+							<span className="hidden md:inline">Report a new incident</span>
 						</Link>
 					</Button>
 				</div>
@@ -252,7 +339,7 @@ export function IncidentsTable() {
 									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
-						) : incidents?.length === 0 ? (
+						) : !incidents || incidents.length === 0 ? (
 							<TableRow>
 								<TableCell colSpan={3} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
@@ -282,7 +369,7 @@ export function IncidentsTable() {
 								</TableCell>
 							</TableRow>
 						) : (
-							incidents?.map((incident) => (
+							incidents.map((incident) => (
 								<TableRow
 									key={incident.id}
 									className="group h-[72px] cursor-pointer hover:bg-muted/40"
@@ -393,6 +480,69 @@ export function IncidentsTable() {
 						)}
 					</TableBody>
 				</Table>
+
+				{totalPages > 1 && (
+					<div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
+						<Pagination className="mx-0 w-auto">
+							<PaginationContent>
+								<PaginationItem>
+									<Button
+										variant="ghost"
+										size="icon"
+										disabled={page === 1}
+										onClick={() => setPage(page - 1)}
+									>
+										<ChevronLeftIcon className="h-4 w-4" />
+									</Button>
+								</PaginationItem>
+								{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+									(p) => {
+										// Simple logic for small page counts. For larger, we need ellipsis logic.
+										// For now, let's keep it simple or implement a window.
+										if (
+											totalPages > 7 &&
+											(p < page - 2 || p > page + 2) &&
+											p !== 1 &&
+											p !== totalPages
+										) {
+											if (p === page - 3 || p === page + 3) {
+												return (
+													<PaginationItem key={p}>
+														<PaginationEllipsis />
+													</PaginationItem>
+												);
+											}
+											return null;
+										}
+
+										return (
+											<PaginationItem key={p}>
+												<Button
+													variant={p === page ? "outline" : "ghost"}
+													size="icon"
+													onClick={() => setPage(p)}
+													className="h-8 w-8"
+												>
+													{p}
+												</Button>
+											</PaginationItem>
+										);
+									},
+								)}
+								<PaginationItem>
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => setPage(page + 1)}
+										disabled={page === totalPages}
+									>
+										<ChevronRightIcon className="h-4 w-4" />
+									</Button>
+								</PaginationItem>
+							</PaginationContent>
+						</Pagination>
+					</div>
+				)}
 			</div>
 		</div>
 	);

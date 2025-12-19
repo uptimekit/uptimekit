@@ -22,7 +22,7 @@ export const webhookIntegration: IntegrationDefinition<
 		"incident.comment_added",
 	],
 	handler: async (config, event, payload) => {
-		console.log(`[Webhook] Sending ${event} to ${config.url}`);
+		// console.log(`[Webhook] Sending ${event} to ${config.url}`);
 		try {
 			await fetch(config.url, {
 				method: "POST",
@@ -37,7 +37,7 @@ export const webhookIntegration: IntegrationDefinition<
 				}),
 			});
 		} catch (error) {
-			console.error(`[Webhook] Failed to send webhook to ${config.url}`, error);
+			// console.error(`[Webhook] Failed to send webhook to ${config.url}`, error);
 		}
 	},
 };

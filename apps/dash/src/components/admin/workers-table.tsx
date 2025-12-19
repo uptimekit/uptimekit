@@ -1,10 +1,17 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { AQ, AU, BR, CA, EU, HK, US, ZA } from "country-flag-icons/react/3x2";
 import { formatDistanceToNow } from "date-fns";
-import { ChevronDown, MoreHorizontal, Search } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	MoreHorizontal,
+	Search,
+} from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +22,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+} from "@/components/ui/pagination";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -23,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 interface Worker {
 	id: string;
@@ -31,10 +45,6 @@ interface Worker {
 	active: boolean;
 	lastHeartbeat: Date | null;
 	version: string | null;
-}
-
-interface WorkersTableProps {
-	initialWorkers: Worker[];
 }
 
 function getRegionFlag(location: string) {
@@ -50,27 +60,37 @@ function getRegionFlag(location: string) {
 	return <AQ className="h-3 w-4" />;
 }
 
-export function WorkersTable({ initialWorkers }: WorkersTableProps) {
+export function WorkersTable() {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState("all");
+	const [debouncedSearch, setDebouncedSearch] = useState("");
+	const [statusFilter, setStatusFilter] = useState<
+		"all" | "online" | "offline" | "unknown"
+	>("all");
+	const [page, setPage] = useState(1);
+	const pageSize = 10;
 
-	const filteredWorkers = useMemo(() => {
-		return initialWorkers.filter((worker) => {
-			const matchesSearch =
-				worker.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				worker.id.toLowerCase().includes(searchQuery.toLowerCase());
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedSearch(searchQuery);
+			setPage(1);
+		}, 500);
+		return () => clearTimeout(timer);
+	}, [searchQuery]);
 
-			if (!matchesSearch) return false;
+	const { data, isLoading } = useQuery(
+		orpc.workers.list.queryOptions({
+			input: {
+				q: debouncedSearch || undefined,
+				status: statusFilter,
+				limit: pageSize,
+				offset: (page - 1) * pageSize,
+			},
+		}),
+	);
 
-			if (statusFilter === "online")
-				return worker.lastHeartbeat && worker.active;
-			if (statusFilter === "offline")
-				return worker.lastHeartbeat && !worker.active;
-			if (statusFilter === "unknown") return !worker.lastHeartbeat;
-
-			return true;
-		});
-	}, [initialWorkers, searchQuery, statusFilter]);
+	const workers = data?.items || [];
+	const total = data?.total || 0;
+	const totalPages = Math.ceil(total / pageSize);
 
 	return (
 		<div className="space-y-4">
@@ -86,7 +106,13 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
 					</div>
-					<Select value={statusFilter} onValueChange={setStatusFilter}>
+					<Select
+						value={statusFilter}
+						onValueChange={(val) => {
+							setStatusFilter(val as any);
+							setPage(1);
+						}}
+					>
 						<SelectTrigger className="w-[150px]">
 							<SelectValue placeholder="Status" />
 						</SelectTrigger>
@@ -108,7 +134,13 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 				</div>
 				<Table>
 					<TableBody>
-						{initialWorkers.length === 0 ? (
+						{isLoading ? (
+							<TableRow>
+								<TableCell colSpan={4} className="h-24 text-center">
+									Loading...
+								</TableCell>
+							</TableRow>
+						) : workers.length === 0 ? (
 							<TableRow>
 								<TableCell colSpan={4} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
@@ -117,26 +149,20 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 										</div>
 										<p className="font-medium text-lg">No workers found</p>
 										<p className="text-muted-foreground text-sm">
-											Get started by adding your first worker.
+											{searchQuery || statusFilter !== "all"
+												? "No workers matching your search."
+												: "Get started by adding your first worker."}
 										</p>
-										<div className="mt-2">
-											<CreateWorkerDialog />
-										</div>
-									</div>
-								</TableCell>
-							</TableRow>
-						) : filteredWorkers.length === 0 ? (
-							<TableRow>
-								<TableCell colSpan={4} className="h-24 text-center">
-									<div className="flex flex-col items-center justify-center gap-2 py-6">
-										<p className="text-muted-foreground text-sm">
-											No workers matching your search.
-										</p>
+										{!searchQuery && statusFilter === "all" && (
+											<div className="mt-2">
+												<CreateWorkerDialog />
+											</div>
+										)}
 									</div>
 								</TableCell>
 							</TableRow>
 						) : (
-							filteredWorkers.map((worker) => (
+							workers.map((worker) => (
 								<TableRow
 									key={worker.id}
 									className="group h-[72px] cursor-pointer hover:bg-muted/40"
@@ -233,6 +259,67 @@ export function WorkersTable({ initialWorkers }: WorkersTableProps) {
 						)}
 					</TableBody>
 				</Table>
+
+				{totalPages > 1 && (
+					<div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
+						<Pagination className="mx-0 w-auto">
+							<PaginationContent>
+								<PaginationItem>
+									<Button
+										variant="ghost"
+										size="icon"
+										disabled={page === 1}
+										onClick={() => setPage(page - 1)}
+									>
+										<ChevronLeftIcon className="h-4 w-4" />
+									</Button>
+								</PaginationItem>
+								{Array.from({ length: totalPages }, (_, i) => i + 1).map(
+									(p) => {
+										if (
+											totalPages > 7 &&
+											(p < page - 2 || p > page + 2) &&
+											p !== 1 &&
+											p !== totalPages
+										) {
+											if (p === page - 3 || p === page + 3) {
+												return (
+													<PaginationItem key={p}>
+														<PaginationEllipsis />
+													</PaginationItem>
+												);
+											}
+											return null;
+										}
+
+										return (
+											<PaginationItem key={p}>
+												<Button
+													variant={p === page ? "outline" : "ghost"}
+													size="icon"
+													onClick={() => setPage(p)}
+													className="h-8 w-8"
+												>
+													{p}
+												</Button>
+											</PaginationItem>
+										);
+									},
+								)}
+								<PaginationItem>
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => setPage(page + 1)}
+										disabled={page === totalPages}
+									>
+										<ChevronRightIcon className="h-4 w-4" />
+									</Button>
+								</PaginationItem>
+							</PaginationContent>
+						</Pagination>
+					</div>
+				)}
 			</div>
 		</div>
 	);

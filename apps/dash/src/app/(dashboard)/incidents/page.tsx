@@ -1,9 +1,10 @@
-import { IncidentsTable } from "@/components/incidents/table";
+"use client";
+
+import { useRouter } from "next/navigation";
 
 export default function IncidentsPage() {
-	return (
-		<div className="container mx-auto py-6">
-			<IncidentsTable />
-		</div>
-	);
+	const router = useRouter();
+
+	router.push("/");
+	return <div className="container mx-auto py-6">How did you got there</div>;
 }

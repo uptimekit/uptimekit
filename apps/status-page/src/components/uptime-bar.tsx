@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { StatusType } from "./status-indicator";
+import { type StatusType, statusConfig } from "./status-indicator";
 
 export interface UptimeDay {
 	date: string;
@@ -54,10 +54,7 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 							<div className="-translate-x-1/2 absolute bottom-full left-1/2 z-20 mb-2 whitespace-nowrap">
 								<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
 									<div className="font-semibold text-popover-foreground text-sm">
-										{day.annotation ||
-											(day.status === "operational"
-												? "Operational"
-												: day.status.replace("_", " "))}
+										{day.annotation || statusConfig[day.status].label}
 									</div>
 									<div className="mt-1 text-muted-foreground text-xs">
 										{new Date(day.date).toLocaleDateString("en-US", {

@@ -95,7 +95,10 @@ export function EditUpdateForm({
 		},
 	});
 
-	const { data: monitors } = useQuery(orpc.monitors.list.queryOptions());
+	const { data: monitorsData } = useQuery(
+		orpc.monitors.list.queryOptions({ limit: 100 }),
+	);
+	const monitors = monitorsData?.items;
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: (data: FormValues) =>

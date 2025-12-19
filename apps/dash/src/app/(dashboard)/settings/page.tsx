@@ -7,13 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -26,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth-client";
+import { LogoEditor } from "./logo-editor";
 
 const formSchema = z.object({
 	name: z.string().min(2, {
@@ -80,7 +75,7 @@ export default function SettingsPage() {
 				data: {
 					name: values.name,
 					slug: values.slug,
-					logo: values.logo || undefined,
+					logo: values.logo || "",
 				},
 			},
 			{
@@ -119,79 +114,120 @@ export default function SettingsPage() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6">
-			<div>
-				<h1 className="font-bold text-2xl tracking-tight">
-					Organization Settings
-				</h1>
-				<p className="text-muted-foreground">
-					Manage your organization details.
-				</p>
-			</div>
-			<Separator />
-
-			<Card>
-				<CardHeader>
-					<CardTitle>General</CardTitle>
-					<CardDescription>
-						Update your organization's public information.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-							<FormField
-								control={form.control}
-								name="name"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Name</FormLabel>
-										<FormControl>
-											<Input placeholder="Acme Corp" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="slug"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Slug</FormLabel>
-										<FormControl>
-											<Input placeholder="acme-corp" {...field} />
-										</FormControl>
-										<FormDescription>
-											This is your organizations unique identifier.
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="logo"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Icon URL</FormLabel>
-										<FormControl>
-											<Input placeholder="https://..." {...field} />
-										</FormControl>
-										<FormDescription>
-											A URL to your organizations logo.
-										</FormDescription>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<div className="flex justify-end">
-								<Button type="submit">Save Changes</Button>
+		<div className="flex flex-1 flex-col py-8 pb-20">
+			<div className="mx-auto w-full max-w-6xl px-4">
+				<Form {...form}>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+						{/* General Section */}
+						<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+							<div className="space-y-2">
+								<h2 className="font-semibold text-lg leading-none tracking-tight">
+									General
+								</h2>
+								<p className="text-muted-foreground text-sm">
+									Update your organization's public information.
+								</p>
 							</div>
-						</form>
-					</Form>
-				</CardContent>
-			</Card>
+
+							<Card className="md:col-span-2">
+								<CardContent className="grid gap-6 p-6">
+									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+										<FormField
+											control={form.control}
+											name="name"
+											render={({ field }) => (
+												<FormItem className="flex h-full flex-col">
+													<FormLabel className="flex h-6 items-end pb-1">
+														Name
+													</FormLabel>
+													<FormControl>
+														<Input placeholder="Acme Corp" {...field} />
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="slug"
+											render={({ field }) => (
+												<FormItem className="flex h-full flex-col">
+													<FormLabel className="flex h-6 items-end pb-1">
+														Slug
+													</FormLabel>
+													<FormControl>
+														<Input placeholder="acme-corp" {...field} />
+													</FormControl>
+													<FormDescription>
+														This is your organizations unique identifier.
+													</FormDescription>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+
+						<Separator />
+
+						{/* Logo Section */}
+						<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+							<div className="space-y-2">
+								<h2 className="font-semibold text-lg leading-none tracking-tight">
+									Organization Logo
+								</h2>
+								<p className="text-muted-foreground text-sm">
+									Upload your logo to personalize the look & feel of your
+									organization.
+								</p>
+							</div>
+
+							<Card className="md:col-span-2">
+								<CardContent className="grid gap-6 p-6">
+									<FormField
+										control={form.control}
+										name="logo"
+										render={({ field }) => (
+											<FormItem>
+												{/* <FormLabel>Logo</FormLabel> */}
+												<FormControl>
+													<div className="flex items-center gap-4">
+														<LogoEditor
+															value={field.value}
+															onChange={field.onChange}
+														/>
+														<div className="text-muted-foreground text-sm">
+															<p>Upload a logo for your organization.</p>
+															<p className="text-xs">
+																Recommended size: 256x256px.
+															</p>
+														</div>
+													</div>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</CardContent>
+							</Card>
+						</div>
+
+						{/* Fixed Footer */}
+						<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => form.reset()}
+							>
+								Discard
+							</Button>
+							<Button type="submit">Save Changes</Button>
+						</div>
+					</form>
+				</Form>
+			</div>
 		</div>
 	);
 }

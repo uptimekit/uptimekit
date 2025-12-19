@@ -316,6 +316,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												}
 												defaultValue={field.value ? "private" : "public"}
 												value={field.value ? "private" : "public"}
+												disabled
 											>
 												<SelectTrigger className="w-full">
 													<SelectValue placeholder="Select visibility" />

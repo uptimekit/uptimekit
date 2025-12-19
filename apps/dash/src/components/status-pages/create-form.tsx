@@ -1,10 +1,17 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	Form,
 	FormControl,
@@ -15,15 +22,8 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+
 import { client, orpc } from "@/utils/orpc";
-import { toast } from "sonner";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 
 const formSchema = z.object({
 	name: z.string().min(1, "Name is required"),
@@ -69,7 +69,7 @@ export function CreateStatusPageForm({
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to create status page: ${error.message}`);
+			toast.error(error.message || "Failed to create status page");
 		},
 	});
 
@@ -105,13 +105,13 @@ export function CreateStatusPageForm({
 								<FormItem>
 									<FormLabel>Slug</FormLabel>
 									<FormControl>
-										<div className="flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-600 sm:max-w-md">
+										<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset sm:max-w-md">
 											<span className="flex select-none items-center pl-3 text-gray-500 sm:text-sm">
 												uptimekit.com/s/
 											</span>
 											<Input
 												{...field}
-												className="block flex-1 border-0 bg-transparent py-1.5 pl-1 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6 shadow-none"
+												className="block flex-1 border-0 bg-transparent py-1.5 pl-1 text-gray-900 shadow-none placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6"
 												placeholder="my-page"
 											/>
 										</div>
@@ -120,29 +120,6 @@ export function CreateStatusPageForm({
 										Your status page will be accessible at this URL.
 									</FormDescription>
 									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="isPrivate"
-							render={({ field }) => (
-								<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
-									<div className="space-y-0.5">
-										<FormLabel className="text-base">
-											Private Status Page
-										</FormLabel>
-										<div className="text-muted-foreground text-sm">
-											Private pages are only accessible to your team members.
-										</div>
-									</div>
-									<FormControl>
-										<Switch
-											checked={field.value}
-											onCheckedChange={field.onChange}
-											disabled={isPending}
-										/>
-									</FormControl>
 								</FormItem>
 							)}
 						/>

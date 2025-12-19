@@ -21,14 +21,11 @@ import {
 } from "@/lib/db-queries";
 
 // Helper to calculate status based on stats
-// This is a simplified logic. You might want to fine-tune it based on project requirements.
+// Automatycznie mamy tylko statusy operational i outage.
 function calculateDailyStatus(total: number, up: number): StatusType {
 	if (total === 0) return "unknown";
 	const ratio = up / total;
-	if (ratio < 0.8) return "major_outage";
-	if (ratio < 0.95) return "partial_outage";
-	if (ratio < 0.99) return "degraded";
-	// Could also charge based on latency...
+	if (ratio < 1) return "major_outage";
 	return "operational";
 }
 
@@ -39,9 +36,19 @@ function fillMissingDays(
 		up_checks: number;
 	}[],
 	days = 90,
+	endDate?: string,
 ): UptimeDay[] {
 	const result: UptimeDay[] = [];
-	const now = new Date();
+	let now: Date;
+	if (endDate) {
+		now = new Date(endDate);
+	} else {
+		const local = new Date();
+		now = new Date(
+			Date.UTC(local.getFullYear(), local.getMonth(), local.getDate()),
+		);
+	}
+
 	const statsMap = new Map(stats.map((s) => [s.date, s]));
 
 	for (let i = days - 1; i >= 0; i--) {
@@ -61,12 +68,80 @@ function fillMissingDays(
 		} else {
 			result.push({
 				date: dateStr,
-				status: "unknown", // Or 'operational' if we assume no news is good news? simpler to say unknown
+				status: "unknown",
 				uptime: 0,
 			});
 		}
 	}
 	return result;
+}
+
+export async function generateMetadata() {
+	const headersList = await headers();
+	const host =
+		headersList.get("x-forwarded-host") ||
+		headersList.get("x-original-host") ||
+		headersList.get("host");
+	const protocol = headersList.get("x-forwarded-proto") || "https";
+
+	if (!host) {
+		return {};
+	}
+
+	const domain = host.split(":")[0];
+	const pageConfig = await getStatusPageByDomain(domain);
+
+	const title = pageConfig?.name ? `${pageConfig.name} Status` : "Status Page";
+	const description = pageConfig?.name
+		? `Real-time status and incident history for ${pageConfig.name}. Check system availability and past incidents.`
+		: "Real-time system status and incident history.";
+
+	const design = (pageConfig?.design as any) || {};
+	const logoUrl = design.logoUrl;
+
+	return {
+		title,
+		description,
+		applicationName: pageConfig?.name || "Status Page",
+		icons: logoUrl ? { icon: logoUrl } : undefined,
+		openGraph: {
+			title,
+			description,
+			siteName: title,
+			images: [
+				{
+					url: `${protocol}://${host}/api/og`,
+					width: 1200,
+					height: 630,
+					alt: title,
+				},
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title,
+			description,
+			images: [`${protocol}://${host}/api/og`],
+		},
+		robots: {
+			index: true,
+			follow: true,
+		},
+	};
+}
+
+function formatDuration(ms: number): string {
+	const seconds = Math.floor(ms / 1000);
+	const minutes = Math.floor(seconds / 60);
+	const hours = Math.floor(minutes / 60);
+
+	if (hours > 0) {
+		return `${hours}h ${minutes % 60}m`;
+	}
+	if (minutes > 0) {
+		return `${minutes}m`;
+	}
+	return `${seconds}s`;
 }
 
 export default async function StatusPage() {
@@ -160,12 +235,52 @@ export default async function StatusPage() {
 		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	);
 
-	// Fetch monitor data
-	const monitorsData = await Promise.all(
+	// 1. Fetch hourly stats to allow local timezone aggregation
+	const monitorsWithStats = await Promise.all(
 		pageConfig.monitors.map(async (pm) => {
-			const stats = await getMonitorUptime(pm.monitorId);
+			const hourlyStats = await getMonitorUptime(pm.monitorId);
+			return { pm, hourlyStats };
+		}),
+	);
+
+	// 2. Aggregate hourly stats into daily stats based on LOCAL time
+	const monitorsData = await Promise.all(
+		monitorsWithStats.map(async ({ pm, hourlyStats }) => {
+			const dailyStatsMap = new Map<
+				string,
+				{ date: string; total_checks: number; up_checks: number }
+			>();
+
+			for (const stat of hourlyStats) {
+				// stat.date is "YYYY-MM-DD HH" (UTC implied from DB storage usually)
+				// We append ":00:00Z" to parse it as UTC
+				const dateObj = new Date(`${stat.date_hour}:00:00Z`);
+
+				// Get Local YYYY-MM-DD
+				const year = dateObj.getFullYear();
+				const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+				const day = String(dateObj.getDate()).padStart(2, "0");
+				const localDateStr = `${year}-${month}-${day}`;
+
+				if (!dailyStatsMap.has(localDateStr)) {
+					dailyStatsMap.set(localDateStr, {
+						date: localDateStr,
+						total_checks: 0,
+						up_checks: 0,
+					});
+				}
+
+				const daily = dailyStatsMap.get(localDateStr)!;
+				daily.total_checks += Number(stat.total_checks);
+				daily.up_checks += Number(stat.up_checks);
+			}
+
+			const dailyStats = Array.from(dailyStatsMap.values()).sort((a, b) =>
+				b.date.localeCompare(a.date),
+			);
 
 			// 1. Calculate Live Status
+			// Only "operational", "major_outage" (as outage), or "maintenance".
 			let currentStatus: StatusType = "operational";
 
 			// Check active maintenance
@@ -177,36 +292,46 @@ export default async function StatusPage() {
 			}
 
 			// Check active incidents (overrides maintenance if concurrent? usually yes)
+			// User: "Automatycznie mamy tylko statusy operational i outage"
+			// If active report exists -> outage.
 			const activeReport = activeReports.find((r: any) =>
 				r.affectedMonitors.some((am: any) => am.monitorId === pm.monitorId),
 			);
 
 			if (activeReport) {
-				// Map severity to status
-				if (activeReport.severity === "critical")
-					currentStatus = "major_outage";
-				else if (activeReport.severity === "major")
-					currentStatus = "partial_outage";
-				else if (activeReport.severity === "minor") currentStatus = "degraded";
+				// Regardless of severity, map to major_outage (Outage)
+				currentStatus = "major_outage";
 			}
 
 			// Check automated heartbeat status if no manual incident is active
 			if (currentStatus === "operational") {
 				const lastCheck = await getMonitorStatus(pm.monitorId);
 				if (lastCheck) {
+					// Logic: down -> outage. degraded -> check user intent?
+					// "Nie nadajemy recznie statusow major outage lub minor outage"
+					// + "Automatycznie mamy tylko statusy operational i outage"
 					if (lastCheck.status === "down") currentStatus = "major_outage";
-					else if (lastCheck.status === "degraded") currentStatus = "degraded";
 				}
 			}
 
-			let history = fillMissingDays(stats);
+			// Fill missing days using the LOCAL today as anchor (implicit in fillMissingDays default now)
+			// limiting to 90 days.
+			// We don't need to force startDate anymore because dailyStats now contains "Today" (local) if data exists.
+			// However, ensuring alignment: fillMissingDays defaults 'now' to Local Today via new Date().
+			let history = fillMissingDays(dailyStats, 90);
 
 			// Overlay Manual Events (Maintenance & Incidents)
 			history = history.map((day) => {
 				const dayDate = new Date(day.date);
-				dayDate.setHours(12, 0, 0, 0);
+				dayDate.setHours(12, 0, 0, 0); // Noon to safely check date
 
-				// Check Maintenance
+				// Date boundaries for the day (00:00:00 to 23:59:59)
+				const dayStart = new Date(day.date);
+				dayStart.setHours(0, 0, 0, 0);
+				const dayEnd = new Date(day.date);
+				dayEnd.setHours(23, 59, 59, 999);
+
+				// Check Maintenance (Priority 1)
 				const maintenance = events.maintenances.find((m) => {
 					const affectsMonitor = m.monitors.some(
 						(mm) => mm.monitorId === pm.monitorId,
@@ -214,14 +339,23 @@ export default async function StatusPage() {
 					if (!affectsMonitor) return false;
 
 					const start = new Date(m.startAt);
-					const end = m.endAt ? new Date(m.endAt) : new Date(); // If ongoing, use now
-					start.setHours(0, 0, 0, 0);
-					end.setHours(23, 59, 59, 999);
+					const end = m.endAt ? new Date(m.endAt) : new Date();
 
-					return dayDate >= start && dayDate <= end;
+					// Check overlap
+					return start <= dayEnd && end >= dayStart;
 				});
 
-				// Check Incidents (Reports)
+				if (maintenance) {
+					// Maintenance overrides everything.
+					return {
+						...day,
+						status: "maintenance" as any,
+						uptime: 100,
+						duration: undefined,
+					};
+				}
+
+				// Check Incidents (Reports) (Priority 2, overrides automated checks)
 				const relevantReports = events.reports.filter((r) => {
 					const affectsMonitor = r.affectedMonitors.some(
 						(am) => am.monitorId === pm.monitorId,
@@ -230,75 +364,46 @@ export default async function StatusPage() {
 
 					const start = new Date(r.createdAt);
 					const end = r.resolvedAt ? new Date(r.resolvedAt) : new Date();
-					start.setHours(0, 0, 0, 0);
-					end.setHours(23, 59, 59, 999);
-					return dayDate >= start && dayDate <= end;
+
+					// Check overlap
+					return start <= dayEnd && end >= dayStart;
 				});
 
-				if (maintenance) {
-					// Maintenance shouldn't penalty uptime for that day generally, or we show 100% but marked as maintenance
-					return { ...day, status: "maintenance" as any, uptime: 100 };
-				}
-
 				if (relevantReports.length > 0) {
-					// Find worst severity
-					// Priority: critical > major > minor
-					let worstReport = relevantReports[0];
-					const severityMap: Record<string, number> = {
-						minor: 1,
-						major: 2,
-						critical: 3,
-					};
-					let maxSeverity = 0;
+					// Calculate incident duration for this day
+					let totalDurationMs = 0;
 
 					for (const r of relevantReports) {
-						const val = severityMap[r.severity] || 0;
-						if (val > maxSeverity) {
-							maxSeverity = val;
-							worstReport = r;
+						const start = new Date(r.createdAt);
+						const end = r.resolvedAt ? new Date(r.resolvedAt) : new Date();
+
+						// Intersection of [start, end] and [dayStart, dayEnd]
+						const overlapStart = start > dayStart ? start : dayStart;
+						const overlapEnd = end < dayEnd ? end : dayEnd;
+
+						if (overlapEnd > overlapStart) {
+							totalDurationMs += overlapEnd.getTime() - overlapStart.getTime();
 						}
 					}
 
-					let s: StatusType = "operational";
-					let u = day.uptime;
-					if (worstReport.severity === "critical") {
-						s = "major_outage";
-						u = 0;
-					} else if (worstReport.severity === "major") {
-						s = "partial_outage";
-						u = Math.min(u, 50);
-					} else if (worstReport.severity === "minor") {
-						s = "degraded";
-						u = Math.min(u, 80);
-					}
+					// Recalculate uptime percentage based on duration
+					// Total ms in a day = 24 * 60 * 60 * 1000 = 86400000
+					const totalDayMs = 86400000;
+					// Capped at 100% loss
+					const lossRatio = Math.min(totalDurationMs / totalDayMs, 1);
+					const newUptime = (1 - lossRatio) * 100;
 
-					return { ...day, status: s, uptime: u };
+					return {
+						...day,
+						status: "major_outage", // Always "outage"
+						uptime: newUptime,
+						duration: formatDuration(totalDurationMs),
+					};
 				}
 
+				// Priority 3: Automatic Status (from checks)
+				// calculateDailyStatus already filtered this to operational/major_outage
 				return day;
-			});
-
-			// Enforce active status on 'today' for uptime calc
-			const todayStr = new Date().toISOString().split("T")[0];
-			history = history.map((d) => {
-				if (d.date === todayStr) {
-					if (currentStatus === "major_outage") {
-						return { ...d, uptime: 0, status: "major_outage" };
-					}
-					if (currentStatus === "partial_outage") {
-						return {
-							...d,
-							uptime: Math.min(d.uptime, 50),
-							status: "partial_outage",
-						};
-					}
-					if (currentStatus === "degraded") {
-						// Optional: penalize ?
-						// User said "also count as drop".
-						return { ...d, status: "degraded", uptime: Math.min(d.uptime, 80) };
-					}
-				}
-				return d;
 			});
 
 			const knownDays = history.filter(
@@ -354,13 +459,7 @@ export default async function StatusPage() {
 		if (curr.currentStatus === "major_outage") return "major_outage";
 		if (acc === "major_outage") return acc;
 
-		if (curr.currentStatus === "partial_outage") return "partial_outage";
-		if (acc === "partial_outage") return acc;
-
-		if (curr.currentStatus === "degraded") return "degraded";
-
-		if (curr.currentStatus === "maintenance" && acc !== "degraded")
-			return "maintenance";
+		if (curr.currentStatus === "maintenance") return "maintenance";
 
 		return acc;
 	}, "operational" as StatusType);

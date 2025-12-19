@@ -31,7 +31,7 @@ export class IntegrationService {
 	}
 
 	private async handleEvent(event: string, payload: any) {
-		console.log(`[IntegrationService] Processing event: ${event}`);
+		// console.log(`[IntegrationService] Processing event: ${event}`);
 
 		const organizationId =
 			payload.organizationId ||
@@ -40,9 +40,9 @@ export class IntegrationService {
 				: null);
 
 		if (!organizationId) {
-			console.warn(
-				`[IntegrationService] Could not determine organizationId for event ${event}`,
-			);
+			// console.warn(
+			// 	`[IntegrationService] Could not determine organizationId for event ${event}`,
+			// );
 			return;
 		}
 
@@ -56,15 +56,15 @@ export class IntegrationService {
 			const integration = integrationRegistry.get(config.type);
 			if (integration && integration.events.includes(event)) {
 				try {
-					console.log(
-						`[IntegrationService] Executing integration ${integration.name} for config ${config.id}`,
-					);
+					// console.log(
+					// 	`[IntegrationService] Executing integration ${integration.name} for config ${config.id}`,
+					// );
 					await integration.handler(config.config, event, payload);
 				} catch (error) {
-					console.error(
-						`[IntegrationService] Error executing integration ${config.id}`,
-						error,
-					);
+					// console.error(
+					// 	`[IntegrationService] Error executing integration ${config.id}`,
+					// 	error,
+					// );
 				}
 			}
 		}
