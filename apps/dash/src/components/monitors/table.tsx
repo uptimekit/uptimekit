@@ -19,6 +19,17 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -599,17 +610,37 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 				>
 					{monitor.active ? "Pause monitoring" : "Resume monitoring"}
 				</DropdownMenuItem>
-				<DropdownMenuItem
-					className="text-red-500"
-					onClick={(e) => {
-						e.stopPropagation();
-						if (confirm("Are you sure?")) {
-							deleteMonitor(monitor.id);
-						}
-					}}
-				>
-					Delete
-				</DropdownMenuItem>
+				<AlertDialog>
+					<AlertDialogTrigger asChild>
+						<DropdownMenuItem
+							className="text-red-500"
+							onSelect={(e) => e.preventDefault()}
+						>
+							Delete
+						</DropdownMenuItem>
+					</AlertDialogTrigger>
+					<AlertDialogContent>
+						<AlertDialogHeader>
+							<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+							<AlertDialogDescription>
+								This action cannot be undone. This will permanently delete the
+								monitor and all of its data.
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel>Cancel</AlertDialogCancel>
+							<AlertDialogAction
+								className="bg-red-500 hover:bg-red-600"
+								onClick={(e) => {
+									e.stopPropagation();
+									deleteMonitor(monitor.id);
+								}}
+							>
+								Delete
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
