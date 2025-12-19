@@ -7,4 +7,4 @@
 "@uptimekit/auth": patch
 ---
 
-Improved mobile UI, other UI/CI fixes
+fix pipeline
