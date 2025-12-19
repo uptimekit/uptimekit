@@ -1,5 +1,13 @@
 # @uptimekit/api
 
+## 0.0.5
+
+### Patch Changes
+
+- b3d9d9b: Improved mobile UI, other UI/CI fixes
+- Updated dependencies [b3d9d9b]
+  - @uptimekit/auth@0.0.5
+
 ## 0.0.2
 
 ### Patch Changes

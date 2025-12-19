@@ -1,5 +1,11 @@
 # @uptimekit/auth
 
+## 0.0.5
+
+### Patch Changes
+
+- b3d9d9b: Improved mobile UI, other UI/CI fixes
+
 ## 0.0.2
 
 ### Patch Changes
