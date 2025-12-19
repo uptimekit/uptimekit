@@ -52,7 +52,7 @@ jobs:
         run: |
           # Fetch depth needed for diff
           git fetch --depth=2 origin ${{ github.ref_name }}
-          NODE_OUTPUT=$(node scripts/detect-changed-apps.js)
+          NODE_OUTPUT=$(node scripts/detect-changed-apps.cjs)
           echo "detected=$NODE_OUTPUT" >> $GITHUB_OUTPUT
 
       - name: Combine Packages
