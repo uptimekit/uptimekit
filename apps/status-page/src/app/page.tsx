@@ -88,20 +88,44 @@ export async function generateMetadata() {
 		return {};
 	}
 
+	const domain = host.split(":")[0];
+	const pageConfig = await getStatusPageByDomain(domain);
+
+	const title = pageConfig?.name ? `${pageConfig.name} Status` : "Status Page";
+	const description = pageConfig?.name
+		? `Real-time status and incident history for ${pageConfig.name}. Check system availability and past incidents.`
+		: "Real-time system status and incident history.";
+
+	const design = (pageConfig?.design as any) || {};
+	const logoUrl = design.logoUrl;
+
 	return {
+		title,
+		description,
+		applicationName: pageConfig?.name || "Status Page",
+		icons: logoUrl ? { icon: logoUrl } : undefined,
 		openGraph: {
+			title,
+			description,
+			siteName: title,
 			images: [
 				{
 					url: `${protocol}://${host}/api/og`,
 					width: 1200,
 					height: 630,
-					alt: "Status Page",
+					alt: title,
 				},
 			],
 		},
 		twitter: {
 			card: "summary_large_image",
+			title,
+			description,
 			images: [`${protocol}://${host}/api/og`],
+		},
+		robots: {
+			index: true,
+			follow: true,
 		},
 	};
 }
