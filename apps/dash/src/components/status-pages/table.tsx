@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+	ArrowRight,
 	BarChart,
 	Check,
 	ChevronDown,
@@ -18,6 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -33,6 +35,7 @@ import { CreateStatusPageForm } from "./create-form";
 export function StatusPagesTable() {
 	const router = useRouter();
 	const [createOpen, setCreateOpen] = useState(false);
+	const [searchOpen, setSearchOpen] = useState(false);
 	const [publicFilter, setPublicFilter] = useState<boolean | undefined>(
 		undefined,
 	);
@@ -75,10 +78,36 @@ export function StatusPagesTable() {
 	return (
 		<div className="mx-auto w-full max-w-6xl space-y-4">
 			<CreateStatusPageForm open={createOpen} onOpenChange={setCreateOpen} />
-			<div className="flex items-center justify-between">
+			<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+				<DialogContent className="flex items-center justify-center border-none bg-transparent p-0 shadow-none sm:max-w-[425px]">
+					<DialogTitle className="sr-only">Search</DialogTitle>
+					<div className="relative w-full">
+						<Input
+							autoFocus
+							placeholder="Search status pages..."
+							className="h-12 rounded-full border-muted bg-background pr-12 pl-6 shadow-lg"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									setSearchOpen(false);
+								}
+							}}
+						/>
+						<Button
+							size="icon"
+							className="absolute top-1 right-1 h-10 w-10 rounded-full"
+							onClick={() => setSearchOpen(false)}
+						>
+							<ArrowRight className="h-4 w-4" />
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+			<div className="flex items-center justify-between gap-4">
 				<h1 className="font-bold text-2xl tracking-tight">Status Pages</h1>
 				<div className="flex items-center gap-2">
-					<div className="relative w-64">
+					<div className="relative hidden w-64 md:block">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
 						<Input
 							placeholder="Search status pages..."
@@ -87,6 +116,17 @@ export function StatusPagesTable() {
 							onChange={(e) => setSearch(e.target.value)}
 						/>
 					</div>
+					<Button
+						variant="outline"
+						size="icon"
+						className="relative md:hidden"
+						onClick={() => setSearchOpen(true)}
+					>
+						<Search className="h-4 w-4" />
+						{search && (
+							<span className="-right-1 -top-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+						)}
+					</Button>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" size="icon" className="relative">
@@ -146,11 +186,11 @@ export function StatusPagesTable() {
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button
-						className="gap-2 border-none bg-white text-black shadow-md shadow-white/10 hover:bg-gray-100"
+						className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
 						onClick={() => setCreateOpen(true)}
 					>
 						<Plus className="h-4 w-4" />
-						Create status page
+						<span className="hidden md:inline">Create status page</span>
 					</Button>
 				</div>
 			</div>
@@ -226,8 +266,8 @@ export function StatusPagesTable() {
 												</div>
 											</div>
 										</TableCell>
-										<TableCell className="w-[200px]">
-											<div className="flex items-center gap-4 text-muted-foreground text-sm">
+										<TableCell className="w-auto pr-1 md:w-[200px]">
+											<div className="flex items-center gap-2 text-muted-foreground text-sm md:gap-4">
 												<div
 													className="flex items-center gap-1.5"
 													title="Monitors"

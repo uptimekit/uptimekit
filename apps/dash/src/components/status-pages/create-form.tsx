@@ -22,7 +22,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+
 import { client, orpc } from "@/utils/orpc";
 
 const formSchema = z.object({
@@ -105,7 +105,7 @@ export function CreateStatusPageForm({
 								<FormItem>
 									<FormLabel>Slug</FormLabel>
 									<FormControl>
-										<div className="flex rounded-md shadow-sm ring-1 ring-gray-300 ring-inset focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-inset sm:max-w-md">
+										<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset sm:max-w-md">
 											<span className="flex select-none items-center pl-3 text-gray-500 sm:text-sm">
 												uptimekit.com/s/
 											</span>
@@ -120,29 +120,6 @@ export function CreateStatusPageForm({
 										Your status page will be accessible at this URL.
 									</FormDescription>
 									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="isPrivate"
-							render={({ field }) => (
-								<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
-									<div className="space-y-0.5">
-										<FormLabel className="text-base">
-											Private Status Page
-										</FormLabel>
-										<div className="text-muted-foreground text-sm">
-											Private pages are only accessible to your team members.
-										</div>
-									</div>
-									<FormControl>
-										<Switch
-											checked={field.value}
-											onCheckedChange={field.onChange}
-											disabled={isPending}
-										/>
-									</FormControl>
 								</FormItem>
 							)}
 						/>

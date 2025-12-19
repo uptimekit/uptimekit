@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	AQ,
 	AU,
 	BR,
 	DE,
@@ -71,6 +72,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -80,6 +82,7 @@ const REGION_MAPPING: Record<
 	string,
 	{ label: string; Flag: React.ElementType }
 > = {
+	global: { label: "Global", Flag: AQ },
 	"eu-general": { label: "Europe", Flag: EU },
 	"us-east": { label: "United States (East)", Flag: US },
 	"us-west": { label: "United States (West)", Flag: US },
@@ -606,7 +609,7 @@ export function CreateMonitorForm({
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 pb-20">
 				{/* ... (What to monitor Section remains same) ... */}
 
 				{/* ... (General Settings Section updated) ... */}
@@ -621,8 +624,8 @@ export function CreateMonitorForm({
 						</p>
 					</div>
 
-					<Card className="col-span-1 border-none shadow-none md:col-span-2">
-						<CardContent className="space-y-6 pt-0">
+					<Card className="col-span-1 md:col-span-2">
+						<CardContent className="space-y-6 p-6">
 							<FormField
 								control={form.control}
 								name="type"
@@ -717,6 +720,8 @@ export function CreateMonitorForm({
 					</Card>
 				</div>
 
+				<Separator />
+
 				{/* Section: General Settings */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="col-span-1">
@@ -728,8 +733,8 @@ export function CreateMonitorForm({
 						</p>
 					</div>
 
-					<Card className="col-span-1 border-none shadow-none md:col-span-2">
-						<CardContent className="space-y-6 pt-0">
+					<Card className="col-span-1 md:col-span-2">
+						<CardContent className="space-y-6 p-6">
 							<FormField
 								control={form.control}
 								name="name"
@@ -876,8 +881,8 @@ export function CreateMonitorForm({
 					</div>
 
 					<CollapsibleContent className="col-span-1 md:col-span-2">
-						<Card className="border-none shadow-none">
-							<CardContent className="space-y-6 pt-0">
+						<Card>
+							<CardContent className="space-y-6 p-6">
 								<div className="grid gap-6 md:grid-cols-2">
 									<FormField
 										control={form.control}
@@ -949,7 +954,7 @@ export function CreateMonitorForm({
 					</CollapsibleContent>
 				</Collapsible>
 
-				<div className="flex justify-end gap-4">
+				<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
 					<Button
 						type="button"
 						variant="ghost"
