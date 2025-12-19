@@ -1,5 +1,11 @@
 # @uptimekit/worker
 
+## 0.0.6
+
+### Patch Changes
+
+- 27fc3c1: fix pipeline
+
 ## 0.0.5
 
 ### Patch Changes
