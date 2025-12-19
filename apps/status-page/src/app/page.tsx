@@ -76,6 +76,36 @@ function fillMissingDays(
 	return result;
 }
 
+export async function generateMetadata() {
+	const headersList = await headers();
+	const host =
+		headersList.get("x-forwarded-host") ||
+		headersList.get("x-original-host") ||
+		headersList.get("host");
+	const protocol = headersList.get("x-forwarded-proto") || "https";
+
+	if (!host) {
+		return {};
+	}
+
+	return {
+		openGraph: {
+			images: [
+				{
+					url: `${protocol}://${host}/api/og`,
+					width: 1200,
+					height: 630,
+					alt: "Status Page",
+				},
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			images: [`${protocol}://${host}/api/og`],
+		},
+	};
+}
+
 function formatDuration(ms: number): string {
 	const seconds = Math.floor(ms / 1000);
 	const minutes = Math.floor(seconds / 60);
