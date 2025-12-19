@@ -133,7 +133,8 @@ export const workerIngestRouter = {
 		return {
 			monitors: assignedMonitors.map((m) => {
 				const config = m.config as {
-					url: string;
+					url?: string;
+					hostname?: string;
 					method?: string;
 					headers?: Record<string, string>;
 					body?: string;
@@ -144,7 +145,7 @@ export const workerIngestRouter = {
 				return {
 					id: m.id,
 					type: m.type,
-					url: config.url,
+					url: config.url || config.hostname || "",
 					interval: m.interval,
 					timeout: m.timeout,
 					method: config.method || "GET",
