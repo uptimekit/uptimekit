@@ -1,5 +1,13 @@
 # @uptimekit/api
 
+## 0.0.6
+
+### Patch Changes
+
+- 27fc3c1: fix pipeline
+- Updated dependencies [27fc3c1]
+  - @uptimekit/auth@0.0.6
+
 ## 0.0.5
 
 ### Patch Changes
