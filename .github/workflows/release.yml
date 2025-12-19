@@ -172,7 +172,7 @@ jobs:
   sync-development:
     name: Sync Release to Development
     needs: release
-    if: needs.release.outputs.published == 'true'
+    if: needs.release.outputs.publishedPackages != '[]' && needs.release.outputs.publishedPackages != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
