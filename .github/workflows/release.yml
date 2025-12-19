@@ -22,7 +22,7 @@ jobs:
       pull-requests: write
     outputs:
       published: ${{ steps.changesets.outputs.published }}
-      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+      publishedPackages: ${{ steps.combine_packages.outputs.result }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -47,11 +47,38 @@ jobs:
           # This runs `pnpm run release` which maps to `changeset publish`
           publish: pnpm run release
 
+      - name: Detect Private Package Changes
+        id: private_changes
+        run: |
+          # Fetch depth needed for diff
+          git fetch --depth=2 origin ${{ github.ref_name }}
+          NODE_OUTPUT=$(node scripts/detect-changed-apps.js)
+          echo "detected=$NODE_OUTPUT" >> $GITHUB_OUTPUT
+
+      - name: Combine Packages
+        id: combine_packages
+        run: |
+          PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
+          DETECTED='${{ steps.private_changes.outputs.detected }}'
+          
+          # Handle empty/null inputs
+          if [ -z "$PUBLISHED" ] || [ "$PUBLISHED" == "null" ]; then PUBLISHED="[]"; fi
+          if [ -z "$DETECTED" ] || [ "$DETECTED" == "null" ]; then DETECTED="[]"; fi
+          
+          # Combine arrays using jq (available on ubuntu-latest)
+          # We prefer detected (which grabs generic package.json changes)
+          # but we merge them just in case. 
+          # Note: detect-changed-apps.js returns {name, version}, same as changesets
+          
+          COMBINED=$(echo "$PUBLISHED" | jq --argjson detected "$DETECTED" -c '. + $detected | unique_by(.name)')
+          
+          echo "result=$COMBINED" >> $GITHUB_OUTPUT
+
   publish-docker:
     name: Publish Docker Images
     runs-on: ubuntu-latest
     needs: release
-    if: needs.release.outputs.published == 'true'
+    if: needs.release.outputs.publishedPackages != '[]' && needs.release.outputs.publishedPackages != ''
     permissions:
       contents: read
       packages: write
