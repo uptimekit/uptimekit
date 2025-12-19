@@ -14,7 +14,7 @@ registry.register("http", new HttpMonitor());
 registry.register("keyword", new KeywordMonitor());
 registry.register("http-json", new HttpJsonMonitor());
 registry.register("tcp", new TcpMonitor());
-registry.register("icmp", new IcmpMonitor());
+registry.register("ping", new IcmpMonitor());
 
 async function main() {
 	const apiKey = process.env.WORKER_API_KEY;

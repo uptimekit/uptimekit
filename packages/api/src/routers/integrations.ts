@@ -1,8 +1,10 @@
+import { ORPCError } from "@orpc/server"; /* manually added ORPCError import */
 import { db } from "@uptimekit/db";
 import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
+import { ALLOWED_INTEGRATIONS, isSelfHosted } from "../lib/limits";
 import { integrationRegistry } from "../pkg/integrations/registry";
 
 export const integrationsRouter = {
@@ -43,6 +45,12 @@ export const integrationsRouter = {
 			const integrationDef = integrationRegistry.get(input.type);
 			if (!integrationDef) {
 				throw new Error("Invalid integration type");
+			}
+
+			if (!isSelfHosted() && !ALLOWED_INTEGRATIONS.includes(input.type)) {
+				throw new ORPCError("FORBIDDEN", {
+					message: "This integration is not available on your plan.",
+				});
 			}
 
 			const parsedConfig = integrationDef.configSchema.parse(input.config);

@@ -574,7 +574,8 @@ export function CreateMonitorForm({
 		},
 		onError: (error) => {
 			toast.error(
-				monitorId ? "Failed to update monitor" : "Failed to create monitor",
+				error.message ||
+					(monitorId ? "Failed to update monitor" : "Failed to create monitor"),
 			);
 			console.error(error);
 		},

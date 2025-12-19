@@ -58,8 +58,8 @@ export function ConfigDialog({
 			await onSave(config);
 			onOpenChange(false);
 			toast.success("Integration saved");
-		} catch (error) {
-			toast.error("Failed to save integration");
+		} catch (error: any) {
+			toast.error(error.message || "Failed to save integration");
 			console.error(error);
 		} finally {
 			setSaving(false);

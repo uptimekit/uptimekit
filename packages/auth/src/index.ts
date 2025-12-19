@@ -1,10 +1,10 @@
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
-import { betterAuth } from "better-auth";
+import { APIError, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { admin, apiKey, organization, twoFactor } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // Helper to create slug from email
 function createSlugFromEmail(email: string): string {
@@ -26,7 +26,39 @@ export const auth = betterAuth({
 		nextCookies(),
 		admin(),
 		apiKey(),
-		organization(),
+		organization({
+			organizationHooks: {
+				beforeCreateOrganization: async ({ organization, user }) => {
+					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
+					const MAX_ORGANIZATIONS = 3;
+
+					if (!isSelfHosted) {
+						if (user.id) {
+							const memberships = await db
+								.select()
+								.from(schema.member)
+								.where(
+									and(
+										eq(schema.member.userId, user.id),
+										eq(schema.member.role, "owner"),
+									),
+								);
+
+							if (memberships.length >= MAX_ORGANIZATIONS) {
+								throw new APIError("BAD_REQUEST", {
+									message: `Plan limit reached. You can only create up to ${MAX_ORGANIZATIONS} organizations.`,
+								});
+							}
+						}
+					}
+					return {
+						data: {
+							...organization,
+						},
+					};
+				},
+			},
+		}),
 		twoFactor({
 			issuer: "UptimeKit",
 		}),
