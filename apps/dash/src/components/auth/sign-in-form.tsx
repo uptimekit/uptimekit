@@ -23,10 +23,16 @@ export default function SignInForm({
 	showRegister = true,
 	showDiscordLogin = false,
 	showGithubLogin = false,
+	onSuccess,
+	email,
+	emailReadOnly = false,
 }: {
 	showRegister?: boolean;
 	showDiscordLogin?: boolean;
 	showGithubLogin?: boolean;
+	onSuccess?: () => void;
+	email?: string;
+	emailReadOnly?: boolean;
 }) {
 	const router = useRouter();
 	const { isPending } = authClient.useSession();
@@ -40,7 +46,7 @@ export default function SignInForm({
 
 	const form = useForm({
 		defaultValues: {
-			email: "",
+			email: email || "",
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
@@ -51,6 +57,11 @@ export default function SignInForm({
 				},
 				{
 					onSuccess: (ctx: any) => {
+						if (onSuccess) {
+							onSuccess();
+							return;
+						}
+
 						if (ctx.data.twoFactorRedirect) {
 							router.push("/two-factor" as any);
 						} else {
@@ -160,6 +171,7 @@ export default function SignInForm({
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
 										placeholder="m@example.com"
+										disabled={emailReadOnly}
 									/>
 									{field.state.meta.errors.map((error) => (
 										<p

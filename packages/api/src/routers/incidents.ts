@@ -7,7 +7,7 @@ import {
 } from "@uptimekit/db/schema/incidents";
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, writeProcedure } from "../index";
 import { eventBus } from "../lib/events";
 
 export const incidentsRouter = {
@@ -104,7 +104,7 @@ export const incidentsRouter = {
 			return item;
 		}),
 
-	create: protectedProcedure
+	create: writeProcedure
 		.input(
 			z.object({
 				title: z.string().min(1),
@@ -162,7 +162,7 @@ export const incidentsRouter = {
 			return { id };
 		}),
 
-	acknowledge: protectedProcedure
+	acknowledge: writeProcedure
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();
@@ -209,7 +209,7 @@ export const incidentsRouter = {
 			return { success: true };
 		}),
 
-	resolve: protectedProcedure
+	resolve: writeProcedure
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();
@@ -254,7 +254,7 @@ export const incidentsRouter = {
 			return { success: true };
 		}),
 
-	addComment: protectedProcedure
+	addComment: writeProcedure
 		.input(z.object({ incidentId: z.string(), message: z.string().min(1) }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();

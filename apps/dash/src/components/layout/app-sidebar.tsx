@@ -196,24 +196,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarGroupLabel>Main</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{mainNav.map((item) => (
-								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton
-										asChild
-										isActive={
-											item.url === "/"
-												? pathname === "/"
-												: pathname.startsWith(item.url)
-										}
-										tooltip={item.title}
-									>
-										<Link href={item.url as any}>
-											<item.icon />
-											<span>{item.title}</span>
-										</Link>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							))}
+							{mainNav
+								.filter((item) => {
+									if (item.title === "Integrations") {
+										const members = activeOrg?.members;
+										const role = members?.find(
+											(m) => m.userId === session?.user?.id,
+										)?.role;
+										return role === "owner" || role === "admin";
+									}
+									return true;
+								})
+								.map((item) => (
+									<SidebarMenuItem key={item.title}>
+										<SidebarMenuButton
+											asChild
+											isActive={
+												item.url === "/"
+													? pathname === "/"
+													: pathname.startsWith(item.url)
+											}
+											tooltip={item.title}
+										>
+											<Link href={item.url as any}>
+												<item.icon />
+												<span>{item.title}</span>
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>

@@ -23,10 +23,16 @@ export default function SignUpForm({
 	showLogin = true,
 	showDiscordLogin = false,
 	showGithubLogin = false,
+	onSuccess,
+	email,
+	emailReadOnly = false,
 }: {
 	showLogin?: boolean;
 	showDiscordLogin?: boolean;
 	showGithubLogin?: boolean;
+	onSuccess?: () => void;
+	email?: string;
+	emailReadOnly?: boolean;
 }) {
 	const router = useRouter();
 	const { isPending } = authClient.useSession();
@@ -40,7 +46,7 @@ export default function SignUpForm({
 
 	const form = useForm({
 		defaultValues: {
-			email: "",
+			email: email || "",
 			password: "",
 			name: "",
 		},
@@ -53,6 +59,10 @@ export default function SignUpForm({
 				},
 				{
 					onSuccess: () => {
+						if (onSuccess) {
+							onSuccess();
+							return;
+						}
 						router.push("/");
 						toast.success("Sign up successful");
 					},
@@ -185,6 +195,7 @@ export default function SignUpForm({
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
 										placeholder="m@example.com"
+										disabled={emailReadOnly}
 									/>
 									{field.state.meta.errors.map((error) => (
 										<p

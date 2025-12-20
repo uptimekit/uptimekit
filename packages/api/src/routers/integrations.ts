@@ -3,7 +3,7 @@ import { db } from "@uptimekit/db";
 import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, writeProcedure } from "../index";
 import { ALLOWED_INTEGRATIONS, isSelfHosted } from "../lib/limits";
 import { integrationRegistry } from "../pkg/integrations/registry";
 
@@ -18,7 +18,7 @@ export const integrationsRouter = {
 		}));
 	}),
 
-	listConfigured: protectedProcedure.handler(async ({ context }) => {
+	listConfigured: writeProcedure.handler(async ({ context }) => {
 		const organizationId = context.session.session.activeOrganizationId;
 		if (!organizationId) return [];
 
@@ -29,7 +29,7 @@ export const integrationsRouter = {
 		return configs;
 	}),
 
-	configure: protectedProcedure
+	configure: writeProcedure
 		.input(
 			z.object({
 				type: z.string(),
@@ -83,7 +83,7 @@ export const integrationsRouter = {
 			return { success: true };
 		}),
 
-	delete: protectedProcedure
+	delete: writeProcedure
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ context, input }) => {
 			const organizationId = context.session.session.activeOrganizationId;
@@ -100,7 +100,7 @@ export const integrationsRouter = {
 			return { success: true };
 		}),
 
-	toggle: protectedProcedure
+	toggle: writeProcedure
 		.input(z.object({ id: z.string(), active: z.boolean() }))
 		.handler(async ({ context, input }) => {
 			const organizationId = context.session.session.activeOrganizationId;
