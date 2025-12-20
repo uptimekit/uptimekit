@@ -60,6 +60,14 @@ jobs:
         run: |
           PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
           DETECTED='${{ steps.private_changes.outputs.detected }}'
+          HAS_CHANGESETS='${{ steps.changesets.outputs.hasChangesets }}'
+          IS_PUBLISHED='${{ steps.changesets.outputs.published }}'
+
+          if [ "$HAS_CHANGESETS" == "true" ] && [ "$IS_PUBLISHED" != "true" ]; then
+            echo "Versioning phase detected (PR creation). Skipping docker build."
+            echo "result=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
           # Handle empty/null inputs
           if [ -z "$PUBLISHED" ] || [ "$PUBLISHED" == "null" ]; then PUBLISHED="[]"; fi
