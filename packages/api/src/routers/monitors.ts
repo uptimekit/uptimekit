@@ -8,7 +8,7 @@ import {
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { and, desc, eq, gte, ilike, sql } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, writeProcedure } from "../index";
 import { isSelfHosted, MAX_MONITORS } from "../lib/limits";
 
 export const monitorsRouter = {
@@ -136,7 +136,7 @@ export const monitorsRouter = {
 		return groups;
 	}),
 
-	createGroup: protectedProcedure
+	createGroup: writeProcedure
 		.input(z.object({ name: z.string().min(1) }))
 		.handler(async ({ input, context }) => {
 			const [newGroup] = await db
@@ -150,7 +150,7 @@ export const monitorsRouter = {
 			return newGroup;
 		}),
 
-	create: protectedProcedure
+	create: writeProcedure
 		.input(
 			z.object({
 				name: z.string().min(1),
@@ -203,7 +203,7 @@ export const monitorsRouter = {
 			return newMonitor;
 		}),
 
-	delete: protectedProcedure
+	delete: writeProcedure
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			// Verify ownership
@@ -222,7 +222,7 @@ export const monitorsRouter = {
 			return { success: true };
 		}),
 
-	toggle: protectedProcedure
+	toggle: writeProcedure
 		.input(z.object({ id: z.string(), active: z.boolean() }))
 		.handler(async ({ input, context }) => {
 			const existing = await db.query.monitor.findFirst({
@@ -244,7 +244,7 @@ export const monitorsRouter = {
 			return { success: true };
 		}),
 
-	update: protectedProcedure
+	update: writeProcedure
 		.input(
 			z.object({
 				id: z.string(),

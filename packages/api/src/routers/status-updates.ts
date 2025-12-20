@@ -8,7 +8,7 @@ import {
 } from "@uptimekit/db/schema/status-updates";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, writeProcedure } from "../index";
 
 export const statusUpdatesRouter = {
 	list: protectedProcedure
@@ -100,7 +100,7 @@ export const statusUpdatesRouter = {
 			return report;
 		}),
 
-	create: protectedProcedure
+	create: writeProcedure
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -181,7 +181,7 @@ export const statusUpdatesRouter = {
 			return { id: reportId };
 		}),
 
-	addUpdate: protectedProcedure
+	addUpdate: writeProcedure
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -283,7 +283,7 @@ export const statusUpdatesRouter = {
 			return { success: true };
 		}),
 
-	editUpdate: protectedProcedure
+	editUpdate: writeProcedure
 		.input(
 			z.object({
 				statusPageId: z.string(),
