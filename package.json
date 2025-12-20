@@ -8,7 +8,7 @@
 	],
 	"scripts": {
 		"check": "biome check --write .",
-		"prepare": "husky",
+		"prepare": "husky || true",
 		"build": "turbo build",
 		"check-types": "turbo check-types",
 		"dev": "turbo dev",

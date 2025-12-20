@@ -1,9 +1,6 @@
-import { createRequire } from "node:module";
+import ping from "ping";
 import type { MonitorConfig } from "../api-client.js";
 import { BaseMonitor, type MonitorResult } from "./registry.js";
-
-const require = createRequire(import.meta.url);
-const ping = require("net-ping");
 
 export class IcmpMonitor extends BaseMonitor {
 	async check(monitor: MonitorConfig): Promise<MonitorResult> {
@@ -33,57 +30,47 @@ export class IcmpMonitor extends BaseMonitor {
 			if (parts[0]) hostname = parts[0];
 		}
 
-		const timeout = (monitor.timeout || 2) * 1000;
+		const timeoutSeconds = monitor.timeout || 2;
 
-		return new Promise((resolve) => {
-			// biome-ignore lint/suspicious/noExplicitAny: net-ping lacks types
-			let session: any;
-			try {
-				session = ping.createSession({
-					packetSize: 16,
-					timeout: timeout,
-					retries: 0,
-				});
-			} catch (err: any) {
-				// biome-ignore lint/suspicious/noExplicitAny: error type unknown
-				return resolve({
+		try {
+			const res = await ping.promise.probe(hostname, {
+				timeout: timeoutSeconds,
+				extra: ["-c", "3"], // Send 3 packets for better reliability
+			});
+
+			if (!res.alive) {
+				return {
 					monitorId: monitor.id,
 					status: "down",
 					latency: 0,
-					error: `Session Error: ${err.message || err} (Requires Root/Admin)`,
+					error: "Request Timed Out or Host Unreachable",
 					timestamp: new Date().toISOString(),
-				});
+				};
 			}
 
-			session.pingHost(
-				hostname,
-				// biome-ignore lint/suspicious/noExplicitAny: net-ping lacks types
-				(error: any, _target: string, sent: Date, rcvd: Date) => {
-					session.close();
+			// Parse latency. 'time' is usually in ms, but can be 'unknown' or number.
+			let latency = 0;
+			if (typeof res.time === "number") {
+				latency = res.time;
+			} else if (typeof res.time === "string") {
+				latency = Number.parseFloat(res.time);
+			}
 
-					if (error) {
-						let errorMsg = error.message || error.toString();
-						if (error instanceof ping.RequestTimedOutError) {
-							errorMsg = "Request Timed Out";
-						}
-						resolve({
-							monitorId: monitor.id,
-							status: "down",
-							latency: 0,
-							error: errorMsg,
-							timestamp: new Date().toISOString(),
-						});
-					} else {
-						const latency = rcvd.getTime() - sent.getTime();
-						resolve({
-							monitorId: monitor.id,
-							status: "up",
-							latency: latency,
-							timestamp: new Date().toISOString(),
-						});
-					}
-				},
-			);
-		});
+			return {
+				monitorId: monitor.id,
+				status: "up",
+				latency: Number.isNaN(latency) ? 0 : latency,
+				timestamp: new Date().toISOString(),
+			};
+		} catch (err: unknown) {
+			const errorMessage = err instanceof Error ? err.message : String(err);
+			return {
+				monitorId: monitor.id,
+				status: "down",
+				latency: 0,
+				error: `Ping Error: ${errorMessage}`,
+				timestamp: new Date().toISOString(),
+			};
+		}
 	}
 }
