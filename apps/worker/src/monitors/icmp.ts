@@ -1,3 +1,4 @@
+import os from "node:os";
 import ping from "ping";
 import type { MonitorConfig } from "../api-client.js";
 import { BaseMonitor, type MonitorResult } from "./registry.js";
@@ -30,12 +31,19 @@ export class IcmpMonitor extends BaseMonitor {
 			if (parts[0]) hostname = parts[0];
 		}
 
-		const timeoutSeconds = monitor.timeout || 2;
+		const isWindows = os.platform() === "win32";
+		const timeout = monitor.timeout || 2;
+
+		// Windows ping uses -w in milliseconds, others (Linux/Mac) usually in seconds
+		const timeoutVal = isWindows ? timeout * 1000 : timeout;
+
+		// Windows uses -n for count, others use -c
+		const countFlag = isWindows ? "-n" : "-c";
 
 		try {
 			const res = await ping.promise.probe(hostname, {
-				timeout: timeoutSeconds,
-				extra: ["-c", "3"], // Send 3 packets for better reliability
+				timeout: timeoutVal,
+				extra: [countFlag, "3"], // Send 3 packets
 			});
 
 			if (!res.alive) {
