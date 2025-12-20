@@ -1,5 +1,14 @@
 # @uptimekit/dash
 
+## 0.0.7
+
+### Patch Changes
+
+- f8c21da: release 20.12.2025
+- Updated dependencies [f8c21da]
+  - @uptimekit/api@0.0.7
+  - @uptimekit/auth@0.0.7
+
 ## 0.0.6
 
 ### Patch Changes

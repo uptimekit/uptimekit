@@ -1,5 +1,11 @@
 # @uptimekit/auth
 
+## 0.0.7
+
+### Patch Changes
+
+- f8c21da: release 20.12.2025
+
 ## 0.0.6
 
 ### Patch Changes
