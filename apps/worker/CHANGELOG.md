@@ -1,5 +1,11 @@
 # @uptimekit/worker
 
+## 0.0.7
+
+### Patch Changes
+
+- 2cf144d: hotfix raw-socket
+
 ## 0.0.6
 
 ### Patch Changes
