@@ -1,15 +1,15 @@
+import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import {
 	maintenance,
-	maintenanceStatusPage,
 	maintenanceMonitor,
+	maintenanceStatusPage,
 	maintenanceUpdate,
 } from "@uptimekit/db/schema/maintenance";
 import { statusPage } from "@uptimekit/db/schema/status-pages";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure } from "../index";
-import { ORPCError } from "@orpc/server";
+import { protectedProcedure, writeProcedure } from "../index";
 
 export const maintenanceRouter = {
 	list: protectedProcedure
@@ -50,7 +50,7 @@ export const maintenanceRouter = {
 				.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 		}),
 
-	create: protectedProcedure
+	create: writeProcedure
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -166,7 +166,7 @@ export const maintenanceRouter = {
 			return record;
 		}),
 
-	update: protectedProcedure
+	update: writeProcedure
 		.input(
 			z.object({
 				maintenanceId: z.string(),
@@ -206,7 +206,7 @@ export const maintenanceRouter = {
 			return { success: true };
 		}),
 
-	createUpdate: protectedProcedure
+	createUpdate: writeProcedure
 		.input(
 			z.object({
 				maintenanceId: z.string(),
@@ -274,7 +274,7 @@ export const maintenanceRouter = {
 			return { id: updateId };
 		}),
 
-	updateUpdate: protectedProcedure
+	updateUpdate: writeProcedure
 		.input(
 			z.object({
 				updateId: z.string(),
@@ -319,7 +319,7 @@ export const maintenanceRouter = {
 			return { success: true };
 		}),
 
-	deleteUpdate: protectedProcedure
+	deleteUpdate: writeProcedure
 		.input(
 			z.object({
 				updateId: z.string(),

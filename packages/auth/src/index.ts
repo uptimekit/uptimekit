@@ -82,10 +82,20 @@ export const auth = betterAuth({
 	databaseHooks: {
 		user: {
 			create: {
-				before: async () => {
+				before: async (user) => {
 					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 
 					if (isSelfHosted) {
+						const [invite] = await db
+							.select()
+							.from(schema.invitation)
+							.where(eq(schema.invitation.email, user.email))
+							.limit(1);
+
+						if (invite) {
+							return;
+						}
+
 						const users = await db
 							.select({ id: schema.user.id })
 							.from(schema.user)
@@ -110,6 +120,16 @@ export const auth = betterAuth({
 							.update(schema.user)
 							.set({ role: "admin" })
 							.where(eq(schema.user.id, user.id));
+					}
+
+					const [invite] = await db
+						.select()
+						.from(schema.invitation)
+						.where(eq(schema.invitation.email, user.email))
+						.limit(1);
+
+					if (invite) {
+						return;
 					}
 
 					const slug = createSlugFromEmail(user.email);

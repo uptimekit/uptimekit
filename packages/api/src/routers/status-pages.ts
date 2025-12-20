@@ -7,7 +7,7 @@ import {
 } from "@uptimekit/db/schema/status-pages";
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, writeProcedure } from "../index";
 import { isSelfHosted, MAX_STATUS_PAGES } from "../lib/limits";
 
 export const statusPagesRouter = {
@@ -74,7 +74,7 @@ export const statusPagesRouter = {
 			};
 		}),
 
-	create: protectedProcedure
+	create: writeProcedure
 		.input(
 			z.object({
 				name: z.string().min(1),
@@ -142,7 +142,7 @@ export const statusPagesRouter = {
 			return page;
 		}),
 
-	update: protectedProcedure
+	update: writeProcedure
 		.input(
 			z.object({
 				id: z.string(),
@@ -255,7 +255,7 @@ export const statusPagesRouter = {
 			};
 		}),
 
-	updateStructure: protectedProcedure
+	updateStructure: writeProcedure
 		.input(
 			z.object({
 				id: z.string(),
