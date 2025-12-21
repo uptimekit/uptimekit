@@ -1,4 +1,3 @@
-import { polarClient } from "@polar-sh/better-auth/client";
 import {
 	adminClient,
 	apiKeyClient,
@@ -17,6 +16,5 @@ export const authClient = createAuthClient({
 				window.location.href = "/two-factor";
 			},
 		}),
-		...(process.env.NEXT_PUBLIC_SELFHOSTED !== "true" ? [polarClient()] : []),
 	],
 });

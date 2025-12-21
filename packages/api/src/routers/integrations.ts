@@ -4,11 +4,7 @@ import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import {
-	ALLOWED_INTEGRATIONS,
-	hasActiveSubscription,
-	isSelfHosted,
-} from "../lib/limits";
+import { ALLOWED_INTEGRATIONS, isSelfHosted } from "../lib/limits";
 import { integrationRegistry } from "../pkg/integrations/registry";
 
 export const integrationsRouter = {
@@ -51,13 +47,10 @@ export const integrationsRouter = {
 				throw new Error("Invalid integration type");
 			}
 
-			if (!isSelfHosted()) {
-				const hasSub = await hasActiveSubscription(organizationId);
-				if (!hasSub && !ALLOWED_INTEGRATIONS.includes(input.type)) {
-					throw new ORPCError("FORBIDDEN", {
-						message: "This integration is not available on your plan.",
-					});
-				}
+			if (!isSelfHosted() && !ALLOWED_INTEGRATIONS.includes(input.type)) {
+				throw new ORPCError("FORBIDDEN", {
+					message: "This integration is not available on your plan.",
+				});
 			}
 
 			const parsedConfig = integrationDef.configSchema.parse(input.config);
