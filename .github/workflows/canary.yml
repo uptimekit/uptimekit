@@ -135,8 +135,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/uptimekit-${{ matrix.app.app_name_clean }}
-            ${{ secrets.DOCKER_USERNAME }}/uptimekit-${{ matrix.app.app_name_clean }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.app.app_name_clean }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.app.app_name_clean }}
           tags: |
             type=semver,pattern={{version}},value=${{ matrix.app.version }}
             type=sha
