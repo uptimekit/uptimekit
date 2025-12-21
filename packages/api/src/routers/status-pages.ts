@@ -8,7 +8,11 @@ import {
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import { isSelfHosted, MAX_STATUS_PAGES } from "../lib/limits";
+import {
+	hasActiveSubscription,
+	isSelfHosted,
+	MAX_STATUS_PAGES,
+} from "../lib/limits";
 
 export const statusPagesRouter = {
 	list: protectedProcedure
@@ -84,18 +88,24 @@ export const statusPagesRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			if (!isSelfHosted()) {
-				const currentCount = await db.$count(
-					statusPage,
-					eq(
-						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
-					),
+				const hasSub = await hasActiveSubscription(
+					context.session.session.activeOrganizationId!,
 				);
 
-				if (currentCount >= MAX_STATUS_PAGES) {
-					throw new ORPCError("FORBIDDEN", {
-						message: `Plan limit reached. You can only create up to ${MAX_STATUS_PAGES} status page.`,
-					});
+				if (!hasSub) {
+					const currentCount = await db.$count(
+						statusPage,
+						eq(
+							statusPage.organizationId,
+							context.session.session.activeOrganizationId!,
+						),
+					);
+
+					if (currentCount >= MAX_STATUS_PAGES) {
+						throw new ORPCError("FORBIDDEN", {
+							message: `Plan limit reached. You can only create up to ${MAX_STATUS_PAGES} status page.`,
+						});
+					}
 				}
 			}
 
