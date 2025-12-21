@@ -1,6 +1,4 @@
 import { db } from "@uptimekit/db";
-import { integrationConfig } from "@uptimekit/db/schema/integrations";
-import { eq } from "drizzle-orm";
 import { eventBus } from "../../lib/events";
 import { discordIntegration } from "./definitions/discord";
 import { webhookIntegration } from "./definitions/webhook";

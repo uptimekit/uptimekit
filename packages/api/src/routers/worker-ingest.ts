@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { auth } from "@uptimekit/auth";
-import { db } from "@uptimekit/db";
+import { clickhouse, db, ensureClickHouseTables } from "@uptimekit/db";
 import {
 	incident,
 	incidentActivity,
@@ -10,16 +10,14 @@ import {
 	maintenance,
 	maintenanceMonitor,
 } from "@uptimekit/db/schema/maintenance";
-import {
-	monitor,
-	monitorChange,
-	monitorEvent,
-} from "@uptimekit/db/schema/monitors";
+import { monitor, type monitorChange } from "@uptimekit/db/schema/monitors";
 import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { o, publicProcedure } from "../index";
 import { eventBus } from "../lib/events";
+
+let tablesEnsured = false;
 
 const monitorEventInputSchema = z.object({
 	monitorId: z.string(),
@@ -222,6 +220,14 @@ export const workerIngestRouter = {
 		)
 		.output(z.object({ success: z.boolean(), count: z.number() }))
 		.handler(async ({ input }) => {
+			if (!tablesEnsured) {
+				try {
+					await ensureClickHouseTables();
+					tablesEnsured = true;
+				} catch (e) {
+					console.error("Failed to ensure ClickHouse tables", e);
+				}
+			}
 			const events = input.events;
 
 			// Group events by monitor to handle ordering dependencies
@@ -311,20 +317,41 @@ export const workerIngestRouter = {
 						new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
 				);
 
-				// Get latest status from DB
-				const lastEvent = await db.query.monitorEvent.findFirst({
-					where: (t, { eq }) => eq(t.monitorId, monitorId),
-					orderBy: (t, { desc }) => desc(t.timestamp),
-					columns: { status: true, timestamp: true },
+				// Get latest status from ClickHouse
+				const lastEventQuery = await clickhouse.query({
+					query: `
+						SELECT status, timestamp 
+						FROM uptimekit.monitor_events 
+						WHERE monitorId = {monitorId:String} 
+						ORDER BY timestamp DESC 
+						LIMIT 1
+					`,
+					query_params: { monitorId: monitorId },
+					format: "JSON",
 				});
+				const lastEventJson = await lastEventQuery.json<any>();
+				const lastEvent = lastEventJson.data[0] as
+					| { status: string; timestamp: string }
+					| undefined;
 
-				// Get last change from DB to determine duration of current status
-				const lastChangeRecord = await db.query.monitorChange.findFirst({
-					where: (t, { eq }) => eq(t.monitorId, monitorId),
-					orderBy: (t, { desc }) => desc(t.timestamp),
+				// Get last change from ClickHouse
+				const lastChangeQuery = await clickhouse.query({
+					query: `
+						SELECT status, timestamp 
+						FROM uptimekit.monitor_changes 
+						WHERE monitorId = {monitorId:String} 
+						ORDER BY timestamp DESC 
+						LIMIT 1
+					`,
+					query_params: { monitorId: monitorId },
+					format: "JSON",
 				});
+				const lastChangeJson = await lastChangeQuery.json<any>();
+				const lastChangeRecord = lastChangeJson.data[0] as
+					| { status: string; timestamp: string }
+					| undefined;
 
-				let currentStatus = lastEvent?.status;
+				let currentStatus = lastEvent?.status as any;
 				// If we have a last change, use its timestamp. Otherwise fallback to lastEvent or now.
 				let lastChangeTime = lastChangeRecord?.timestamp
 					? new Date(lastChangeRecord.timestamp)
@@ -426,7 +453,15 @@ export const workerIngestRouter = {
 			}
 
 			if (changesToInsert.length > 0) {
-				await db.insert(monitorChange).values(changesToInsert);
+				await clickhouse.insert({
+					table: "uptimekit.monitor_changes",
+					values: changesToInsert.map((c) => ({
+						...c,
+						// ClickHouse DateTime64(3) supports milliseconds timestamp
+						timestamp: new Date(c.timestamp!).getTime(),
+					})),
+					format: "JSONEachRow",
+				});
 			}
 
 			if (incidentsToInsert.length > 0) {
@@ -452,13 +487,20 @@ export const workerIngestRouter = {
 			}
 
 			if (events.length > 0) {
-				await db.insert(monitorEvent).values(
-					events.map((e) => ({
-						...e,
+				await clickhouse.insert({
+					table: "uptimekit.monitor_events",
+					values: events.map((e) => ({
 						id: crypto.randomUUID(),
-						timestamp: new Date(e.timestamp),
+						monitorId: e.monitorId,
+						status: e.status,
+						latency: e.latency,
+						timestamp: new Date(e.timestamp).getTime(),
+						statusCode: e.statusCode,
+						error: e.error,
+						location: e.location,
 					})),
-				);
+					format: "JSONEachRow",
+				});
 			}
 
 			return { success: true, count: events.length };

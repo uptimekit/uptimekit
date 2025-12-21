@@ -1,12 +1,8 @@
 import { ORPCError } from "@orpc/server";
-import { db } from "@uptimekit/db";
-import {
-	monitor,
-	monitorEvent,
-	monitorGroup,
-} from "@uptimekit/db/schema/monitors";
+import { clickhouse, db } from "@uptimekit/db";
+import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
-import { and, desc, eq, gte, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import {
@@ -84,22 +80,36 @@ export const monitorsRouter = {
 
 			const monitorsWithStatus = await Promise.all(
 				monitors.map(async (row) => {
-					const latestEvent = await db.query.monitorEvent.findFirst({
-						where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
-						orderBy: (t, { desc }) => desc(t.timestamp),
+					const latestEventQuery = await clickhouse.query({
+						query:
+							"SELECT status, timestamp FROM uptimekit.monitor_events WHERE monitorId = {id:String} ORDER BY timestamp DESC LIMIT 1",
+						query_params: { id: row.monitor.id },
+						format: "JSON",
 					});
+					const latestEventJson = await latestEventQuery.json<any>();
+					const latestEvent = latestEventJson.data[0] as
+						| { status: string; timestamp: string }
+						| undefined;
 
-					const latestChange = await db.query.monitorChange.findFirst({
-						where: (t, { eq }) => eq(t.monitorId, row.monitor.id),
-						orderBy: (t, { desc }) => desc(t.timestamp),
+					const latestChangeQuery = await clickhouse.query({
+						query:
+							"SELECT timestamp FROM uptimekit.monitor_changes WHERE monitorId = {id:String} ORDER BY timestamp DESC LIMIT 1",
+						query_params: { id: row.monitor.id },
+						format: "JSON",
 					});
+					const latestChangeJson = await latestChangeQuery.json<any>();
+					const latestChange = latestChangeJson.data[0] as
+						| { timestamp: string }
+						| undefined;
 
 					return {
 						...row.monitor,
 						group: row.monitor_group || null,
 						status: latestEvent?.status || "pending",
-						lastCheck: latestEvent?.timestamp || null,
-						lastStatusChange: latestChange?.timestamp || null,
+						lastCheck: latestEvent ? new Date(latestEvent.timestamp) : null,
+						lastStatusChange: latestChange
+							? new Date(latestChange.timestamp)
+							: null,
 						usedOn: usageMap.get(row.monitor.id) || 0,
 					};
 				}),
@@ -323,22 +333,36 @@ export const monitorsRouter = {
 				throw new ORPCError("NOT_FOUND");
 			}
 
-			const latestEvent = await db.query.monitorEvent.findFirst({
-				where: (t, { eq }) => eq(t.monitorId, found.monitor.id),
-				orderBy: (t, { desc }) => desc(t.timestamp),
+			const latestEventQuery = await clickhouse.query({
+				query:
+					"SELECT status, timestamp FROM uptimekit.monitor_events WHERE monitorId = {id:String} ORDER BY timestamp DESC LIMIT 1",
+				query_params: { id: found.monitor.id },
+				format: "JSON",
 			});
+			const latestEventJson = await latestEventQuery.json<any>();
+			const latestEvent = latestEventJson.data[0] as
+				| { status: string; timestamp: string }
+				| undefined;
 
-			const latestChange = await db.query.monitorChange.findFirst({
-				where: (t, { eq }) => eq(t.monitorId, found.monitor.id),
-				orderBy: (t, { desc }) => desc(t.timestamp),
+			const latestChangeQuery = await clickhouse.query({
+				query:
+					"SELECT timestamp FROM uptimekit.monitor_changes WHERE monitorId = {id:String} ORDER BY timestamp DESC LIMIT 1",
+				query_params: { id: found.monitor.id },
+				format: "JSON",
 			});
+			const latestChangeJson = await latestChangeQuery.json<any>();
+			const latestChange = latestChangeJson.data[0] as
+				| { timestamp: string }
+				| undefined;
 
 			return {
 				...found.monitor,
 				group: found.monitor_group || null,
 				status: latestEvent?.status || "pending",
-				lastCheck: latestEvent?.timestamp || null,
-				lastStatusChange: latestChange?.timestamp || null,
+				lastCheck: latestEvent ? new Date(latestEvent.timestamp) : null,
+				lastStatusChange: latestChange
+					? new Date(latestChange.timestamp)
+					: null,
 			};
 		}),
 
@@ -368,20 +392,29 @@ export const monitorsRouter = {
 			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
 			// Optimized average ping calculation using SQL
-			const avgPingResult = await db
-				.select({
-					value: sql<number>`avg(${monitorEvent.latency})`.mapWith(Number),
-				})
-				.from(monitorEvent)
-				.where(
-					and(
-						eq(monitorEvent.monitorId, input.monitorId),
-						gte(monitorEvent.timestamp, startDate),
-					),
-				);
+			// Optimized average ping calculation using ClickHouse
+			const query = `
+				SELECT avg(latency) as value
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String} AND timestamp >= {startDate:DateTime}
+			`;
+			// Convert JS Date to seconds/string for ClickHouse depending on driver?
+			// @clickhouse/client params support Date objects if mapped correctly or we can pass unix timestamp or string.
+			// Let's pass ISO string.
+
+			const avgPingResult = await clickhouse.query({
+				query,
+				query_params: {
+					monitorId: input.monitorId,
+					startDate: startDate.getTime(),
+				},
+				format: "JSON",
+			});
+			const avgPingJson = await avgPingResult.json<any>();
+			const rows = avgPingJson.data as { value: number }[];
 
 			return {
-				avgPing: Math.round(avgPingResult[0]?.value || 0),
+				avgPing: Math.round(rows[0]?.value || 0),
 			};
 		}),
 
@@ -435,26 +468,47 @@ export const monitorsRouter = {
 
 			const { limit, cursor } = input;
 
-			const changes = await db.query.monitorChange.findMany({
-				where: (t, { eq, and, lt }) => {
-					const conditions = [eq(t.monitorId, input.monitorId)];
-					if (cursor) {
-						conditions.push(lt(t.timestamp, new Date(cursor)));
-					}
-					return and(...conditions);
+			const changesQuery = await clickhouse.query({
+				query: `
+					SELECT id, status, timestamp, location
+					FROM uptimekit.monitor_changes
+					WHERE monitorId = {monitorId:String} 
+					${cursor ? "AND timestamp < {cursor:DateTime}" : ""}
+					ORDER BY timestamp DESC
+					LIMIT {limit:UInt32}
+				`,
+				query_params: {
+					monitorId: input.monitorId,
+					limit: limit + 1,
+					cursor: cursor,
 				},
-				limit: limit + 1,
-				orderBy: (t, { desc }) => desc(t.timestamp),
+				format: "JSON",
 			});
+			const changesJson = await changesQuery.json<any>();
+			const changes = changesJson.data as {
+				id: string;
+				status: string;
+				timestamp: string;
+				location?: string;
+			}[];
+
+			// Map back to expected types (string timestamp to Date conversion handled below in loop or map)
+			// Actually the output expects `timestamp: string`. JSON response is string mainly.
+
+			// We need to support 'nextCursor' which is a number (timestamp).
+			const changesWithDate = changes.map((c) => ({
+				...c,
+				timestamp: new Date(c.timestamp),
+			}));
 
 			let nextCursor: number | undefined;
-			if (changes.length > limit) {
-				const nextItem = changes.pop();
+			if (changesWithDate.length > limit) {
+				const nextItem = changesWithDate.pop();
 				nextCursor = nextItem!.timestamp.getTime();
 			}
 
 			return {
-				items: changes.map((change) => ({
+				items: changesWithDate.slice(0, limit).map((change) => ({
 					id: change.id,
 					status: change.status,
 					timestamp: change.timestamp.toISOString(),
@@ -494,23 +548,33 @@ export const monitorsRouter = {
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
 
 			// Fetch raw events for chart
-			const events = await db.query.monitorEvent.findMany({
-				where: (t, { eq, and, gte }) => {
-					const conditions = [
-						eq(t.monitorId, input.monitorId),
-						gte(t.timestamp, startDate),
-					];
-					if (input.location && input.location !== "all") {
-						conditions.push(eq(t.location, input.location));
-					}
-					return and(...conditions);
+			const query = `
+				SELECT timestamp, latency
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String} 
+				AND timestamp >= {startDate:DateTime}
+				${input.location && input.location !== "all" ? "AND location = {location:String}" : ""}
+				ORDER BY timestamp ASC
+				LIMIT 2000
+			`;
+
+			const eventsQuery = await clickhouse.query({
+				query,
+				query_params: {
+					monitorId: input.monitorId,
+					startDate: startDate.getTime(),
+					location: input.location !== "all" ? input.location : undefined,
 				},
-				orderBy: (t, { asc }) => asc(t.timestamp),
-				limit: 2000,
+				format: "JSON",
 			});
+			const eventsJson = await eventsQuery.json<any>();
+			const events = eventsJson.data as {
+				timestamp: string;
+				latency: number;
+			}[];
 
 			return events.map((e) => ({
-				timestamp: e.timestamp.toISOString(),
+				timestamp: new Date(e.timestamp).toISOString(),
 				latency: e.latency,
 			}));
 		}),
@@ -531,24 +595,52 @@ export const monitorsRouter = {
 			// Helper to calculate stats for a given start date
 			const calculateStats = async (startDate: Date | null) => {
 				// Get ALL changes since startDate
-				const changes = await db.query.monitorChange.findMany({
-					where: (t, { eq, and, gte }) => {
-						const conditions = [eq(t.monitorId, input.monitorId)];
-						if (startDate) conditions.push(gte(t.timestamp, startDate));
-						return and(...conditions);
+				const changesQuery = await clickhouse.query({
+					query: `
+						SELECT status, timestamp 
+						FROM uptimekit.monitor_changes
+						WHERE monitorId = {monitorId:String}
+						${startDate ? "AND timestamp >= {startDate:DateTime}" : ""}
+						ORDER BY timestamp ASC
+					`,
+					query_params: {
+						monitorId: input.monitorId,
+						startDate: startDate ? startDate.getTime() : undefined,
 					},
-					orderBy: (t, { asc }) => asc(t.timestamp),
+					format: "JSON",
 				});
+				const changesJson = await changesQuery.json<any>();
+				const changesRaw = changesJson.data as {
+					status: string;
+					timestamp: string;
+				}[];
+				const changes = changesRaw.map((c) => ({
+					...c,
+					timestamp: new Date(c.timestamp),
+				}));
 
 				// Also get the *state at startDate* (the change just before startDate)
 				// If no changes in range, we need to know if it was UP or DOWN the whole time.
 				let initialStatus = "up";
 				if (startDate) {
-					const lastBefore = await db.query.monitorChange.findFirst({
-						where: (t, { eq, and, lt }) =>
-							and(eq(t.monitorId, input.monitorId), lt(t.timestamp, startDate)),
-						orderBy: (t, { desc }) => desc(t.timestamp),
+					const lastBeforeQuery = await clickhouse.query({
+						query: `
+							SELECT status, timestamp
+							FROM uptimekit.monitor_changes
+							WHERE monitorId = {monitorId:String} AND timestamp < {startDate:DateTime}
+							ORDER BY timestamp DESC
+							LIMIT 1
+						`,
+						query_params: {
+							monitorId: input.monitorId,
+							startDate: startDate.getTime(),
+						},
+						format: "JSON",
 					});
+					const lastBeforeJson = await lastBeforeQuery.json<any>();
+					const lastBefore = lastBeforeJson.data[0] as
+						| { status: string }
+						| undefined;
 					if (lastBefore) initialStatus = lastBefore.status;
 				} else {
 					// For "all time", the first change determines start, or default up if empty

@@ -1,17 +1,17 @@
 import {
+	clickhouse,
 	db,
 	incident,
 	maintenance,
 	maintenanceMonitor,
 	maintenanceStatusPage,
 	maintenanceUpdate,
-	monitorEvent,
 	statusPage,
 	statusPageMonitor,
 	statusPageReport,
 } from "@uptimekit/db";
 // ... imports
-import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 
 // ... existing functions
 
@@ -118,29 +118,31 @@ export const getMonitorUptime = async (monitorId: string, days = 90) => {
 			const startDate = new Date();
 			startDate.setDate(startDate.getDate() - days);
 
-			// We want to group by day and calculate success rate
-			// This is a simplified calculation. Ideally "uptime" is (total_checks - down_checks) / total_checks
-			// Grouping by date_trunc('day', timestamp)
-
-			const result = await db.execute(sql`
-                SELECT 
-                    					to_char(timestamp, 'YYYY-MM-DD HH24') as date_hour,
+			// ClickHouse query for hourly stats
+			const query = `
+				SELECT 
+					formatDateTime(timestamp, '%Y-%m-%d %H') as date_hour,
 					count(*) as total_checks,
-					count(case when status = 'up' then 1 end) as up_checks,
+					countIf(status = 'up') as up_checks,
 					avg(latency) as avg_latency
-				FROM ${monitorEvent}
-				WHERE ${eq(monitorEvent.monitorId, monitorId)}
-				AND timestamp >= ${startDate}
-				GROUP BY 1
-				ORDER BY 1 DESC
-            `);
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String}
+				AND timestamp >= {startDate:DateTime64(3)}
+				GROUP BY date_hour
+				ORDER BY date_hour DESC
+			`;
 
-			// Handle different DB driver return types (e.g. valid array vs object with .rows)
-			// Some drivers return { rows: [...] }, others return Array-like objects
-			const rows = Array.isArray(result) ? result : (result as any).rows || [];
+			const resultSet = await clickhouse.query({
+				query,
+				query_params: {
+					monitorId,
+					startDate: startDate.getTime(),
+				},
+				format: "JSON",
+			});
 
-			// Return hourly data
-			return rows as unknown as {
+			const result = await resultSet.json<any>();
+			return result.data as {
 				date_hour: string;
 				total_checks: number;
 				up_checks: number;
@@ -353,10 +355,30 @@ export const getMaintenanceHistory = async (
 export const getMonitorStatus = async (monitorId: string) => {
 	return unstable_cache(
 		async () => {
-			return await db.query.monitorEvent.findFirst({
-				where: eq(monitorEvent.monitorId, monitorId),
-				orderBy: [desc(monitorEvent.timestamp)],
+			const query = `
+				SELECT status, timestamp 
+				FROM uptimekit.monitor_events 
+				WHERE monitorId = {monitorId:String} 
+				ORDER BY timestamp DESC 
+				LIMIT 1
+			`;
+
+			const resultSet = await clickhouse.query({
+				query,
+				query_params: { monitorId },
+				format: "JSON",
 			});
+
+			const result = await resultSet.json<any>();
+			const latestEvent = result.data[0];
+
+			if (!latestEvent) return undefined;
+
+			// Map back to expected format if needed by caller (though 'status' is main thing)
+			return {
+				status: latestEvent.status,
+				timestamp: new Date(latestEvent.timestamp),
+			};
 		},
 		[`monitor-status-${monitorId}`],
 		{ revalidate: 30 },

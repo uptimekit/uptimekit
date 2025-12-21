@@ -22,14 +22,15 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@orpc/server": "catalog:",
+		"@clickhouse/client": "^1.15.0",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
+		"@orpc/server": "catalog:",
 		"@orpc/zod": "catalog:",
-		"next": "^16.0.10",
-		"dotenv": "catalog:",
-		"zod": "catalog:",
 		"@uptimekit/auth": "workspace:*",
-		"@uptimekit/db": "workspace:*"
+		"@uptimekit/db": "workspace:*",
+		"dotenv": "catalog:",
+		"next": "^16.0.10",
+		"zod": "catalog:"
 	}
 }
