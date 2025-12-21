@@ -1,4 +1,4 @@
-import { checkout, polar, portal } from "@polar-sh/better-auth";
+import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
@@ -88,6 +88,89 @@ export const auth = betterAuth({
 								],
 								successUrl: `${process.env.NEXT_PUBLIC_URL}`,
 								authenticatedUsersOnly: true,
+							}),
+							webhooks({
+								secret: process.env.POLAR_WEBHOOK_SECRET!,
+								onSubscriptionCreated: async (payload: any) => {
+									const sub = payload.data;
+									const organizationId =
+										sub.metadata?.organizationId || sub.metadata?.referenceId;
+
+									if (organizationId) {
+										await db
+											.update(schema.organization)
+											.set({
+												plan:
+													sub.status === "active" || sub.status === "trialing"
+														? "pro"
+														: "free",
+											})
+											.where(
+												eq(schema.organization.id, organizationId as string),
+											);
+									}
+								},
+								onSubscriptionUpdated: async (payload: any) => {
+									const sub = payload.data;
+									const organizationId =
+										sub.metadata?.organizationId || sub.metadata?.referenceId;
+
+									if (organizationId) {
+										await db
+											.update(schema.organization)
+											.set({
+												plan:
+													sub.status === "active" || sub.status === "trialing"
+														? "pro"
+														: "free",
+											})
+											.where(
+												eq(schema.organization.id, organizationId as string),
+											);
+									}
+								},
+								onSubscriptionActive: async (payload: any) => {
+									const sub = payload.data;
+									const organizationId =
+										sub.metadata?.organizationId || sub.metadata?.referenceId;
+
+									if (organizationId) {
+										await db
+											.update(schema.organization)
+											.set({ plan: "pro" })
+											.where(
+												eq(schema.organization.id, organizationId as string),
+											);
+									}
+								},
+								onSubscriptionRevoked: async (payload: any) => {
+									const sub = payload.data;
+									const organizationId =
+										sub.metadata?.organizationId || sub.metadata?.referenceId;
+
+									if (organizationId) {
+										await db
+											.update(schema.organization)
+											.set({ plan: "free" })
+											.where(
+												eq(schema.organization.id, organizationId as string),
+											);
+									}
+								},
+								onSubscriptionCanceled: async (payload: any) => {
+									const sub = payload.data;
+									const organizationId =
+										sub.metadata?.organizationId || sub.metadata?.referenceId;
+
+									if (organizationId && sub.status !== "active") {
+										await db
+											.update(schema.organization)
+											.set({ plan: "free" })
+											.where(
+												eq(schema.organization.id, organizationId as string),
+											);
+									}
+								},
 							}),
 						],
 					}),

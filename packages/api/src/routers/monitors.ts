@@ -171,7 +171,6 @@ export const monitorsRouter = {
 			if (!isSelfHosted()) {
 				const hasSub = await hasActiveSubscription(
 					context.session.session.activeOrganizationId!,
-					context.headers,
 				);
 
 				if (!hasSub) {

@@ -81,17 +81,14 @@ export function BillingSettings() {
 		const checkSubscription = async () => {
 			if (!activeOrg?.id) return;
 			try {
-				// @ts-expect-error - Polar client types inference
 				const { data: orders } = await authClient.customer.subscriptions.list({
 					query: {
 						page: 1,
 						limit: 10,
-						active: true, // Only active subscriptions/orders
-						referenceId: activeOrg.id, // Filter by organization ID
+						active: true,
+						referenceId: activeOrg.id,
 					},
 				});
-				// Assuming if there is at least one active order/subscription, the plan is Pro
-				// @ts-expect-error
 				const hasActiveSubscription = orders?.result?.items?.some(
 					(order: any) =>
 						order.status === "active" || order.status === "trialing",

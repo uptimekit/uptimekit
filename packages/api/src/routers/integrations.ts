@@ -52,10 +52,7 @@ export const integrationsRouter = {
 			}
 
 			if (!isSelfHosted()) {
-				const hasSub = await hasActiveSubscription(
-					organizationId,
-					context.headers,
-				);
+				const hasSub = await hasActiveSubscription(organizationId);
 				if (!hasSub && !ALLOWED_INTEGRATIONS.includes(input.type)) {
 					throw new ORPCError("FORBIDDEN", {
 						message: "This integration is not available on your plan.",

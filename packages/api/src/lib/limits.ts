@@ -1,4 +1,6 @@
-import { auth } from "@uptimekit/auth";
+import { db } from "@uptimekit/db";
+import { organization } from "@uptimekit/db/schema/auth";
+import { eq } from "drizzle-orm";
 
 export const MAX_MONITORS = 3;
 export const MAX_STATUS_PAGES = 1;
@@ -12,33 +14,20 @@ export const isSelfHosted = () => {
 	return process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 };
 
-export const hasActiveSubscription = async (
-	organizationId: string,
-	headers: Headers,
-) => {
+export const hasActiveSubscription = async (organizationId: string) => {
 	if (isSelfHosted()) {
 		return true;
 	}
 
 	try {
-		// @ts-expect-error - Dynamic property from plugin
-		const { data } = await auth.api.customer.subscriptions.list({
-			// @ts-expect-error - Headers type mismatch
-			headers: headers,
-			query: {
-				limit: 10,
-				active: true,
-				referenceId: organizationId,
+		const org = await db.query.organization.findFirst({
+			where: eq(organization.id, organizationId),
+			columns: {
+				plan: true,
 			},
 		});
 
-		// @ts-expect-error
-		const hasActive = data?.items?.some(
-			// @ts-expect-error
-			(sub) => sub.status === "active" || sub.status === "trialing",
-		);
-
-		return hasActive ?? false;
+		return org?.plan === "pro";
 	} catch (error) {
 		console.error("Failed to check subscription:", error);
 		return false;
