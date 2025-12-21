@@ -1,65 +1,27 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
-import { client, orpc } from "@/utils/orpc";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { format, formatDistanceToNow } from "date-fns";
 import {
 	ArrowLeft,
 	Calendar,
 	CheckCircle,
 	Clock,
+	ExternalLink,
 	Megaphone,
-	Wrench,
 	MoreHorizontal,
 	Pencil,
-	ExternalLink,
 	Plus,
 	Trash,
+	Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import { format, formatDistanceToNow } from "date-fns";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { Textarea } from "@/components/ui/textarea";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
-import { useState, useEffect } from "react";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -70,6 +32,43 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { client, orpc } from "@/utils/orpc";
 
 const updateSchema = z.object({
 	message: z.string().min(1, "Message is required"),
@@ -151,18 +150,18 @@ export default function MaintenanceDetailsPage() {
 							<Badge
 								variant="outline"
 								className={cn(
-									"flex items-center gap-1.5 px-2.5 py-0.5 text-sm font-medium capitalize shadow-none transition-colors",
+									"flex items-center gap-1.5 px-2.5 py-0.5 font-medium text-sm capitalize shadow-none transition-colors",
 									getStatusColor(maintenance.status),
 								)}
 							>
 								{getStatusIcon(maintenance.status)}
 								{maintenance.status.replace("_", " ")}
 							</Badge>
-							<span className="text-sm text-muted-foreground">
+							<span className="text-muted-foreground text-sm">
 								{format(new Date(maintenance.startAt), "MMM d, yyyy")}
 							</span>
 						</div>
-						<h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+						<h1 className="font-bold text-3xl tracking-tight md:text-4xl">
 							{maintenance.title}
 						</h1>
 					</div>
@@ -172,7 +171,7 @@ export default function MaintenanceDetailsPage() {
 			<div className="grid gap-8 lg:grid-cols-3">
 				<div className="space-y-6 lg:col-span-2">
 					<div className="flex items-center justify-between">
-						<h2 className="text-xl font-semibold tracking-tight">Timeline</h2>
+						<h2 className="font-semibold text-xl tracking-tight">Timeline</h2>
 						{maintenance.status !== "completed" && (
 							<Button size="sm" onClick={() => setPostOpen(true)}>
 								<Plus className="mr-2 h-4 w-4" />
@@ -201,9 +200,9 @@ export default function MaintenanceDetailsPage() {
 									maintenance.updates?.map((update) => (
 										<TableRow
 											key={update.id}
-											className="group hover:bg-muted/40 transition-colors"
+											className="group transition-colors hover:bg-muted/40"
 										>
-											<TableCell className="w-[50px] pl-6 align-top py-4">
+											<TableCell className="w-[50px] py-4 pl-6 align-top">
 												<div
 													className={cn(
 														"mt-1.5 h-2.5 w-2.5 rounded-full shadow-sm",
@@ -218,14 +217,14 @@ export default function MaintenanceDetailsPage() {
 													)}
 												/>
 											</TableCell>
-											<TableCell className="align-top py-4">
+											<TableCell className="py-4 align-top">
 												<div className="space-y-1.5">
-													<div className="prose prose-sm prose-neutral max-w-none text-foreground dark:prose-invert">
+													<div className="prose prose-sm prose-neutral dark:prose-invert max-w-none text-foreground">
 														<p className="whitespace-pre-wrap leading-relaxed">
 															{update.message}
 														</p>
 													</div>
-													<div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+													<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
 														<span
 															className={cn(
 																getStatusColor(update.status).includes(
@@ -257,7 +256,7 @@ export default function MaintenanceDetailsPage() {
 													</div>
 												</div>
 											</TableCell>
-											<TableCell className="w-[50px] pr-4 align-top py-4 text-right">
+											<TableCell className="w-[50px] py-4 pr-4 text-right align-top">
 												<UpdateActions
 													update={update}
 													onEdit={() => setEditingUpdate(update)}
@@ -274,8 +273,8 @@ export default function MaintenanceDetailsPage() {
 				{/* Sidebar: Metadata */}
 				<div className="space-y-6 lg:col-span-1">
 					<Card>
-						<CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
-							<CardTitle className="text-sm font-medium text-muted-foreground">
+						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+							<CardTitle className="font-medium text-muted-foreground text-sm">
 								Window
 							</CardTitle>
 							<Button
@@ -291,13 +290,13 @@ export default function MaintenanceDetailsPage() {
 							<div className="flex items-start gap-3">
 								<Calendar className="mt-0.5 h-4 w-4 text-muted-foreground" />
 								<div className="space-y-0.5">
-									<span className="text-xs font-medium text-muted-foreground uppercase">
+									<span className="font-medium text-muted-foreground text-xs uppercase">
 										Start
 									</span>
-									<p className="text-sm font-medium">
+									<p className="font-medium text-sm">
 										{format(new Date(maintenance.startAt), "MMM d, yyyy")}
 									</p>
-									<p className="text-sm text-muted-foreground">
+									<p className="text-muted-foreground text-sm">
 										{format(new Date(maintenance.startAt), "h:mm a")}
 									</p>
 								</div>
@@ -306,13 +305,13 @@ export default function MaintenanceDetailsPage() {
 							<div className="flex items-start gap-3">
 								<Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
 								<div className="space-y-0.5">
-									<span className="text-xs font-medium text-muted-foreground uppercase">
+									<span className="font-medium text-muted-foreground text-xs uppercase">
 										End
 									</span>
-									<p className="text-sm font-medium">
+									<p className="font-medium text-sm">
 										{format(new Date(maintenance.endAt), "MMM d, yyyy")}
 									</p>
-									<p className="text-sm text-muted-foreground">
+									<p className="text-muted-foreground text-sm">
 										{format(new Date(maintenance.endAt), "h:mm a")}
 									</p>
 								</div>
@@ -323,7 +322,7 @@ export default function MaintenanceDetailsPage() {
 					{maintenance.monitors.length > 0 && (
 						<Card>
 							<CardContent className="pt-6">
-								<h3 className="mb-1 text-sm font-medium text-muted-foreground">
+								<h3 className="mb-1 font-medium text-muted-foreground text-sm">
 									Affected Services
 								</h3>
 								<div className="space-y-1">
@@ -331,7 +330,7 @@ export default function MaintenanceDetailsPage() {
 										<Link
 											key={m.monitor.id}
 											href={`/monitors/${m.monitor.id}`}
-											className="group flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary"
+											className="group flex items-center gap-1.5 font-medium text-sm transition-colors hover:text-primary"
 										>
 											<span>{m.monitor.name}</span>
 											<ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 transition-all group-hover:opacity-100" />
@@ -732,7 +731,7 @@ function EditWindowDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-md overflow-visible">
+			<DialogContent className="overflow-visible sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>Edit maintenance window</DialogTitle>
 					<DialogDescription>

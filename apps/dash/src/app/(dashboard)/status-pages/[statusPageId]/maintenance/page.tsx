@@ -1,21 +1,21 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Clock, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { CreateMaintenanceForm } from "@/components/status-pages/create-maintenance-form";
-import { orpc } from "@/utils/orpc";
-import { cn } from "@/lib/utils";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 export default function MaintenancePage() {
 	const params = useParams();
@@ -46,7 +46,7 @@ export default function MaintenancePage() {
 
 			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="text-lg font-medium">Maintenance</h2>
+					<h2 className="font-medium text-lg">Maintenance</h2>
 					<p className="text-muted-foreground text-sm">
 						Schedule maintenance windows to keep your users informed.
 					</p>

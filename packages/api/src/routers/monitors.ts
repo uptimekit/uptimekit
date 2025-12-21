@@ -11,6 +11,27 @@ import {
 	MAX_MONITORS,
 } from "../lib/limits";
 
+// SQL queries for batching monitor events and changes
+const BATCH_LATEST_EVENTS_QUERY = `
+	SELECT monitorId, status, timestamp
+	FROM (
+		SELECT monitorId, status, timestamp,
+			ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
+		FROM uptimekit.monitor_events
+		WHERE monitorId IN ({ids:Array(String)})
+	) WHERE rn = 1
+`;
+
+const BATCH_LATEST_CHANGES_QUERY = `
+	SELECT monitorId, timestamp
+	FROM (
+		SELECT monitorId, timestamp,
+			ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
+		FROM uptimekit.monitor_changes
+		WHERE monitorId IN ({ids:Array(String)})
+	) WHERE rn = 1
+`;
+
 export const monitorsRouter = {
 	list: protectedProcedure
 		.input(
@@ -78,42 +99,58 @@ export const monitorsRouter = {
 
 			const usageMap = new Map(usageCounts.map((c) => [c.monitorId, c.count]));
 
-			const monitorsWithStatus = await Promise.all(
-				monitors.map(async (row) => {
-					const latestEventQuery = await clickhouse.query({
-						query:
-							"SELECT status, timestamp FROM uptimekit.monitor_events WHERE monitorId = {id:String} ORDER BY timestamp DESC LIMIT 1",
-						query_params: { id: row.monitor.id },
-						format: "JSON",
-					});
-					const latestEventJson = await latestEventQuery.json<any>();
-					const latestEvent = latestEventJson.data[0] as
-						| { status: string; timestamp: string }
-						| undefined;
+			// Batch fetch latest events and changes for all monitors to avoid N+1 query problem
+			const monitorIds = monitors.map((row) => row.monitor.id);
 
-					const latestChangeQuery = await clickhouse.query({
-						query:
-							"SELECT timestamp FROM uptimekit.monitor_changes WHERE monitorId = {id:String} ORDER BY timestamp DESC LIMIT 1",
-						query_params: { id: row.monitor.id },
-						format: "JSON",
-					});
-					const latestChangeJson = await latestChangeQuery.json<any>();
-					const latestChange = latestChangeJson.data[0] as
-						| { timestamp: string }
-						| undefined;
-
-					return {
-						...row.monitor,
-						group: row.monitor_group || null,
-						status: latestEvent?.status || "pending",
-						lastCheck: latestEvent ? new Date(latestEvent.timestamp) : null,
-						lastStatusChange: latestChange
-							? new Date(latestChange.timestamp)
-							: null,
-						usedOn: usageMap.get(row.monitor.id) || 0,
-					};
-				}),
+			// Fetch latest events for all monitors in a single query
+			const latestEventsQuery = await clickhouse.query({
+				query: BATCH_LATEST_EVENTS_QUERY,
+				query_params: { ids: monitorIds },
+				format: "JSON",
+			});
+			const latestEventsJson = await latestEventsQuery.json<any>();
+			const latestEventsMap = new Map(
+				(
+					latestEventsJson.data as Array<{
+						monitorId: string;
+						status: string;
+						timestamp: string;
+					}>
+				).map((event) => [event.monitorId, event]),
 			);
+
+			// Fetch latest changes for all monitors in a single query
+			const latestChangesQuery = await clickhouse.query({
+				query: BATCH_LATEST_CHANGES_QUERY,
+				query_params: { ids: monitorIds },
+				format: "JSON",
+			});
+			const latestChangesJson = await latestChangesQuery.json<any>();
+			const latestChangesMap = new Map(
+				(
+					latestChangesJson.data as Array<{
+						monitorId: string;
+						timestamp: string;
+					}>
+				).map((change) => [change.monitorId, change]),
+			);
+
+			// Map the results to monitors
+			const monitorsWithStatus = monitors.map((row) => {
+				const latestEvent = latestEventsMap.get(row.monitor.id);
+				const latestChange = latestChangesMap.get(row.monitor.id);
+
+				return {
+					...row.monitor,
+					group: row.monitor_group || null,
+					status: latestEvent?.status || "pending",
+					lastCheck: latestEvent ? new Date(latestEvent.timestamp) : null,
+					lastStatusChange: latestChange
+						? new Date(latestChange.timestamp)
+						: null,
+					usedOn: usageMap.get(row.monitor.id) || 0,
+				};
+			});
 
 			// Post-filter by status if needed (since status is dynamic/computed)
 			// NOTE: This means pagination might be slightly off if filtering by status,
