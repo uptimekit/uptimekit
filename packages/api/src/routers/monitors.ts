@@ -9,7 +9,11 @@ import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { and, desc, eq, gte, ilike, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import { isSelfHosted, MAX_MONITORS } from "../lib/limits";
+import {
+	hasActiveSubscription,
+	isSelfHosted,
+	MAX_MONITORS,
+} from "../lib/limits";
 
 export const monitorsRouter = {
 	list: protectedProcedure
@@ -165,18 +169,25 @@ export const monitorsRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			if (!isSelfHosted()) {
-				const currentCount = await db.$count(
-					monitor,
-					eq(
-						monitor.organizationId,
-						context.session.session.activeOrganizationId!,
-					),
+				const hasSub = await hasActiveSubscription(
+					context.session.session.activeOrganizationId!,
+					context.headers,
 				);
 
-				if (currentCount >= MAX_MONITORS) {
-					throw new ORPCError("FORBIDDEN", {
-						message: `Plan limit reached. You can only create up to ${MAX_MONITORS} monitors.`,
-					});
+				if (!hasSub) {
+					const currentCount = await db.$count(
+						monitor,
+						eq(
+							monitor.organizationId,
+							context.session.session.activeOrganizationId!,
+						),
+					);
+
+					if (currentCount >= MAX_MONITORS) {
+						throw new ORPCError("FORBIDDEN", {
+							message: `Plan limit reached. You can only create up to ${MAX_MONITORS} monitors.`,
+						});
+					}
 				}
 			}
 

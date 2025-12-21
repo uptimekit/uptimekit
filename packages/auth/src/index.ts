@@ -1,3 +1,5 @@
+import { checkout, polar, portal } from "@polar-sh/better-auth";
+import { Polar } from "@polar-sh/sdk";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
 import { APIError, betterAuth } from "better-auth";
@@ -62,6 +64,35 @@ export const auth = betterAuth({
 		twoFactor({
 			issuer: "UptimeKit",
 		}),
+		...(process.env.NEXT_PUBLIC_SELFHOSTED !== "true"
+			? [
+					polar({
+						client: new Polar({
+							accessToken: process.env.POLAR_ACCESS_TOKEN || "",
+							server:
+								process.env.POLAR_SANDBOX === "true" ? "sandbox" : "production",
+						}),
+						createCustomerOnSignUp: true,
+						use: [
+							portal(),
+							checkout({
+								products: [
+									{
+										productId: process.env.NEXT_PUBLIC_POLAR_PRO_MONTHLY_ID!,
+										slug: "UptimeKit-Paid-Monthly",
+									},
+									{
+										productId: process.env.NEXT_PUBLIC_POLAR_PRO_YEARLY_ID!,
+										slug: "UptimeKit-Paid-Yearly",
+									},
+								],
+								successUrl: `${process.env.NEXT_PUBLIC_URL}`,
+								authenticatedUsersOnly: true,
+							}),
+						],
+					}),
+				]
+			: []),
 	],
 	socialProviders: {
 		discord: {
