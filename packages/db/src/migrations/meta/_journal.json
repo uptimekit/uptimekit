@@ -15,6 +15,13 @@
 			"when": 1766067168766,
 			"tag": "0001_uneven_skaar",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1766299671496,
+			"tag": "0002_lowly_stardust",
+			"breakpoints": true
 		}
 	]
 }
