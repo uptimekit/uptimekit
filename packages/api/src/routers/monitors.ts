@@ -11,6 +11,27 @@ import {
 	MAX_MONITORS,
 } from "../lib/limits";
 
+// SQL queries for batching monitor events and changes
+const BATCH_LATEST_EVENTS_QUERY = `
+	SELECT monitorId, status, timestamp
+	FROM (
+		SELECT monitorId, status, timestamp,
+			ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
+		FROM uptimekit.monitor_events
+		WHERE monitorId IN ({ids:Array(String)})
+	) WHERE rn = 1
+`;
+
+const BATCH_LATEST_CHANGES_QUERY = `
+	SELECT monitorId, timestamp
+	FROM (
+		SELECT monitorId, timestamp,
+			ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
+		FROM uptimekit.monitor_changes
+		WHERE monitorId IN ({ids:Array(String)})
+	) WHERE rn = 1
+`;
+
 export const monitorsRouter = {
 	list: protectedProcedure
 		.input(
@@ -83,15 +104,7 @@ export const monitorsRouter = {
 
 			// Fetch latest events for all monitors in a single query
 			const latestEventsQuery = await clickhouse.query({
-				query: `
-					SELECT monitorId, status, timestamp
-					FROM (
-						SELECT monitorId, status, timestamp,
-							ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
-						FROM uptimekit.monitor_events
-						WHERE monitorId IN ({ids:Array(String)})
-					) WHERE rn = 1
-				`,
+				query: BATCH_LATEST_EVENTS_QUERY,
 				query_params: { ids: monitorIds },
 				format: "JSON",
 			});
@@ -108,15 +121,7 @@ export const monitorsRouter = {
 
 			// Fetch latest changes for all monitors in a single query
 			const latestChangesQuery = await clickhouse.query({
-				query: `
-					SELECT monitorId, timestamp
-					FROM (
-						SELECT monitorId, timestamp,
-							ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
-						FROM uptimekit.monitor_changes
-						WHERE monitorId IN ({ids:Array(String)})
-					) WHERE rn = 1
-				`,
+				query: BATCH_LATEST_CHANGES_QUERY,
 				query_params: { ids: monitorIds },
 				format: "JSON",
 			});
