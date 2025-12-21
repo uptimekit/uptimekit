@@ -10,7 +10,7 @@ jobs:
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       has_changes: ${{ steps.check_changes.outputs.has_changes }}
@@ -106,7 +106,7 @@ jobs:
   publish-docker:
     needs: calculate-version
     if: needs.calculate-version.outputs.has_changes == 'true' && needs.calculate-version.outputs.matrix != '[]'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
       packages: write
@@ -135,18 +135,17 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/uptimekit-${{ matrix.app.app_name_clean }}
-            ${{ secrets.DOCKER_USERNAME }}/uptimekit-${{ matrix.app.app_name_clean }}
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.app.app_name_clean }}
+            uptimekit/${{ matrix.app.app_name_clean }}
           tags: |
             type=semver,pattern={{version}},value=${{ matrix.app.version }}
-            type=sha
             type=raw,value=canary
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Setup Blacksmith Builder
+        uses: useblacksmith/setup-docker-builder@v1
 
       - name: Docker Login to GHCR
         uses: docker/login-action@v3
@@ -162,7 +161,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Docker Image Publish
-        uses: docker/build-push-action@v5
+        uses: useblacksmith/build-push-action@v2
         with:
           context: .
           file: ${{ matrix.app.app_dir }}/Dockerfile

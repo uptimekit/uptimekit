@@ -21,7 +21,7 @@ This is the easiest way to get UptimeKit up and running. We provide official Doc
 ```yaml title="docker-compose.yml"
 services:
   dash:
-    image: strikx/uptimekit-dash:latest
+    image: uptimekit/dash:latest
     ports:
       - "3000:3000"
     environment:
@@ -35,7 +35,7 @@ services:
     restart: always
 
   status-page:
-    image: strikx/uptimekit-status-page:latest
+    image: uptimekit/status-page:latest
     ports:
       - "3001:3001"
     environment:

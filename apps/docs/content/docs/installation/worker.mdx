@@ -20,7 +20,7 @@ You can run the worker as a standalone container anywhere Docker is available. T
 ```yaml title="docker-compose.yml"
 services:
   worker:
-    image: strikx/uptimekit-worker:latest
+    image: uptimekit/worker:latest
     environment:
       # The URL where your main UptimeKit Dashboard is reachable
       - DASHBOARD_URL=https://uptime.yourdomain.com
