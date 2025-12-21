@@ -138,7 +138,7 @@ jobs:
         with:
           images: |
             ${{ steps.prep.outputs.image_name }}
-            ${{ secrets.DOCKER_USERNAME }}/${{ steps.prep.outputs.app_name_clean }}
+            uptimekit/${{ steps.prep.outputs.app_name_clean }}
           tags: |
             type=semver,pattern={{version}},value=${{ matrix.package.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ matrix.package.version }}
@@ -148,8 +148,8 @@ jobs:
         if: steps.prep.outputs.skip != 'true'
         uses: docker/setup-qemu-action@v3
 
-        if: steps.prep.outputs.skip != 'true'
       - name: Setup Blacksmith Builder
+        if: steps.prep.outputs.skip != 'true'
         uses: useblacksmith/setup-docker-builder@v1
 
       - name: Docker Login to GHCR
