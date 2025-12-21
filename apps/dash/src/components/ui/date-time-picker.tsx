@@ -1,17 +1,17 @@
 "use client";
 
-import * as React from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface DateTimePickerProps {
 	date: Date | undefined;
@@ -83,7 +83,7 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
 					onSelect={handleSelect}
 					initialFocus
 				/>
-				<div className="p-3 border-t bg-background">
+				<div className="border-t bg-background p-3">
 					<div className="flex items-center gap-2">
 						<Clock className="h-4 w-4 text-muted-foreground" />
 						<Input

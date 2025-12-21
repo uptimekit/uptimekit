@@ -1,23 +1,23 @@
 "use client";
 
-import { orpc } from "@/utils/orpc";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, formatDistance, formatDistanceToNow } from "date-fns";
 import {
 	ArrowLeft,
 	CheckCircle2,
 	Clock,
+	CornerDownRight,
 	MoreHorizontal,
 	ShieldAlert,
 	Trash2,
 	User,
-	CornerDownRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { formatDistanceToNow, format, formatDistance } from "date-fns";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Card,
 	CardContent,
@@ -25,12 +25,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
-
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 export function IncidentDetails({ id }: { id: string }) {
 	const router = useRouter();
@@ -238,7 +237,7 @@ export function IncidentDetails({ id }: { id: string }) {
 							{incident.activities.map((activity, i) => (
 								<div key={activity.id} className="relative flex gap-4 pl-2">
 									{i !== incident.activities.length - 1 && (
-										<div className="absolute top-8 left-[11px] bottom-[-24px] w-px bg-border" />
+										<div className="absolute top-8 bottom-[-24px] left-[11px] w-px bg-border" />
 									)}
 									<div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
 									<div className="flex-1 space-y-1">

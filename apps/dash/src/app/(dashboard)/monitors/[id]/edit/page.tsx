@@ -1,10 +1,10 @@
 "use client";
 
-import { CreateMonitorForm } from "@/components/monitors/create-form";
-import { orpc } from "@/utils/orpc";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
+import { CreateMonitorForm } from "@/components/monitors/create-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { orpc } from "@/utils/orpc";
 
 export default function MonitorEditPage() {
 	const params = useParams();

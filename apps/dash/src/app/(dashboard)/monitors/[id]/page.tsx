@@ -1,29 +1,26 @@
 "use client";
 
-import { orpc } from "@/utils/orpc";
 import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 import {
+	AlertTriangle,
 	ArrowLeft,
 	CheckCircle2,
 	Clock,
 	Globe,
-	XCircle,
-	AlertTriangle,
 	HelpCircle,
+	XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-
-import { formatDistanceToNow } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-
-import { Skeleton } from "@/components/ui/skeleton";
-
-import { cn } from "@/lib/utils";
+import { AvailabilityTable } from "@/components/monitors/availability-table";
 import { MonitorCards } from "@/components/monitors/monitor-cards";
 import { ResponseTimeChart } from "@/components/monitors/response-time-chart";
-import { AvailabilityTable } from "@/components/monitors/availability-table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 export default function MonitorDetailsPage() {
 	const params = useParams();
