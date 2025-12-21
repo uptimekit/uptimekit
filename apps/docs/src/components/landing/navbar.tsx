@@ -51,7 +51,7 @@ export function Navbar() {
 					<SearchTrigger />
 
 					<Link
-						href="https://github.com/stripsior/uptimekit"
+						href="https://github.com/uptimekit/uptimekit"
 						target="_blank"
 						className="rounded-md p-2 text-fd-muted-foreground transition-colors hover:bg-fd-muted hover:text-fd-foreground"
 					>
