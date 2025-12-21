@@ -64,7 +64,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 1.  **Clone the repository**
 
     ```bash
-    git clone https://github.com/stripsior/uptimekit.git
+    git clone https://github.com/uptimekit/uptimekit.git
     cd uptimekit
     ```
 
