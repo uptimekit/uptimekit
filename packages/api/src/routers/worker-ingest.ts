@@ -10,7 +10,7 @@ import {
 	maintenance,
 	maintenanceMonitor,
 } from "@uptimekit/db/schema/maintenance";
-import { monitor, type monitorChange } from "@uptimekit/db/schema/monitors";
+import { monitor } from "@uptimekit/db/schema/monitors";
 import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -23,6 +23,7 @@ import type {
 
 let tablesEnsured = false;
 
+
 const monitorEventInputSchema = z.object({
 	monitorId: z.string(),
 	status: z.enum(["up", "down", "degraded", "maintenance", "pending"]),
@@ -33,6 +34,14 @@ const monitorEventInputSchema = z.object({
 	location: z.string().optional(),
 	locations: z.array(z.string()).optional(),
 });
+
+type MonitorChangeInsert = {
+	id: string;
+	monitorId: string;
+	status: string;
+	timestamp: Date;
+	location?: string | null;
+};
 
 // Middleware to authenticate worker via API Key
 const requireWorkerAuth = o.middleware(async ({ context, next }) => {
@@ -262,7 +271,8 @@ export const workerIngestRouter = {
 				eventsByMonitor.set(event.monitorId, list);
 			}
 
-			const changesToInsert: (typeof monitorChange.$inferInsert)[] = [];
+
+			const changesToInsert: MonitorChangeInsert[] = [];
 			const incidentsToInsert: (typeof incident.$inferInsert)[] = [];
 			const incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[] =
 				[];

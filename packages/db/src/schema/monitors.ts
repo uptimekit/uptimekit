@@ -7,7 +7,6 @@ import {
 	pgTable,
 	text,
 	timestamp,
-	varchar,
 } from "drizzle-orm/pg-core";
 import { organization } from "./auth";
 
@@ -65,44 +64,11 @@ export const monitor = pgTable(
 	],
 );
 
-export const monitorEvent = pgTable(
-	"monitor_event",
-	{
-		id: text("id").primaryKey(),
-		monitorId: text("monitor_id")
-			.notNull()
-			.references(() => monitor.id, { onDelete: "cascade" }),
-		status: varchar("status", { length: 20 }).notNull(), // up, down, degraded
-		latency: integer("latency").notNull(),
-		timestamp: timestamp("timestamp").notNull().defaultNow(),
-		statusCode: integer("status_code"),
-		location: varchar("location", { length: 50 }),
-		error: text("error"),
-	},
-	(t) => ({
-		monitorIdx: index("monitor_event_monitor_idx").on(t.monitorId),
-		timestampIdx: index("monitor_event_timestamp_idx").on(t.timestamp),
-	}),
-);
 
-export const monitorChange = pgTable(
-	"monitor_change",
-	{
-		id: text("id").primaryKey(),
-		monitorId: text("monitor_id")
-			.notNull()
-			.references(() => monitor.id, { onDelete: "cascade" }),
-		status: varchar("status", { length: 20 }).notNull(),
-		timestamp: timestamp("timestamp").notNull().defaultNow(),
-		location: varchar("location", { length: 50 }),
-	},
-	(t) => ({
-		monitorIdx: index("monitor_change_monitor_idx").on(t.monitorId),
-		timestampIdx: index("monitor_change_timestamp_idx").on(t.timestamp),
-	}),
-);
 
-export const monitorRelations = relations(monitor, ({ one, many }) => ({
+
+
+export const monitorRelations = relations(monitor, ({ one }) => ({
 	organization: one(organization, {
 		fields: [monitor.organizationId],
 		references: [organization.id],
@@ -111,8 +77,6 @@ export const monitorRelations = relations(monitor, ({ one, many }) => ({
 		fields: [monitor.groupId],
 		references: [monitorGroup.id],
 	}),
-	events: many(monitorEvent),
-	changes: many(monitorChange),
 }));
 
 export const monitorGroupRelations = relations(
@@ -126,9 +90,4 @@ export const monitorGroupRelations = relations(
 	}),
 );
 
-export const monitorEventRelations = relations(monitorEvent, ({ one }) => ({
-	monitor: one(monitor, {
-		fields: [monitorEvent.monitorId],
-		references: [monitor.id],
-	}),
-}));
+
