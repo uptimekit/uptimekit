@@ -118,11 +118,12 @@ export const monitorsRouter = {
 				query_params: { ids: monitorIds },
 				format: "JSON",
 			});
-			const latestEventsJson = await latestEventsQuery.json<{
-				data: LatestEventResult[];
-			}>();
+			const latestEventsJson = await latestEventsQuery.json<any>();
 			const latestEventsMap = new Map(
-				latestEventsJson.data.map((event) => [event.monitorId, event]),
+				(latestEventsJson.data as LatestEventResult[]).map((event) => [
+					event.monitorId,
+					event,
+				]),
 			);
 
 			// Fetch latest changes for all monitors in a single query
@@ -131,11 +132,12 @@ export const monitorsRouter = {
 				query_params: { ids: monitorIds },
 				format: "JSON",
 			});
-			const latestChangesJson = await latestChangesQuery.json<{
-				data: LatestChangeResult[];
-			}>();
+			const latestChangesJson = await latestChangesQuery.json<any>();
 			const latestChangesMap = new Map(
-				latestChangesJson.data.map((change) => [change.monitorId, change]),
+				(latestChangesJson.data as LatestChangeResult[]).map((change) => [
+					change.monitorId,
+					change,
+				]),
 			);
 
 			// Map the results to monitors
@@ -379,10 +381,8 @@ export const monitorsRouter = {
 				query_params: { id: found.monitor.id },
 				format: "JSON",
 			});
-			const latestEventJson = await latestEventQuery.json<{
-				data: SingleEventResult[];
-			}>();
-			const latestEvent = latestEventJson.data[0];
+			const latestEventJson = await latestEventQuery.json<any>();
+			const latestEvent = (latestEventJson.data as SingleEventResult[])[0];
 
 			const latestChangeQuery = await clickhouse.query({
 				query:
@@ -390,10 +390,8 @@ export const monitorsRouter = {
 				query_params: { id: found.monitor.id },
 				format: "JSON",
 			});
-			const latestChangeJson = await latestChangeQuery.json<{
-				data: SingleChangeResult[];
-			}>();
-			const latestChange = latestChangeJson.data[0];
+			const latestChangeJson = await latestChangeQuery.json<any>();
+			const latestChange = (latestChangeJson.data as SingleChangeResult[])[0];
 
 			return {
 				...found.monitor,
@@ -450,10 +448,8 @@ export const monitorsRouter = {
 				},
 				format: "JSON",
 			});
-			const avgPingJson = await avgPingResult.json<{
-				data: { value: number }[];
-			}>();
-			const rows = avgPingJson.data;
+			const avgPingJson = await avgPingResult.json<any>();
+			const rows = avgPingJson.data as { value: number }[];
 
 			return {
 				avgPing: Math.round(rows[0]?.value || 0),
@@ -531,10 +527,8 @@ export const monitorsRouter = {
 				query_params: queryParams,
 				format: "JSON",
 			});
-			const changesJson = await changesQuery.json<{
-				data: ChangeHistoryResult[];
-			}>();
-			const changes = changesJson.data;
+			const changesJson = await changesQuery.json<any>();
+			const changes = changesJson.data as ChangeHistoryResult[];
 
 			// Map back to expected types (string timestamp to Date conversion handled below in loop or map)
 			// Actually the output expects `timestamp: string`. JSON response is string mainly.
@@ -616,10 +610,8 @@ export const monitorsRouter = {
 				query_params: queryParams,
 				format: "JSON",
 			});
-			const eventsJson = await eventsQuery.json<{
-				data: EventTimelineResult[];
-			}>();
-			const events = eventsJson.data;
+			const eventsJson = await eventsQuery.json<any>();
+			const events = eventsJson.data as EventTimelineResult[];
 
 			return events.map((e) => ({
 				timestamp: new Date(e.timestamp).toISOString(),
@@ -662,10 +654,8 @@ export const monitorsRouter = {
 					query_params: queryParams,
 					format: "JSON",
 				});
-				const changesJson = await changesQuery.json<{
-					data: StatsChangeResult[];
-				}>();
-				const changesRaw = changesJson.data;
+				const changesJson = await changesQuery.json<any>();
+				const changesRaw = changesJson.data as StatsChangeResult[];
 				const changes = changesRaw.map((c) => ({
 					...c,
 					timestamp: new Date(c.timestamp),
@@ -689,10 +679,8 @@ export const monitorsRouter = {
 						},
 						format: "JSON",
 					});
-					const lastBeforeJson = await lastBeforeQuery.json<{
-						data: StatusBeforeResult[];
-					}>();
-					const lastBefore = lastBeforeJson.data[0];
+					const lastBeforeJson = await lastBeforeQuery.json<any>();
+					const lastBefore = (lastBeforeJson.data as StatusBeforeResult[])[0];
 					if (lastBefore) initialStatus = lastBefore.status;
 				} else {
 					// For "all time", the first change determines start, or default up if empty

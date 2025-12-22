@@ -308,11 +308,11 @@ export const workerIngestRouter = {
 
 				let activeIncident:
 					| {
-							id: string;
-							status: string;
-							resolvedAt: Date | null;
-							type: string;
-					  }
+						id: string;
+						status: string;
+						resolvedAt: Date | null;
+						type: string;
+					}
 					| undefined = activeIncidentList[0];
 
 				// Sort by timestamp asc to process in order
@@ -333,10 +333,8 @@ export const workerIngestRouter = {
 					query_params: { monitorId: monitorId },
 					format: "JSON",
 				});
-				const lastEventJson = await lastEventQuery.json<{
-					data: LatestEventResult[];
-				}>();
-				const lastEvent = lastEventJson.data[0];
+				const lastEventJson = await lastEventQuery.json<any>();
+				const lastEvent = (lastEventJson.data as LatestEventResult[])[0];
 
 				// Get last change from ClickHouse
 				const lastChangeQuery = await clickhouse.query({
@@ -350,10 +348,8 @@ export const workerIngestRouter = {
 					query_params: { monitorId: monitorId },
 					format: "JSON",
 				});
-				const lastChangeJson = await lastChangeQuery.json<{
-					data: LatestChangeResult[];
-				}>();
-				const lastChangeRecord = lastChangeJson.data[0];
+				const lastChangeJson = await lastChangeQuery.json<any>();
+				const lastChangeRecord = (lastChangeJson.data as LatestChangeResult[])[0];
 
 				let currentStatus = lastEvent?.status;
 				// If we have a last change, use its timestamp. Otherwise fallback to lastEvent or now.
