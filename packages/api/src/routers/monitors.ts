@@ -10,6 +10,16 @@ import {
 	isSelfHosted,
 	MAX_MONITORS,
 } from "../lib/limits";
+import type {
+	ChangeHistoryResult,
+	EventTimelineResult,
+	LatestChangeResult,
+	LatestEventResult,
+	SingleChangeResult,
+	SingleEventResult,
+	StatsChangeResult,
+	StatusBeforeResult,
+} from "../types/clickhouse";
 
 // SQL queries for batching monitor events and changes
 const BATCH_LATEST_EVENTS_QUERY = `
@@ -108,15 +118,11 @@ export const monitorsRouter = {
 				query_params: { ids: monitorIds },
 				format: "JSON",
 			});
-			const latestEventsJson = await latestEventsQuery.json<any>();
+			const latestEventsJson = await latestEventsQuery.json<{
+				data: LatestEventResult[];
+			}>();
 			const latestEventsMap = new Map(
-				(
-					latestEventsJson.data as Array<{
-						monitorId: string;
-						status: string;
-						timestamp: string;
-					}>
-				).map((event) => [event.monitorId, event]),
+				latestEventsJson.data.map((event) => [event.monitorId, event]),
 			);
 
 			// Fetch latest changes for all monitors in a single query
@@ -125,14 +131,11 @@ export const monitorsRouter = {
 				query_params: { ids: monitorIds },
 				format: "JSON",
 			});
-			const latestChangesJson = await latestChangesQuery.json<any>();
+			const latestChangesJson = await latestChangesQuery.json<{
+				data: LatestChangeResult[];
+			}>();
 			const latestChangesMap = new Map(
-				(
-					latestChangesJson.data as Array<{
-						monitorId: string;
-						timestamp: string;
-					}>
-				).map((change) => [change.monitorId, change]),
+				latestChangesJson.data.map((change) => [change.monitorId, change]),
 			);
 
 			// Map the results to monitors
@@ -376,10 +379,10 @@ export const monitorsRouter = {
 				query_params: { id: found.monitor.id },
 				format: "JSON",
 			});
-			const latestEventJson = await latestEventQuery.json<any>();
-			const latestEvent = latestEventJson.data[0] as
-				| { status: string; timestamp: string }
-				| undefined;
+			const latestEventJson = await latestEventQuery.json<{
+				data: SingleEventResult[];
+			}>();
+			const latestEvent = latestEventJson.data[0];
 
 			const latestChangeQuery = await clickhouse.query({
 				query:
@@ -387,10 +390,10 @@ export const monitorsRouter = {
 				query_params: { id: found.monitor.id },
 				format: "JSON",
 			});
-			const latestChangeJson = await latestChangeQuery.json<any>();
-			const latestChange = latestChangeJson.data[0] as
-				| { timestamp: string }
-				| undefined;
+			const latestChangeJson = await latestChangeQuery.json<{
+				data: SingleChangeResult[];
+			}>();
+			const latestChange = latestChangeJson.data[0];
 
 			return {
 				...found.monitor,
@@ -447,8 +450,10 @@ export const monitorsRouter = {
 				},
 				format: "JSON",
 			});
-			const avgPingJson = await avgPingResult.json<any>();
-			const rows = avgPingJson.data as { value: number }[];
+			const avgPingJson = await avgPingResult.json<{
+				data: { value: number }[];
+			}>();
+			const rows = avgPingJson.data;
 
 			return {
 				avgPing: Math.round(rows[0]?.value || 0),
@@ -505,6 +510,15 @@ export const monitorsRouter = {
 
 			const { limit, cursor } = input;
 
+			const queryParams: Record<string, unknown> = {
+				monitorId: input.monitorId,
+				limit: limit + 1,
+			};
+
+			if (cursor) {
+				queryParams.cursor = cursor;
+			}
+
 			const changesQuery = await clickhouse.query({
 				query: `
 					SELECT id, status, timestamp, location
@@ -514,20 +528,13 @@ export const monitorsRouter = {
 					ORDER BY timestamp DESC
 					LIMIT {limit:UInt32}
 				`,
-				query_params: {
-					monitorId: input.monitorId,
-					limit: limit + 1,
-					cursor: cursor,
-				},
+				query_params: queryParams,
 				format: "JSON",
 			});
-			const changesJson = await changesQuery.json<any>();
-			const changes = changesJson.data as {
-				id: string;
-				status: string;
-				timestamp: string;
-				location?: string;
-			}[];
+			const changesJson = await changesQuery.json<{
+				data: ChangeHistoryResult[];
+			}>();
+			const changes = changesJson.data;
 
 			// Map back to expected types (string timestamp to Date conversion handled below in loop or map)
 			// Actually the output expects `timestamp: string`. JSON response is string mainly.
@@ -595,20 +602,24 @@ export const monitorsRouter = {
 				LIMIT 2000
 			`;
 
+			const queryParams: Record<string, unknown> = {
+				monitorId: input.monitorId,
+				startDate: startDate.getTime(),
+			};
+
+			if (input.location && input.location !== "all") {
+				queryParams.location = input.location;
+			}
+
 			const eventsQuery = await clickhouse.query({
 				query,
-				query_params: {
-					monitorId: input.monitorId,
-					startDate: startDate.getTime(),
-					location: input.location !== "all" ? input.location : undefined,
-				},
+				query_params: queryParams,
 				format: "JSON",
 			});
-			const eventsJson = await eventsQuery.json<any>();
-			const events = eventsJson.data as {
-				timestamp: string;
-				latency: number;
-			}[];
+			const eventsJson = await eventsQuery.json<{
+				data: EventTimelineResult[];
+			}>();
+			const events = eventsJson.data;
 
 			return events.map((e) => ({
 				timestamp: new Date(e.timestamp).toISOString(),
@@ -632,6 +643,14 @@ export const monitorsRouter = {
 			// Helper to calculate stats for a given start date
 			const calculateStats = async (startDate: Date | null) => {
 				// Get ALL changes since startDate
+				const queryParams: Record<string, unknown> = {
+					monitorId: input.monitorId,
+				};
+
+				if (startDate) {
+					queryParams.startDate = startDate.getTime();
+				}
+
 				const changesQuery = await clickhouse.query({
 					query: `
 						SELECT status, timestamp 
@@ -640,17 +659,13 @@ export const monitorsRouter = {
 						${startDate ? "AND timestamp >= {startDate:DateTime}" : ""}
 						ORDER BY timestamp ASC
 					`,
-					query_params: {
-						monitorId: input.monitorId,
-						startDate: startDate ? startDate.getTime() : undefined,
-					},
+					query_params: queryParams,
 					format: "JSON",
 				});
-				const changesJson = await changesQuery.json<any>();
-				const changesRaw = changesJson.data as {
-					status: string;
-					timestamp: string;
-				}[];
+				const changesJson = await changesQuery.json<{
+					data: StatsChangeResult[];
+				}>();
+				const changesRaw = changesJson.data;
 				const changes = changesRaw.map((c) => ({
 					...c,
 					timestamp: new Date(c.timestamp),
@@ -674,10 +689,10 @@ export const monitorsRouter = {
 						},
 						format: "JSON",
 					});
-					const lastBeforeJson = await lastBeforeQuery.json<any>();
-					const lastBefore = lastBeforeJson.data[0] as
-						| { status: string }
-						| undefined;
+					const lastBeforeJson = await lastBeforeQuery.json<{
+						data: StatusBeforeResult[];
+					}>();
+					const lastBefore = lastBeforeJson.data[0];
 					if (lastBefore) initialStatus = lastBefore.status;
 				} else {
 					// For "all time", the first change determines start, or default up if empty
