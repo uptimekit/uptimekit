@@ -16,6 +16,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { o, publicProcedure } from "../index";
 import { eventBus } from "../lib/events";
+import type {
+	LatestChangeResult,
+	LatestEventResult,
+} from "../types/clickhouse";
 
 let tablesEnsured = false;
 
@@ -329,10 +333,10 @@ export const workerIngestRouter = {
 					query_params: { monitorId: monitorId },
 					format: "JSON",
 				});
-				const lastEventJson = await lastEventQuery.json<any>();
-				const lastEvent = lastEventJson.data[0] as
-					| { status: string; timestamp: string }
-					| undefined;
+				const lastEventJson = await lastEventQuery.json<{
+					data: LatestEventResult[];
+				}>();
+				const lastEvent = lastEventJson.data[0];
 
 				// Get last change from ClickHouse
 				const lastChangeQuery = await clickhouse.query({
@@ -346,12 +350,12 @@ export const workerIngestRouter = {
 					query_params: { monitorId: monitorId },
 					format: "JSON",
 				});
-				const lastChangeJson = await lastChangeQuery.json<any>();
-				const lastChangeRecord = lastChangeJson.data[0] as
-					| { status: string; timestamp: string }
-					| undefined;
+				const lastChangeJson = await lastChangeQuery.json<{
+					data: LatestChangeResult[];
+				}>();
+				const lastChangeRecord = lastChangeJson.data[0];
 
-				let currentStatus = lastEvent?.status as any;
+				let currentStatus = lastEvent?.status;
 				// If we have a last change, use its timestamp. Otherwise fallback to lastEvent or now.
 				let lastChangeTime = lastChangeRecord?.timestamp
 					? new Date(lastChangeRecord.timestamp)

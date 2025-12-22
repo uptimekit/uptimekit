@@ -1,4 +1,4 @@
-import { formatDuration, intervalToDuration } from "date-fns";
+import { intervalToDuration } from "date-fns";
 import {
 	Table,
 	TableBody,

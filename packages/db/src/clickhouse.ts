@@ -36,7 +36,7 @@ export async function ensureClickHouseTables() {
         monitorId String,
         status String,
         timestamp DateTime64(3),
-        location String
+        location Nullable(String)
       ) ENGINE = MergeTree()
       ORDER BY (monitorId, timestamp)
     `,
