@@ -1,0 +1,45 @@
+---
+title: Telegram Integration
+description: Receive incident alerts in Telegram
+---
+
+The Telegram integration allows you to receive real-time notifications about incidents directly in a Telegram chat or channel.
+
+## Configuration
+
+To set up the Telegram integration, you need to provide the following configuration:
+
+| Field | Description | Required |
+| :--- | :--- | :--- |
+| **Bot Token** | The authentication token for your Telegram bot. | Yes |
+| **Chat ID** | The unique identifier for the target chat or channel. | Yes |
+
+### How to get a Bot Token
+
+1. Open Telegram and search for **@BotFather**.
+2. Start a chat and send the command `/newbot`.
+3. Follow the instructions to create a new bot.
+4. Once created, **BotFather** will provide you with a **token**. Copy this token.
+
+### How to get a Chat ID
+
+1. Add your bot to the group or channel where you want to receive notifications.
+2. If it's a channel, make sure the bot is an administrator.
+3. You can find the Chat ID by forwarding a message from the chat to a bot like **@userinfobot** or by using the Telegram API `getUpdates` method after sending a message to the bot.
+   - For channels, the ID usually starts with `-100`.
+
+### Setup in UptimeKit
+
+1. Go to **Settings > Integrations** in your UptimeKit dashboard.
+2. Find **Telegram** in the list and click **Configure**.
+3. Paste the **Bot Token** and **Chat ID** into the respective fields.
+4. Click **Save Changes**.
+
+## Events
+
+You will be notified for the following events:
+
+- **Incident Created**: When a new incident is reported.
+- **Incident Acknowledged**: When a team member acknowledges an incident.
+- **Incident Updated**: When a comment or update is added.
+- **Incident Resolved**: When the incident is marked as resolved.
