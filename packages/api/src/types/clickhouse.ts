@@ -56,3 +56,16 @@ export interface UptimeStatsResult {
 export interface AvgPingResult {
 	avgPing: number;
 }
+
+export interface SingleEventResult {
+	status: string;
+	timestamp: string;
+}
+
+export interface SingleChangeResult {
+	timestamp: string;
+}
+
+export interface StatusBeforeResult {
+	status: string;
+}

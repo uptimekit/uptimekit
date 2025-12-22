@@ -15,7 +15,10 @@ import type {
 	EventTimelineResult,
 	LatestChangeResult,
 	LatestEventResult,
+	SingleChangeResult,
+	SingleEventResult,
 	StatsChangeResult,
+	StatusBeforeResult,
 } from "../types/clickhouse";
 
 // SQL queries for batching monitor events and changes
@@ -377,7 +380,7 @@ export const monitorsRouter = {
 				format: "JSON",
 			});
 			const latestEventJson = await latestEventQuery.json<{
-				data: { status: string; timestamp: string }[];
+				data: SingleEventResult[];
 			}>();
 			const latestEvent = latestEventJson.data[0];
 
@@ -388,7 +391,7 @@ export const monitorsRouter = {
 				format: "JSON",
 			});
 			const latestChangeJson = await latestChangeQuery.json<{
-				data: { timestamp: string }[];
+				data: SingleChangeResult[];
 			}>();
 			const latestChange = latestChangeJson.data[0];
 
@@ -687,7 +690,7 @@ export const monitorsRouter = {
 						format: "JSON",
 					});
 					const lastBeforeJson = await lastBeforeQuery.json<{
-						data: { status: string }[];
+						data: StatusBeforeResult[];
 					}>();
 					const lastBefore = lastBeforeJson.data[0];
 					if (lastBefore) initialStatus = lastBefore.status;
