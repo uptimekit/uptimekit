@@ -11,6 +11,9 @@ services:
       - BETTER_AUTH_URL=http://localhost:3000
       - NEXT_PUBLIC_SELFHOSTED=true
       - NEXT_PUBLIC_URL=http://localhost:3000
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=clickhouse
+      - CLICKHOUSE_PASSWORD=clickhouse
     depends_on:
       - db
     restart: always
