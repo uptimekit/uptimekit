@@ -173,7 +173,7 @@ export const workersRouter = {
 
 			return { key: newKey.key };
 		}),
-	listLocations: protectedProcedure.handler(async ({ context }) => {
+	listLocations: protectedProcedure.handler(async () => {
 		const locations = await db
 			.selectDistinct({ location: worker.location })
 			.from(worker)

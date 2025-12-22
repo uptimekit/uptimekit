@@ -73,7 +73,7 @@ export default function StatusUpdatesPage() {
 
 			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="text-lg font-medium">Status Updates</h2>
+					<h2 className="font-medium text-lg">Status Updates</h2>
 					<p className="text-muted-foreground text-sm">
 						Post updates about incidents and service status.
 					</p>

@@ -8,8 +8,10 @@
 		"start": "next start"
 	},
 	"dependencies": {
+		"@clickhouse/client": "^1.15.0",
 		"@radix-ui/react-slot": "^1.2.4",
 		"@uptimekit/api": "workspace:*",
+		"@uptimekit/db": "workspace:*",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",

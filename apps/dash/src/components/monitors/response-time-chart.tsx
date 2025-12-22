@@ -1,19 +1,20 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useState } from "react";
 import {
+	Area,
+	AreaChart,
+	CartesianGrid,
 	Line,
 	LineChart,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
 	YAxis,
-	CartesianGrid,
-	Area,
-	AreaChart,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
 	Select,
 	SelectContent,
@@ -21,8 +22,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { format } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { orpc } from "@/utils/orpc";
 
 interface ResponseTimeChartProps {
@@ -57,7 +57,7 @@ export function ResponseTimeChart({
 		<Card className="col-span-4 transition-all hover:shadow-md">
 			<CardHeader className="flex flex-row items-center justify-between pb-8">
 				<div className="space-y-1">
-					<CardTitle className="text-base font-normal">Response time</CardTitle>
+					<CardTitle className="font-normal text-base">Response time</CardTitle>
 				</div>
 				<div className="flex items-center gap-2">
 					{locations.length > 0 && (
@@ -80,7 +80,7 @@ export function ResponseTimeChart({
 						onValueChange={(v) => setRange(v as any)}
 						className="w-auto"
 					>
-						<TabsList className="h-8 w-auto p-1 bg-muted/50">
+						<TabsList className="h-8 w-auto bg-muted/50 p-1">
 							<TabsTrigger value="24h" className="h-6 px-3 text-xs">
 								24h
 							</TabsTrigger>

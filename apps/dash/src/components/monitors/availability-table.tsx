@@ -1,3 +1,4 @@
+import { intervalToDuration } from "date-fns";
 import {
 	Table,
 	TableBody,
@@ -6,7 +7,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { formatDuration, intervalToDuration } from "date-fns";
 
 interface Stats {
 	uptimePercent: number;
@@ -55,12 +55,12 @@ export function AvailabilityTable({ data, isLoading }: AvailabilityTableProps) {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-base font-normal">
+					<CardTitle className="font-normal text-base">
 						Availability & Incidents
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="text-muted-foreground text-sm py-8 text-center">
+					<div className="py-8 text-center text-muted-foreground text-sm">
 						Loading statistics...
 					</div>
 				</CardContent>
@@ -72,12 +72,12 @@ export function AvailabilityTable({ data, isLoading }: AvailabilityTableProps) {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle className="text-base font-normal">
+					<CardTitle className="font-normal text-base">
 						Availability & Incidents
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="text-muted-foreground text-sm py-8 text-center">
+					<div className="py-8 text-center text-muted-foreground text-sm">
 						No statistics available
 					</div>
 				</CardContent>
@@ -96,7 +96,7 @@ export function AvailabilityTable({ data, isLoading }: AvailabilityTableProps) {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle className="text-base font-normal">
+				<CardTitle className="font-normal text-base">
 					Availability & Incidents
 				</CardTitle>
 			</CardHeader>
@@ -115,7 +115,7 @@ export function AvailabilityTable({ data, isLoading }: AvailabilityTableProps) {
 					<TableBody>
 						{rows.map((row) => (
 							<TableRow key={row.label} className="hover:bg-muted/50">
-								<TableCell className="font-medium pl-6">{row.label}</TableCell>
+								<TableCell className="pl-6 font-medium">{row.label}</TableCell>
 								<TableCell>{row.uptimePercent.toFixed(2)}%</TableCell>
 								<TableCell>{formatMs(row.downtimeMs)}</TableCell>
 								<TableCell>{row.incidentCount}</TableCell>
