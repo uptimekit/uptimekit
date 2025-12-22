@@ -12,6 +12,15 @@ import { protectedProcedure, writeProcedure } from "../index";
 
 export const statusUpdatesRouter = {
 	list: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages/{statusPageId}/reports",
+				tags: ["Status Page Management"],
+				summary: "List reports",
+				description: "List incident reports for a status page.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -53,6 +62,15 @@ export const statusUpdatesRouter = {
 		}),
 
 	get: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages/{statusPageId}/reports/{reportId}",
+				tags: ["Status Page Management"],
+				summary: "Get report",
+				description: "Get details of a specific incident report.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -101,6 +119,15 @@ export const statusUpdatesRouter = {
 		}),
 
 	create: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/status-pages/{statusPageId}/reports",
+				tags: ["Status Page Management"],
+				summary: "Create report",
+				description: "Create a new incident report for a status page.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -182,6 +209,15 @@ export const statusUpdatesRouter = {
 		}),
 
 	addUpdate: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/status-pages/{statusPageId}/reports/{reportId}/updates",
+				tags: ["Status Page Management"],
+				summary: "Add report update",
+				description: "Add a new update to an incident report.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -284,6 +320,15 @@ export const statusUpdatesRouter = {
 		}),
 
 	editUpdate: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/status-pages/{statusPageId}/updates/{updateId}",
+				tags: ["Status Page Management"],
+				summary: "Edit report update",
+				description: "Edit an existing report update.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),

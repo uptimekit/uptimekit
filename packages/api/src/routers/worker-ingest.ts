@@ -111,101 +111,121 @@ const requireWorkerAuth = o.middleware(async ({ context, next }) => {
 const workerProcedure = publicProcedure.use(requireWorkerAuth);
 
 export const workerIngestRouter = {
-	heartbeat: workerProcedure.handler(async ({ context }) => {
-		const workerLocation = context.worker.location;
-		// console.log(`Worker Heartbeat: ${context.worker.name} (${workerLocation})`);
+	heartbeat: workerProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/worker/heartbeat",
+				tags: ["Worker Ingestion"],
+				summary: "Worker heartbeat",
+				description: "Report worker status and retrieve assigned monitors.",
+			},
+		})
+		.handler(async ({ context }) => {
+			const workerLocation = context.worker.location;
+			// console.log(`Worker Heartbeat: ${context.worker.name} (${workerLocation})`);
 
-		// Return active monitors that match the worker's location
-		const allActiveMonitors = await db.query.monitor.findMany({
-			where: (t, { eq }) => eq(t.active, true),
-		});
-
-		// console.log(`Found ${allActiveMonitors.length} active monitors total.`);
-
-		const assignedMonitors = allActiveMonitors.filter((m) => {
-			const locations = m.locations as string[];
-			// Match if monitor has this worker's location OR if monitor has "global" (optional feature, but common)
-			return locations.includes(workerLocation);
-		});
-
-		// console.log(
-		// 	`Assigned ${assignedMonitors.length} monitors to worker ${workerLocation}`,
-		// );
-
-		return {
-			monitors: assignedMonitors.map((m) => {
-				const config = m.config as {
-					url?: string;
-					hostname?: string;
-					method?: string;
-					headers?: Record<string, string>;
-					body?: string;
-					acceptedStatusCodes?: string;
-					keyword?: string;
-					jsonPath?: string;
-				};
-				return {
-					id: m.id,
-					type: m.type,
-					url: config.url || config.hostname || "",
-					interval: m.interval,
-					timeout: m.timeout,
-					method: config.method || "GET",
-					headers: config.headers || {},
-					body: config.body,
-					acceptedStatusCodes: config.acceptedStatusCodes,
-					keyword: config.keyword,
-					jsonPath: config.jsonPath,
-				};
-			}),
-		};
-	}),
-	processMaintenance: workerProcedure.handler(async () => {
-		const now = new Date();
-
-		// 1. Process scheduled -> in_progress
-		const maintenanceToStart = await db.query.maintenance.findMany({
-			where: (t, { eq, and, lte }) =>
-				and(eq(t.status, "scheduled"), lte(t.startAt, now)),
-		});
-
-		for (const record of maintenanceToStart) {
-			await db.transaction(async (tx) => {
-				// Update status
-				await tx
-					.update(maintenance)
-					.set({
-						status: "in_progress",
-						updatedAt: now,
-					})
-					.where(eq(maintenance.id, record.id));
+			// Return active monitors that match the worker's location
+			const allActiveMonitors = await db.query.monitor.findMany({
+				where: (t, { eq }) => eq(t.active, true),
 			});
-		}
 
-		// 2. Process in_progress -> completed
-		const maintenanceToFinish = await db.query.maintenance.findMany({
-			where: (t, { eq, and, lte }) =>
-				and(eq(t.status, "in_progress"), lte(t.endAt, now)),
-		});
+			// console.log(`Found ${allActiveMonitors.length} active monitors total.`);
 
-		for (const record of maintenanceToFinish) {
-			await db.transaction(async (tx) => {
-				// Update status
-				await tx
-					.update(maintenance)
-					.set({
-						status: "completed",
-						updatedAt: now,
-					})
-					.where(eq(maintenance.id, record.id));
+			const assignedMonitors = allActiveMonitors.filter((m) => {
+				const locations = m.locations as string[];
+				// Match if monitor has this worker's location OR if monitor has "global" (optional feature, but common)
+				return locations.includes(workerLocation);
 			});
-		}
 
-		return {
-			started: maintenanceToStart.length,
-			completed: maintenanceToFinish.length,
-		};
-	}),
+			// console.log(
+			// 	`Assigned ${assignedMonitors.length} monitors to worker ${workerLocation}`,
+			// );
+
+			return {
+				monitors: assignedMonitors.map((m) => {
+					const config = m.config as {
+						url?: string;
+						hostname?: string;
+						method?: string;
+						headers?: Record<string, string>;
+						body?: string;
+						acceptedStatusCodes?: string;
+						keyword?: string;
+						jsonPath?: string;
+					};
+					return {
+						id: m.id,
+						type: m.type,
+						url: config.url || config.hostname || "",
+						interval: m.interval,
+						timeout: m.timeout,
+						method: config.method || "GET",
+						headers: config.headers || {},
+						body: config.body,
+						acceptedStatusCodes: config.acceptedStatusCodes,
+						keyword: config.keyword,
+						jsonPath: config.jsonPath,
+					};
+				}),
+			};
+		}),
+	processMaintenance: workerProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/worker/maintenance/process",
+				tags: ["Worker Ingestion"],
+				summary: "Process maintenance",
+				description: "Trigger processing of scheduled maintenance windows.",
+			},
+		})
+		.handler(async () => {
+			const now = new Date();
+
+			// 1. Process scheduled -> in_progress
+			const maintenanceToStart = await db.query.maintenance.findMany({
+				where: (t, { eq, and, lte }) =>
+					and(eq(t.status, "scheduled"), lte(t.startAt, now)),
+			});
+
+			for (const record of maintenanceToStart) {
+				await db.transaction(async (tx) => {
+					// Update status
+					await tx
+						.update(maintenance)
+						.set({
+							status: "in_progress",
+							updatedAt: now,
+						})
+						.where(eq(maintenance.id, record.id));
+				});
+			}
+
+			// 2. Process in_progress -> completed
+			const maintenanceToFinish = await db.query.maintenance.findMany({
+				where: (t, { eq, and, lte }) =>
+					and(eq(t.status, "in_progress"), lte(t.endAt, now)),
+			});
+
+			for (const record of maintenanceToFinish) {
+				await db.transaction(async (tx) => {
+					// Update status
+					await tx
+						.update(maintenance)
+						.set({
+							status: "completed",
+							updatedAt: now,
+						})
+						.where(eq(maintenance.id, record.id));
+				});
+			}
+
+			return {
+				started: maintenanceToStart.length,
+				completed: maintenanceToFinish.length,
+			};
+		}),
 
 	pushEvents: workerProcedure
 		.meta({
