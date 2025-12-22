@@ -1,12 +1,14 @@
 import { db } from "@uptimekit/db";
 import { eventBus } from "../../lib/events";
 import { discordIntegration } from "./definitions/discord";
+import { telegramIntegration } from "./definitions/telegram";
 import { webhookIntegration } from "./definitions/webhook";
 import { integrationRegistry } from "./registry";
 
 // Register built-in integrations
 integrationRegistry.register(webhookIntegration);
 integrationRegistry.register(discordIntegration);
+integrationRegistry.register(telegramIntegration);
 
 export class IntegrationService {
 	constructor() {
