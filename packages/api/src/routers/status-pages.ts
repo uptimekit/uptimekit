@@ -16,6 +16,16 @@ import {
 
 export const statusPagesRouter = {
 	list: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages",
+				tags: ["Status Page Management"],
+				summary: "List status pages",
+				description:
+					"Retrieve a list of status pages with optional searching and filtering.",
+			},
+		})
 		.input(
 			z
 				.object({
@@ -79,6 +89,15 @@ export const statusPagesRouter = {
 		}),
 
 	create: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/status-pages",
+				tags: ["Status Page Management"],
+				summary: "Create status page",
+				description: "Create a new status page.",
+			},
+		})
 		.input(
 			z.object({
 				name: z.string().min(1),
@@ -133,6 +152,15 @@ export const statusPagesRouter = {
 		}),
 
 	get: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages/{id}",
+				tags: ["Status Page Management"],
+				summary: "Get status page",
+				description: "Retrieve details of a specific status page.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const page = await db.query.statusPage.findFirst({
@@ -153,6 +181,15 @@ export const statusPagesRouter = {
 		}),
 
 	update: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/status-pages/{id}",
+				tags: ["Status Page Management"],
+				summary: "Update status page",
+				description: "Update the configuration of a status page.",
+			},
+		})
 		.input(
 			z.object({
 				id: z.string(),
@@ -225,6 +262,15 @@ export const statusPagesRouter = {
 
 	// Structure management
 	getStructure: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages/{id}/structure",
+				tags: ["Status Page Management"],
+				summary: "Get structure",
+				description: "Get the layout structure of a status page.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const existing = await db.query.statusPage.findFirst({
@@ -266,6 +312,15 @@ export const statusPagesRouter = {
 		}),
 
 	updateStructure: writeProcedure
+		.meta({
+			openapi: {
+				method: "PUT",
+				path: "/status-pages/{id}/structure",
+				tags: ["Status Page Management"],
+				summary: "Update structure",
+				description: "Update the layout structure of a status page.",
+			},
+		})
 		.input(
 			z.object({
 				id: z.string(),

@@ -12,6 +12,15 @@ import { eventBus } from "../lib/events";
 
 export const incidentsRouter = {
 	list: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/incidents",
+				tags: ["Incident Management"],
+				summary: "List incidents",
+				description: "Retrieve a list of incidents with optional filtering.",
+			},
+		})
 		.input(
 			z.object({
 				limit: z.number().default(50),
@@ -76,6 +85,15 @@ export const incidentsRouter = {
 		}),
 
 	get: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/incidents/{id}",
+				tags: ["Incident Management"],
+				summary: "Get incident",
+				description: "Retrieve details of a specific incident.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input }) => {
 			const item = await db.query.incident.findFirst({
@@ -105,6 +123,15 @@ export const incidentsRouter = {
 		}),
 
 	create: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/incidents",
+				tags: ["Incident Management"],
+				summary: "Create incident",
+				description: "Create a new incident.",
+			},
+		})
 		.input(
 			z.object({
 				title: z.string().min(1),
@@ -163,6 +190,15 @@ export const incidentsRouter = {
 		}),
 
 	acknowledge: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/incidents/{id}/acknowledge",
+				tags: ["Incident Management"],
+				summary: "Acknowledge incident",
+				description: "Mark an incident as acknowledged.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();
@@ -210,6 +246,15 @@ export const incidentsRouter = {
 		}),
 
 	resolve: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/incidents/{id}/resolve",
+				tags: ["Incident Management"],
+				summary: "Resolve incident",
+				description: "Mark an incident as resolved.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();
@@ -255,6 +300,15 @@ export const incidentsRouter = {
 		}),
 
 	addComment: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/incidents/{incidentId}/comments",
+				tags: ["incidents"],
+				summary: "Add comment",
+				description: "Add a comment to an incident.",
+			},
+		})
 		.input(z.object({ incidentId: z.string(), message: z.string().min(1) }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();

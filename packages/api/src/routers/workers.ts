@@ -19,6 +19,15 @@ type Worker = InferSelectModel<typeof worker>;
 
 export const workersRouter = {
 	list: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/workers",
+				tags: ["Worker Management"],
+				summary: "List workers",
+				description: "List all registered monitoring workers.",
+			},
+		})
 		.input(
 			z
 				.object({
@@ -75,6 +84,15 @@ export const workersRouter = {
 			return { items, total };
 		}),
 	create: protectedProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/workers",
+				tags: ["Worker Management"],
+				summary: "Create worker",
+				description: "Register a new monitoring worker.",
+			},
+		})
 		.input(
 			z.object({
 				name: z.string().min(1),
@@ -122,6 +140,15 @@ export const workersRouter = {
 		),
 
 	rotateKey: protectedProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/workers/{id}/rotate-key",
+				tags: ["Worker Management"],
+				summary: "Rotate worker key",
+				description: "Generate a new API key for a worker and invalidate the old one.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }): Promise<{ key: string }> => {
 			if (context.session.user.role !== "admin") {
@@ -173,12 +200,22 @@ export const workersRouter = {
 
 			return { key: newKey.key };
 		}),
-	listLocations: protectedProcedure.handler(async () => {
-		const locations = await db
-			.selectDistinct({ location: worker.location })
-			.from(worker)
-			.where(eq(worker.active, true));
+	listLocations: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/workers/locations",
+				tags: ["workers"],
+				summary: "List worker locations",
+				description: "List unique locations of active workers.",
+			},
+		})
+		.handler(async () => {
+			const locations = await db
+				.selectDistinct({ location: worker.location })
+				.from(worker)
+				.where(eq(worker.active, true));
 
-		return locations.map((l) => l.location);
-	}),
+			return locations.map((l) => l.location);
+		}),
 };
