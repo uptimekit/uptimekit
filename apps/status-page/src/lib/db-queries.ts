@@ -1,22 +1,54 @@
 import {
+	clickhouse,
 	db,
 	incident,
 	maintenance,
 	maintenanceMonitor,
 	maintenanceStatusPage,
 	maintenanceUpdate,
-	monitorEvent,
 	statusPage,
 	statusPageMonitor,
 	statusPageReport,
 } from "@uptimekit/db";
 // ... imports
-import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 
 // ... existing functions
+import { redis } from "./redis";
+
+// Helper to cache data in Redis
+// TTL in seconds
+async function cached<T>(
+	key: string,
+	ttl: number,
+	fetcher: () => Promise<T>,
+): Promise<T> {
+	try {
+		const cachedData = await redis.get(key);
+		if (cachedData) {
+			return JSON.parse(cachedData) as T;
+		}
+	} catch (error) {
+		console.error(`Redis get error for key ${key}:`, error);
+	}
+
+	const data = await fetcher();
+
+	try {
+		if (data !== undefined) {
+			await redis.set(key, JSON.stringify(data), "EX", ttl);
+		}
+	} catch (error) {
+		console.error(`Redis set error for key ${key}:`, error);
+	}
+
+	return data;
+}
 
 export const getStatusPageEvents = async (statusPageId: string, days = 90) => {
-	return unstable_cache(
+	return cached(
+		`status-page:events:${statusPageId}:${days}`,
+		60, // 1 minute
 		async () => {
 			const startDate = new Date();
 			startDate.setDate(startDate.getDate() - days);
@@ -71,26 +103,62 @@ export const getStatusPageEvents = async (statusPageId: string, days = 90) => {
 
 			return { reports, maintenances: maintenanceWithMonitors };
 		},
-		[`status-page-events-${statusPageId}-${days}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
-
-import { unstable_cache } from "next/cache";
 
 export type StatusPageData = NonNullable<
 	Awaited<ReturnType<typeof getStatusPageByDomain>>
 >;
 
 export const getStatusPageByDomain = async (domain: string) => {
-	return unstable_cache(
+	return cached(
+		`status-page:${domain}`,
+		600, // 10 minutes
 		async () => {
 			// 1. Try to find by custom domain
 			const page = await db.query.statusPage.findFirst({
 				where: eq(statusPage.domain, domain),
 			});
 
-			if (!page) return undefined;
+			if (!page) {
+				// Try by slug/subdomain logic if needed, but assuming domain param handles it or comes processed.
+				// If strictly mapped by domain column:
+				// Actually, earlier code just checked statusPage.domain.
+				// If we want to support subdomains (slug.uptime.kit), usually that's handled before or query checks slug too.
+				// The original code only checked `eq(statusPage.domain, domain)`.
+				// Wait, checking original code...
+				// Original: `where: eq(statusPage.domain, domain)`
+				// But wait, `domain` variable in generateMetadata/StatusPage page.tsx comes from `host`.
+				// If user accesses `slug.uptime.kit`, `domain` is `slug.uptime.kit`.
+				// Does `statusPage` table store full domain or just custom domain?
+				// Typically `slug` is used for subdomains.
+				// Let's re-read the original `getStatusPageByDomain` carefully.
+				// It ONLY checked `statusPage.domain`.
+				// But page.tsx splits host: `const domain = host.split(":")[0];`
+				// Iterate: If I am on `myslug.localhost:3000`, domain is `myslug.localhost`.
+				// If DB `domain` field is null, it won't match.
+				// Maybe I should match slug too?
+				// Original code:
+				// `where: eq(statusPage.domain, domain)`
+				// If this logic was insufficient before, it is not my task to fix it, but I shouldn't break it.
+				// BUT: look at `status-pages.ts` router create: `slug: input.slug`.
+				// AND `update`: `domain: input.domain`.
+				// If using custom domain, `domain` field is set.
+				// If using default subdomain, `slug` is set.
+				// The previous code ONLY checked `domain` column? That seems wrong if it doesn't check slug.
+				// Ah, maybe the user hasn't implemented subdomain routing yet or `domain` is expected to match the host header exactly?
+				// Let's stick to EXACT behavior of original code for the callback to minimize regression risk.
+				// Original: `where: eq(statusPage.domain, domain)`
+				// Wait, let's look at `apps/status-page/src/app/page.tsx`.
+				// `const pageConfig = await getStatusPageByDomain(domain);`
+				// If original only query by domain, then it only supports custom domains?
+				// Let's check `db-queries.ts` original again.
+				// Line 89: `where: eq(statusPage.domain, domain)`
+				// Yes.
+				// I will KEEP this logic.
+
+				return undefined;
+			}
 
 			// 2. Fetch monitors manually to avoid complex joins that might be failing
 			const monitors = await db.query.statusPageMonitor.findMany({
@@ -107,53 +175,55 @@ export const getStatusPageByDomain = async (domain: string) => {
 				monitors,
 			};
 		},
-		[`status-page-${domain}`],
-		{ revalidate: 60 }, // 1 minute cache
-	)();
+	);
 };
 
 export const getMonitorUptime = async (monitorId: string, days = 90) => {
-	return unstable_cache(
+	return cached(
+		`monitor-uptime:${monitorId}:${days}`,
+		60, // 1 minute
 		async () => {
 			const startDate = new Date();
 			startDate.setDate(startDate.getDate() - days);
 
-			// We want to group by day and calculate success rate
-			// This is a simplified calculation. Ideally "uptime" is (total_checks - down_checks) / total_checks
-			// Grouping by date_trunc('day', timestamp)
-
-			const result = await db.execute(sql`
-                SELECT 
-                    					to_char(timestamp, 'YYYY-MM-DD HH24') as date_hour,
+			// ClickHouse query for hourly stats
+			const query = `
+				SELECT 
+					formatDateTime(timestamp, '%Y-%m-%d %H') as date_hour,
 					count(*) as total_checks,
-					count(case when status = 'up' then 1 end) as up_checks,
+					countIf(lower(status) = 'up') as up_checks,
 					avg(latency) as avg_latency
-				FROM ${monitorEvent}
-				WHERE ${eq(monitorEvent.monitorId, monitorId)}
-				AND timestamp >= ${startDate}
-				GROUP BY 1
-				ORDER BY 1 DESC
-            `);
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String}
+				AND timestamp >= {startDate:DateTime64(3)}
+				GROUP BY date_hour
+				ORDER BY date_hour DESC
+			`;
 
-			// Handle different DB driver return types (e.g. valid array vs object with .rows)
-			// Some drivers return { rows: [...] }, others return Array-like objects
-			const rows = Array.isArray(result) ? result : (result as any).rows || [];
+			const resultSet = await clickhouse.query({
+				query,
+				query_params: {
+					monitorId,
+					startDate: startDate.getTime(),
+				},
+				format: "JSON",
+			});
 
-			// Return hourly data
-			return rows as unknown as {
+			const result = await resultSet.json<any>();
+			return result.data as {
 				date_hour: string;
 				total_checks: number;
 				up_checks: number;
 				avg_latency: number;
 			}[];
 		},
-		[`monitor-uptime-${monitorId}-${days}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
 
 export const getActiveIncidents = async (organizationId: string) => {
-	return unstable_cache(
+	return cached(
+		`active-incidents:${organizationId}`,
+		60, // 1 minute
 		async () => {
 			return await db.query.incident.findMany({
 				where: and(
@@ -179,13 +249,13 @@ export const getActiveIncidents = async (organizationId: string) => {
 				orderBy: (incidents, { desc }) => [desc(incidents.createdAt)],
 			});
 		},
-		[`active-incidents-${organizationId}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
 
 export const getActiveMaintenances = async (statusPageId: string) => {
-	return unstable_cache(
+	return cached(
+		`active-maintenances:${statusPageId}`,
+		60, // 1 minute
 		async () => {
 			const activeMaintenances = await db
 				.select({
@@ -231,13 +301,13 @@ export const getActiveMaintenances = async (statusPageId: string) => {
 
 			return maintenanceWithMonitors;
 		},
-		[`active-maintenances-${statusPageId}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
 
 export const getActiveStatusPageReports = async (statusPageId: string) => {
-	return unstable_cache(
+	return cached(
+		`active-status-page-reports:${statusPageId}`,
+		60, // 1 minute
 		async () => {
 			return await db.query.statusPageReport.findMany({
 				where: and(
@@ -262,13 +332,13 @@ export const getActiveStatusPageReports = async (statusPageId: string) => {
 				orderBy: (reports, { desc }) => [desc(reports.createdAt)],
 			});
 		},
-		[`active-status-page-reports-${statusPageId}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
 
 export const getStatusPageReports = async (statusPageId: string, limit = 5) => {
-	return unstable_cache(
+	return cached(
+		`status-page-reports:${statusPageId}`,
+		60, // 1 minute
 		async () => {
 			return await db.query.statusPageReport.findMany({
 				where: and(
@@ -289,16 +359,16 @@ export const getStatusPageReports = async (statusPageId: string, limit = 5) => {
 				limit: limit,
 			});
 		},
-		[`status-page-reports-${statusPageId}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
 
 export const getMaintenanceHistory = async (
 	statusPageId: string,
 	limit = 5,
 ) => {
-	return unstable_cache(
+	return cached(
+		`maintenance-history:${statusPageId}`,
+		60, // 1 minute
 		async () => {
 			// Using query builder with join manually because of many-to-many link navigation matching
 			const maintenances = await db
@@ -345,20 +415,39 @@ export const getMaintenanceHistory = async (
 
 			return jobs;
 		},
-		[`maintenance-history-${statusPageId}`],
-		{ revalidate: 60 },
-	)();
+	);
 };
 
 export const getMonitorStatus = async (monitorId: string) => {
-	return unstable_cache(
+	return cached(
+		`monitor-status:${monitorId}`,
+		60, // 1 minute (was 30s)
 		async () => {
-			return await db.query.monitorEvent.findFirst({
-				where: eq(monitorEvent.monitorId, monitorId),
-				orderBy: [desc(monitorEvent.timestamp)],
+			const query = `
+				SELECT status, timestamp 
+				FROM uptimekit.monitor_events 
+				WHERE monitorId = {monitorId:String} 
+				ORDER BY timestamp DESC 
+				LIMIT 1
+			`;
+
+			const resultSet = await clickhouse.query({
+				query,
+				query_params: { monitorId },
+				format: "JSON",
 			});
+
+			const result = await resultSet.json<any>();
+			const latestEvent = result.data[0];
+
+			if (!latestEvent) return undefined;
+
+			// Map back to expected format if needed by caller (though 'status' is main thing)
+			return {
+				status: latestEvent.status.toLowerCase(),
+				timestamp: new Date(latestEvent.timestamp),
+			};
 		},
-		[`monitor-status-${monitorId}`],
-		{ revalidate: 30 },
-	)();
+	);
 };
+

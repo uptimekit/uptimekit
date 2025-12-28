@@ -158,7 +158,7 @@ export default async function UpdatesPage() {
 										incident={item as any}
 										isExpanded={true}
 										detailsLink={(item as any).detailsLink}
-										className="border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+										className="bg-card shadow-sm"
 									/>
 								))}
 							</div>

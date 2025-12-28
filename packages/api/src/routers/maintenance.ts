@@ -13,6 +13,15 @@ import { protectedProcedure, writeProcedure } from "../index";
 
 export const maintenanceRouter = {
 	list: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/maintenance",
+				tags: ["Status Page Management"],
+				summary: "List maintenance windows",
+				description: "List maintenance windows for a status page.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -51,6 +60,15 @@ export const maintenanceRouter = {
 		}),
 
 	create: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/maintenance",
+				tags: ["Status Page Management"],
+				summary: "Create maintenance",
+				description: "Schedule a new maintenance window.",
+			},
+		})
 		.input(
 			z.object({
 				statusPageId: z.string(),
@@ -128,6 +146,15 @@ export const maintenanceRouter = {
 			return { id: maintenanceId };
 		}),
 	get: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/maintenance/{maintenanceId}",
+				tags: ["Status Page Management"],
+				summary: "Get maintenance",
+				description: "Get details of a specific maintenance window.",
+			},
+		})
 		.input(
 			z.object({
 				maintenanceId: z.string(),
@@ -167,6 +194,15 @@ export const maintenanceRouter = {
 		}),
 
 	update: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/maintenance/{maintenanceId}",
+				tags: ["Status Page Management"],
+				summary: "Update maintenance",
+				description: "Update a maintenance window configuration.",
+			},
+		})
 		.input(
 			z.object({
 				maintenanceId: z.string(),
@@ -207,6 +243,15 @@ export const maintenanceRouter = {
 		}),
 
 	createUpdate: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/maintenance/{maintenanceId}/updates",
+				tags: ["Status Page Management"],
+				summary: "Create maintenance update",
+				description: "Post an update to a maintenance window.",
+			},
+		})
 		.input(
 			z.object({
 				maintenanceId: z.string(),
@@ -275,6 +320,15 @@ export const maintenanceRouter = {
 		}),
 
 	updateUpdate: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/maintenance/updates/{updateId}",
+				tags: ["Status Page Management"],
+				summary: "Modify maintenance update",
+				description: "Edit a previously posted maintenance update.",
+			},
+		})
 		.input(
 			z.object({
 				updateId: z.string(),
@@ -320,6 +374,15 @@ export const maintenanceRouter = {
 		}),
 
 	deleteUpdate: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/maintenance/updates/{updateId}",
+				tags: ["maintenance"],
+				summary: "Delete maintenance update",
+				description: "Delete a maintenance update.",
+			},
+		})
 		.input(
 			z.object({
 				updateId: z.string(),

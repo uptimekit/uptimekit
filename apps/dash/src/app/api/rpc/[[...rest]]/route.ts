@@ -5,12 +5,15 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { createContext } from "@uptimekit/api/context";
 import { appRouter } from "@uptimekit/api/routers/index";
+import { createLogger } from "@uptimekit/api/lib/logger";
 import type { NextRequest } from "next/server";
+
+const logger = createLogger("RPC");
 
 const rpcHandler = new RPCHandler(appRouter, {
 	interceptors: [
 		onError((error) => {
-			console.error(error);
+			logger.error("RPC error:", error);
 		}),
 	],
 });
@@ -22,7 +25,7 @@ const apiHandler = new OpenAPIHandler(appRouter, {
 	],
 	interceptors: [
 		onError((error) => {
-			console.error(error);
+			logger.error("OpenAPI error:", error);
 		}),
 	],
 });
@@ -48,3 +51,4 @@ export const POST = handleRequest;
 export const PUT = handleRequest;
 export const PATCH = handleRequest;
 export const DELETE = handleRequest;
+

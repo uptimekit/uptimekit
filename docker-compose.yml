@@ -4,26 +4,38 @@ services:
       context: .
       dockerfile: apps/dash/Dockerfile
     ports:
-      - "3000:3000"
+      - "${DASH_PORT:-3000}:3000"
+    env_file:
+      - .env
     environment:
+      # Zmienne zależne od innych kontenerów - hardcoded credentials
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
-      - BETTER_AUTH_SECRET=secret
-      - BETTER_AUTH_URL=http://localhost:3000
-      - NEXT_PUBLIC_SELFHOSTED=true
-      - NEXT_PUBLIC_URL=http://localhost:3000
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=clickhouse
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - db
+      - redis
     restart: always
 
-  worker:
+  scheduler:
     build:
       context: .
-      dockerfile: apps/worker/Dockerfile
+      dockerfile: packages/scheduler/Dockerfile
+    env_file:
+      - .env
     environment:
-      - DASHBOARD_URL=http://dash:3000
-      - WORKER_API_KEY=change_me_to_real_worker_key
+      # Zmienne zależne od innych kontenerów - hardcoded credentials
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=clickhouse
+      - REDIS_URL=redis://redis:6379
     depends_on:
-      - dash
+      - db
+      - redis
+      - clickhouse
     restart: always
 
   status-page:
@@ -31,9 +43,13 @@ services:
       context: .
       dockerfile: apps/status-page/Dockerfile
     ports:
-      - "3001:3001"
+      - "${STATUS_PAGE_PORT:-3001}:3001"
+    env_file:
+      - .env
     environment:
+      # Zmienne zależne od innych kontenerów - hardcoded credentials
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - db
     restart: always
@@ -46,9 +62,31 @@ services:
       POSTGRES_DB: uptimekit
     volumes:
       - db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    restart: always
+
+  redis:
+    image: redis:8.0-alpine
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: uptimekit
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    user: "root"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     restart: always
 
 volumes:
   db_data:
+  clickhouse_data:
+  redis_data:

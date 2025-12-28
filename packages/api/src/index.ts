@@ -55,3 +55,15 @@ export const writeProcedure = protectedProcedure.use(
 		return next({ context });
 	},
 );
+
+export const adminProcedure = protectedProcedure.use(
+	async ({ context, next }) => {
+		if (context.session.user.role !== "admin") {
+			throw new ORPCError("FORBIDDEN", {
+				message: "Admin access required",
+			});
+		}
+		return next({ context });
+	},
+);
+

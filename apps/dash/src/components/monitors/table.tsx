@@ -49,6 +49,7 @@ import {
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
+import { LatencySparkline } from "./latency-sparkline";
 
 export type MonitorStatus =
 	| "up"
@@ -104,6 +105,16 @@ export function MonitorsTable() {
 				offset: (page - 1) * pageSize,
 			},
 		}),
+		refetchInterval: 60_000,
+	});
+
+	// Fetch latency sparkline data for all visible monitors
+	const monitorIds = data?.items?.map((m) => m.id) ?? [];
+	const { data: sparklineData } = useQuery({
+		...orpc.monitors.getBatchLatencySparkline.queryOptions({
+			input: { monitorIds },
+		}),
+		enabled: monitorIds.length > 0,
 		refetchInterval: 60_000,
 	});
 
@@ -324,16 +335,7 @@ export function MonitorsTable() {
 								TCP
 								{typeFilter === "tcp" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => {
-									setTypeFilter("dns");
-									setPage(1);
-								}}
-								className="flex justify-between"
-							>
-								DNS
-								{typeFilter === "dns" && <Check className="h-4 w-4" />}
-							</DropdownMenuItem>
+
 							<DropdownMenuItem
 								onClick={() => {
 									setTypeFilter("keyword");
@@ -384,16 +386,16 @@ export function MonitorsTable() {
 							{(activeFilter !== undefined ||
 								typeFilter !== undefined ||
 								statusFilter !== undefined) && (
-								<>
-									<div className="my-2 h-px bg-muted" />
-									<DropdownMenuItem
-										onClick={clearFilters}
-										className="justify-center text-red-500 hover:text-red-600"
-									>
-										Clear filters
-									</DropdownMenuItem>
-								</>
-							)}
+									<>
+										<div className="my-2 h-px bg-muted" />
+										<DropdownMenuItem
+											onClick={clearFilters}
+											className="justify-center text-red-500 hover:text-red-600"
+										>
+											Clear filters
+										</DropdownMenuItem>
+									</>
+								)}
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button
@@ -431,9 +433,9 @@ export function MonitorsTable() {
 										<p className="font-medium text-lg">No monitors found</p>
 										<p className="text-muted-foreground text-sm">
 											{search ||
-											activeFilter !== undefined ||
-											typeFilter ||
-											statusFilter
+												activeFilter !== undefined ||
+												typeFilter ||
+												statusFilter
 												? "Try adjusting your filters"
 												: "Get started by creating your first monitor."}
 										</p>
@@ -464,15 +466,15 @@ export function MonitorsTable() {
 											className={cn(
 												"h-2.5 w-2.5 rounded-full shadow-sm",
 												monitor.status === "up" &&
-													"bg-emerald-500 shadow-emerald-500/20",
+												"bg-emerald-500 shadow-emerald-500/20",
 												monitor.status === "down" &&
-													"bg-red-500 shadow-red-500/20",
+												"bg-red-500 shadow-red-500/20",
 												monitor.status === "degraded" &&
-													"bg-amber-500 shadow-amber-500/20",
+												"bg-amber-500 shadow-amber-500/20",
 												monitor.status === "maintenance" &&
-													"bg-blue-500 shadow-blue-500/20",
+												"bg-blue-500 shadow-blue-500/20",
 												monitor.status === "pending" &&
-													"bg-zinc-500 shadow-zinc-500/20",
+												"bg-zinc-500 shadow-zinc-500/20",
 											)}
 										/>
 									</TableCell>
@@ -497,7 +499,7 @@ export function MonitorsTable() {
 															monitor.status === "down" && "text-red-500",
 															monitor.status === "degraded" && "text-amber-500",
 															monitor.status === "maintenance" &&
-																"text-blue-500",
+															"text-blue-500",
 															monitor.status === "pending" && "text-zinc-500",
 														)}
 													>
@@ -529,8 +531,13 @@ export function MonitorsTable() {
 											{monitor.frequency}
 										</div>
 									</TableCell>
-									<TableCell className="w-[50px] pr-4">
+									<TableCell className="w-[50px]">
 										<MonitorActions monitor={monitor} />
+									</TableCell>
+									<TableCell className="relative hidden w-[140px] p-0 lg:table-cell">
+										<LatencySparkline
+											data={sparklineData?.[monitor.id] ?? []}
+										/>
 									</TableCell>
 								</TableRow>
 							))

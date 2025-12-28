@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Clock, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Activity, AlertTriangle, Clock } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface MonitorCardsProps {
 	status: string;
@@ -25,10 +25,10 @@ export function MonitorCards({
 	const isMaintenance = status === "maintenance";
 
 	return (
-		<div className="grid gap-4 md:grid-cols-3 mb-8">
+		<div className="mb-8 grid gap-4 md:grid-cols-3">
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">
+					<CardTitle className="font-medium text-sm">
 						Currently{" "}
 						{isUp ? "up" : isMaintenance ? "under maintenance" : "down"} for
 					</CardTitle>
@@ -43,10 +43,10 @@ export function MonitorCards({
 					/>
 				</CardHeader>
 				<CardContent>
-					<div className="text-2xl font-bold">
+					<div className="font-bold text-2xl">
 						{currentStatusDuration || "-"}
 					</div>
-					<p className="text-xs text-muted-foreground">
+					<p className="text-muted-foreground text-xs">
 						{isUp
 							? "Monitor is operational"
 							: isMaintenance
@@ -58,14 +58,14 @@ export function MonitorCards({
 
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">Last checked at</CardTitle>
+					<CardTitle className="font-medium text-sm">Last checked at</CardTitle>
 					<Clock className="h-4 w-4 text-muted-foreground" />
 				</CardHeader>
 				<CardContent>
-					<div className="text-2xl font-bold">
+					<div className="font-bold text-2xl">
 						{lastCheck ? new Date(lastCheck).toLocaleTimeString() : "-"}
 					</div>
-					<p className="text-xs text-muted-foreground">
+					<p className="text-muted-foreground text-xs">
 						{lastCheck
 							? formatDistanceToNow(new Date(lastCheck), { addSuffix: true })
 							: "Never checked"}
@@ -75,12 +75,12 @@ export function MonitorCards({
 
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">Incidents (24h)</CardTitle>
+					<CardTitle className="font-medium text-sm">Incidents (24h)</CardTitle>
 					<AlertTriangle className="h-4 w-4 text-yellow-500" />
 				</CardHeader>
 				<CardContent>
-					<div className="text-2xl font-bold">{incidentCount}</div>
-					<p className="text-xs text-muted-foreground">
+					<div className="font-bold text-2xl">{incidentCount}</div>
+					<p className="text-muted-foreground text-xs">
 						Recorded in the last 24 hours
 					</p>
 				</CardContent>

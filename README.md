@@ -43,7 +43,7 @@ Built with a modern, type-safe stack for maximum performance and developer exper
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Database**: [PostgreSQL](https://www.postgresql.org/) with [Drizzle ORM](https://orm.drizzle.team/)
+- **Database**: [PostgreSQL](https://www.postgresql.org/) with [Drizzle ORM](https://orm.drizzle.team/) & [ClickHouse](https://clickhouse.com/)
 - **Styling**: [TailwindCSS](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
 - **Authentication**: [Better-Auth](https://better-auth.com/)
 - **API**: [oRPC](https://orpc.unstack.io/) & [OpenAPI](https://www.openapis.org/)
@@ -64,7 +64,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 1.  **Clone the repository**
 
     ```bash
-    git clone https://github.com/stripsior/uptimekit.git
+    git clone https://github.com/uptimekit/uptimekit.git
     cd uptimekit
     ```
 

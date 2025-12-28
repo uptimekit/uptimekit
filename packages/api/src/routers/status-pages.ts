@@ -8,10 +8,25 @@ import {
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import { isSelfHosted, MAX_STATUS_PAGES } from "../lib/limits";
+import {
+	hasActiveSubscription,
+	isSelfHosted,
+	MAX_STATUS_PAGES,
+} from "../lib/limits";
+import { redis } from "../lib/redis";
 
 export const statusPagesRouter = {
 	list: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages",
+				tags: ["Status Page Management"],
+				summary: "List status pages",
+				description:
+					"Retrieve a list of status pages with optional searching and filtering.",
+			},
+		})
 		.input(
 			z
 				.object({
@@ -75,6 +90,15 @@ export const statusPagesRouter = {
 		}),
 
 	create: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/status-pages",
+				tags: ["Status Page Management"],
+				summary: "Create status page",
+				description: "Create a new status page.",
+			},
+		})
 		.input(
 			z.object({
 				name: z.string().min(1),
@@ -84,18 +108,24 @@ export const statusPagesRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			if (!isSelfHosted()) {
-				const currentCount = await db.$count(
-					statusPage,
-					eq(
-						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
-					),
+				const hasSub = await hasActiveSubscription(
+					context.session.session.activeOrganizationId!,
 				);
 
-				if (currentCount >= MAX_STATUS_PAGES) {
-					throw new ORPCError("FORBIDDEN", {
-						message: `Plan limit reached. You can only create up to ${MAX_STATUS_PAGES} status page.`,
-					});
+				if (!hasSub) {
+					const currentCount = await db.$count(
+						statusPage,
+						eq(
+							statusPage.organizationId,
+							context.session.session.activeOrganizationId!,
+						),
+					);
+
+					if (currentCount >= MAX_STATUS_PAGES) {
+						throw new ORPCError("FORBIDDEN", {
+							message: `Plan limit reached. You can only create up to ${MAX_STATUS_PAGES} status page.`,
+						});
+					}
 				}
 			}
 
@@ -123,6 +153,15 @@ export const statusPagesRouter = {
 		}),
 
 	get: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages/{id}",
+				tags: ["Status Page Management"],
+				summary: "Get status page",
+				description: "Retrieve details of a specific status page.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const page = await db.query.statusPage.findFirst({
@@ -143,17 +182,22 @@ export const statusPagesRouter = {
 		}),
 
 	update: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/status-pages/{id}",
+				tags: ["Status Page Management"],
+				summary: "Update status page",
+				description: "Update the configuration of a status page.",
+			},
+		})
 		.input(
 			z.object({
 				id: z.string(),
 				name: z.string().optional(),
 				slug: z.string().optional(),
 				domain: z.string().optional().nullable(),
-				websiteUrl: z.string().optional().nullable(), // Will need to add to schema if not present, map to description or new field?
-				// Checking schema: domain, description, design (json), public, password.
-				// Screenshot had: Logo URL, Website URL, Contact URL. These likely go into `design` JSON or new columns.
-				// For now, I'll store them in `design` json if schema doesn't have columns.
-				// Schema has `design: json("design")`.
+				websiteUrl: z.string().optional().nullable(),
 				design: z
 					.object({
 						logoUrl: z.string().optional(),
@@ -163,7 +207,6 @@ export const statusPagesRouter = {
 						headerLayout: z.enum(["vertical", "horizontal"]).optional(),
 					})
 					.optional(),
-
 				description: z.string().optional(),
 				public: z.boolean().optional(),
 			}),
@@ -210,11 +253,28 @@ export const statusPagesRouter = {
 				})
 				.where(eq(statusPage.id, input.id));
 
+			// Invalidate cache
+			if (existing.domain) {
+				await redis.del(`status-page:${existing.domain}`);
+			}
+			if (input.domain && input.domain !== existing.domain) {
+				await redis.del(`status-page:${input.domain}`);
+			}
+
 			return { success: true };
 		}),
 
 	// Structure management
 	getStructure: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/status-pages/{id}/structure",
+				tags: ["Status Page Management"],
+				summary: "Get structure",
+				description: "Get the layout structure of a status page.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const existing = await db.query.statusPage.findFirst({
@@ -256,6 +316,15 @@ export const statusPagesRouter = {
 		}),
 
 	updateStructure: writeProcedure
+		.meta({
+			openapi: {
+				method: "PUT",
+				path: "/status-pages/{id}/structure",
+				tags: ["Status Page Management"],
+				summary: "Update structure",
+				description: "Update the layout structure of a status page.",
+			},
+		})
 		.input(
 			z.object({
 				id: z.string(),
@@ -315,6 +384,11 @@ export const statusPagesRouter = {
 					}
 				}
 			});
+
+			// Invalidate cache
+			if (existing.domain) {
+				await redis.del(`status-page:${existing.domain}`);
+			}
 
 			return { success: true };
 		}),

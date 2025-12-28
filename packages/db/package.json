@@ -18,17 +18,18 @@
 		"db:migrate": "drizzle-kit migrate"
 	},
 	"devDependencies": {
-		"drizzle-kit": "^0.31.8",
 		"@types/pg": "^8.15.6",
-		"@uptimekit/config": "workspace:*"
+		"@uptimekit/config": "workspace:*",
+		"drizzle-kit": "^0.31.8"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"@clickhouse/client": "^1.15.0",
+		"dotenv": "catalog:",
 		"drizzle-orm": "^0.45.0",
 		"pg": "^8.16.3",
-		"dotenv": "catalog:",
 		"zod": "catalog:"
 	}
 }

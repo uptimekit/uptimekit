@@ -153,10 +153,7 @@ const tcpSchema = z.object({
 	port: z.coerce.number().min(1).max(65535, "Port must be between 1 and 65535"),
 });
 
-const dnsSchema = z.object({
-	type: z.literal("dns"),
-	hostname: z.string().min(1, "Hostname is required"),
-});
+
 
 // Union schema
 const monitorConfigSchema = z.discriminatedUnion("type", [
@@ -165,7 +162,7 @@ const monitorConfigSchema = z.discriminatedUnion("type", [
 	keywordSchema,
 	pingSchema,
 	tcpSchema,
-	dnsSchema,
+
 ]);
 
 const formSchema = z.intersection(baseSchema, monitorConfigSchema);
@@ -309,14 +306,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		icon: Search,
 		Fields: KeywordFields,
 	},
-	{
-		id: "dns",
-		group: "Network & web",
-		label: "DNS",
-		description: "Monitor DNS records",
-		icon: Network,
-		Fields: HostnameField,
-	},
+
 	{
 		id: "ping",
 		group: "Infrastructure",
@@ -578,7 +568,7 @@ export function CreateMonitorForm({
 		onError: (error) => {
 			toast.error(
 				error.message ||
-					(monitorId ? "Failed to update monitor" : "Failed to create monitor"),
+				(monitorId ? "Failed to update monitor" : "Failed to create monitor"),
 			);
 			console.error(error);
 		},
@@ -818,14 +808,14 @@ export function CreateMonitorForm({
 																			onCheckedChange={(checked) => {
 																				return checked
 																					? field.onChange([
-																							...field.value,
-																							region,
-																						])
+																						...field.value,
+																						region,
+																					])
 																					: field.onChange(
-																							field.value?.filter(
-																								(value) => value !== region,
-																							),
-																						);
+																						field.value?.filter(
+																							(value) => value !== region,
+																						),
+																					);
 																			}}
 																		/>
 																	</FormControl>

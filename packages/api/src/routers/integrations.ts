@@ -4,32 +4,65 @@ import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import { ALLOWED_INTEGRATIONS, isSelfHosted } from "../lib/limits";
+import {
+	ALLOWED_INTEGRATIONS,
+	hasActiveSubscription,
+	isSelfHosted,
+} from "../lib/limits";
 import { integrationRegistry } from "../pkg/integrations/registry";
 
 export const integrationsRouter = {
-	listAvailable: protectedProcedure.handler(async () => {
-		const integrations = integrationRegistry.list();
-		return integrations.map((i) => ({
-			id: i.id,
-			name: i.name,
-			description: i.description,
-			events: i.events,
-		}));
-	}),
+	listAvailable: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/integrations/available",
+				tags: ["Integration Management"],
+				summary: "List available integrations",
+				description: "List all supported integration types.",
+			},
+		})
+		.handler(async () => {
+			const integrations = integrationRegistry.list();
+			return integrations.map((i) => ({
+				id: i.id,
+				name: i.name,
+				description: i.description,
+				events: i.events,
+			}));
+		}),
 
-	listConfigured: writeProcedure.handler(async ({ context }) => {
-		const organizationId = context.session.session.activeOrganizationId;
-		if (!organizationId) return [];
+	listConfigured: writeProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/integrations/configured",
+				tags: ["Integration Management"],
+				summary: "List configured integrations",
+				description: "List all integrations configured for the organization.",
+			},
+		})
+		.handler(async ({ context }) => {
+			const organizationId = context.session.session.activeOrganizationId;
+			if (!organizationId) return [];
 
-		const configs = await db.query.integrationConfig.findMany({
-			where: (t, { eq }) => eq(t.organizationId, organizationId),
-		});
+			const configs = await db.query.integrationConfig.findMany({
+				where: (t, { eq }) => eq(t.organizationId, organizationId),
+			});
 
-		return configs;
-	}),
+			return configs;
+		}),
 
 	configure: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/integrations/configure",
+				tags: ["Integration Management"],
+				summary: "Configure integration",
+				description: "Create or update an integration configuration.",
+			},
+		})
 		.input(
 			z.object({
 				type: z.string(),
@@ -47,10 +80,13 @@ export const integrationsRouter = {
 				throw new Error("Invalid integration type");
 			}
 
-			if (!isSelfHosted() && !ALLOWED_INTEGRATIONS.includes(input.type)) {
-				throw new ORPCError("FORBIDDEN", {
-					message: "This integration is not available on your plan.",
-				});
+			if (!isSelfHosted()) {
+				const hasSub = await hasActiveSubscription(organizationId);
+				if (!hasSub && !ALLOWED_INTEGRATIONS.includes(input.type)) {
+					throw new ORPCError("FORBIDDEN", {
+						message: "This integration is not available on your plan.",
+					});
+				}
 			}
 
 			const parsedConfig = integrationDef.configSchema.parse(input.config);
@@ -84,6 +120,15 @@ export const integrationsRouter = {
 		}),
 
 	delete: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/integrations/{id}",
+				tags: ["Integration Management"],
+				summary: "Delete integration",
+				description: "Remove an integration configuration.",
+			},
+		})
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ context, input }) => {
 			const organizationId = context.session.session.activeOrganizationId;
@@ -101,6 +146,15 @@ export const integrationsRouter = {
 		}),
 
 	toggle: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/integrations/{id}/toggle",
+				tags: ["integrations"],
+				summary: "Toggle integration",
+				description: "Enable or disable an integration.",
+			},
+		})
 		.input(z.object({ id: z.string(), active: z.boolean() }))
 		.handler(async ({ context, input }) => {
 			const organizationId = context.session.session.activeOrganizationId;

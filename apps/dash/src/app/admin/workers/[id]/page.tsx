@@ -1,11 +1,9 @@
 import { db } from "@uptimekit/db";
-import { apikey } from "@uptimekit/db/schema/auth";
-import { worker } from "@uptimekit/db/schema/workers";
+import { worker, workerApiKey } from "@uptimekit/db/schema/workers";
 import { format } from "date-fns";
 import { eq } from "drizzle-orm";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-// Cleaned up unused imports
 import { notFound } from "next/navigation";
 import { WorkerApiKeyManager } from "@/components/admin/worker-api-key-manager";
 import { Button } from "@/components/ui/button";
@@ -24,10 +22,10 @@ async function getWorker(id: string) {
 	const w = await db
 		.select({
 			worker: worker,
-			apiKey: apikey,
+			apiKey: workerApiKey,
 		})
 		.from(worker)
-		.leftJoin(apikey, eq(worker.apiKeyId, apikey.id))
+		.leftJoin(workerApiKey, eq(workerApiKey.workerId, worker.id))
 		.where(eq(worker.id, id))
 		.limit(1);
 
@@ -96,12 +94,28 @@ export default async function EditWorkerPage({
 					</CardHeader>
 					<CardContent className="grid gap-4">
 						{k && (
-							<div className="flex items-center justify-between">
-								<span className="font-medium text-sm">Token generated</span>
-								<span className="text-muted-foreground text-sm">
-									{format(k.createdAt, "PPP p")}
-								</span>
-							</div>
+							<>
+								<div className="flex items-center justify-between">
+									<span className="font-medium text-sm">Key Hint</span>
+									<code className="rounded bg-muted px-2 py-1 font-mono text-sm">
+										{k.keyHint}
+									</code>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="font-medium text-sm">Created</span>
+									<span className="text-muted-foreground text-sm">
+										{format(k.createdAt, "PPP p")}
+									</span>
+								</div>
+								{k.lastUsedAt && (
+									<div className="flex items-center justify-between">
+										<span className="font-medium text-sm">Last Used</span>
+										<span className="text-muted-foreground text-sm">
+											{format(k.lastUsedAt, "PPP p")}
+										</span>
+									</div>
+								)}
+							</>
 						)}
 						<Separator />
 						<WorkerApiKeyManager workerId={w.id} />

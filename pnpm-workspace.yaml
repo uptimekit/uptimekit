@@ -13,4 +13,5 @@ catalog:
 
 onlyBuiltDependencies:
   - esbuild
+  - msgpackr-extract
   - sharp

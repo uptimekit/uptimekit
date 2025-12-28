@@ -32,7 +32,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
 				<LLMCopyButton markdownUrl={`${page.url}.mdx`} />
 				<ViewOptions
 					markdownUrl={`${page.url}.mdx`}
-					githubUrl={`https://github.com/stripsior/uptimekit/blob/release/apps/docs/content/docs/${page.path}`}
+					githubUrl={`https://github.com/uptimekit/uptimekit/blob/release/apps/docs/content/docs/${page.path}`}
 				/>
 			</div>
 			<DocsBody>
