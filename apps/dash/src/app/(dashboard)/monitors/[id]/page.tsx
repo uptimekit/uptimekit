@@ -125,6 +125,22 @@ export default function MonitorDetailsPage() {
 		}
 	}
 
+	// Get display target based on monitor type
+	const getMonitorTarget = () => {
+		const config = monitor.config as Record<string, any>;
+		switch (monitor.type) {
+			case "tcp":
+				return `${config.hostname}:${config.port}`;
+			case "ping":
+				return config.hostname;
+			case "keyword":
+			case "http-json":
+			case "http":
+			default:
+				return config.url;
+		}
+	};
+
 	return (
 		<div className="flex flex-col gap-6 p-6">
 			{/* Header */}
@@ -152,7 +168,7 @@ export default function MonitorDetailsPage() {
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<Globe className="h-3.5 w-3.5" />
 						<span className="font-mono">
-							{(monitor.config as { url: string }).url}
+							{getMonitorTarget()}
 						</span>
 						<span>·</span>
 						<Clock className="h-3.5 w-3.5" />
@@ -181,6 +197,7 @@ export default function MonitorDetailsPage() {
 			<ResponseTimeChart
 				monitorId={id}
 				locations={(monitor.locations as string[]) || []}
+				monitorType={monitor.type}
 			/>
 
 			{/* Availability Stats Table */}

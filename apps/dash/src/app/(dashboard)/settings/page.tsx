@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { BillingSettings } from "@/components/settings/billing-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const formSchema = z.object({
 
 export default function SettingsPage() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
+	const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -140,6 +142,14 @@ export default function SettingsPage() {
 						>
 							Team
 						</TabsTrigger>
+						{!isSelfHosted && (
+							<TabsTrigger
+								value="billing"
+								className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
+							>
+								Billing
+							</TabsTrigger>
+						)}
 					</TabsList>
 
 					<TabsContent value="general" className="mt-6">
@@ -262,6 +272,12 @@ export default function SettingsPage() {
 					<TabsContent value="team" className="mt-6">
 						<TeamSettings />
 					</TabsContent>
+
+					{!isSelfHosted && (
+						<TabsContent value="billing" className="mt-6">
+							<BillingSettings />
+						</TabsContent>
+					)}
 				</Tabs>
 			</div>
 		</div>

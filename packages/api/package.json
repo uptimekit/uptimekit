@@ -10,7 +10,19 @@
 			"default": "./src/*.ts"
 		},
 		"./pkg/*": {
-			"default": "./src/pkg/*.ts"
+			"default": "./src/pkg/*/index.ts"
+		},
+		"./pkg/integrations/registry": {
+			"default": "./src/pkg/integrations/registry.ts"
+		},
+		"./pkg/integrations/definitions/discord-meta": {
+			"default": "./src/pkg/integrations/definitions/discord-meta.ts"
+		},
+		"./pkg/integrations/definitions/telegram-meta": {
+			"default": "./src/pkg/integrations/definitions/telegram-meta.ts"
+		},
+		"./pkg/integrations/definitions/webhook-meta": {
+			"default": "./src/pkg/integrations/definitions/webhook-meta.ts"
 		}
 	},
 	"type": "module",
@@ -30,6 +42,7 @@
 		"@uptimekit/auth": "workspace:*",
 		"@uptimekit/db": "workspace:*",
 		"dotenv": "catalog:",
+		"ioredis": "^5.8.2",
 		"next": "^16.0.10",
 		"zod": "catalog:"
 	}

@@ -13,6 +13,7 @@ import {
 	isSelfHosted,
 	MAX_STATUS_PAGES,
 } from "../lib/limits";
+import { redis } from "../lib/redis";
 
 export const statusPagesRouter = {
 	list: protectedProcedure
@@ -196,11 +197,7 @@ export const statusPagesRouter = {
 				name: z.string().optional(),
 				slug: z.string().optional(),
 				domain: z.string().optional().nullable(),
-				websiteUrl: z.string().optional().nullable(), // Will need to add to schema if not present, map to description or new field?
-				// Checking schema: domain, description, design (json), public, password.
-				// Screenshot had: Logo URL, Website URL, Contact URL. These likely go into `design` JSON or new columns.
-				// For now, I'll store them in `design` json if schema doesn't have columns.
-				// Schema has `design: json("design")`.
+				websiteUrl: z.string().optional().nullable(),
 				design: z
 					.object({
 						logoUrl: z.string().optional(),
@@ -210,7 +207,6 @@ export const statusPagesRouter = {
 						headerLayout: z.enum(["vertical", "horizontal"]).optional(),
 					})
 					.optional(),
-
 				description: z.string().optional(),
 				public: z.boolean().optional(),
 			}),
@@ -256,6 +252,14 @@ export const statusPagesRouter = {
 					design: newDesign,
 				})
 				.where(eq(statusPage.id, input.id));
+
+			// Invalidate cache
+			if (existing.domain) {
+				await redis.del(`status-page:${existing.domain}`);
+			}
+			if (input.domain && input.domain !== existing.domain) {
+				await redis.del(`status-page:${input.domain}`);
+			}
 
 			return { success: true };
 		}),
@@ -380,6 +384,11 @@ export const statusPagesRouter = {
 					}
 				}
 			});
+
+			// Invalidate cache
+			if (existing.domain) {
+				await redis.del(`status-page:${existing.domain}`);
+			}
 
 			return { success: true };
 		}),

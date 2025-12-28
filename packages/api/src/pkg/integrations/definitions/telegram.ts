@@ -5,6 +5,9 @@ import {
     type TelegramConfigSchema,
     telegramIntegrationMeta,
 } from "./telegram-meta";
+import { createLogger } from "../../../lib/logger";
+
+const logger = createLogger("TELEGRAM");
 
 export const telegramIntegration: IntegrationDefinition<
     z.infer<typeof TelegramConfigSchema>
@@ -94,8 +97,8 @@ export const telegramIntegration: IntegrationDefinition<
                 },
             );
         } catch (error) {
-            console.error(
-                `[Telegram] Failed to send message to ${config.chatId}`,
+            logger.error(
+                `Failed to send message to ${config.chatId}`,
                 error,
             );
         }

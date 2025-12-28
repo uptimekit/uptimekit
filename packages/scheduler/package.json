@@ -1,0 +1,24 @@
+{
+    "name": "@uptimekit/scheduler",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.js",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "@uptimekit/db": "workspace:*",
+        "bullmq": "^5.34.8",
+        "dotenv": "catalog:",
+        "ioredis": "^5.4.2"
+    },
+    "devDependencies": {
+        "@types/node": "^22.13.11",
+        "@uptimekit/config": "workspace:*",
+        "tsx": "^4.19.2",
+        "typescript": "^5"
+    }
+}

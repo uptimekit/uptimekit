@@ -1,7 +1,6 @@
 import { ORPCError } from "@orpc/server";
-import { auth } from "@uptimekit/auth";
 import { db } from "@uptimekit/db";
-import { worker } from "@uptimekit/db/schema/workers";
+import { worker, workerApiKey } from "@uptimekit/db/schema/workers";
 import {
 	and,
 	desc,
@@ -14,8 +13,22 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
+import { createLogger } from "../lib/logger";
+import { hashApiKey, invalidateApiKeyCache } from "../pkg/worker/auth";
+
+const logger = createLogger("API");
 
 type Worker = InferSelectModel<typeof worker>;
+
+// Generate a secure random API key with prefix
+function generateApiKey(): string {
+	const prefix = "uk_"; // UptimeKit prefix
+	const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+	const key = Array.from(randomBytes)
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
+	return `${prefix}${key}`;
+}
 
 export const workersRouter = {
 	list: protectedProcedure
@@ -105,25 +118,18 @@ export const workersRouter = {
 					throw new ORPCError("UNAUTHORIZED");
 				}
 
-				const apiKey = await auth.api.createApiKey({
-					headers: context.headers,
-					body: {
-						name: `Worker: ${input.name}`,
-						expiresIn: undefined,
-					},
-				});
+				// Generate the raw API key
+				const rawKey = generateApiKey();
+				const keyHash = await hashApiKey(rawKey);
+				const keyHint = rawKey.substring(0, 11) + "..."; // e.g., "uk_abc1234..."
 
-				if (!apiKey) {
-					throw new ORPCError("INTERNAL_SERVER_ERROR");
-				}
-
+				// Create the worker first
 				const [newWorker] = await db
 					.insert(worker)
 					.values({
 						id: crypto.randomUUID(),
 						name: input.name,
 						location: input.location,
-						apiKeyId: apiKey.id,
 						active: true,
 					})
 					.returning();
@@ -132,9 +138,17 @@ export const workersRouter = {
 					throw new ORPCError("INTERNAL_SERVER_ERROR");
 				}
 
+				// Create the API key for this worker
+				await db.insert(workerApiKey).values({
+					id: crypto.randomUUID(),
+					keyHash,
+					keyHint,
+					workerId: newWorker.id,
+				});
+
 				return {
 					worker: newWorker,
-					key: apiKey.key,
+					key: rawKey, // Return raw key only once
 				};
 			},
 		),
@@ -165,40 +179,35 @@ export const workersRouter = {
 				throw new ORPCError("NOT_FOUND");
 			}
 
-			// 1. Create new key FIRST
-			const newKey = await auth.api.createApiKey({
-				headers: context.headers,
-				body: {
-					name: `Worker: ${workerRecord.name}`,
-					expiresIn: undefined,
-				},
+			// Get old key hashes for cache invalidation
+			const oldKeys = await db
+				.select({ keyHash: workerApiKey.keyHash })
+				.from(workerApiKey)
+				.where(eq(workerApiKey.workerId, input.id));
+
+			// Generate new key
+			const rawKey = generateApiKey();
+			const keyHash = await hashApiKey(rawKey);
+			const keyHint = rawKey.substring(0, 11) + "...";
+
+			// Delete old keys and create new one in a transaction-like manner
+			await db.delete(workerApiKey).where(eq(workerApiKey.workerId, input.id));
+
+			await db.insert(workerApiKey).values({
+				id: crypto.randomUUID(),
+				keyHash,
+				keyHint,
+				workerId: input.id,
 			});
 
-			if (!newKey) {
-				throw new ORPCError("INTERNAL_SERVER_ERROR");
+			// Invalidate old keys from cache
+			for (const oldKey of oldKeys) {
+				invalidateApiKeyCache(oldKey.keyHash);
 			}
 
-			// 2. Update worker to reference new key
-			// This safely detaches the old key
-			await db
-				.update(worker)
-				.set({ apiKeyId: newKey.id })
-				.where(eq(worker.id, input.id));
+			logger.info(`Rotated API key for worker ${workerRecord.name}`);
 
-			// 3. Delete old key (now safe)
-			if (workerRecord.apiKeyId) {
-				try {
-					await auth.api.deleteApiKey({
-						headers: context.headers,
-						body: { keyId: workerRecord.apiKeyId },
-					});
-				} catch (error) {
-					// Log error but don't fail the request, as rotation technically succeeded
-					console.error("Failed to delete old API key:", error);
-				}
-			}
-
-			return { key: newKey.key };
+			return { key: rawKey };
 		}),
 	listLocations: protectedProcedure
 		.meta({

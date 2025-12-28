@@ -1,8 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import { clickhouse, db } from "@uptimekit/db";
+import {
+	incident,
+	incidentActivity,
+	incidentMonitor,
+} from "@uptimekit/db/schema/incidents";
 import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
-import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import {
@@ -12,7 +17,6 @@ import {
 } from "../lib/limits";
 import type {
 	ChangeHistoryResult,
-	EventTimelineResult,
 	LatestChangeResult,
 	LatestEventResult,
 	SingleChangeResult,
@@ -155,13 +159,23 @@ export const monitorsRouter = {
 				const latestEvent = latestEventsMap.get(row.monitor.id);
 				const latestChange = latestChangesMap.get(row.monitor.id);
 
+				// Helper to parse ClickHouse timestamps as UTC
+				const parseClickhouseTimestamp = (ts: string) => {
+					// ClickHouse returns timestamps without timezone info
+					// Append 'Z' if not present to interpret as UTC
+					if (!ts.endsWith('Z') && !ts.includes('+')) {
+						return new Date(ts.replace(' ', 'T') + 'Z');
+					}
+					return new Date(ts);
+				};
+
 				return {
 					...row.monitor,
 					group: row.monitor_group || null,
 					status: latestEvent?.status || "pending",
-					lastCheck: latestEvent ? new Date(latestEvent.timestamp) : null,
+					lastCheck: latestEvent ? parseClickhouseTimestamp(latestEvent.timestamp) : null,
 					lastStatusChange: latestChange
-						? new Date(latestChange.timestamp)
+						? parseClickhouseTimestamp(latestChange.timestamp)
 						: null,
 					usedOn: usageMap.get(row.monitor.id) || 0,
 				};
@@ -327,6 +341,51 @@ export const monitorsRouter = {
 				throw new ORPCError("NOT_FOUND");
 			}
 
+			const now = new Date();
+
+			// Find all active incidents associated with this monitor
+			const activeIncidentLinks = await db
+				.select({
+					incidentId: incidentMonitor.incidentId,
+				})
+				.from(incidentMonitor)
+				.innerJoin(incident, eq(incidentMonitor.incidentId, incident.id))
+				.where(
+					and(
+						eq(incidentMonitor.monitorId, input.id),
+						isNull(incident.resolvedAt),
+					),
+				);
+
+			// Resolve all active incidents before deleting the monitor
+			if (activeIncidentLinks.length > 0) {
+				const incidentIds = activeIncidentLinks.map((link) => link.incidentId);
+
+				await db.transaction(async (tx) => {
+					// Update all active incidents to resolved
+					for (const incidentId of incidentIds) {
+						await tx
+							.update(incident)
+							.set({
+								status: "resolved",
+								resolvedAt: now,
+								updatedAt: now,
+							})
+							.where(eq(incident.id, incidentId));
+
+						// Add activity log for each incident
+						await tx.insert(incidentActivity).values({
+							id: crypto.randomUUID(),
+							incidentId,
+							message: `Incident automatically resolved due to monitor "${existing.name}" being deleted`,
+							type: "event",
+							createdAt: now,
+							userId: context.session.user.id,
+						});
+					}
+				});
+			}
+
 			await db.delete(monitor).where(eq(monitor.id, input.id));
 			return { success: true };
 		}),
@@ -467,13 +526,21 @@ export const monitorsRouter = {
 			const latestChangeJson = await latestChangeQuery.json<any>();
 			const latestChange = (latestChangeJson.data as SingleChangeResult[])[0];
 
+			// Helper to parse ClickHouse timestamps as UTC
+			const parseClickhouseTimestamp = (ts: string) => {
+				if (!ts.endsWith('Z') && !ts.includes('+')) {
+					return new Date(ts.replace(' ', 'T') + 'Z');
+				}
+				return new Date(ts);
+			};
+
 			return {
 				...found.monitor,
 				group: found.monitor_group || null,
 				status: latestEvent?.status || "pending",
-				lastCheck: latestEvent ? new Date(latestEvent.timestamp) : null,
+				lastCheck: latestEvent ? parseClickhouseTimestamp(latestEvent.timestamp) : null,
 				lastStatusChange: latestChange
-					? new Date(latestChange.timestamp)
+					? parseClickhouseTimestamp(latestChange.timestamp)
 					: null,
 			};
 		}),
@@ -677,9 +744,9 @@ export const monitorsRouter = {
 			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
 
-			// Fetch raw events for chart
+			// Fetch raw events for chart with detailed timings
 			const query = `
-				SELECT timestamp, latency
+				SELECT timestamp, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
 				FROM uptimekit.monitor_events
 				WHERE monitorId = {monitorId:String} 
 				AND timestamp >= {startDate:DateTime}
@@ -703,11 +770,24 @@ export const monitorsRouter = {
 				format: "JSON",
 			});
 			const eventsJson = await eventsQuery.json<any>();
-			const events = eventsJson.data as EventTimelineResult[];
+			const events = eventsJson.data as {
+				timestamp: string;
+				latency: number;
+				dnsLookup: number | null;
+				tcpConnect: number | null;
+				tlsHandshake: number | null;
+				ttfb: number | null;
+				transfer: number | null;
+			}[];
 
 			return events.map((e) => ({
 				timestamp: new Date(e.timestamp).toISOString(),
-				latency: e.latency,
+				latency: Number(e.latency) || 0,
+				dnsLookup: e.dnsLookup != null ? Number(e.dnsLookup) : undefined,
+				tcpConnect: e.tcpConnect != null ? Number(e.tcpConnect) : undefined,
+				tlsHandshake: e.tlsHandshake != null ? Number(e.tlsHandshake) : undefined,
+				ttfb: e.ttfb != null ? Number(e.ttfb) : undefined,
+				transfer: e.transfer != null ? Number(e.transfer) : undefined,
 			}));
 		}),
 
@@ -750,7 +830,7 @@ export const monitorsRouter = {
 						SELECT status, timestamp 
 						FROM uptimekit.monitor_changes
 						WHERE monitorId = {monitorId:String}
-						${startDate ? "AND timestamp >= {startDate:DateTime}" : ""}
+						${startDate ? "AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)" : ""}
 						ORDER BY timestamp ASC
 					`,
 					query_params: queryParams,
@@ -771,7 +851,7 @@ export const monitorsRouter = {
 						query: `
 							SELECT status, timestamp
 							FROM uptimekit.monitor_changes
-							WHERE monitorId = {monitorId:String} AND timestamp < {startDate:DateTime}
+							WHERE monitorId = {monitorId:String} AND timestamp < toDateTime64({startDate:UInt64} / 1000, 3)
 							ORDER BY timestamp DESC
 							LIMIT 1
 						`,
@@ -789,10 +869,15 @@ export const monitorsRouter = {
 				}
 
 				const NOW = new Date().getTime();
-				const START = startDate
-					? startDate.getTime()
-					: changes[0]?.timestamp.getTime() || NOW;
-				const TOTAL_TIME = Math.max(1, NOW - START); // avoid div by 0
+				const monitorCreatedAt = mon.createdAt.getTime();
+
+				// Effective start is the LATER of: requested startDate or monitor creation date
+				// This prevents counting time before the monitor even existed
+				const effectiveStart = startDate
+					? Math.max(startDate.getTime(), monitorCreatedAt)
+					: (changes[0]?.timestamp.getTime() || monitorCreatedAt);
+
+				const TOTAL_TIME = Math.max(1, NOW - effectiveStart); // avoid div by 0
 
 				let downtimeMs = 0;
 				let incidentCount = 0;
@@ -800,7 +885,7 @@ export const monitorsRouter = {
 				let incidentSumMs = 0;
 
 				let currentStatus = initialStatus;
-				let lastTime = START;
+				let lastTime = effectiveStart;
 
 				// Merge initial state into timeline for processing
 				// If the first change is AFTER start, we have a gap from START to first change
@@ -856,7 +941,7 @@ export const monitorsRouter = {
 
 				// Re-simulate with robust tracking
 				let simStatus = initialStatus;
-				const simTime = START;
+				const simTime = effectiveStart;
 
 				// If starting in down state, we are in an incident (from before start)
 				if (simStatus !== "up") {
@@ -928,5 +1013,74 @@ export const monitorsRouter = {
 				year: await calculateStats(year),
 				all: await calculateStats(null),
 			};
+		}),
+
+	getBatchLatencySparkline: protectedProcedure
+		.input(
+			z.object({
+				monitorIds: z.array(z.string()),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const { session } = context.session;
+
+			if (input.monitorIds.length === 0) {
+				return {};
+			}
+
+			// Verify access to all requested monitors
+			const monitors = await db
+				.select({ id: monitor.id })
+				.from(monitor)
+				.where(
+					and(
+						sql`${monitor.id} IN ${input.monitorIds}`,
+						eq(monitor.organizationId, session.activeOrganizationId!),
+					),
+				);
+
+			const accessibleIds = new Set(monitors.map((m) => m.id));
+			const filteredIds = input.monitorIds.filter((id) => accessibleIds.has(id));
+
+			if (filteredIds.length === 0) {
+				return {};
+			}
+
+			// Fetch last 20 latency values for each monitor in a single query
+			const query = `
+				SELECT monitorId, latency, timestamp
+				FROM (
+					SELECT monitorId, latency, timestamp,
+						ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
+					FROM uptimekit.monitor_events
+					WHERE monitorId IN ({ids:Array(String)})
+				) WHERE rn <= 20
+				ORDER BY monitorId, timestamp ASC
+			`;
+
+			const result = await clickhouse.query({
+				query,
+				query_params: { ids: filteredIds },
+				format: "JSON",
+			});
+			const json = await result.json<any>();
+			const rows = json.data as {
+				monitorId: string;
+				latency: number;
+				timestamp: string;
+			}[];
+
+			// Group by monitorId
+			const sparklineData: Record<string, number[]> = {};
+			for (const row of rows) {
+				let arr = sparklineData[row.monitorId];
+				if (!arr) {
+					arr = [];
+					sparklineData[row.monitorId] = arr;
+				}
+				arr.push(Number(row.latency) || 0);
+			}
+
+			return sparklineData;
 		}),
 };

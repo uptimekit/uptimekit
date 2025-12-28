@@ -43,9 +43,9 @@ function fillMissingDays(
 	if (endDate) {
 		now = new Date(endDate);
 	} else {
-		const local = new Date();
+		const today = new Date();
 		now = new Date(
-			Date.UTC(local.getFullYear(), local.getMonth(), local.getDate()),
+			Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
 		);
 	}
 
@@ -252,14 +252,14 @@ export default async function StatusPage() {
 			>();
 
 			for (const stat of hourlyStats) {
-				// stat.date is "YYYY-MM-DD HH" (UTC implied from DB storage usually)
-				// We append ":00:00Z" to parse it as UTC
-				const dateObj = new Date(`${stat.date_hour}:00:00Z`);
+				// stat.date_hour is "YYYY-MM-DD HH" (UTC implied from DB storage usually)
+				// We append ":00:00Z" to parse it as UTC, replacing space with T for valid ISO format
+				const dateObj = new Date(`${stat.date_hour.replace(" ", "T")}:00:00Z`);
 
-				// Get Local YYYY-MM-DD
-				const year = dateObj.getFullYear();
-				const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-				const day = String(dateObj.getDate()).padStart(2, "0");
+				// Get UTC YYYY-MM-DD to avoid server timezone offsets
+				const year = dateObj.getUTCFullYear();
+				const month = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+				const day = String(dateObj.getUTCDate()).padStart(2, "0");
 				const localDateStr = `${year}-${month}-${day}`;
 
 				if (!dailyStatsMap.has(localDateStr)) {
@@ -299,8 +299,21 @@ export default async function StatusPage() {
 			);
 
 			if (activeReport) {
-				// Regardless of severity, map to major_outage (Outage)
-				currentStatus = "major_outage";
+				// Map severity to status
+				switch (activeReport.severity) {
+					case "minor":
+					case "degraded":
+						currentStatus = "degraded";
+						break;
+					case "major":
+						currentStatus = "partial_outage";
+						break;
+					case "critical":
+						currentStatus = "major_outage";
+						break;
+					default:
+						currentStatus = "major_outage";
+				}
 			}
 
 			// Check automated heartbeat status if no manual incident is active
@@ -393,9 +406,26 @@ export default async function StatusPage() {
 					const lossRatio = Math.min(totalDurationMs / totalDayMs, 1);
 					const newUptime = (1 - lossRatio) * 100;
 
+					// Determine worst severity for the day
+					let worstSeverityStatus: StatusType = "operational";
+					// Priority: critical (major_outage) > major (partial_outage) > minor/degraded (degraded)
+
+					for (const r of relevantReports) {
+						let currentStatusForReport: StatusType = "operational";
+						if (r.severity === "critical") currentStatusForReport = "major_outage";
+						else if (r.severity === "major") currentStatusForReport = "partial_outage";
+						else if (r.severity === "minor" || r.severity === "degraded") currentStatusForReport = "degraded";
+						else currentStatusForReport = "major_outage"; // fallback
+
+						// Promote if worse
+						if (worstSeverityStatus === "operational") worstSeverityStatus = currentStatusForReport;
+						else if (worstSeverityStatus === "degraded" && (currentStatusForReport === "partial_outage" || currentStatusForReport === "major_outage")) worstSeverityStatus = currentStatusForReport;
+						else if (worstSeverityStatus === "partial_outage" && currentStatusForReport === "major_outage") worstSeverityStatus = currentStatusForReport;
+					}
+
 					return {
 						...day,
-						status: "major_outage", // Always "outage"
+						status: worstSeverityStatus,
 						uptime: newUptime,
 						duration: formatDuration(totalDurationMs),
 					};
@@ -412,7 +442,7 @@ export default async function StatusPage() {
 			const avgUptime =
 				knownDays.length > 0
 					? knownDays.reduce((acc, curr) => acc + curr.uptime, 0) /
-						knownDays.length
+					knownDays.length
 					: 100;
 
 			return {

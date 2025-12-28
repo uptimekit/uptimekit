@@ -6,6 +6,9 @@ import {
 	getMonitorStatus,
 	getStatusPageByDomain,
 } from "@/lib/db-queries";
+import { createLogger } from "@uptimekit/api/lib/logger";
+
+const logger = createLogger("STATUS-PAGE");
 
 export const runtime = "nodejs";
 
@@ -161,7 +164,7 @@ export async function GET(request: Request) {
 			logoSrc = `data:image/svg+xml;base64,${base64}`;
 		}
 	} catch (e) {
-		console.error("Failed to fetch logo for OG image", e);
+		logger.error("Failed to fetch logo for OG image", e);
 	}
 
 	return new ImageResponse(

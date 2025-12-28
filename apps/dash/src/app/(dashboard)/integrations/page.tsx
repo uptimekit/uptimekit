@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { discordIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/discord-meta";
 import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/telegram-meta";
-import { webhookIntegration } from "@uptimekit/api/pkg/integrations/definitions/webhook";
+import { webhookIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/webhook-meta";
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
 import { Settings2, Webhook } from "lucide-react";
 import { useState } from "react";
@@ -53,7 +53,10 @@ export default function IntegrationsPage() {
 
 	// Removed the require block as webhookIntegration is now imported at the top.
 	const frontendRegistry = {
-		webhook: webhookIntegration,
+		webhook: {
+			...webhookIntegrationMeta,
+			handler: async () => { },
+		} as IntegrationDefinition,
 		discord: {
 			...discordIntegrationMeta,
 			handler: async () => { },

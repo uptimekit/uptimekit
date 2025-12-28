@@ -1,6 +1,9 @@
 import { db } from "@uptimekit/db";
 import { organization } from "@uptimekit/db/schema/auth";
 import { eq } from "drizzle-orm";
+import { createLogger } from "./logger";
+
+const logger = createLogger("API");
 
 export const MAX_MONITORS = 3;
 export const MAX_STATUS_PAGES = 1;
@@ -30,7 +33,7 @@ export const hasActiveSubscription = async (organizationId: string) => {
 
 		return org?.plan === "pro";
 	} catch (error) {
-		console.error("Failed to check subscription:", error);
+		logger.error("Failed to check subscription:", error);
 		return false;
 	}
 };
