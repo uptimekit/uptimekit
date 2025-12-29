@@ -3,6 +3,9 @@ import * as schema from "@uptimekit/db/schema/auth";
 import { redirect } from "next/navigation";
 import SignInForm from "@/components/auth/sign-in-form";
 
+// Disable prerendering - this page needs database access at runtime
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
 	const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 

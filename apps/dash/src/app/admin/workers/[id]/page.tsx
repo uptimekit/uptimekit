@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
+// Disable prerendering - this page needs database access at runtime
+export const dynamic = "force-dynamic";
+
 async function getWorker(id: string) {
 	const w = await db
 		.select({

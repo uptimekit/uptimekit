@@ -4,6 +4,9 @@ import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import InviteClient from "./invite-client";
 
+// Disable prerendering - this page needs database access at runtime
+export const dynamic = "force-dynamic";
+
 export default async function InvitePage({
 	params,
 }: {

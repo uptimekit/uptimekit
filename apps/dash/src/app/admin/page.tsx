@@ -11,6 +11,9 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 
+// Disable prerendering - this page needs database access at runtime
+export const dynamic = "force-dynamic";
+
 async function getStats() {
 	const [userCount] = await db.select({ count: count() }).from(user);
 	const [orgCount] = await db.select({ count: count() }).from(organization);
