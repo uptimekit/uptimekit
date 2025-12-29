@@ -12,8 +12,8 @@ env:
   IMAGE_BASE: ghcr.io/${{ github.repository }}
 
 jobs:
-  detect-releases:
-    name: Detect Released Packages
+  detect-packages:
+    name: Detect All Docker Packages
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
@@ -23,83 +23,62 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
-      - name: Detect Changed Packages
+      - name: Find All Packages with Dockerfiles
         id: detect
         run: |
-          # Get changed package.json files in the last commit (the merge commit)
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "package.json" || true)
-          
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No package.json changes detected"
-            echo "packages=[]" >> $GITHUB_OUTPUT
-            echo "has_releases=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          
           PACKAGES="[]"
           
-          for PKG_FILE in $CHANGED_FILES; do
-            # Only process apps and packages directories
-            if [[ "$PKG_FILE" == apps/* ]] || [[ "$PKG_FILE" == packages/* ]]; then
-              DIR=$(dirname "$PKG_FILE")
+          # Find all package.json files in apps and packages directories
+          PACKAGE_JSONS=$(find apps packages -maxdepth 2 -name "package.json" 2>/dev/null || true)
+          
+          for PKG_FILE in $PACKAGE_JSONS; do
+            DIR=$(dirname "$PKG_FILE")
+            
+            # Only include packages that have a Dockerfile
+            if [ -f "$DIR/Dockerfile" ]; then
+              NAME=$(node -p "require('./$PKG_FILE').name" 2>/dev/null || echo "")
+              VERSION=$(node -p "require('./$PKG_FILE').version" 2>/dev/null || echo "")
               
-              if [ -f "$PKG_FILE" ]; then
-                NAME=$(node -p "require('./$PKG_FILE').name" 2>/dev/null || echo "")
-                VERSION=$(node -p "require('./$PKG_FILE').version" 2>/dev/null || echo "")
+              if [ -n "$NAME" ] && [ -n "$VERSION" ]; then
+                ITEM=$(jq -n \
+                  --arg name "$NAME" \
+                  --arg version "$VERSION" \
+                  --arg dir "$DIR" \
+                  '{name: $name, version: $version, dir: $dir}')
                 
-                if [ -n "$NAME" ] && [ -n "$VERSION" ]; then
-                  # Check if this package has a Dockerfile (apps only)
-                  HAS_DOCKERFILE="false"
-                  if [ -f "$DIR/Dockerfile" ]; then
-                    HAS_DOCKERFILE="true"
-                  fi
-                  
-                  ITEM=$(jq -n \
-                    --arg name "$NAME" \
-                    --arg version "$VERSION" \
-                    --arg dir "$DIR" \
-                    --arg dockerfile "$HAS_DOCKERFILE" \
-                    '{name: $name, version: $version, dir: $dir, hasDockerfile: ($dockerfile == "true")}')
-                  
-                  PACKAGES=$(echo "$PACKAGES" | jq --argjson item "$ITEM" '. + [$item]')
-                  echo "Detected: $NAME@$VERSION (dir: $DIR, dockerfile: $HAS_DOCKERFILE)"
-                fi
+                PACKAGES=$(echo "$PACKAGES" | jq -c --argjson item "$ITEM" '. + [$item]')
+                echo "Found: $NAME@$VERSION (dir: $DIR)"
               fi
             fi
           done
           
-          # Filter to only packages with Dockerfiles for the docker publishing step
-          DOCKER_PACKAGES=$(echo "$PACKAGES" | jq -c '[.[] | select(.hasDockerfile == true)]')
-          
-          # Use heredoc to safely output JSON (handles special characters)
+          # Use heredoc to safely output JSON
           echo "packages<<EOF" >> $GITHUB_OUTPUT
-          echo "$DOCKER_PACKAGES" >> $GITHUB_OUTPUT
+          echo "$PACKAGES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           
-          if [ "$DOCKER_PACKAGES" != "[]" ]; then
+          if [ "$PACKAGES" != "[]" ]; then
             echo "has_releases=true" >> $GITHUB_OUTPUT
           else
             echo "has_releases=false" >> $GITHUB_OUTPUT
           fi
           
-          echo "Final packages for Docker build:"
-          echo "$DOCKER_PACKAGES" | jq .
+          echo "Packages for Docker build:"
+          echo "$PACKAGES" | jq .
 
   publish-docker:
     name: Publish Docker Images
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: detect-releases
-    if: needs.detect-releases.outputs.has_releases == 'true'
+    needs: detect-packages
+    if: needs.detect-packages.outputs.has_releases == 'true'
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.detect-releases.outputs.packages) }}
+        package: ${{ fromJson(needs.detect-packages.outputs.packages) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -165,8 +144,8 @@ jobs:
   create-git-tags:
     name: Create Git Tags
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: [detect-releases, publish-docker]
-    if: needs.detect-releases.outputs.has_releases == 'true'
+    needs: [detect-packages, publish-docker]
+    if: needs.detect-packages.outputs.has_releases == 'true'
     permissions:
       contents: write
     steps:
@@ -182,7 +161,7 @@ jobs:
 
       - name: Create Tags
         run: |
-          PACKAGES='${{ needs.detect-releases.outputs.packages }}'
+          PACKAGES='${{ needs.detect-packages.outputs.packages }}'
           
           echo "$PACKAGES" | jq -c '.[]' | while read -r pkg; do
             NAME=$(echo "$pkg" | jq -r '.name')
@@ -207,8 +186,8 @@ jobs:
 
   sync-development:
     name: Sync Release to Development
-    needs: detect-releases
-    if: needs.detect-releases.outputs.has_releases == 'true'
+    needs: detect-packages
+    if: needs.detect-packages.outputs.has_releases == 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
