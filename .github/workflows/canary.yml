@@ -75,10 +75,10 @@ jobs:
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
             MATRIX_JSON="[]"
-            # Inspect valid apps
-            APPS=$(find apps -maxdepth 2 -name "package.json")
+            # Inspect valid apps and packages with Dockerfiles
+            PACKAGE_JSONS=$(find apps packages -maxdepth 2 -name "package.json" 2>/dev/null || true)
             
-            for file in $APPS; do
+            for file in $PACKAGE_JSONS; do
                 DIR=$(dirname "$file")
                 if [ -f "$DIR/Dockerfile" ]; then
                     NAME=$(node -p "require('./$file').name")
@@ -96,12 +96,15 @@ jobs:
                             --arg app_name_clean "$APP_NAME_CLEAN" \
                             '{name: $name, version: $version, app_dir: $dir, app_name_clean: $app_name_clean}')
                         
-                        MATRIX_JSON=$(echo "$MATRIX_JSON" | jq ". + [$ITEM_JSON]")
+                        MATRIX_JSON=$(echo "$MATRIX_JSON" | jq -c ". + [$ITEM_JSON]")
                     fi
                 fi
             done
             
-            echo "matrix=$(echo "$MATRIX_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+            # Use heredoc to safely output JSON (handles special characters)
+            echo "matrix<<EOF" >> $GITHUB_OUTPUT
+            echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
 
   publish-docker:
     needs: calculate-version
