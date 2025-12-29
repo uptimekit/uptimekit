@@ -72,9 +72,12 @@ jobs:
           done
           
           # Filter to only packages with Dockerfiles for the docker publishing step
-          DOCKER_PACKAGES=$(echo "$PACKAGES" | jq '[.[] | select(.hasDockerfile == true)]')
+          DOCKER_PACKAGES=$(echo "$PACKAGES" | jq -c '[.[] | select(.hasDockerfile == true)]')
           
-          echo "packages=$DOCKER_PACKAGES" >> $GITHUB_OUTPUT
+          # Use heredoc to safely output JSON (handles special characters)
+          echo "packages<<EOF" >> $GITHUB_OUTPUT
+          echo "$DOCKER_PACKAGES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
           if [ "$DOCKER_PACKAGES" != "[]" ]; then
             echo "has_releases=true" >> $GITHUB_OUTPUT
