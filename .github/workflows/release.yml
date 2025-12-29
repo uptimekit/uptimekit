@@ -9,91 +9,94 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 env:
   REGISTRY: ghcr.io
-  # We'll use the repository owner/name as the base image path.
-  # Adjust if you want a specific org or repo name format.
   IMAGE_BASE: ghcr.io/${{ github.repository }}
 
 jobs:
-  release:
-    name: Release Changeset
+  detect-releases:
+    name: Detect Released Packages
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     outputs:
-      published: ${{ steps.changesets.outputs.published }}
-      publishedPackages: ${{ steps.combine_packages.outputs.result }}
+      packages: ${{ steps.detect.outputs.packages }}
+      has_releases: ${{ steps.detect.outputs.has_releases }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
+          fetch-depth: 2
 
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Create Release Pull Request
-        id: changesets
-        uses: changesets/action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # This runs `pnpm run release` which maps to `changeset publish`
-          publish: pnpm run release
-
-      - name: Detect Private Package Changes
-        id: private_changes
+      - name: Detect Changed Packages
+        id: detect
         run: |
-          # Fetch depth needed for diff
-          git fetch --depth=2 origin ${{ github.ref_name }}
-          NODE_OUTPUT=$(node scripts/detect-changed-apps.cjs)
-          echo "detected=$NODE_OUTPUT" >> $GITHUB_OUTPUT
-
-      - name: Combine Packages
-        id: combine_packages
-        run: |
-          PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
-          DETECTED='${{ steps.private_changes.outputs.detected }}'
-          HAS_CHANGESETS='${{ steps.changesets.outputs.hasChangesets }}'
-          IS_PUBLISHED='${{ steps.changesets.outputs.published }}'
-
-          if [ "$HAS_CHANGESETS" == "true" ] && [ "$IS_PUBLISHED" != "true" ]; then
-            echo "Versioning phase detected (PR creation). Skipping docker build."
-            echo "result=[]" >> $GITHUB_OUTPUT
+          # Get changed package.json files in the last commit (the merge commit)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "package.json" || true)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No package.json changes detected"
+            echo "packages=[]" >> $GITHUB_OUTPUT
+            echo "has_releases=false" >> $GITHUB_OUTPUT
             exit 0
           fi
           
-          # Handle empty/null inputs
-          if [ -z "$PUBLISHED" ] || [ "$PUBLISHED" == "null" ]; then PUBLISHED="[]"; fi
-          if [ -z "$DETECTED" ] || [ "$DETECTED" == "null" ]; then DETECTED="[]"; fi
+          PACKAGES="[]"
           
-          # Combine arrays using jq (available on ubuntu-latest)
-          # We prefer detected (which grabs generic package.json changes)
-          # but we merge them just in case. 
-          # Note: detect-changed-apps.js returns {name, version}, same as changesets
+          for PKG_FILE in $CHANGED_FILES; do
+            # Only process apps and packages directories
+            if [[ "$PKG_FILE" == apps/* ]] || [[ "$PKG_FILE" == packages/* ]]; then
+              DIR=$(dirname "$PKG_FILE")
+              
+              if [ -f "$PKG_FILE" ]; then
+                NAME=$(node -p "require('./$PKG_FILE').name" 2>/dev/null || echo "")
+                VERSION=$(node -p "require('./$PKG_FILE').version" 2>/dev/null || echo "")
+                
+                if [ -n "$NAME" ] && [ -n "$VERSION" ]; then
+                  # Check if this package has a Dockerfile (apps only)
+                  HAS_DOCKERFILE="false"
+                  if [ -f "$DIR/Dockerfile" ]; then
+                    HAS_DOCKERFILE="true"
+                  fi
+                  
+                  ITEM=$(jq -n \
+                    --arg name "$NAME" \
+                    --arg version "$VERSION" \
+                    --arg dir "$DIR" \
+                    --arg dockerfile "$HAS_DOCKERFILE" \
+                    '{name: $name, version: $version, dir: $dir, hasDockerfile: ($dockerfile == "true")}')
+                  
+                  PACKAGES=$(echo "$PACKAGES" | jq --argjson item "$ITEM" '. + [$item]')
+                  echo "Detected: $NAME@$VERSION (dir: $DIR, dockerfile: $HAS_DOCKERFILE)"
+                fi
+              fi
+            fi
+          done
           
-          COMBINED=$(echo "$PUBLISHED" | jq --argjson detected "$DETECTED" -c '. + $detected | unique_by(.name)')
+          # Filter to only packages with Dockerfiles for the docker publishing step
+          DOCKER_PACKAGES=$(echo "$PACKAGES" | jq '[.[] | select(.hasDockerfile == true)]')
           
-          echo "result=$COMBINED" >> $GITHUB_OUTPUT
+          echo "packages=$DOCKER_PACKAGES" >> $GITHUB_OUTPUT
+          
+          if [ "$DOCKER_PACKAGES" != "[]" ]; then
+            echo "has_releases=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_releases=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Final packages for Docker build:"
+          echo "$DOCKER_PACKAGES" | jq .
 
   publish-docker:
     name: Publish Docker Images
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: release
-    if: needs.release.outputs.publishedPackages != '[]' && needs.release.outputs.publishedPackages != ''
+    needs: detect-releases
+    if: needs.detect-releases.outputs.has_releases == 'true'
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.release.outputs.publishedPackages) }}
+        package: ${{ fromJson(needs.detect-releases.outputs.packages) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -101,39 +104,22 @@ jobs:
       - name: Prepare Docker Metadata
         id: prep
         run: |
-            PACKAGE_NAME="${{ matrix.package.name }}"
-            # Remove scope if present (e.g. @uptimekit/dash -> dash)
-            APP_NAME=${PACKAGE_NAME#@*/}
-            APP_NAME=${APP_NAME#*/}
-            
-            # Construct image name
-            IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/${APP_NAME}
-            # Lowercase just in case
-            IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
-            
-            echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-            echo "app_name_clean=$APP_NAME" >> $GITHUB_OUTPUT
-            
-            # Find directory - assumes standard structure apps/[name]
-            # We can try to find it via package.json location but that info isn't in matrix.package
-            # So we rely on convention or search
-            APP_DIR="apps/$APP_NAME"
-            if [ ! -d "$APP_DIR" ]; then
-                echo "Directory $APP_DIR does not exist, searching..."
-                APP_DIR=$(find apps -name "package.json" -print0 | xargs -0 grep -l "\"name\": \"$PACKAGE_NAME\"" | xargs dirname)
-            fi
-            
-            echo "app_dir=$APP_DIR" >> $GITHUB_OUTPUT
-
-            if [ -z "$APP_DIR" ] || [ ! -f "$APP_DIR/Dockerfile" ]; then
-                echo "skip=true" >> $GITHUB_OUTPUT
-            else
-                echo "skip=false" >> $GITHUB_OUTPUT
-            fi
+          PACKAGE_NAME="${{ matrix.package.name }}"
+          # Remove scope if present (e.g. @uptimekit/dash -> dash)
+          APP_NAME=${PACKAGE_NAME#@*/}
+          APP_NAME=${APP_NAME#*/}
+          
+          # Construct image name
+          IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/${APP_NAME}
+          # Lowercase just in case
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "app_name_clean=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "app_dir=${{ matrix.package.dir }}" >> $GITHUB_OUTPUT
 
       - name: Docker meta
         id: meta
-        if: steps.prep.outputs.skip != 'true'
         uses: docker/metadata-action@v5
         with:
           images: |
@@ -143,17 +129,15 @@ jobs:
             type=semver,pattern={{version}},value=${{ matrix.package.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ matrix.package.version }}
             type=semver,pattern={{major}},value=${{ matrix.package.version }}
+            type=raw,value=latest
 
       - name: Set up QEMU
-        if: steps.prep.outputs.skip != 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Setup Blacksmith Builder
-        if: steps.prep.outputs.skip != 'true'
         uses: useblacksmith/setup-docker-builder@v1
 
       - name: Docker Login to GHCR
-        if: steps.prep.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -161,14 +145,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker Login to Docker Hub
-        if: steps.prep.outputs.skip != 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Docker Image Publish
-        if: steps.prep.outputs.skip != 'true'
         uses: useblacksmith/build-push-action@v2
         with:
           context: .
@@ -177,10 +159,53 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  create-git-tags:
+    name: Create Git Tags
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    needs: [detect-releases, publish-docker]
+    if: needs.detect-releases.outputs.has_releases == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Create Tags
+        run: |
+          PACKAGES='${{ needs.detect-releases.outputs.packages }}'
+          
+          echo "$PACKAGES" | jq -c '.[]' | while read -r pkg; do
+            NAME=$(echo "$pkg" | jq -r '.name')
+            VERSION=$(echo "$pkg" | jq -r '.version')
+            
+            # Create tag name (e.g., @uptimekit/dash@0.0.8 -> dash-v0.0.8)
+            APP_NAME=${NAME#@*/}
+            APP_NAME=${APP_NAME#*/}
+            TAG_NAME="${APP_NAME}-v${VERSION}"
+            
+            echo "Creating tag: $TAG_NAME"
+            
+            # Check if tag already exists
+            if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+              echo "Tag $TAG_NAME already exists, skipping..."
+            else
+              git tag -a "$TAG_NAME" -m "Release $NAME@$VERSION"
+              git push origin "$TAG_NAME"
+              echo "Created and pushed tag: $TAG_NAME"
+            fi
+          done
+
   sync-development:
     name: Sync Release to Development
-    needs: release
-    if: needs.release.outputs.publishedPackages != '[]' && needs.release.outputs.publishedPackages != ''
+    needs: detect-releases
+    if: needs.detect-releases.outputs.has_releases == 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
@@ -200,5 +225,5 @@ jobs:
       - name: Merge Release into Development
         run: |
           git fetch origin release
-          git merge origin/release
+          git merge origin/release --no-edit
           git push origin development

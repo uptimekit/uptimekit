@@ -9,6 +9,9 @@ import {
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
 
+// Disable prerendering - this layout needs auth at runtime
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
 	children,
 }: {
