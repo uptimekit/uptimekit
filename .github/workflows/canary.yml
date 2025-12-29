@@ -102,9 +102,8 @@ jobs:
             done
             
             # Use heredoc to safely output JSON (handles special characters)
-            FINAL_MATRIX=$(echo "$MATRIX_JSON" | jq -c .)
             echo "matrix<<EOF" >> $GITHUB_OUTPUT
-            echo "$FINAL_MATRIX" >> $GITHUB_OUTPUT
+            echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
 
   publish-docker:
