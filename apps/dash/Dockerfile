@@ -31,6 +31,8 @@ COPY --from=builder   --chown=nextjs:nodejs /app/packages/db/src/migrate.cjs ./m
 COPY --from=installer --chown=nextjs:nodejs /app/apps/dash/.next/standalone ./
 COPY --from=installer --chown=nextjs:nodejs /app/apps/dash/.next/static ./apps/dash/.next/static
 
+COPY --from=installer --chown=nextjs:nodejs /app/apps/dash/public ./apps/dash/public
+
 COPY --from=installer --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
