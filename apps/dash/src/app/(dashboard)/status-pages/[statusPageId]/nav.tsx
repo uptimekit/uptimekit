@@ -67,7 +67,7 @@ export function StatusPageNav({
 					return (
 						<span
 							key={item.href}
-							className="relative cursor-not-allowed pb-3 font-medium text-muted-foreground/50 text-sm"
+							className="relative cursor-not-allowed px-1 pb-3 font-medium text-muted-foreground/50 text-sm"
 						>
 							{item.title}
 						</span>
@@ -79,7 +79,7 @@ export function StatusPageNav({
 						key={item.href}
 						href={href as any}
 						className={cn(
-							"relative pb-3 font-medium text-sm transition-colors hover:text-foreground",
+							"relative px-1 pb-3 font-medium text-sm transition-colors hover:text-foreground",
 							isActive
 								? "text-foreground after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-primary"
 								: "text-muted-foreground",
