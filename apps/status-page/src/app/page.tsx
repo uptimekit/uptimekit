@@ -37,6 +37,7 @@ function fillMissingDays(
 	}[],
 	days = 90,
 	endDate?: string,
+	intervalSeconds = 60,
 ): UptimeDay[] {
 	const result: UptimeDay[] = [];
 	let now: Date;
@@ -60,21 +61,27 @@ function fillMissingDays(
 		if (stat) {
 			const uptime =
 				stat.total_checks > 0 ? (stat.up_checks / stat.total_checks) * 100 : 0;
+			// Calculate downtime in milliseconds based on failed checks
+			const failedChecks = stat.total_checks - stat.up_checks;
+			const downtimeMs = failedChecks * intervalSeconds * 1000;
 			result.push({
 				date: dateStr,
 				status: calculateDailyStatus(stat.total_checks, stat.up_checks),
 				uptime: uptime,
+				downtimeMs: downtimeMs,
 			});
 		} else {
 			result.push({
 				date: dateStr,
 				status: "unknown",
 				uptime: 0,
+				downtimeMs: 0,
 			});
 		}
 	}
 	return result;
 }
+
 
 export async function generateMetadata() {
 	const headersList = await headers();
@@ -331,7 +338,20 @@ export default async function StatusPage() {
 			// limiting to 90 days.
 			// We don't need to force startDate anymore because dailyStats now contains "Today" (local) if data exists.
 			// However, ensuring alignment: fillMissingDays defaults 'now' to Local Today via new Date().
-			let history = fillMissingDays(dailyStats, 90);
+			// Pass the monitor's interval to calculate accurate downtime
+			const monitorInterval = pm.monitor.interval || 60; // Default 60 seconds
+			const incidentPendingDuration = pm.monitor.incidentPendingDuration || 0; // In seconds
+			const incidentThresholdMs = incidentPendingDuration * 1000;
+			
+			let history = fillMissingDays(dailyStats, 90, undefined, monitorInterval);
+			
+			// Filter out short downtimes that don't exceed the incident threshold
+			// This respects the monitor's setting - if a monitor requires 3 minutes of failure
+			// to trigger an incident, we shouldn't show single-check failures as downtime
+			history = history.map((day) => ({
+				...day,
+				downtimeMs: (day.downtimeMs || 0) > incidentThresholdMs ? day.downtimeMs : 0,
+			}));
 
 			// Overlay Manual Events (Maintenance & Incidents)
 			history = history.map((day) => {
@@ -439,10 +459,12 @@ export default async function StatusPage() {
 			const knownDays = history.filter(
 				(d) => d.status !== "unknown" && d.status !== "maintenance",
 			);
+			
+			// Calculate average uptime for the period (for display next to monitor name)
 			const avgUptime =
 				knownDays.length > 0
 					? knownDays.reduce((acc, curr) => acc + curr.uptime, 0) /
-					knownDays.length
+					  knownDays.length
 					: 100;
 
 			return {
@@ -451,6 +473,7 @@ export default async function StatusPage() {
 				avgUptime,
 				currentStatus,
 				group: pm.group,
+				displayStyle: pm.style || "history", // 'history' or 'status'
 			};
 		}),
 	);
@@ -550,6 +573,7 @@ export default async function StatusPage() {
 											status={monitor.currentStatus}
 											uptimePercentage={monitor.avgUptime}
 											history={monitor.history}
+											displayStyle={monitor.displayStyle as any}
 										/>
 									))}
 								</div>
