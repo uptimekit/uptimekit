@@ -1,8 +1,10 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { orpc } from "@/utils/orpc";
 
 type NavItem = {
 	title: string;
@@ -49,6 +51,8 @@ export function StatusPageNav({
 	...props
 }: StatusPageNavProps) {
 	const pathname = usePathname();
+
+	useQuery(orpc.statusPages.get.queryOptions({ input: { id: statusPageId } }));
 
 	return (
 		<nav
