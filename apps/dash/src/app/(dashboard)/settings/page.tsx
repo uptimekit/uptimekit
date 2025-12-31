@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageNav } from "@/components/ui/page-nav";
 import { authClient } from "@/lib/auth-client";
 
 const formSchema = z.object({
@@ -128,31 +128,16 @@ export default function SettingsPage() {
 					</p>
 				</div>
 
-				<Tabs defaultValue="general" className="w-full gap-6">
-					<TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-6 rounded-none border-border/40 border-b bg-transparent p-0 px-1 pt-2">
-						<TabsTrigger
-							value="general"
-							className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-						>
-							General
-						</TabsTrigger>
-						<TabsTrigger
-							value="team"
-							className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-						>
-							Team
-						</TabsTrigger>
+				<PageNav defaultValue="general">
+					<PageNav.List>
+						<PageNav.Trigger value="general">General</PageNav.Trigger>
+						<PageNav.Trigger value="team">Team</PageNav.Trigger>
 						{!isSelfHosted && (
-							<TabsTrigger
-								value="billing"
-								className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-							>
-								Billing
-							</TabsTrigger>
+							<PageNav.Trigger value="billing">Billing</PageNav.Trigger>
 						)}
-					</TabsList>
+					</PageNav.List>
 
-					<TabsContent value="general" className="mt-6">
+					<PageNav.Content value="general">
 						<Form {...form}>
 							<form
 								onSubmit={form.handleSubmit(onSubmit)}
@@ -267,18 +252,18 @@ export default function SettingsPage() {
 								</div>
 							</form>
 						</Form>
-					</TabsContent>
+					</PageNav.Content>
 
-					<TabsContent value="team" className="mt-6">
+					<PageNav.Content value="team">
 						<TeamSettings />
-					</TabsContent>
+					</PageNav.Content>
 
 					{!isSelfHosted && (
-						<TabsContent value="billing" className="mt-6">
+						<PageNav.Content value="billing">
 							<BillingSettings />
-						</TabsContent>
+						</PageNav.Content>
 					)}
-				</Tabs>
+				</PageNav>
 			</div>
 		</div>
 	);

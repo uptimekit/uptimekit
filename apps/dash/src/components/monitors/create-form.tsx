@@ -3,27 +3,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-	AQ,
-	AU,
-	BR,
-	DE,
-	EU,
-	FR,
-	GB,
-	IN,
-	JP,
-	SG,
-	US,
-} from "country-flag-icons/react/3x2";
-import {
 	Activity,
 	Braces,
 	Check,
 	ChevronRight,
 	ChevronsUpDown,
-	Folder,
 	Globe,
-	Network,
 	Plus,
 	Search,
 	Server,
@@ -48,7 +33,6 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandSeparator,
 } from "@/components/ui/command";
 import {
 	Form,
@@ -75,23 +59,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { getRegionInfo } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
-const REGION_MAPPING: Record<
-	string,
-	{ label: string; Flag: React.ElementType }
-> = {
-	global: { label: "Global", Flag: AQ },
-	"eu-general": { label: "Europe", Flag: EU },
-	"us-east": { label: "United States (East)", Flag: US },
-	"us-west": { label: "United States (West)", Flag: US },
-	"eu-central": { label: "Europe (Central)", Flag: DE },
-	"ap-southeast": { label: "Asia Pacific", Flag: SG },
-	"sa-east": { label: "South America", Flag: BR },
-	"oc-syd": { label: "Oceania", Flag: AU },
-	"uk-london": { label: "United Kingdom", Flag: GB },
-};
 
 // --- Configuration Registry ---
 
@@ -785,10 +756,7 @@ export function CreateMonitorForm({
 										</FormLabel>
 										<div className="grid grid-cols-2 gap-2">
 											{regions?.map((region) => {
-												const regionInfo = REGION_MAPPING[region] || {
-													label: region,
-													Flag: Globe,
-												};
+												const regionInfo = getRegionInfo(region);
 												const Flag = regionInfo.Flag;
 
 												return (

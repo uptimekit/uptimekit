@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageNav } from "@/components/ui/page-nav";
 import { setUserPassword } from "@/lib/actions/auth-actions";
 import { authClient } from "@/lib/auth-client";
 import { AvatarEditor } from "./avatar-editor";
@@ -113,32 +113,22 @@ export default function AccountPage() {
 					</p>
 				</div>
 
-				<Tabs defaultValue="general" className="w-full gap-6">
-					<TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-6 rounded-none border-border/40 border-b bg-transparent p-0 px-1 pt-2">
-						<TabsTrigger
-							value="general"
-							className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-						>
-							General
-						</TabsTrigger>
-						<TabsTrigger
-							value="security"
-							className="relative h-auto flex-none rounded-none border-0 bg-transparent px-0 pb-3 font-medium text-muted-foreground text-sm shadow-none transition-colors hover:text-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:h-[2px] data-[state=active]:after:w-full data-[state=active]:after:bg-primary"
-						>
-							Security
-						</TabsTrigger>
-					</TabsList>
+				<PageNav defaultValue="general">
+					<PageNav.List>
+						<PageNav.Trigger value="general">General</PageNav.Trigger>
+						<PageNav.Trigger value="security">Security</PageNav.Trigger>
+					</PageNav.List>
 
-					<TabsContent value="general" className="mt-6">
+					<PageNav.Content value="general">
 						<ProfileSettings session={session} />
-					</TabsContent>
+					</PageNav.Content>
 
-					<TabsContent value="security" className="mt-6 space-y-10">
+					<PageNav.Content value="security" className="space-y-10">
 						<TwoFactorSettings session={session} />
 						<Separator />
 						<PasswordSettings />
-					</TabsContent>
-				</Tabs>
+					</PageNav.Content>
+				</PageNav>
 			</div>
 		</div>
 	);

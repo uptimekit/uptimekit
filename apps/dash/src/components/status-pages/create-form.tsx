@@ -105,13 +105,13 @@ export function CreateStatusPageForm({
 								<FormItem>
 									<FormLabel>Slug</FormLabel>
 									<FormControl>
-										<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset sm:max-w-md">
-											<span className="flex select-none items-center pl-3 text-gray-500 sm:text-sm">
+										<div className="flex h-9 items-center rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+											<span className="shrink-0 select-none pl-3 text-sm text-muted-foreground">
 												uptimekit.com/s/
 											</span>
 											<Input
 												{...field}
-												className="block flex-1 border-0 bg-transparent py-1.5 pl-1 text-gray-900 shadow-none placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6"
+												className="h-full border-0 bg-transparent pl-1 shadow-none focus-visible:border-0 focus-visible:ring-0"
 												placeholder="my-page"
 											/>
 										</div>
