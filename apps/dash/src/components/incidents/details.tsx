@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -170,7 +171,7 @@ export function IncidentDetails({ id }: { id: string }) {
 			</div>
 
 			<div className="grid gap-6 md:grid-cols-3">
-				<div className="space-y-6 md:col-span-2">
+				<div className="min-w-[600px] space-y-6 md:col-span-2">
 					{/* Description */}
 					<Card>
 						<CardHeader>
@@ -241,12 +242,21 @@ export function IncidentDetails({ id }: { id: string }) {
 									)}
 									<div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
 									<div className="flex-1 space-y-1">
-										<p className="text-sm leading-none">{activity.message}</p>
+										<div className="flex items-center gap-1.5 text-sm leading-none">
+											{activity.user && (
+												<Avatar className="h-4 w-4">
+													<AvatarImage src={activity.user.image ?? undefined} alt={activity.user.name} />
+													<AvatarFallback className="text-[8px]">
+														{activity.user.name?.slice(0, 2).toUpperCase() ?? "??"}
+													</AvatarFallback>
+												</Avatar>
+											)}
+											<span>{activity.message}</span>
+										</div>
 										<p className="text-muted-foreground text-xs">
 											{formatDistanceToNow(new Date(activity.createdAt), {
 												addSuffix: true,
 											})}
-											{activity.user && ` · ${activity.user.name}`}
 										</p>
 									</div>
 								</div>
