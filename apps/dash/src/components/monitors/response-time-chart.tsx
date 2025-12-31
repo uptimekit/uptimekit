@@ -18,9 +18,9 @@ import {
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
-	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getRegionInfo } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
 
 interface ResponseTimeChartProps {
@@ -173,20 +173,34 @@ export function ResponseTimeChart({
 					</CardTitle>
 				</div>
 				<div className="flex items-center gap-2">
-					{locations.length > 0 && (
-						<Select value={location} onValueChange={setLocation}>
-							<SelectTrigger className="h-8 w-[130px] text-xs">
-								<SelectValue placeholder="Select region" />
-							</SelectTrigger>
-							<SelectContent>
-								{locations.map((loc) => (
-									<SelectItem key={loc} value={loc}>
-										{loc}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					)}
+					{locations.length > 0 && (() => {
+						const selectedRegion = getRegionInfo(location);
+						const SelectedFlag = selectedRegion.Flag;
+						return (
+							<Select value={location} onValueChange={setLocation}>
+								<SelectTrigger className="h-8 w-[160px] text-xs">
+									<div className="flex items-center gap-2">
+										<SelectedFlag className="h-3.5 w-5 rounded-sm object-cover shrink-0" />
+										<span className="truncate">{selectedRegion.label}</span>
+									</div>
+								</SelectTrigger>
+								<SelectContent>
+									{locations.map((loc) => {
+										const regionInfo = getRegionInfo(loc);
+										const Flag = regionInfo.Flag;
+										return (
+											<SelectItem key={loc} value={loc}>
+												<div className="flex items-center gap-2">
+													<Flag className="h-3.5 w-5 rounded-sm object-cover" />
+													<span>{regionInfo.label}</span>
+												</div>
+											</SelectItem>
+										);
+									})}
+								</SelectContent>
+							</Select>
+						);
+					})()}
 					<Tabs
 						value={range}
 						onValueChange={(v) => setRange(v as any)}

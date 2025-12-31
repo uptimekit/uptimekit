@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { AQ, BR, CA, EU, HK } from "country-flag-icons/react/3x2";
 import { Check, Copy, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -25,35 +24,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { WORKER_REGIONS } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
 
-const REGIONS = [
-	{
-		value: "na-canada",
-		label: "North America",
-		Flag: CA,
-	},
-	{
-		value: "sa-brazil",
-		label: "South America",
-		Flag: BR,
-	},
-	{
-		value: "eu-general",
-		label: "Europe",
-		Flag: EU,
-	},
-	{
-		value: "ap-hongkong",
-		label: "Asia/Pacific",
-		Flag: HK,
-	},
-	{
-		value: "global",
-		label: "Global",
-		Flag: AQ,
-	},
-];
 
 export function CreateWorkerDialog() {
 	const [open, setOpen] = useState(false);
@@ -163,7 +136,7 @@ export function CreateWorkerDialog() {
 										<SelectValue placeholder="Select a region" />
 									</SelectTrigger>
 									<SelectContent>
-										{REGIONS.map((region) => (
+										{WORKER_REGIONS.map((region) => (
 											<SelectItem key={region.value} value={region.value}>
 												<div className="flex items-center gap-2">
 													<region.Flag className="h-4 w-5 rounded-sm object-cover" />

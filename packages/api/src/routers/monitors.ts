@@ -579,16 +579,12 @@ export const monitorsRouter = {
 			if (input.range === "24h") startDate.setHours(now.getHours() - 24);
 			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
-			// Optimized average ping calculation using SQL
 			// Optimized average ping calculation using ClickHouse
 			const query = `
 				SELECT avg(latency) as value
 				FROM uptimekit.monitor_events
-				WHERE monitorId = {monitorId:String} AND timestamp >= {startDate:DateTime}
+				WHERE monitorId = {monitorId:String} AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
 			`;
-			// Convert JS Date to seconds/string for ClickHouse depending on driver?
-			// @clickhouse/client params support Date objects if mapped correctly or we can pass unix timestamp or string.
-			// Let's pass ISO string.
 
 			const avgPingResult = await clickhouse.query({
 				query,
@@ -683,10 +679,20 @@ export const monitorsRouter = {
 			// Map back to expected types (string timestamp to Date conversion handled below in loop or map)
 			// Actually the output expects `timestamp: string`. JSON response is string mainly.
 
+			// Helper to parse ClickHouse timestamps as UTC
+			const parseClickhouseTimestamp = (ts: string) => {
+				// ClickHouse returns timestamps without timezone info
+				// Append 'Z' if not present to interpret as UTC
+				if (!ts.endsWith('Z') && !ts.includes('+')) {
+					return new Date(ts.replace(' ', 'T') + 'Z');
+				}
+				return new Date(ts);
+			};
+
 			// We need to support 'nextCursor' which is a number (timestamp).
 			const changesWithDate = changes.map((c) => ({
 				...c,
-				timestamp: new Date(c.timestamp),
+				timestamp: parseClickhouseTimestamp(c.timestamp),
 			}));
 
 			let nextCursor: number | undefined;
@@ -749,7 +755,7 @@ export const monitorsRouter = {
 				SELECT timestamp, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
 				FROM uptimekit.monitor_events
 				WHERE monitorId = {monitorId:String} 
-				AND timestamp >= {startDate:DateTime}
+				AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
 				${input.location && input.location !== "all" ? "AND location = {location:String}" : ""}
 				ORDER BY timestamp ASC
 				LIMIT 2000
@@ -836,11 +842,22 @@ export const monitorsRouter = {
 					query_params: queryParams,
 					format: "JSON",
 				});
-				const changesJson = await changesQuery.json<any>();
+			const changesJson = await changesQuery.json<any>();
 				const changesRaw = changesJson.data as StatsChangeResult[];
+				
+				// Helper to parse ClickHouse timestamps as UTC
+				const parseClickhouseTimestamp = (ts: string) => {
+					// ClickHouse returns timestamps without timezone info
+					// Append 'Z' if not present to interpret as UTC
+					if (!ts.endsWith('Z') && !ts.includes('+')) {
+						return new Date(ts.replace(' ', 'T') + 'Z');
+					}
+					return new Date(ts);
+				};
+				
 				const changes = changesRaw.map((c) => ({
 					...c,
-					timestamp: new Date(c.timestamp),
+					timestamp: parseClickhouseTimestamp(c.timestamp),
 				}));
 
 				// Also get the *state at startDate* (the change just before startDate)
