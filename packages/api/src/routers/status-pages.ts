@@ -310,6 +310,7 @@ export const statusPagesRouter = {
 						id: m.monitor.id,
 						name: m.monitor.name,
 						style: (m.style as "history" | "status") || "history",
+					description: m.description,
 					})),
 				})),
 			};
@@ -336,6 +337,7 @@ export const statusPagesRouter = {
 							z.object({
 								id: z.string(),
 								style: z.enum(["history", "status"]).default("history"),
+							description: z.string().optional().nullable(),
 							}),
 						),
 					}),
@@ -379,6 +381,7 @@ export const statusPagesRouter = {
 								groupId: groupId,
 								order: mIndex,
 								style: m.style,
+								description: m.description || null,
 							})),
 						);
 					}

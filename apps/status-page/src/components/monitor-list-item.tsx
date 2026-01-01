@@ -2,6 +2,12 @@ import { cn } from "@/lib/utils";
 import { StatusDot, type StatusType, statusConfig } from "./status-indicator";
 import type { UptimeDay } from "./uptime-bar";
 import { UptimeBar } from "./uptime-bar";
+import { Info } from "lucide-react";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface MonitorListItemProps {
 	name: string;
@@ -10,6 +16,7 @@ interface MonitorListItemProps {
 	history: UptimeDay[];
 	displayStyle?: "history" | "status";
 	className?: string;
+	description?: string | null;
 }
 
 export function MonitorListItem({
@@ -19,6 +26,7 @@ export function MonitorListItem({
 	history,
 	displayStyle = "history",
 	className,
+	description,
 }: MonitorListItemProps) {
 	// Status-only mode: show only name and current status
 	if (displayStyle === "status") {
@@ -28,6 +36,16 @@ export function MonitorListItem({
 					<div className="flex items-center gap-3">
 						<StatusDot status={status} />
 						<h3 className="font-semibold text-foreground text-lg">{name}</h3>
+						{description && (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Info className="h-4 w-4 text-muted-foreground/60" />
+								</TooltipTrigger>
+								<TooltipContent>
+									<p className="max-w-xs text-sm">{description}</p>
+								</TooltipContent>
+							</Tooltip>
+						)}
 					</div>
 					<div
 						className={cn(
@@ -53,6 +71,16 @@ export function MonitorListItem({
 				<div className="flex items-center gap-3">
 					<StatusDot status={status} />
 					<h3 className="font-semibold text-foreground text-lg">{name}</h3>
+					{description && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Info className="h-4 w-4 text-muted-foreground/60" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs text-sm">{description}</p>
+							</TooltipContent>
+						</Tooltip>
+					)}
 				</div>
 				<div
 					className={cn(

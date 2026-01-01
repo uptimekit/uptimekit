@@ -10,6 +10,7 @@
 	"dependencies": {
 		"@clickhouse/client": "^1.15.0",
 		"@radix-ui/react-slot": "^1.2.4",
+		"@radix-ui/react-tooltip": "^1.2.8",
 		"@uptimekit/api": "workspace:*",
 		"@uptimekit/db": "workspace:*",
 		"class-variance-authority": "^0.7.1",
