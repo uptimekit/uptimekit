@@ -310,7 +310,7 @@ export const statusPagesRouter = {
 						id: m.monitor.id,
 						name: m.monitor.name,
 						style: (m.style as "history" | "status") || "history",
-					description: m.description,
+						description: m.description,
 					})),
 				})),
 			};
@@ -337,7 +337,7 @@ export const statusPagesRouter = {
 							z.object({
 								id: z.string(),
 								style: z.enum(["history", "status"]).default("history"),
-							description: z.string().optional().nullable(),
+								description: z.string().optional().nullable(),
 							}),
 						),
 					}),
@@ -387,6 +387,42 @@ export const statusPagesRouter = {
 					}
 				}
 			});
+
+			// Invalidate cache
+			if (existing.domain) {
+				await redis.del(`status-page:${existing.domain}`);
+			}
+
+			return { success: true };
+		}),
+
+	delete: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/status-pages/{id}",
+				tags: ["Status Page Management"],
+				summary: "Delete status page",
+				description: "Delete a specific status page by ID.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.statusPage.findFirst({
+				where: and(
+					eq(statusPage.id, input.id),
+					eq(
+						statusPage.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
+			});
+
+			if (!existing) {
+				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
+			}
+
+			await db.delete(statusPage).where(eq(statusPage.id, input.id));
 
 			// Invalidate cache
 			if (existing.domain) {

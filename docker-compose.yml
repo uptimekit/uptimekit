@@ -8,7 +8,6 @@ services:
     env_file:
       - .env
     environment:
-      # Zmienne zależne od innych kontenerów - hardcoded credentials
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
       - CLICKHOUSE_URL=http://clickhouse:8123
       - CLICKHOUSE_USER=default
@@ -26,7 +25,6 @@ services:
     env_file:
       - .env
     environment:
-      # Zmienne zależne od innych kontenerów - hardcoded credentials
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
       - CLICKHOUSE_URL=http://clickhouse:8123
       - CLICKHOUSE_USER=default
@@ -47,7 +45,6 @@ services:
     env_file:
       - .env
     environment:
-      # Zmienne zależne od innych kontenerów - hardcoded credentials
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
       - REDIS_URL=redis://redis:6379
     depends_on:

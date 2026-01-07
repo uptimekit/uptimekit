@@ -66,6 +66,8 @@ export function CreateStatusPageForm({
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusPages.list.key(),
 			});
+			form.reset();
+			onOpenChange(false);
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
@@ -106,7 +108,7 @@ export function CreateStatusPageForm({
 									<FormLabel>Slug</FormLabel>
 									<FormControl>
 										<div className="flex h-9 items-center rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
-											<span className="shrink-0 select-none pl-3 text-sm text-muted-foreground">
+											<span className="shrink-0 select-none pl-3 text-muted-foreground text-sm">
 												uptimekit.com/s/
 											</span>
 											<Input

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	ArrowRight,
 	BarChart,
@@ -18,6 +18,16 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -28,14 +38,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { orpc } from "@/utils/orpc";
+import { client, orpc } from "@/utils/orpc";
 import { DataPagination } from "../ui/data-pagination";
 import { CreateStatusPageForm } from "./create-form";
 
 export function StatusPagesTable() {
 	const router = useRouter();
+	const queryClient = useQueryClient();
 	const [createOpen, setCreateOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [pageToDelete, setPageToDelete] = useState<{
+		id: string;
+		name: string;
+	} | null>(null);
 	const [publicFilter, setPublicFilter] = useState<boolean | undefined>(
 		undefined,
 	);
@@ -66,6 +82,37 @@ export function StatusPagesTable() {
 	const statusPages = data?.items;
 	const total = data?.total || 0;
 	const totalPages = Math.ceil(total / pageSize);
+
+	const deleteMutation = useMutation({
+		mutationFn: async (id: string) => {
+			await client.statusPages.delete({ id });
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.statusPages.list.queryKey({
+					input: {
+						q: debouncedSearch || undefined,
+						public: publicFilter,
+						limit: pageSize,
+						offset: (page - 1) * pageSize,
+					},
+				}),
+			});
+			setDeleteDialogOpen(false);
+			setPageToDelete(null);
+		},
+	});
+
+	const handleDeleteClick = (page: { id: string; name: string }) => {
+		setPageToDelete(page);
+		setDeleteDialogOpen(true);
+	};
+
+	const handleDeleteConfirm = () => {
+		if (pageToDelete) {
+			deleteMutation.mutate(pageToDelete.id);
+		}
+	};
 
 	const clearFilters = () => {
 		setSearch("");
@@ -310,16 +357,12 @@ export function StatusPagesTable() {
 														</Link>
 													</DropdownMenuItem>
 													<DropdownMenuItem
-														asChild
-														onClick={(e) => e.stopPropagation()}
+														className="text-red-500 focus:text-red-600"
+														onClick={(e) => {
+															e.stopPropagation();
+															handleDeleteClick(page);
+														}}
 													>
-														<Link href={`/status-pages/${page.id}/settings`}>
-															Edit page
-														</Link>
-													</DropdownMenuItem>
-													<DropdownMenuItem>Theme settings</DropdownMenuItem>
-													<DropdownMenuItem>Subscribers</DropdownMenuItem>
-													<DropdownMenuItem className="text-red-500">
 														Delete
 													</DropdownMenuItem>
 												</DropdownMenuContent>
@@ -334,6 +377,42 @@ export function StatusPagesTable() {
 
 				<DataPagination page={page} totalPages={totalPages} setPage={setPage} />
 			</div>
+
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete status page</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to delete{" "}
+							<span className="font-semibold">{pageToDelete?.name}</span>? This
+							action cannot be undone and will permanently remove all associated
+							data including monitors, groups, and reports.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={deleteMutation.isPending}>
+							Cancel
+						</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault();
+								handleDeleteConfirm();
+							}}
+							disabled={deleteMutation.isPending}
+							className="bg-red-500 hover:bg-red-600"
+						>
+							{deleteMutation.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Deleting...
+								</>
+							) : (
+								"Delete"
+							)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }
