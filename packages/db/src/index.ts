@@ -1,17 +1,21 @@
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
-let _db: NodePgDatabase<typeof schema> | null = null;
-
-export const db = new Proxy({} as NodePgDatabase<typeof schema>, {
-	get(_target, prop) {
-		if (!_db) {
-			_db = drizzle(process.env.DATABASE_URL || "", { schema });
-		}
-		return Reflect.get(_db, prop);
-	},
+// Create connection pool - pg Pool doesn't connect until first query
+const pool = new Pool({
+	connectionString: process.env.DATABASE_URL,
+	connectionTimeoutMillis: 10000,
+	max: 20,
+	idleTimeoutMillis: 30000,
 });
+
+// Handle connection errors gracefully
+pool.on("error", (err) => {
+	console.error("Unexpected database pool error:", err);
+});
+
+export const db = drizzle(pool, { schema });
 
 export * from "./clickhouse";
 export * from "./schema";

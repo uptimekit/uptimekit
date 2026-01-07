@@ -1,8 +1,6 @@
 services:
   dash:
-    build:
-      context: .
-      dockerfile: apps/dash/Dockerfile
+    image: uptimekit/dash:latest
     ports:
       - "${DASH_PORT:-3000}:3000"
     env_file:
@@ -19,9 +17,7 @@ services:
     restart: always
 
   scheduler:
-    build:
-      context: .
-      dockerfile: packages/scheduler/Dockerfile
+    image: uptimekit/scheduler:latest
     env_file:
       - .env
     environment:
@@ -37,9 +33,7 @@ services:
     restart: always
 
   status-page:
-    build:
-      context: .
-      dockerfile: apps/status-page/Dockerfile
+    image: uptimekit/status-page:latest
     ports:
       - "${STATUS_PAGE_PORT:-3001}:3001"
     env_file:
