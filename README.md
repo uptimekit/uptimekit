@@ -116,6 +116,7 @@ uptimekit/
 ```
 
 <!-- SPONSORS:START -->
+""
 <!-- SPONSORS:END -->
 
 ## 🤝 Contributing
