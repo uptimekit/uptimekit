@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
 	AlertTriangle,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { toast } from "sonner";
 import { AvailabilityTable } from "@/components/monitors/availability-table";
 import { MonitorCards } from "@/components/monitors/monitor-cards";
 import { ResponseTimeChart } from "@/components/monitors/response-time-chart";
@@ -20,9 +21,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { orpc } from "@/utils/orpc";
+import { client, orpc } from "@/utils/orpc";
 
 export default function MonitorDetailsPage() {
+	const queryClient = useQueryClient();
 	const params = useParams();
 	const id = params.id as string;
 
@@ -33,6 +35,19 @@ export default function MonitorDetailsPage() {
 	const { data: availability, isLoading: loadingAvailability } = useQuery(
 		orpc.monitors.getAvailability.queryOptions({ input: { monitorId: id } }),
 	);
+
+	const { mutate: toggleMonitor, isPending: isToggling } = useMutation({
+		mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+			client.monitors.toggle({ id, active }),
+		onSuccess: () => {
+			toast.success("Monitor updated");
+			queryClient.invalidateQueries({
+				queryKey: orpc.monitors.get.key({ input: { id } }),
+			});
+			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+		},
+		onError: () => toast.error("Failed to update monitor"),
+	});
 
 	if (loadingMonitor) {
 		return <MonitorSkeleton />;
@@ -155,9 +170,17 @@ export default function MonitorDetailsPage() {
 						<h1 className="font-bold text-2xl tracking-tight">
 							{monitor.name}
 						</h1>
+						{!monitor.active && (
+							<Badge variant="outline" className="text-zinc-500">
+								Paused
+							</Badge>
+						)}
 						<Badge
 							variant="secondary"
-							className={cn(getStatusColor(monitor.status as string))}
+							className={cn(
+								getStatusColor(monitor.status as string),
+								!monitor.active && "opacity-50",
+							)}
 						>
 							{getStatusIcon(monitor.status as string)}
 							<span className="ml-1.5 capitalize">
@@ -167,9 +190,7 @@ export default function MonitorDetailsPage() {
 					</div>
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<Globe className="h-3.5 w-3.5" />
-						<span className="font-mono">
-							{getMonitorTarget()}
-						</span>
+						<span className="font-mono">{getMonitorTarget()}</span>
 						<span>·</span>
 						<Clock className="h-3.5 w-3.5" />
 						<span>Checked every {monitor.interval}s</span>
@@ -179,8 +200,15 @@ export default function MonitorDetailsPage() {
 					<Button variant="outline" size="sm" asChild>
 						<Link href={`/monitors/${id}/edit` as any}>Edit</Link>
 					</Button>
-					<Button variant="destructive" size="sm">
-						Pause
+					<Button
+						variant={monitor.active ? "destructive" : "default"}
+						size="sm"
+						onClick={() =>
+							toggleMonitor({ id: monitor.id, active: !monitor.active })
+						}
+						disabled={isToggling}
+					>
+						{monitor.active ? "Pause" : "Resume"}
 					</Button>
 				</div>
 			</div>
