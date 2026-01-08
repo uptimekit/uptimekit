@@ -141,49 +141,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  create-git-tags:
-    name: Create Git Tags
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: [detect-packages, publish-docker]
-    if: needs.detect-packages.outputs.has_releases == 'true'
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Configure Git
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Create Tags
-        run: |
-          PACKAGES='${{ needs.detect-packages.outputs.packages }}'
-          
-          echo "$PACKAGES" | jq -c '.[]' | while read -r pkg; do
-            NAME=$(echo "$pkg" | jq -r '.name')
-            VERSION=$(echo "$pkg" | jq -r '.version')
-            
-            # Create tag name (e.g., @uptimekit/dash@0.0.8 -> dash-v0.0.8)
-            APP_NAME=${NAME#@*/}
-            APP_NAME=${APP_NAME#*/}
-            TAG_NAME="${APP_NAME}-v${VERSION}"
-            
-            echo "Creating tag: $TAG_NAME"
-            
-            # Check if tag already exists
-            if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-              echo "Tag $TAG_NAME already exists, skipping..."
-            else
-              git tag -a "$TAG_NAME" -m "Release $NAME@$VERSION"
-              git push origin "$TAG_NAME"
-              echo "Created and pushed tag: $TAG_NAME"
-            fi
-          done
-
   sync-development:
     name: Sync Release to Development
     needs: detect-packages
