@@ -116,13 +116,19 @@ uptimekit/
 ```
 
 <!-- SPONSORS:START -->
-
 ## 💝 Sponsors
 
 Thank you to all our amazing sponsors who make this project possible!
 
-**[Become a sponsor](https://github.com/sponsors/stripsior)** and support the development of UptimeKit!
+### ❤️ Supporters
 
+<div align="center">
+  <a href="https://github.com/msikorski26" title="Mateusz Sikorski">
+    <img src="https://avatars.githubusercontent.com/u/41286754?u=b101f143348c1143f33cbac34125e8cea1f2fe64&v=4" width="40" height="40" alt="Mateusz Sikorski" style="border-radius: 50%; margin: 4px;" />
+  </a>
+</div>
+
+**[Become a sponsor](https://github.com/sponsors/stripsior)** and get your logo/avatar here!
 <!-- SPONSORS:END -->
 
 ## 🤝 Contributing
