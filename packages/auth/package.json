@@ -19,8 +19,6 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@polar-sh/better-auth": "^1.6.3",
-		"@polar-sh/sdk": "^0.42.1",
 		"@uptimekit/db": "workspace:*",
 		"better-auth": "catalog:",
 		"dotenv": "catalog:",

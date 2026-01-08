@@ -5,7 +5,6 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { BillingSettings } from "@/components/settings/billing-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { Button } from "@/components/ui/button";
@@ -20,8 +19,8 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { PageNav } from "@/components/ui/page-nav";
+import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth-client";
 
 const formSchema = z.object({
@@ -47,7 +46,6 @@ const formSchema = z.object({
 
 export default function SettingsPage() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
-	const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -132,9 +130,6 @@ export default function SettingsPage() {
 					<PageNav.List>
 						<PageNav.Trigger value="general">General</PageNav.Trigger>
 						<PageNav.Trigger value="team">Team</PageNav.Trigger>
-						{!isSelfHosted && (
-							<PageNav.Trigger value="billing">Billing</PageNav.Trigger>
-						)}
 					</PageNav.List>
 
 					<PageNav.Content value="general">
@@ -257,12 +252,6 @@ export default function SettingsPage() {
 					<PageNav.Content value="team">
 						<TeamSettings />
 					</PageNav.Content>
-
-					{!isSelfHosted && (
-						<PageNav.Content value="billing">
-							<BillingSettings />
-						</PageNav.Content>
-					)}
 				</PageNav>
 			</div>
 		</div>

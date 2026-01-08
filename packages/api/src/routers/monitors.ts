@@ -10,11 +10,6 @@ import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import {
-	hasActiveSubscription,
-	isSelfHosted,
-	MAX_MONITORS,
-} from "../lib/limits";
 import type {
 	ChangeHistoryResult,
 	LatestChangeResult,
@@ -163,8 +158,8 @@ export const monitorsRouter = {
 				const parseClickhouseTimestamp = (ts: string) => {
 					// ClickHouse returns timestamps without timezone info
 					// Append 'Z' if not present to interpret as UTC
-					if (!ts.endsWith('Z') && !ts.includes('+')) {
-						return new Date(ts.replace(' ', 'T') + 'Z');
+					if (!ts.endsWith("Z") && !ts.includes("+")) {
+						return new Date(ts.replace(" ", "T") + "Z");
 					}
 					return new Date(ts);
 				};
@@ -173,7 +168,9 @@ export const monitorsRouter = {
 					...row.monitor,
 					group: row.monitor_group || null,
 					status: latestEvent?.status || "pending",
-					lastCheck: latestEvent ? parseClickhouseTimestamp(latestEvent.timestamp) : null,
+					lastCheck: latestEvent
+						? parseClickhouseTimestamp(latestEvent.timestamp)
+						: null,
 					lastStatusChange: latestChange
 						? parseClickhouseTimestamp(latestChange.timestamp)
 						: null,
@@ -272,28 +269,6 @@ export const monitorsRouter = {
 			}),
 		)
 		.handler(async ({ input, context }) => {
-			if (!isSelfHosted()) {
-				const hasSub = await hasActiveSubscription(
-					context.session.session.activeOrganizationId!,
-				);
-
-				if (!hasSub) {
-					const currentCount = await db.$count(
-						monitor,
-						eq(
-							monitor.organizationId,
-							context.session.session.activeOrganizationId!,
-						),
-					);
-
-					if (currentCount >= MAX_MONITORS) {
-						throw new ORPCError("FORBIDDEN", {
-							message: `Plan limit reached. You can only create up to ${MAX_MONITORS} monitors.`,
-						});
-					}
-				}
-			}
-
 			const [newMonitor] = await db
 				.insert(monitor)
 				.values({
@@ -528,8 +503,8 @@ export const monitorsRouter = {
 
 			// Helper to parse ClickHouse timestamps as UTC
 			const parseClickhouseTimestamp = (ts: string) => {
-				if (!ts.endsWith('Z') && !ts.includes('+')) {
-					return new Date(ts.replace(' ', 'T') + 'Z');
+				if (!ts.endsWith("Z") && !ts.includes("+")) {
+					return new Date(ts.replace(" ", "T") + "Z");
 				}
 				return new Date(ts);
 			};
@@ -538,7 +513,9 @@ export const monitorsRouter = {
 				...found.monitor,
 				group: found.monitor_group || null,
 				status: latestEvent?.status || "pending",
-				lastCheck: latestEvent ? parseClickhouseTimestamp(latestEvent.timestamp) : null,
+				lastCheck: latestEvent
+					? parseClickhouseTimestamp(latestEvent.timestamp)
+					: null,
 				lastStatusChange: latestChange
 					? parseClickhouseTimestamp(latestChange.timestamp)
 					: null,
@@ -683,8 +660,8 @@ export const monitorsRouter = {
 			const parseClickhouseTimestamp = (ts: string) => {
 				// ClickHouse returns timestamps without timezone info
 				// Append 'Z' if not present to interpret as UTC
-				if (!ts.endsWith('Z') && !ts.includes('+')) {
-					return new Date(ts.replace(' ', 'T') + 'Z');
+				if (!ts.endsWith("Z") && !ts.includes("+")) {
+					return new Date(ts.replace(" ", "T") + "Z");
 				}
 				return new Date(ts);
 			};
@@ -791,7 +768,8 @@ export const monitorsRouter = {
 				latency: Number(e.latency) || 0,
 				dnsLookup: e.dnsLookup != null ? Number(e.dnsLookup) : undefined,
 				tcpConnect: e.tcpConnect != null ? Number(e.tcpConnect) : undefined,
-				tlsHandshake: e.tlsHandshake != null ? Number(e.tlsHandshake) : undefined,
+				tlsHandshake:
+					e.tlsHandshake != null ? Number(e.tlsHandshake) : undefined,
 				ttfb: e.ttfb != null ? Number(e.ttfb) : undefined,
 				transfer: e.transfer != null ? Number(e.transfer) : undefined,
 			}));
@@ -842,19 +820,19 @@ export const monitorsRouter = {
 					query_params: queryParams,
 					format: "JSON",
 				});
-			const changesJson = await changesQuery.json<any>();
+				const changesJson = await changesQuery.json<any>();
 				const changesRaw = changesJson.data as StatsChangeResult[];
-				
+
 				// Helper to parse ClickHouse timestamps as UTC
 				const parseClickhouseTimestamp = (ts: string) => {
 					// ClickHouse returns timestamps without timezone info
 					// Append 'Z' if not present to interpret as UTC
-					if (!ts.endsWith('Z') && !ts.includes('+')) {
-						return new Date(ts.replace(' ', 'T') + 'Z');
+					if (!ts.endsWith("Z") && !ts.includes("+")) {
+						return new Date(ts.replace(" ", "T") + "Z");
 					}
 					return new Date(ts);
 				};
-				
+
 				const changes = changesRaw.map((c) => ({
 					...c,
 					timestamp: parseClickhouseTimestamp(c.timestamp),
@@ -892,7 +870,7 @@ export const monitorsRouter = {
 				// This prevents counting time before the monitor even existed
 				const effectiveStart = startDate
 					? Math.max(startDate.getTime(), monitorCreatedAt)
-					: (changes[0]?.timestamp.getTime() || monitorCreatedAt);
+					: changes[0]?.timestamp.getTime() || monitorCreatedAt;
 
 				const TOTAL_TIME = Math.max(1, NOW - effectiveStart); // avoid div by 0
 
@@ -1057,7 +1035,9 @@ export const monitorsRouter = {
 				);
 
 			const accessibleIds = new Set(monitors.map((m) => m.id));
-			const filteredIds = input.monitorIds.filter((id) => accessibleIds.has(id));
+			const filteredIds = input.monitorIds.filter((id) =>
+				accessibleIds.has(id),
+			);
 
 			if (filteredIds.length === 0) {
 				return {};
