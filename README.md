@@ -115,6 +115,9 @@ uptimekit/
 └── ....
 ```
 
+<!-- SPONSORS:START -->
+<!-- SPONSORS:END -->
+
 ## 🤝 Contributing
 
 We welcome contributions! Please check out our [Contributing Guide](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and request features.
