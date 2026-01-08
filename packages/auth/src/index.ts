@@ -59,39 +59,30 @@ export const auth = betterAuth({
 		user: {
 			create: {
 				before: async (user) => {
-					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
-
-					if (isSelfHosted) {
-						const [invite] = await db
-							.select()
-							.from(schema.invitation)
-							.where(eq(schema.invitation.email, user.email))
-							.limit(1);
-
-						if (invite) {
-							return;
-						}
-
-						const users = await db
-							.select({ id: schema.user.id })
-							.from(schema.user)
-							.limit(1);
-
-						if (users.length > 0) {
-							throw new Error("Registration is disabled on this instance.");
-						}
+					const [invite] = await db
+						.select()
+						.from(schema.invitation)
+						.where(eq(schema.invitation.email, user.email))
+						.limit(1);
+					if (invite) {
+						return;
+					}
+					const users = await db
+						.select({ id: schema.user.id })
+						.from(schema.user)
+						.limit(1);
+					if (users.length > 0) {
+						throw new Error("Registration is disabled on this instance.");
 					}
 				},
 				after: async (user) => {
-					const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
-
 					const users = await db
 						.select({ id: schema.user.id })
 						.from(schema.user)
 						.limit(2);
 					const isFirstUser = users.length === 1;
 
-					if (isSelfHosted && isFirstUser) {
+					if (isFirstUser) {
 						await db
 							.update(schema.user)
 							.set({ role: "admin" })
