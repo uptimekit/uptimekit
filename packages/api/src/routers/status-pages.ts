@@ -8,11 +8,6 @@ import {
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import {
-	hasActiveSubscription,
-	isSelfHosted,
-	MAX_STATUS_PAGES,
-} from "../lib/limits";
 import { redis } from "../lib/redis";
 
 export const statusPagesRouter = {
@@ -107,28 +102,6 @@ export const statusPagesRouter = {
 			}),
 		)
 		.handler(async ({ input, context }) => {
-			if (!isSelfHosted()) {
-				const hasSub = await hasActiveSubscription(
-					context.session.session.activeOrganizationId!,
-				);
-
-				if (!hasSub) {
-					const currentCount = await db.$count(
-						statusPage,
-						eq(
-							statusPage.organizationId,
-							context.session.session.activeOrganizationId!,
-						),
-					);
-
-					if (currentCount >= MAX_STATUS_PAGES) {
-						throw new ORPCError("FORBIDDEN", {
-							message: `Plan limit reached. You can only create up to ${MAX_STATUS_PAGES} status page.`,
-						});
-					}
-				}
-			}
-
 			// Check for duplicate slug globally or per org? Usually globally for subdomains.
 			const existing = await db.query.statusPage.findFirst({
 				where: eq(statusPage.slug, input.slug),
@@ -310,6 +283,7 @@ export const statusPagesRouter = {
 						id: m.monitor.id,
 						name: m.monitor.name,
 						style: (m.style as "history" | "status") || "history",
+						description: m.description,
 					})),
 				})),
 			};
@@ -336,6 +310,7 @@ export const statusPagesRouter = {
 							z.object({
 								id: z.string(),
 								style: z.enum(["history", "status"]).default("history"),
+								description: z.string().optional().nullable(),
 							}),
 						),
 					}),
@@ -379,11 +354,48 @@ export const statusPagesRouter = {
 								groupId: groupId,
 								order: mIndex,
 								style: m.style,
+								description: m.description || null,
 							})),
 						);
 					}
 				}
 			});
+
+			// Invalidate cache
+			if (existing.domain) {
+				await redis.del(`status-page:${existing.domain}`);
+			}
+
+			return { success: true };
+		}),
+
+	delete: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/status-pages/{id}",
+				tags: ["Status Page Management"],
+				summary: "Delete status page",
+				description: "Delete a specific status page by ID.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.statusPage.findFirst({
+				where: and(
+					eq(statusPage.id, input.id),
+					eq(
+						statusPage.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
+			});
+
+			if (!existing) {
+				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
+			}
+
+			await db.delete(statusPage).where(eq(statusPage.id, input.id));
 
 			// Invalidate cache
 			if (existing.domain) {

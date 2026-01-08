@@ -26,14 +26,29 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	GripHorizontal,
 	GripVertical,
+	Info,
 	Loader2,
 	Plus,
 	Search,
+	Settings2,
 	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -51,6 +66,12 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -62,6 +83,7 @@ interface MonitorItem {
 	id: string; // real monitor id
 	name: string;
 	style: MonitorStyle;
+	description?: string | null;
 }
 
 interface GroupItem {
@@ -119,6 +141,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 						id: m.id,
 						name: m.name,
 						style: m.style as MonitorStyle,
+					description: m.description,
 					})),
 				})),
 			);
@@ -314,7 +337,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		);
 	};
 
-	const toggleMonitorStyle = (groupId: string, instanceId: string) => {
+	const updateMonitorConfig = (groupId: string, instanceId: string, updates: Partial<MonitorItem>) => {
 		setGroups(
 			groups.map((g) => {
 				if (g.id === groupId) {
@@ -322,7 +345,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 						...g,
 						monitors: g.monitors.map((m) =>
 							m.instanceId === instanceId
-								? { ...m, style: m.style === "history" ? "status" : "history" }
+								? { ...m, ...updates }
 								: m,
 						),
 					};
@@ -338,7 +361,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 			groups: groups.map((g) => ({
 				id: g.id.startsWith("temp-") ? undefined : g.id,
 				name: g.name || "Untitled Section",
-				monitors: g.monitors.map((m) => ({ id: m.id, style: m.style })),
+				monitors: g.monitors.map((m) => ({ id: m.id, style: m.style, description: m.description })),
 			})),
 		});
 	};
@@ -405,8 +428,8 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 											onRemoveMonitor={(m) =>
 												removeMonitor(group.id, m.instanceId)
 											}
-											onToggleStyle={(m) =>
-												toggleMonitorStyle(group.id, m.instanceId)
+											onConfigChange={(m, updates) =>
+												updateMonitorConfig(group.id, m.instanceId, updates)
 											}
 											layout={layout}
 										/>
@@ -470,7 +493,7 @@ function SortableGroup({
 	onUpdateName,
 	onAddMonitor,
 	onRemoveMonitor,
-	onToggleStyle,
+	onConfigChange,
 	layout,
 }: {
 	group: GroupItem;
@@ -479,7 +502,7 @@ function SortableGroup({
 	onUpdateName: (val: string) => void;
 	onAddMonitor: (m: { id: string; name: string }) => void;
 	onRemoveMonitor: (m: MonitorItem) => void;
-	onToggleStyle: (m: MonitorItem) => void;
+	onConfigChange: (m: MonitorItem, updates: Partial<MonitorItem>) => void;
 	layout: "vertical" | "horizontal";
 }) {
 	const {
@@ -515,7 +538,7 @@ function SortableGroup({
 				onUpdateName={onUpdateName}
 				onAddMonitor={onAddMonitor}
 				onRemoveMonitor={onRemoveMonitor}
-				onToggleStyle={onToggleStyle}
+				onConfigChange={onConfigChange}
 				layout={layout}
 			/>
 		</div>
@@ -531,7 +554,7 @@ function GroupCard({
 	onUpdateName,
 	onAddMonitor,
 	onRemoveMonitor,
-	onToggleStyle,
+	onConfigChange,
 }: any) {
 	return (
 		<Card
@@ -605,7 +628,7 @@ function GroupCard({
 								key={monitor.instanceId}
 								monitor={monitor}
 								onRemove={() => onRemoveMonitor(monitor)}
-								onToggleStyle={() => onToggleStyle(monitor)}
+								onConfigChange={(updates) => onConfigChange(monitor, updates)}
 							/>
 						))}
 					</SortableContext>
@@ -666,7 +689,11 @@ function AddMonitorInput({
 	);
 }
 
-function SortableMonitor({ monitor, onRemove, onToggleStyle }: any) {
+function SortableMonitor({ monitor, onRemove, onConfigChange }: {
+	monitor: MonitorItem;
+	onRemove: () => void;
+	onConfigChange: (updates: Partial<MonitorItem>) => void;
+}) {
 	const {
 		attributes,
 		listeners,
@@ -696,7 +723,7 @@ function SortableMonitor({ monitor, onRemove, onToggleStyle }: any) {
 				monitor={monitor}
 				listeners={listeners}
 				onRemove={onRemove}
-				onToggleStyle={onToggleStyle}
+				onConfigChange={onConfigChange}
 				isDragging={isDragging}
 			/>
 		</div>
@@ -709,52 +736,247 @@ function MonitorRow({
 	isDragging,
 	listeners,
 	onRemove,
-	onToggleStyle,
-}: any) {
+	onConfigChange,
+}: {
+	monitor: MonitorItem;
+	isOverlay?: boolean;
+	isDragging?: boolean;
+	listeners?: any;
+	onRemove?: () => void;
+	onConfigChange?: (updates: Partial<MonitorItem>) => void;
+}) {
+	const [isConfigOpen, setIsConfigOpen] = useState(false);
+
 	return (
-		<div
-			className={cn(
-				"group flex items-center gap-3 rounded-md p-3 transition-all hover:bg-muted/40",
-				isOverlay && "border bg-background shadow-lg",
-				isDragging && "opacity-50",
-			)}
-		>
-			{/* Drag Handle */}
+		<>
 			<div
-				{...listeners}
-				className="cursor-grab text-muted-foreground/30 active:cursor-grabbing group-hover:text-muted-foreground"
+				className={cn(
+					"group flex items-center gap-3 rounded-md p-3 transition-all hover:bg-muted/40",
+					isOverlay && "border bg-background shadow-lg",
+					isDragging && "opacity-50",
+				)}
 			>
-				<GripVertical className="h-4 w-4" />
+				{/* Drag Handle */}
+				<div
+					{...listeners}
+					className="cursor-grab text-muted-foreground/30 active:cursor-grabbing group-hover:text-muted-foreground"
+				>
+					<GripVertical className="h-4 w-4" />
+				</div>
+
+				{/* Icon + Name */}
+				<div className="flex min-w-0 flex-1 items-center gap-3">
+					<span className="truncate font-medium text-sm">{monitor.name}</span>
+				</div>
+
+				{/* Actions */}
+				<div className="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8 text-muted-foreground/50 transition-colors hover:text-foreground"
+						onClick={() => setIsConfigOpen(true)}
+						onPointerDown={(e) => e.stopPropagation()}
+					>
+						<Settings2 className="h-4 w-4" />
+					</Button>
+
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8 text-muted-foreground/30 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+						onClick={onRemove}
+						onPointerDown={(e) => e.stopPropagation()}
+					>
+						<Trash2 className="h-4 w-4" />
+					</Button>
+				</div>
 			</div>
 
-			{/* Icon + Name */}
-			<div className="flex min-w-0 flex-1 items-center gap-3">
-				{/* We could add status icons here if we had them in monitor data */}
-				{/* <Activity className="h-4 w-4 text-emerald-500 shrink-0" /> */}
-				<span className="truncate font-medium text-sm">{monitor.name}</span>
+			{/* Configuration Modal */}
+			<MonitorConfigModal
+				monitor={monitor}
+				open={isConfigOpen}
+				onOpenChange={setIsConfigOpen}
+				onConfigChange={onConfigChange}
+			/>
+		</>
+	);
+}
+
+// Monitor Configuration Modal
+function MonitorConfigModal({
+	monitor,
+	open,
+	onOpenChange,
+	onConfigChange,
+}: {
+	monitor: MonitorItem;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onConfigChange?: (updates: Partial<MonitorItem>) => void;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-lg">
+				<DialogHeader>
+					<DialogTitle>Configure Monitor Display</DialogTitle>
+					<DialogDescription>
+						Choose how this monitor will appear on your status page.
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="space-y-6 py-4">
+					{/* Preview */}
+					<div className="space-y-2">
+						<Label className="font-normal text-muted-foreground text-xs">
+							Preview
+						</Label>
+						<div className="rounded-2xl border border-border bg-card p-6">
+							<MonitorPreview
+								name={monitor.name}
+								style={monitor.style}
+								description={monitor.description}
+							/>
+						</div>
+					</div>
+
+					{/* Display Style Select */}
+					<div className="space-y-2">
+						<Label className="font-normal text-muted-foreground text-xs">
+							Display Type
+						</Label>
+						<Select
+							value={monitor.style}
+							onValueChange={(value) =>
+								onConfigChange?.({ style: value as MonitorStyle })
+							}
+						>
+							<SelectTrigger className="w-full">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="history">With History</SelectItem>
+								<SelectItem value="status">Status Only</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					{/* Description */}
+					<div className="space-y-2">
+						<Label className="font-normal text-muted-foreground text-xs">
+							Description (optional)
+						</Label>
+						<Textarea
+							value={monitor.description || ""}
+							onChange={(e) =>
+								onConfigChange?.({ description: e.target.value || null })
+							}
+							placeholder="Add a description that will appear in an info tooltip..."
+							rows={3}
+						/>
+						<p className="text-muted-foreground text-xs">
+							If provided, an info icon will appear next to the monitor name.
+						</p>
+					</div>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+// Monitor Preview Component - shows how monitor will look on status page
+// Monitor Preview Component - shows how monitor will look on status page
+function MonitorPreview({
+	name,
+	style,
+	description,
+}: {
+	name: string;
+	style: MonitorStyle;
+	description?: string | null;
+}) {
+	// Generate placeholder data - always operational
+	const placeholderHistory = Array.from({ length: 90 }, (_, i) => {
+		const date = new Date();
+		date.setDate(date.getDate() - (89 - i));
+		return {
+			date: date.toISOString().split("T")[0],
+			status: "operational" as const,
+			uptime: 100,
+		};
+	});
+
+	// Status-only mode: show only name and current status (matches MonitorListItem from status-page)
+	if (style === "status") {
+		return (
+			<div>
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						{/* Status Dot */}
+						<span className="relative flex h-2.5 w-2.5">
+							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+							<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+						</span>
+						<span className="text-foreground font-semibold text-lg">{name}</span>
+						{description && (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Info className="h-4 w-4 text-muted-foreground/60" />
+								</TooltipTrigger>
+								<TooltipContent>
+									<p className="max-w-xs text-sm">{description}</p>
+								</TooltipContent>
+							</Tooltip>
+						)}
+					</div>
+					<span className="text-green-500 font-medium text-sm">Operational</span>
+				</div>
+			</div>
+		);
+	}
+
+	// History mode: show full uptime bar with history (matches MonitorListItem from status-page)
+	return (
+		<div>
+			<div className="mb-3 flex items-center justify-between">
+				<div className="flex items-center gap-3">
+					{/* Status Dot */}
+					<span className="relative flex h-2.5 w-2.5">
+						<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
+						<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+					</span>
+					<span className="text-foreground font-semibold text-lg">{name}</span>
+					{description && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Info className="h-4 w-4 text-muted-foreground/60" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs text-sm">{description}</p>
+							</TooltipContent>
+						</Tooltip>
+					)}
+				</div>
+				<span className="text-green-500 font-medium text-sm">99.81% uptime</span>
 			</div>
 
-			{/* Actions */}
-			<div className="flex items-center gap-2">
-				<Badge
-					variant="secondary"
-					className="hidden h-6 cursor-pointer gap-1 font-normal text-xs transition-colors hover:bg-secondary/80 sm:flex"
-					onClick={onToggleStyle}
-					onPointerDown={(e) => e.stopPropagation()}
-				>
-					{monitor.style === "history" ? "With status history" : "Status only"}
-				</Badge>
+			{/* Uptime Bar */}
+			<div className="flex h-8 w-full gap-[3px]">
+				{placeholderHistory.map((day) => (
+					<div
+						key={day.date}
+						className="flex-1 rounded-[1px] bg-green-500 first:rounded-l-sm last:rounded-r-sm"
+					/>
+				))}
+			</div>
 
-				<Button
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-muted-foreground/30 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-					onClick={onRemove}
-					onPointerDown={(e) => e.stopPropagation()}
-				>
-					<Trash2 className="h-4 w-4" />
-				</Button>
+			{/* Legend */}
+			<div className="mt-2 flex justify-between text-muted-foreground/60 text-xs select-none">
+				<span>90 days ago</span>
+				<span>Today</span>
 			</div>
 		</div>
 	);
 }
+

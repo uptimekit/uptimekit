@@ -16,6 +16,40 @@ import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 // ... existing functions
 import { redis } from "./redis";
 
+// Retry wrapper for database queries to handle connection issues during startup
+async function withRetry<T>(
+	fn: () => Promise<T>,
+	maxRetries = 10,
+	initialDelayMs = 1000,
+	serviceName = "Database",
+): Promise<T> {
+	let lastError: any;
+	for (let i = 0; i < maxRetries; i++) {
+		try {
+			return await fn();
+		} catch (error: any) {
+			lastError = error;
+			// Log the full error for debugging
+			console.error(`${serviceName} error:`, error);
+			// Only retry on connection errors
+			if (error?.code === "ECONNREFUSED" || error?.code === "ENOTFOUND") {
+				if (i < maxRetries - 1) {
+					// Exponential backoff: 1s, 2s, 4s, 8s, then cap at 10s
+					const delayMs = Math.min(initialDelayMs * 2 ** i, 10000);
+					console.log(
+						`${serviceName} connection failed, retrying in ${delayMs}ms... (attempt ${i + 1}/${maxRetries})`,
+					);
+					await new Promise((resolve) => setTimeout(resolve, delayMs));
+					continue;
+				}
+			}
+			// For other errors, throw immediately
+			throw error;
+		}
+	}
+	throw lastError;
+}
+
 // Helper to cache data in Redis
 // TTL in seconds
 async function cached<T>(
@@ -32,7 +66,8 @@ async function cached<T>(
 		console.error(`Redis get error for key ${key}:`, error);
 	}
 
-	const data = await fetcher();
+	// Wrap fetcher with retry logic for database connection issues
+	const data = await withRetry(fetcher);
 
 	try {
 		if (data !== undefined) {
@@ -450,4 +485,3 @@ export const getMonitorStatus = async (monitorId: string) => {
 		},
 	);
 };
-

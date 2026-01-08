@@ -61,24 +61,24 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 ### Installation
 
-1.  **Clone the repository**
+1. **Clone the repository**
 
     ```bash
     git clone https://github.com/uptimekit/uptimekit.git
     cd uptimekit
     ```
 
-2.  **Install dependencies**
+2. **Install dependencies**
 
     ```bash
     pnpm install
     ```
 
-3.  **Environment Setup**
+3. **Environment Setup**
 
     Copy the `.env.example` files in `apps/dash`.
 
-4.  **Database Setup**
+4. **Database Setup**
 
     Push the schema to your local database:
 
@@ -86,7 +86,7 @@ Follow these steps to get UptimeKit running locally on your machine.
     pnpm run db:push
     ```
 
-5.  **Run Development Server**
+5. **Run Development Server**
 
     Start all applications (Dashboard, Status Page, Marketing/Docs):
 
@@ -121,7 +121,7 @@ We welcome contributions! Please check out our [Contributing Guide](CONTRIBUTING
 
 ## 📄 License
 
-This project is licensed under a modified [MIT License](LICENSE). Please check the file for specific usage restrictions.
+This project is licensed under a [MIT License](LICENSE)
 
 ---
 

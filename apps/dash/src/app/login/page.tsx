@@ -7,21 +7,17 @@ import SignInForm from "@/components/auth/sign-in-form";
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-	const isSelfHosted = process.env.NEXT_PUBLIC_SELFHOSTED === "true";
-
 	let showRegister = true;
 
-	if (isSelfHosted) {
-		const users = await db
-			.select({ id: schema.user.id })
-			.from(schema.user)
-			.limit(1);
+	const users = await db
+		.select({ id: schema.user.id })
+		.from(schema.user)
+		.limit(1);
 
-		if (users.length === 0) {
-			redirect("/register");
-		} else {
-			showRegister = false;
-		}
+	if (users.length === 0) {
+		redirect("/register");
+	} else {
+		showRegister = false;
 	}
 
 	return (

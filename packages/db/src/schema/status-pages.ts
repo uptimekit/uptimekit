@@ -64,6 +64,7 @@ export const statusPageMonitor = pgTable(
 			onDelete: "set null",
 		}),
 		style: text("style").default("history").notNull(), // 'history' | 'status'
+		description: text("description"), // Optional description shown in info tooltip
 		order: integer("order").default(0).notNull(),
 	},
 	(table) => [

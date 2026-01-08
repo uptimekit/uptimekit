@@ -474,6 +474,7 @@ export default async function StatusPage() {
 				currentStatus,
 				group: pm.group,
 				displayStyle: pm.style || "history", // 'history' or 'status'
+				description: pm.description,
 			};
 		}),
 	);
@@ -574,6 +575,7 @@ export default async function StatusPage() {
 											uptimePercentage={monitor.avgUptime}
 											history={monitor.history}
 											displayStyle={monitor.displayStyle as any}
+											description={monitor.description}
 										/>
 									))}
 								</div>

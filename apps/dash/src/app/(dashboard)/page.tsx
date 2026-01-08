@@ -16,7 +16,7 @@ export default async function HomePage() {
 	}
 
 	return (
-		<div className="flex flex-1 flex-col py-8">
+		<div className="flex flex-1 flex-col pb-8">
 			<IncidentsTable />
 		</div>
 	);
