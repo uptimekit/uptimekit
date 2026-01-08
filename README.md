@@ -116,6 +116,13 @@ uptimekit/
 ```
 
 <!-- SPONSORS:START -->
+
+## 💝 Sponsors
+
+Thank you to all our amazing sponsors who make this project possible!
+
+**[Become a sponsor](https://github.com/sponsors/stripsior)** and support the development of UptimeKit!
+
 <!-- SPONSORS:END -->
 
 ## 🤝 Contributing
