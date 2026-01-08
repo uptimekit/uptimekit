@@ -7,7 +7,8 @@ on:
   workflow_dispatch: # Allow manual trigger
   push:
     branches:
-      - main
+      - release
+      - development
     paths:
       - '.github/workflows/update-sponsors.yml'
 
