@@ -94,8 +94,7 @@ jobs:
               return [];
             }
 
-      - name: Generate Sponsors Section
-        id: generate-section
+      - name: Generate and Update Sponsors Section
         uses: actions/github-script@v7
         env:
           SPONSORS_DATA: ${{ steps.fetch-sponsors.outputs.result }}
@@ -105,8 +104,8 @@ jobs:
             const sponsors = JSON.parse(process.env.SPONSORS_DATA || '[]');
 
             if (sponsors.length === 0) {
-              console.log('No sponsors found');
-              return '';
+              console.log('No sponsors found, keeping placeholder');
+              return;
             }
 
             // Group sponsors by tier
@@ -115,75 +114,73 @@ jobs:
             const bronzeSponsors = sponsors.filter(s => s.tier >= 10 && s.tier < 50);
             const supporters = sponsors.filter(s => s.tier < 10);
 
-            let sponsorsSection = '## 💝 Sponsors\n\n';
-            sponsorsSection += 'Thank you to all our amazing sponsors who make this project possible!\n\n';
+            let sections = [];
+            sections.push('## 💝 Sponsors');
+            sections.push('');
+            sections.push('Thank you to all our amazing sponsors who make this project possible!');
+            sections.push('');
 
             // Gold Sponsors (>= $100/month)
             if (goldSponsors.length > 0) {
-              sponsorsSection += '### 🥇 Gold Sponsors\n\n';
-              sponsorsSection += '<div align="center">\n';
+              sections.push('### 🥇 Gold Sponsors');
+              sections.push('');
+              sections.push('<div align="center">');
               for (const sponsor of goldSponsors) {
-                sponsorsSection += `  <a href="${sponsor.url}" title="${sponsor.name}">\n`;
-                sponsorsSection += `    <img src="${sponsor.avatarUrl}" width="80" height="80" alt="${sponsor.name}" style="border-radius: 50%; margin: 10px;" />\n`;
-                sponsorsSection += `  </a>\n`;
+                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
+                sections.push(`    <img src="${sponsor.avatarUrl}" width="80" height="80" alt="${sponsor.name}" style="border-radius: 50%; margin: 10px;" />`);
+                sections.push(`  </a>`);
               }
-              sponsorsSection += '</div>\n\n';
+              sections.push('</div>');
+              sections.push('');
             }
 
             // Silver Sponsors ($50-$99/month)
             if (silverSponsors.length > 0) {
-              sponsorsSection += '### 🥈 Silver Sponsors\n\n';
-              sponsorsSection += '<div align="center">\n';
+              sections.push('### 🥈 Silver Sponsors');
+              sections.push('');
+              sections.push('<div align="center">');
               for (const sponsor of silverSponsors) {
-                sponsorsSection += `  <a href="${sponsor.url}" title="${sponsor.name}">\n`;
-                sponsorsSection += `    <img src="${sponsor.avatarUrl}" width="60" height="60" alt="${sponsor.name}" style="border-radius: 50%; margin: 8px;" />\n`;
-                sponsorsSection += `  </a>\n`;
+                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
+                sections.push(`    <img src="${sponsor.avatarUrl}" width="60" height="60" alt="${sponsor.name}" style="border-radius: 50%; margin: 8px;" />`);
+                sections.push(`  </a>`);
               }
-              sponsorsSection += '</div>\n\n';
+              sections.push('</div>');
+              sections.push('');
             }
 
             // Bronze Sponsors ($10-$49/month)
             if (bronzeSponsors.length > 0) {
-              sponsorsSection += '### 🥉 Bronze Sponsors\n\n';
-              sponsorsSection += '<div align="center">\n';
+              sections.push('### 🥉 Bronze Sponsors');
+              sections.push('');
+              sections.push('<div align="center">');
               for (const sponsor of bronzeSponsors) {
-                sponsorsSection += `  <a href="${sponsor.url}" title="${sponsor.name}">\n`;
-                sponsorsSection += `    <img src="${sponsor.avatarUrl}" width="50" height="50" alt="${sponsor.name}" style="border-radius: 50%; margin: 6px;" />\n`;
-                sponsorsSection += `  </a>\n`;
+                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
+                sections.push(`    <img src="${sponsor.avatarUrl}" width="50" height="50" alt="${sponsor.name}" style="border-radius: 50%; margin: 6px;" />`);
+                sections.push(`  </a>`);
               }
-              sponsorsSection += '</div>\n\n';
+              sections.push('</div>');
+              sections.push('');
             }
 
             // Supporters (< $10/month)
             if (supporters.length > 0) {
-              sponsorsSection += '### ❤️ Supporters\n\n';
-              sponsorsSection += '<div align="center">\n';
+              sections.push('### ❤️ Supporters');
+              sections.push('');
+              sections.push('<div align="center">');
               for (const sponsor of supporters) {
-                sponsorsSection += `  <a href="${sponsor.url}" title="${sponsor.name}">\n`;
-                sponsorsSection += `    <img src="${sponsor.avatarUrl}" width="40" height="40" alt="${sponsor.name}" style="border-radius: 50%; margin: 4px;" />\n`;
-                sponsorsSection += `  </a>\n`;
+                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
+                sections.push(`    <img src="${sponsor.avatarUrl}" width="40" height="40" alt="${sponsor.name}" style="border-radius: 50%; margin: 4px;" />`);
+                sections.push(`  </a>`);
               }
-              sponsorsSection += '</div>\n\n';
+              sections.push('</div>');
+              sections.push('');
             }
 
-            sponsorsSection += '**[Become a sponsor](https://github.com/sponsors/stripsior)** and get your logo/avatar here!\n';
+            sections.push('**[Become a sponsor](https://github.com/sponsors/stripsior)** and get your logo/avatar here!');
 
-            return sponsorsSection;
+            const sponsorsSection = sections.join('\n');
 
-      - name: Update README
-        uses: actions/github-script@v7
-        env:
-          SPONSORS_SECTION: ${{ steps.generate-section.outputs.result }}
-        with:
-          script: |
-            const fs = require('fs');
-            const sponsorsSection = process.env.SPONSORS_SECTION;
-
-            if (!sponsorsSection) {
-              console.log('No sponsors section to add');
-              return;
-            }
-
+            // Now update the README directly
             let readme = fs.readFileSync('README.md', 'utf8');
 
             // Define markers for the sponsors section
