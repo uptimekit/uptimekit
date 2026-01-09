@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/scheduler",
-	"version": "2.0.0",
+	"version": "2.0.3",
 	"private": true,
 	"type": "module",
 	"main": "./dist/index.js",
@@ -10,14 +10,14 @@
 		"start": "node dist/index.js"
 	},
 	"dependencies": {
-		"@uptimekit/db": "workspace:*",
+		"@uptimekit/db": "workspace:2.0.3",
 		"bullmq": "^5.34.8",
 		"dotenv": "catalog:",
 		"ioredis": "^5.4.2"
 	},
 	"devDependencies": {
 		"@types/node": "^22.13.11",
-		"@uptimekit/config": "workspace:*",
+		"@uptimekit/config": "workspace:2.0.3",
 		"tsx": "^4.19.2",
 		"typescript": "^5"
 	}
