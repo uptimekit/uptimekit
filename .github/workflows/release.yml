@@ -107,6 +107,14 @@ jobs:
           echo "Packages for Docker build:"
           echo "$PACKAGES" | jq .
 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ env.VERSION }}
+          generate_release_notes: true
+          make_latest: true
+          prerelease: false
+
   publish-docker:
     name: Publish Docker Images
     needs: prepare
