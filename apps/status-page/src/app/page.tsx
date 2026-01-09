@@ -82,7 +82,6 @@ function fillMissingDays(
 	return result;
 }
 
-
 export async function generateMetadata() {
 	const headersList = await headers();
 	const host =
@@ -342,15 +341,16 @@ export default async function StatusPage() {
 			const monitorInterval = pm.monitor.interval || 60; // Default 60 seconds
 			const incidentPendingDuration = pm.monitor.incidentPendingDuration || 0; // In seconds
 			const incidentThresholdMs = incidentPendingDuration * 1000;
-			
+
 			let history = fillMissingDays(dailyStats, 90, undefined, monitorInterval);
-			
+
 			// Filter out short downtimes that don't exceed the incident threshold
 			// This respects the monitor's setting - if a monitor requires 3 minutes of failure
 			// to trigger an incident, we shouldn't show single-check failures as downtime
 			history = history.map((day) => ({
 				...day,
-				downtimeMs: (day.downtimeMs || 0) > incidentThresholdMs ? day.downtimeMs : 0,
+				downtimeMs:
+					(day.downtimeMs || 0) > incidentThresholdMs ? day.downtimeMs : 0,
 			}));
 
 			// Overlay Manual Events (Maintenance & Incidents)
@@ -432,15 +432,28 @@ export default async function StatusPage() {
 
 					for (const r of relevantReports) {
 						let currentStatusForReport: StatusType = "operational";
-						if (r.severity === "critical") currentStatusForReport = "major_outage";
-						else if (r.severity === "major") currentStatusForReport = "partial_outage";
-						else if (r.severity === "minor" || r.severity === "degraded") currentStatusForReport = "degraded";
+						if (r.severity === "critical")
+							currentStatusForReport = "major_outage";
+						else if (r.severity === "major")
+							currentStatusForReport = "partial_outage";
+						else if (r.severity === "minor" || r.severity === "degraded")
+							currentStatusForReport = "degraded";
 						else currentStatusForReport = "major_outage"; // fallback
 
 						// Promote if worse
-						if (worstSeverityStatus === "operational") worstSeverityStatus = currentStatusForReport;
-						else if (worstSeverityStatus === "degraded" && (currentStatusForReport === "partial_outage" || currentStatusForReport === "major_outage")) worstSeverityStatus = currentStatusForReport;
-						else if (worstSeverityStatus === "partial_outage" && currentStatusForReport === "major_outage") worstSeverityStatus = currentStatusForReport;
+						if (worstSeverityStatus === "operational")
+							worstSeverityStatus = currentStatusForReport;
+						else if (
+							worstSeverityStatus === "degraded" &&
+							(currentStatusForReport === "partial_outage" ||
+								currentStatusForReport === "major_outage")
+						)
+							worstSeverityStatus = currentStatusForReport;
+						else if (
+							worstSeverityStatus === "partial_outage" &&
+							currentStatusForReport === "major_outage"
+						)
+							worstSeverityStatus = currentStatusForReport;
 					}
 
 					return {
@@ -459,12 +472,12 @@ export default async function StatusPage() {
 			const knownDays = history.filter(
 				(d) => d.status !== "unknown" && d.status !== "maintenance",
 			);
-			
+
 			// Calculate average uptime for the period (for display next to monitor name)
 			const avgUptime =
 				knownDays.length > 0
 					? knownDays.reduce((acc, curr) => acc + curr.uptime, 0) /
-					  knownDays.length
+						knownDays.length
 					: 100;
 
 			return {
@@ -509,11 +522,27 @@ export default async function StatusPage() {
 	});
 
 	// Calculate Overall Status
+	// Priority: maintenance (highest) > manual status updates (major_outage, partial_outage, degraded) > operational (automated)
 	const worstStatus = monitorsData.reduce((acc, curr) => {
-		if (curr.currentStatus === "major_outage") return "major_outage";
-		if (acc === "major_outage") return acc;
+		// Maintenance has highest priority - always show if any service is under maintenance
+		if (curr.currentStatus === "maintenance" || acc === "maintenance") {
+			return "maintenance";
+		}
 
-		if (curr.currentStatus === "maintenance") return "maintenance";
+		// Major outage (manual incident) is second priority
+		if (curr.currentStatus === "major_outage" || acc === "major_outage") {
+			return "major_outage";
+		}
+
+		// Partial outage (manual incident) is third priority
+		if (curr.currentStatus === "partial_outage" || acc === "partial_outage") {
+			return "partial_outage";
+		}
+
+		// Degraded (manual incident) is fourth priority
+		if (curr.currentStatus === "degraded" || acc === "degraded") {
+			return "degraded";
+		}
 
 		return acc;
 	}, "operational" as StatusType);
