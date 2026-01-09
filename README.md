@@ -126,6 +126,9 @@ Thank you to all our amazing sponsors who make this project possible!
   <a href="https://github.com/msikorski26" title="Mateusz Sikorski">
     <img src="https://avatars.githubusercontent.com/u/41286754?u=b101f143348c1143f33cbac34125e8cea1f2fe64&v=4" width="40" height="40" alt="Mateusz Sikorski" style="border-radius: 50%; margin: 4px;" />
   </a>
+  <a href="https://github.com/mscode-pl" title="MsCode.pl">
+    <img src="https://avatars.githubusercontent.com/u/116160490?v=4" width="40" height="40" alt="MsCode.pl" style="border-radius: 50%; margin: 4px;" />
+  </a>
   <a href="https://github.com/l1806-vex" title="Jakub">
     <img src="https://avatars.githubusercontent.com/u/220633171?u=2ed36eca482294022900ca95f93caa9924515553&v=4" width="40" height="40" alt="Jakub" style="border-radius: 50%; margin: 4px;" />
   </a>
