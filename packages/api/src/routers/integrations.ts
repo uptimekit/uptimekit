@@ -157,4 +157,59 @@ export const integrationsRouter = {
 				);
 			return { success: true };
 		}),
+
+	test: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/integrations/{id}/test",
+				tags: ["Integration Management"],
+				summary: "Test integration",
+				description: "Send a test event to verify the integration is working.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ context, input }) => {
+			const organizationId = context.session.session.activeOrganizationId;
+			if (!organizationId) throw new Error("No organization selected");
+
+			const config = await db.query.integrationConfig.findFirst({
+				where: (t, { eq, and }) =>
+					and(eq(t.id, input.id), eq(t.organizationId, organizationId)),
+			});
+
+			if (!config) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Integration not found",
+				});
+			}
+
+			const integration = integrationRegistry.get(config.type);
+			if (!integration) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Integration type not found",
+				});
+			}
+
+			const testEvent = "integration.test";
+			const testPayload = {
+				organizationId,
+				incidentId: "test-incident-id",
+				title: "Test Incident",
+				description:
+					"This is a test incident to verify your integration is working correctly.",
+				severity: "info",
+				status: "investigating",
+				createdAt: new Date().toISOString(),
+			};
+
+			try {
+				await integration.handler(config.config, testEvent, testPayload);
+				return { success: true, message: "Test event sent successfully" };
+			} catch (error: any) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: `Failed to send test event: ${error.message}`,
+				});
+			}
+		}),
 };

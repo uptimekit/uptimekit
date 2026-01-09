@@ -21,7 +21,10 @@ interface ConfigDialogProps {
 	onOpenChange: (open: boolean) => void;
 	integration: IntegrationDefinition;
 	initialConfig?: any;
+	configId?: string;
 	onSave: (config: any) => Promise<void>;
+	onDelete?: () => Promise<void>;
+	onTest?: () => Promise<void>;
 }
 
 export function ConfigDialog({
@@ -29,12 +32,17 @@ export function ConfigDialog({
 	onOpenChange,
 	integration,
 	initialConfig,
+	configId,
 	onSave,
+	onDelete,
+	onTest,
 }: ConfigDialogProps) {
 	const [config, setConfig] = useState<Record<string, any>>(
 		initialConfig || {},
 	);
 	const [saving, setSaving] = useState(false);
+	const [testing, setTesting] = useState(false);
+	const [deleting, setDeleting] = useState(false);
 
 	// Basic schema parsing for MVP (assumes object with string fields)
 	// In a real robust system, use something like 'auto-form'
@@ -63,6 +71,47 @@ export function ConfigDialog({
 			console.error(error);
 		} finally {
 			setSaving(false);
+		}
+	};
+
+	const handleTest = async () => {
+		if (!onTest) return;
+
+		setTesting(true);
+		try {
+			await onTest();
+			toast.success(
+				"Test event sent successfully! Check your integration endpoint.",
+			);
+		} catch (error: any) {
+			toast.error(error.message || "Failed to send test event");
+			console.error(error);
+		} finally {
+			setTesting(false);
+		}
+	};
+
+	const handleDelete = async () => {
+		if (!onDelete) return;
+
+		if (
+			!confirm(
+				"Are you sure you want to remove this integration? This action cannot be undone.",
+			)
+		) {
+			return;
+		}
+
+		setDeleting(true);
+		try {
+			await onDelete();
+			onOpenChange(false);
+			toast.success("Integration removed");
+		} catch (error: any) {
+			toast.error(error.message || "Failed to remove integration");
+			console.error(error);
+		} finally {
+			setDeleting(false);
 		}
 	};
 
@@ -100,13 +149,35 @@ export function ConfigDialog({
 					})}
 				</div>
 
-				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
-					</Button>
-					<Button onClick={handleSave} disabled={saving}>
-						{saving ? "Saving..." : "Save Changes"}
-					</Button>
+				<DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+					<div className="flex gap-2">
+						{configId && onDelete && (
+							<Button
+								variant="destructive"
+								onClick={handleDelete}
+								disabled={deleting || saving || testing}
+							>
+								{deleting ? "Removing..." : "Remove"}
+							</Button>
+						)}
+					</div>
+					<div className="flex gap-2">
+						{configId && onTest && (
+							<Button
+								variant="outline"
+								onClick={handleTest}
+								disabled={testing || saving || deleting}
+							>
+								{testing ? "Testing..." : "Test"}
+							</Button>
+						)}
+						<Button
+							onClick={handleSave}
+							disabled={saving || testing || deleting}
+						>
+							{saving ? "Saving..." : "Save Changes"}
+						</Button>
+					</div>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

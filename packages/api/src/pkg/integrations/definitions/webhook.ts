@@ -20,6 +20,7 @@ export const webhookIntegration: IntegrationDefinition<
 		"incident.resolved",
 		"incident.acknowledged",
 		"incident.comment_added",
+		"integration.test",
 	],
 	handler: async (config, event, payload) => {
 		// console.log(`[Webhook] Sending ${event} to ${config.url}`);

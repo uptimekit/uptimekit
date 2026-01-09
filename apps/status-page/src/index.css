@@ -77,7 +77,7 @@ body {
 	--shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
 	--tracking-normal: 0em;
 	--status-operational: oklch(0.64 0.19 146.42);
-	--status-degraded: oklch(0.79 0.16 86.84);
+	--status-degraded: oklch(0.65 0.20 85);
 	--status-partial-outage: oklch(0.7 0.19 47.56);
 	--status-major-outage: oklch(0.57 0.21 27.29);
 	--status-maintenance: oklch(0.62 0.19 254.67);
@@ -143,7 +143,7 @@ body {
 		0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
 	--shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
 	--status-operational: oklch(0.64 0.19 146.42);
-	--status-degraded: oklch(0.79 0.16 86.84);
+	--status-degraded: oklch(0.70 0.18 85);
 	--status-partial-outage: oklch(0.7 0.19 47.56);
 	--status-major-outage: oklch(0.57 0.21 27.29);
 	--status-maintenance: oklch(0.62 0.19 254.67);

@@ -19,6 +19,16 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { AddMaintenanceUpdateForm } from "@/components/status-pages/add-maintenance-update-form";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,7 +170,10 @@ export default function MaintenanceDetailsPage() {
 										<div className="mb-2 flex flex-col gap-1">
 											<div className="flex items-center justify-between gap-2">
 												<div className="flex items-center gap-2">
-													<Badge variant="secondary" className="text-xs uppercase">
+													<Badge
+														variant="secondary"
+														className="text-xs uppercase"
+													>
 														{update.status.replace("_", " ")}
 													</Badge>
 													<span className="text-muted-foreground text-xs">
@@ -340,81 +353,139 @@ function EditUpdateDialog({
 		},
 	});
 
+	const { mutate: deleteUpdate, isPending: isDeleting } = useMutation({
+		mutationFn: async () => {
+			if (!update) return;
+			await client.maintenance.deleteUpdate({
+				updateId: update.id,
+			});
+		},
+		onSuccess: () => {
+			toast.success("Update deleted");
+			queryClient.invalidateQueries({
+				queryKey: orpc.maintenance.get.key(),
+			});
+			onOpenChange(false);
+		},
+		onError: () => {
+			toast.error("Failed to delete update");
+		},
+	});
+
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
 	const onSubmit = (values: { message: string; status: string }) => {
 		updateUpdate(values);
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-xl">
-				<DialogHeader>
-					<DialogTitle>Edit maintenance update</DialogTitle>
-					<DialogDescription>
-						Update the message for this status update.
-					</DialogDescription>
-				</DialogHeader>
-				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						<FormField
-							control={form.control}
-							name="message"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Message</FormLabel>
-									<FormControl>
-										<Textarea
-											{...field}
-											rows={5}
-											placeholder="Message..."
-											className="resize-none"
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="status"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Status</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										defaultValue={field.value}
-									>
+		<>
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent className="sm:max-w-xl">
+					<DialogHeader>
+						<DialogTitle>Edit maintenance update</DialogTitle>
+						<DialogDescription>
+							Update the message for this status update.
+						</DialogDescription>
+					</DialogHeader>
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+							<FormField
+								control={form.control}
+								name="message"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Message</FormLabel>
 										<FormControl>
-											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Status" />
-											</SelectTrigger>
+											<Textarea
+												{...field}
+												rows={5}
+												placeholder="Message..."
+												className="resize-none"
+											/>
 										</FormControl>
-										<SelectContent>
-											<SelectItem value="scheduled">Scheduled</SelectItem>
-											<SelectItem value="in_progress">In Progress</SelectItem>
-											<SelectItem value="completed">Completed</SelectItem>
-										</SelectContent>
-									</Select>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="status"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Status</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Status" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="scheduled">Scheduled</SelectItem>
+												<SelectItem value="in_progress">In Progress</SelectItem>
+												<SelectItem value="completed">Completed</SelectItem>
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 
-						<div className="flex justify-end gap-2 pt-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={isPending}>
-								{isPending ? "Saving..." : "Save changes"}
-							</Button>
-						</div>
-					</form>
-				</Form>
-			</DialogContent>
-		</Dialog>
+							<div className="flex justify-between gap-2 pt-2">
+								<Button
+									type="button"
+									variant="destructive"
+									onClick={() => setShowDeleteDialog(true)}
+									disabled={isPending || isDeleting}
+								>
+									Delete
+								</Button>
+								<div className="flex gap-2">
+									<Button
+										type="button"
+										variant="ghost"
+										onClick={() => onOpenChange(false)}
+										disabled={isPending || isDeleting}
+									>
+										Cancel
+									</Button>
+									<Button type="submit" disabled={isPending || isDeleting}>
+										{isPending ? "Saving..." : "Save changes"}
+									</Button>
+								</div>
+							</div>
+						</form>
+					</Form>
+				</DialogContent>
+			</Dialog>
+
+			<AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete update?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to delete this update? This action cannot be
+							undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								deleteUpdate();
+								setShowDeleteDialog(false);
+							}}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }
 
@@ -481,7 +552,10 @@ function EditWindowDialog({
 								<FormItem className="flex flex-col">
 									<FormLabel>Start time</FormLabel>
 									<FormControl>
-										<DateTimePicker date={field.value} setDate={field.onChange} />
+										<DateTimePicker
+											date={field.value}
+											setDate={field.onChange}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -494,7 +568,10 @@ function EditWindowDialog({
 								<FormItem className="flex flex-col">
 									<FormLabel>End time</FormLabel>
 									<FormControl>
-										<DateTimePicker date={field.value} setDate={field.onChange} />
+										<DateTimePicker
+											date={field.value}
+											setDate={field.onChange}
+										/>
 									</FormControl>
 									<FormMessage />
 								</FormItem>
