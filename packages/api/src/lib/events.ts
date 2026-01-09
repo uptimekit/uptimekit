@@ -31,6 +31,19 @@ type AppEvents = {
 		severity: "minor" | "major" | "critical";
 		userId?: string | null;
 	};
+	"monitor.ssl.expiring": {
+		monitorId: string;
+		organizationId: string;
+		monitorName: string;
+		domain: string;
+		issuer?: string;
+		validFrom?: string;
+		validTo?: string;
+		daysUntilExpiry: number;
+		isValid: boolean;
+		error?: string;
+		threshold: number;
+	};
 };
 
 class TypedEventEmitter extends EventEmitter {
