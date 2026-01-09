@@ -51,19 +51,34 @@ export default function IntegrationsPage() {
 		},
 	});
 
+	const deleteMutation = useMutation({
+		mutationFn: async (id: string) => {
+			await client.integrations.delete({ id });
+		},
+		onSuccess: () => {
+			refetch();
+		},
+	});
+
+	const testMutation = useMutation({
+		mutationFn: async (id: string) => {
+			await client.integrations.test({ id });
+		},
+	});
+
 	// Removed the require block as webhookIntegration is now imported at the top.
 	const frontendRegistry = {
 		webhook: {
 			...webhookIntegrationMeta,
-			handler: async () => { },
+			handler: async () => {},
 		} as IntegrationDefinition,
 		discord: {
 			...discordIntegrationMeta,
-			handler: async () => { },
+			handler: async () => {},
 		} as IntegrationDefinition,
 		telegram: {
 			...telegramIntegrationMeta,
-			handler: async () => { },
+			handler: async () => {},
 		} as IntegrationDefinition,
 	};
 
@@ -167,7 +182,7 @@ export default function IntegrationsPage() {
 									// Fallback if not found locally but exists on backend (shouldn't happen if synced)
 									...integrationMeta,
 									configSchema: {
-										parse: () => { },
+										parse: () => {},
 										shape: { url: z.string() },
 									} as any,
 								};
@@ -213,24 +228,42 @@ export default function IntegrationsPage() {
 					);
 				})()}
 
-				{selectedIntegration && (
-					<ConfigDialog
-						open={!!selectedIntegration}
-						onOpenChange={(open) => !open && setSelectedIntegration(null)}
-						integration={selectedIntegration}
-						initialConfig={
-							configuredConfigs?.find((c) => c.type === selectedIntegration.id)
-								?.config
-						}
-						onSave={async (config) => {
-							await configureMutation.mutateAsync({
-								type: selectedIntegration.id,
-								config,
-							});
-							setSelectedIntegration(null);
-						}}
-					/>
-				)}
+				{selectedIntegration &&
+					(() => {
+						const existingConfig = configuredConfigs?.find(
+							(c) => c.type === selectedIntegration.id,
+						);
+						return (
+							<ConfigDialog
+								open={!!selectedIntegration}
+								onOpenChange={(open) => !open && setSelectedIntegration(null)}
+								integration={selectedIntegration}
+								initialConfig={existingConfig?.config}
+								configId={existingConfig?.id}
+								onSave={async (config) => {
+									await configureMutation.mutateAsync({
+										type: selectedIntegration.id,
+										config,
+									});
+									setSelectedIntegration(null);
+								}}
+								onDelete={
+									existingConfig
+										? async () => {
+												await deleteMutation.mutateAsync(existingConfig.id);
+											}
+										: undefined
+								}
+								onTest={
+									existingConfig
+										? async () => {
+												await testMutation.mutateAsync(existingConfig.id);
+											}
+										: undefined
+								}
+							/>
+						);
+					})()}
 			</div>
 		</div>
 	);
