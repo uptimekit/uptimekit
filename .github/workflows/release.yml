@@ -27,12 +27,10 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
 
       - name: Extract Version
@@ -108,6 +106,14 @@ jobs:
           
           echo "Packages for Docker build:"
           echo "$PACKAGES" | jq .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ env.VERSION }}
+          generate_release_notes: true
+          make_latest: true
+          prerelease: false
 
   publish-docker:
     name: Publish Docker Images

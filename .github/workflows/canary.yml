@@ -27,12 +27,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Calculate Canary Version
         id: calc_version
@@ -41,9 +39,22 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./packages/api/package.json').version")
           echo "Current base version: $CURRENT_VERSION"
           
+          # Clean existing suffix if any
+          CLEAN_VERSION=$(echo $CURRENT_VERSION | cut -d- -f1)
+
+          # Bump patch version
+          IFS='.' read -r -a parts <<< "$CLEAN_VERSION"
+          MAJOR=${parts[0]}
+          MINOR=${parts[1]}
+          PATCH=${parts[2]}
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+          
+          echo "Target canary base: $NEXT_VERSION"
+          
           # Find latest canary tag for this version
-          # Pattern: v2.0.2-canary.1
-          LAST_CANARY=$(git tag -l "v$CURRENT_VERSION-canary.*" | sort -V | tail -n 1)
+          # Pattern: v2.0.3-canary.1
+          LAST_CANARY=$(git tag -l "v$NEXT_VERSION-canary.*" | sort -V | tail -n 1)
           
           if [ -z "$LAST_CANARY" ]; then
             NEXT_NUM=1
@@ -53,7 +64,7 @@ jobs:
             NEXT_NUM=$((LAST_NUM + 1))
           fi
           
-          NEW_VERSION="$CURRENT_VERSION-canary.$NEXT_NUM"
+          NEW_VERSION="$NEXT_VERSION-canary.$NEXT_NUM"
           echo "Next canary version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
@@ -111,6 +122,15 @@ jobs:
           else
             echo "has_releases=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.calc_version.outputs.version }}
+          name: v${{ steps.calc_version.outputs.version }}
+          generate_release_notes: true
+          make_latest: false
+          prerelease: true
 
   publish-docker-canary:
     name: Publish Docker Images
