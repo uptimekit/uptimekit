@@ -50,18 +50,22 @@ jobs:
 
       - name: Commit and Sync
         run: |
-          # Commit changes
-          git add .
-          git commit -m "chore: release v${{ env.VERSION }}"
+          # Commit changes only if there are any
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: release v${{ env.VERSION }}"
+          else
+            echo "No changes to commit. Version might have been manually bumped."
+          fi
           
-          # Push to release branch (assuming tag was created on release branch or we want to force it there)
-          # We force update release branch to match this release commit
+          # Push to release branch
           git push origin HEAD:release
           
           # Sync to development
+          git fetch origin release
           git checkout development
           git pull origin development
-          git merge release
+          git merge origin/release
           git push origin development
 
       - name: Find All Packages with Dockerfiles
