@@ -413,9 +413,61 @@ export const maintenanceRouter = {
 				});
 			}
 
+			// Check if this is the last update
+			const updateCount = await db.query.maintenanceUpdate.findMany({
+				where: eq(maintenanceUpdate.maintenanceId, update.maintenanceId),
+			});
+
+			if (updateCount.length <= 1) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Cannot delete the last update from a maintenance window.",
+				});
+			}
+
 			await db
 				.delete(maintenanceUpdate)
 				.where(eq(maintenanceUpdate.id, input.updateId));
+
+			return { success: true };
+		}),
+
+	delete: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/maintenance/{maintenanceId}",
+				tags: ["Status Page Management"],
+				summary: "Delete maintenance",
+				description: "Delete an entire maintenance window and all its updates.",
+			},
+		})
+		.input(
+			z.object({
+				maintenanceId: z.string(),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const activeOrganizationId = context.session.session.activeOrganizationId;
+
+			if (!activeOrganizationId) {
+				throw new ORPCError("UNAUTHORIZED", {
+					message: "No active organization",
+				});
+			}
+
+			const record = await db.query.maintenance.findFirst({
+				where: and(
+					eq(maintenance.id, input.maintenanceId),
+					eq(maintenance.organizationId, activeOrganizationId),
+				),
+			});
+
+			if (!record) {
+				throw new ORPCError("NOT_FOUND", { message: "Maintenance not found" });
+			}
+
+			// Delete the maintenance (cascade will delete updates and associations)
+			await db.delete(maintenance);
 
 			return { success: true };
 		}),

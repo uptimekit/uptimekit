@@ -428,4 +428,133 @@ export const statusUpdatesRouter = {
 
 			return { success: true };
 		}),
+
+	deleteUpdate: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/status-pages/{statusPageId}/updates/{updateId}",
+				tags: ["Status Page Management"],
+				summary: "Delete report update",
+				description: "Delete a status update.",
+			},
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+				updateId: z.string(),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const activeOrganizationId = context.session.session.activeOrganizationId;
+
+			if (!activeOrganizationId) {
+				throw new ORPCError("UNAUTHORIZED", {
+					message: "No active organization",
+				});
+			}
+
+			// Verify ownership via status page lookup
+			const page = await db.query.statusPage.findFirst({
+				where: and(
+					eq(statusPage.id, input.statusPageId),
+					eq(statusPage.organizationId, activeOrganizationId),
+				),
+			});
+
+			if (!page) {
+				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
+			}
+
+			const update = await db.query.statusPageReportUpdate.findFirst({
+				where: eq(statusPageReportUpdate.id, input.updateId),
+				with: {
+					report: true,
+				},
+			});
+
+			if (!update) {
+				throw new ORPCError("NOT_FOUND", { message: "Update not found" });
+			}
+
+			if (update.report.statusPageId !== input.statusPageId) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Update does not belong to this status page",
+				});
+			}
+
+			// Check if this is the last update
+			const updateCount = await db.query.statusPageReportUpdate.findMany({
+				where: eq(statusPageReportUpdate.reportId, update.reportId),
+			});
+
+			if (updateCount.length <= 1) {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"Cannot delete the last update. Delete the entire report instead.",
+				});
+			}
+
+			await db
+				.delete(statusPageReportUpdate)
+				.where(eq(statusPageReportUpdate.id, input.updateId));
+
+			return { success: true };
+		}),
+
+	deleteReport: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/status-pages/{statusPageId}/reports/{reportId}",
+				tags: ["Status Page Management"],
+				summary: "Delete report",
+				description: "Delete an entire status report and all its updates.",
+			},
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+				reportId: z.string(),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const activeOrganizationId = context.session.session.activeOrganizationId;
+
+			if (!activeOrganizationId) {
+				throw new ORPCError("UNAUTHORIZED", {
+					message: "No active organization",
+				});
+			}
+
+			// Verify ownership via status page lookup
+			const page = await db.query.statusPage.findFirst({
+				where: and(
+					eq(statusPage.id, input.statusPageId),
+					eq(statusPage.organizationId, activeOrganizationId),
+				),
+			});
+
+			if (!page) {
+				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
+			}
+
+			const report = await db.query.statusPageReport.findFirst({
+				where: and(
+					eq(statusPageReport.id, input.reportId),
+					eq(statusPageReport.statusPageId, input.statusPageId),
+				),
+			});
+
+			if (!report) {
+				throw new ORPCError("NOT_FOUND", { message: "Report not found" });
+			}
+
+			// Delete the report (cascade will delete updates and monitor associations)
+			await db
+				.delete(statusPageReport)
+				.where(eq(statusPageReport.id, input.reportId));
+
+			return { success: true };
+		}),
 };
