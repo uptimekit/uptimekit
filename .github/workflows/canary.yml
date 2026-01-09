@@ -32,7 +32,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 19
+          version: 10
 
       - name: Calculate Canary Version
         id: calc_version
