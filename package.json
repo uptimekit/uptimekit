@@ -19,8 +19,7 @@
 		"db:studio": "turbo -F @uptimekit/db db:studio",
 		"db:generate": "turbo -F @uptimekit/db db:generate",
 		"db:migrate": "turbo -F @uptimekit/db db:migrate",
-		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only",
-		"release": "changeset publish"
+		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
 	},
 	"dependencies": {
 		"dotenv": "^17.2.2",
@@ -28,7 +27,6 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.0",
-		"@changesets/cli": "^2.29.8",
 		"@types/node": "^22.13.11",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.1.2",

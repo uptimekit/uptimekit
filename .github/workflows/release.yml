@@ -2,27 +2,69 @@ name: Release
 
 on:
   push:
-    branches:
-      - release
-
-concurrency: ${{ github.workflow }}-${{ github.ref }}
+    tags:
+      - 'v*'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_BASE: ghcr.io/${{ github.repository }}
 
 jobs:
-  detect-packages:
-    name: Detect All Docker Packages
+  prepare:
+    name: Prepare Release
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
-      contents: read
+      contents: write
     outputs:
       packages: ${{ steps.detect.outputs.packages }}
       has_releases: ${{ steps.detect.outputs.has_releases }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Extract Version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Set Versions
+        run: node scripts/set-version.js ${{ env.VERSION }}
+      
+      - name: Update Lockfile
+        run: pnpm install --lockfile-only
+
+      - name: Git Identity
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and Sync
+        run: |
+          # Commit changes
+          git add .
+          git commit -m "chore: release v${{ env.VERSION }}"
+          
+          # Push to release branch (assuming tag was created on release branch or we want to force it there)
+          # We force update release branch to match this release commit
+          git push origin HEAD:release
+          
+          # Sync to development
+          git checkout development
+          git pull origin development
+          git merge release
+          git push origin development
 
       - name: Find All Packages with Dockerfiles
         id: detect
@@ -69,20 +111,22 @@ jobs:
 
   publish-docker:
     name: Publish Docker Images
+    needs: prepare
+    if: needs.prepare.outputs.has_releases == 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: detect-packages
-    if: needs.detect-packages.outputs.has_releases == 'true'
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.detect-packages.outputs.packages) }}
+        package: ${{ fromJson(needs.prepare.outputs.packages) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          ref: release
+          
       - name: Prepare Docker Metadata
         id: prep
         run: |
@@ -140,29 +184,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-  sync-development:
-    name: Sync Release to Development
-    needs: detect-packages
-    if: needs.detect-packages.outputs.has_releases == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout Development
-        uses: actions/checkout@v4
-        with:
-          ref: development
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Git Identity
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Merge Release into Development
-        run: |
-          git fetch origin release
-          git merge origin/release --no-edit
-          git push origin development
