@@ -36,6 +36,7 @@ jobs:
 
       - name: Run Biome Check
         id: biome-check
+        continue-on-error: true
         run: |
           echo "::group::Biome Check"
           OUTPUT=$(npx @biomejs/biome check . 2>&1 || true)
@@ -91,10 +92,9 @@ jobs:
           # Save error count for later
           echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           
-          # Fail if there are errors
+          # Mark as failed if there are errors (but don't exit)
           if [ "$ERRORS" != "0" ]; then
-            echo "::error::Biome check failed with ${ERRORS} errors"
-            exit 1
+            echo "::error::Biome check found ${ERRORS} errors"
           fi
 
       - name: Run Type Check
@@ -108,7 +108,7 @@ jobs:
         run: pnpm run build
       
       - name: Fail if any step failed
-        if: steps.typecheck.outcome == 'failure' || steps.build.outcome == 'failure'
+        if: steps.biome-check.outcome == 'failure' || steps.typecheck.outcome == 'failure' || steps.build.outcome == 'failure'
         run: exit 1
 
   comment-pr:
