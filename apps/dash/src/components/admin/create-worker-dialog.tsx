@@ -27,7 +27,6 @@ import {
 import { WORKER_REGIONS } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
 
-
 export function CreateWorkerDialog() {
 	const [open, setOpen] = useState(false);
 	const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);

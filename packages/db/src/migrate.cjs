@@ -49,7 +49,9 @@ const runClickHouseMigrations = async () => {
 	const clickhouseUrl = process.env.CLICKHOUSE_URL;
 
 	if (!clickhouseUrl) {
-		console.log("⚠️ CLICKHOUSE_URL is not defined, skipping ClickHouse migrations");
+		console.log(
+			"⚠️ CLICKHOUSE_URL is not defined, skipping ClickHouse migrations",
+		);
 		return;
 	}
 
@@ -152,7 +154,7 @@ const seedDefaultConfiguration = async () => {
 				`INSERT INTO configuration (id, key, value, created_at, updated_at)
 				 VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())
 				 ON CONFLICT (key) DO NOTHING`,
-				[config.key, config.value]
+				[config.key, config.value],
 			);
 		}
 		const end = Date.now();

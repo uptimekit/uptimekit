@@ -32,8 +32,8 @@ import {
 	InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { PageNav } from "@/components/ui/page-nav";
+import { Separator } from "@/components/ui/separator";
 import { setUserPassword } from "@/lib/actions/auth-actions";
 import { authClient } from "@/lib/auth-client";
 import { AvatarEditor } from "./avatar-editor";

@@ -34,16 +34,22 @@ const HTTP_MONITOR_TYPES = ["http", "http-json", "keyword"];
 
 // Muted color palette for dark theme - harmonious gradient
 const TIMING_COLORS = {
-	dnsLookup: "#6366f1",    // indigo - network lookup
-	tcpConnect: "#8b5cf6",   // violet - connection
+	dnsLookup: "#6366f1", // indigo - network lookup
+	tcpConnect: "#8b5cf6", // violet - connection
 	tlsHandshake: "#a855f7", // purple - security
-	ttfb: "#22d3ee",         // cyan - server response
-	transfer: "#34d399",     // emerald - data transfer
-	latency: "#22d3ee",      // cyan - simple latency for non-HTTP
+	ttfb: "#22d3ee", // cyan - server response
+	transfer: "#34d399", // emerald - data transfer
+	latency: "#22d3ee", // cyan - simple latency for non-HTTP
 };
 
-const TIMING_KEYS = ["dnsLookup", "tcpConnect", "tlsHandshake", "ttfb", "transfer"] as const;
-type TimingKey = typeof TIMING_KEYS[number];
+const TIMING_KEYS = [
+	"dnsLookup",
+	"tcpConnect",
+	"tlsHandshake",
+	"ttfb",
+	"transfer",
+] as const;
+type TimingKey = (typeof TIMING_KEYS)[number];
 
 const TIMING_LABELS: Record<TimingKey, string> = {
 	dnsLookup: "DNS",
@@ -62,7 +68,9 @@ export function ResponseTimeChart({
 	// Default to first location, no "all" option
 	const [location, setLocation] = useState<string>(locations[0] || "");
 	// Track which timing series are visible (all enabled by default)
-	const [visibleSeries, setVisibleSeries] = useState<Record<TimingKey, boolean>>({
+	const [visibleSeries, setVisibleSeries] = useState<
+		Record<TimingKey, boolean>
+	>({
 		dnsLookup: true,
 		tcpConnect: true,
 		tlsHandshake: true,
@@ -121,21 +129,26 @@ export function ResponseTimeChart({
 
 		return (
 			<div className="rounded-lg border border-border/50 bg-background/95 p-3 shadow-lg backdrop-blur-sm">
-				<p className="mb-2 text-xs text-muted-foreground">{label}</p>
+				<p className="mb-2 text-muted-foreground text-xs">{label}</p>
 				<div className="space-y-1">
-					{TIMING_KEYS.filter((key) => visibleSeries[key] && data[key] > 0).map((key) => (
-						<div key={key} className="flex items-center justify-between gap-4">
-							<div className="flex items-center gap-2">
-								<div
-									className="h-2 w-2 rounded-full"
-									style={{ backgroundColor: TIMING_COLORS[key] }}
-								/>
-								<span className="text-xs">{TIMING_LABELS[key]}</span>
+					{TIMING_KEYS.filter((key) => visibleSeries[key] && data[key] > 0).map(
+						(key) => (
+							<div
+								key={key}
+								className="flex items-center justify-between gap-4"
+							>
+								<div className="flex items-center gap-2">
+									<div
+										className="h-2 w-2 rounded-full"
+										style={{ backgroundColor: TIMING_COLORS[key] }}
+									/>
+									<span className="text-xs">{TIMING_LABELS[key]}</span>
+								</div>
+								<span className="font-mono text-xs">{data[key]}ms</span>
 							</div>
-							<span className="font-mono text-xs">{data[key]}ms</span>
-						</div>
-					))}
-					<div className="mt-2 border-t border-border/50 pt-2">
+						),
+					)}
+					<div className="mt-2 border-border/50 border-t pt-2">
 						<div className="flex items-center justify-between font-medium">
 							<span className="text-xs">Total</span>
 							<span className="font-mono text-xs">{total}ms</span>
@@ -155,7 +168,7 @@ export function ResponseTimeChart({
 
 		return (
 			<div className="rounded-lg border border-border/50 bg-background/95 p-3 shadow-lg backdrop-blur-sm">
-				<p className="mb-2 text-xs text-muted-foreground">{label}</p>
+				<p className="mb-2 text-muted-foreground text-xs">{label}</p>
 				<div className="flex items-center justify-between gap-4">
 					<span className="text-xs">Latency</span>
 					<span className="font-mono text-xs">{data.latency}ms</span>
@@ -173,34 +186,35 @@ export function ResponseTimeChart({
 					</CardTitle>
 				</div>
 				<div className="flex items-center gap-2">
-					{locations.length > 0 && (() => {
-						const selectedRegion = getRegionInfo(location);
-						const SelectedFlag = selectedRegion.Flag;
-						return (
-							<Select value={location} onValueChange={setLocation}>
-								<SelectTrigger className="h-8 w-[160px] text-xs">
-									<div className="flex items-center gap-2">
-										<SelectedFlag className="h-3.5 w-5 rounded-sm object-cover shrink-0" />
-										<span className="truncate">{selectedRegion.label}</span>
-									</div>
-								</SelectTrigger>
-								<SelectContent>
-									{locations.map((loc) => {
-										const regionInfo = getRegionInfo(loc);
-										const Flag = regionInfo.Flag;
-										return (
-											<SelectItem key={loc} value={loc}>
-												<div className="flex items-center gap-2">
-													<Flag className="h-3.5 w-5 rounded-sm object-cover" />
-													<span>{regionInfo.label}</span>
-												</div>
-											</SelectItem>
-										);
-									})}
-								</SelectContent>
-							</Select>
-						);
-					})()}
+					{locations.length > 0 &&
+						(() => {
+							const selectedRegion = getRegionInfo(location);
+							const SelectedFlag = selectedRegion.Flag;
+							return (
+								<Select value={location} onValueChange={setLocation}>
+									<SelectTrigger className="h-8 w-[160px] text-xs">
+										<div className="flex items-center gap-2">
+											<SelectedFlag className="h-3.5 w-5 shrink-0 rounded-sm object-cover" />
+											<span className="truncate">{selectedRegion.label}</span>
+										</div>
+									</SelectTrigger>
+									<SelectContent>
+										{locations.map((loc) => {
+											const regionInfo = getRegionInfo(loc);
+											const Flag = regionInfo.Flag;
+											return (
+												<SelectItem key={loc} value={loc}>
+													<div className="flex items-center gap-2">
+														<Flag className="h-3.5 w-5 rounded-sm object-cover" />
+														<span>{regionInfo.label}</span>
+													</div>
+												</SelectItem>
+											);
+										})}
+									</SelectContent>
+								</Select>
+							);
+						})()}
 					<Tabs
 						value={range}
 						onValueChange={(v) => setRange(v as any)}
@@ -229,16 +243,17 @@ export function ResponseTimeChart({
 								key={key}
 								type="button"
 								onClick={() => toggleSeries(key)}
-								className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-all ${visibleSeries[key]
-									? "opacity-100"
-									: "opacity-40 line-through"
-									} hover:bg-muted/50`}
+								className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-all ${
+									visibleSeries[key] ? "opacity-100" : "line-through opacity-40"
+								} hover:bg-muted/50`}
 							>
 								<div
 									className="h-3 w-3 rounded-sm"
 									style={{ backgroundColor: TIMING_COLORS[key] }}
 								/>
-								<span className="text-muted-foreground">{TIMING_LABELS[key]}</span>
+								<span className="text-muted-foreground">
+									{TIMING_LABELS[key]}
+								</span>
 							</button>
 						))}
 					</div>
@@ -381,4 +396,3 @@ export function ResponseTimeChart({
 		</Card>
 	);
 }
-

@@ -245,9 +245,13 @@ export function IncidentDetails({ id }: { id: string }) {
 										<div className="flex items-center gap-1.5 text-sm leading-none">
 											{activity.user && (
 												<Avatar className="h-4 w-4">
-													<AvatarImage src={activity.user.image ?? undefined} alt={activity.user.name} />
+													<AvatarImage
+														src={activity.user.image ?? undefined}
+														alt={activity.user.name}
+													/>
 													<AvatarFallback className="text-[8px]">
-														{activity.user.name?.slice(0, 2).toUpperCase() ?? "??"}
+														{activity.user.name?.slice(0, 2).toUpperCase() ??
+															"??"}
 													</AvatarFallback>
 												</Avatar>
 											)}

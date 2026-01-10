@@ -64,10 +64,6 @@ export const monitor = pgTable(
 	],
 );
 
-
-
-
-
 export const monitorRelations = relations(monitor, ({ one }) => ({
 	organization: one(organization, {
 		fields: [monitor.organizationId],
@@ -89,5 +85,3 @@ export const monitorGroupRelations = relations(
 		monitors: many(monitor),
 	}),
 );
-
-

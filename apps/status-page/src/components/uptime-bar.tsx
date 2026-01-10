@@ -15,18 +15,22 @@ export interface UptimeDay {
 
 function formatDowntime(ms: number): string {
 	if (ms <= 0) return "No downtime";
-	
+
 	const seconds = Math.floor(ms / 1000);
 	const minutes = Math.floor(seconds / 60);
 	const hours = Math.floor(minutes / 60);
-	
+
 	if (hours > 0) {
 		const remainingMinutes = minutes % 60;
-		return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m down` : `${hours}h down`;
+		return remainingMinutes > 0
+			? `${hours}h ${remainingMinutes}m down`
+			: `${hours}h down`;
 	}
 	if (minutes > 0) {
 		const remainingSeconds = seconds % 60;
-		return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s down` : `${minutes}m down`;
+		return remainingSeconds > 0
+			? `${minutes}m ${remainingSeconds}s down`
+			: `${minutes}m down`;
 	}
 	return `${seconds}s down`;
 }

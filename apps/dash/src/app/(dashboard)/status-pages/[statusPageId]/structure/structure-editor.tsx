@@ -34,20 +34,6 @@ import {
 	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +45,13 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,6 +59,13 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Tooltip,
@@ -141,7 +141,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 						id: m.id,
 						name: m.name,
 						style: m.style as MonitorStyle,
-					description: m.description,
+						description: m.description,
 					})),
 				})),
 			);
@@ -337,16 +337,18 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		);
 	};
 
-	const updateMonitorConfig = (groupId: string, instanceId: string, updates: Partial<MonitorItem>) => {
+	const updateMonitorConfig = (
+		groupId: string,
+		instanceId: string,
+		updates: Partial<MonitorItem>,
+	) => {
 		setGroups(
 			groups.map((g) => {
 				if (g.id === groupId) {
 					return {
 						...g,
 						monitors: g.monitors.map((m) =>
-							m.instanceId === instanceId
-								? { ...m, ...updates }
-								: m,
+							m.instanceId === instanceId ? { ...m, ...updates } : m,
 						),
 					};
 				}
@@ -361,7 +363,11 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 			groups: groups.map((g) => ({
 				id: g.id.startsWith("temp-") ? undefined : g.id,
 				name: g.name || "Untitled Section",
-				monitors: g.monitors.map((m) => ({ id: m.id, style: m.style, description: m.description })),
+				monitors: g.monitors.map((m) => ({
+					id: m.id,
+					style: m.style,
+					description: m.description,
+				})),
 			})),
 		});
 	};
@@ -689,7 +695,11 @@ function AddMonitorInput({
 	);
 }
 
-function SortableMonitor({ monitor, onRemove, onConfigChange }: {
+function SortableMonitor({
+	monitor,
+	onRemove,
+	onConfigChange,
+}: {
 	monitor: MonitorItem;
 	onRemove: () => void;
 	onConfigChange: (updates: Partial<MonitorItem>) => void;
@@ -918,7 +928,9 @@ function MonitorPreview({
 							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
 							<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
 						</span>
-						<span className="text-foreground font-semibold text-lg">{name}</span>
+						<span className="font-semibold text-foreground text-lg">
+							{name}
+						</span>
 						{description && (
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -930,7 +942,9 @@ function MonitorPreview({
 							</Tooltip>
 						)}
 					</div>
-					<span className="text-green-500 font-medium text-sm">Operational</span>
+					<span className="font-medium text-green-500 text-sm">
+						Operational
+					</span>
 				</div>
 			</div>
 		);
@@ -946,7 +960,7 @@ function MonitorPreview({
 						<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
 						<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
 					</span>
-					<span className="text-foreground font-semibold text-lg">{name}</span>
+					<span className="font-semibold text-foreground text-lg">{name}</span>
 					{description && (
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -958,7 +972,9 @@ function MonitorPreview({
 						</Tooltip>
 					)}
 				</div>
-				<span className="text-green-500 font-medium text-sm">99.81% uptime</span>
+				<span className="font-medium text-green-500 text-sm">
+					99.81% uptime
+				</span>
 			</div>
 
 			{/* Uptime Bar */}
@@ -972,11 +988,10 @@ function MonitorPreview({
 			</div>
 
 			{/* Legend */}
-			<div className="mt-2 flex justify-between text-muted-foreground/60 text-xs select-none">
+			<div className="mt-2 flex select-none justify-between text-muted-foreground/60 text-xs">
 				<span>90 days ago</span>
 				<span>Today</span>
 			</div>
 		</div>
 	);
 }
-

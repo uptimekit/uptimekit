@@ -1,13 +1,13 @@
-import { cn } from "@/lib/utils";
-import { StatusDot, type StatusType, statusConfig } from "./status-indicator";
-import type { UptimeDay } from "./uptime-bar";
-import { UptimeBar } from "./uptime-bar";
 import { Info } from "lucide-react";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { StatusDot, type StatusType, statusConfig } from "./status-indicator";
+import type { UptimeDay } from "./uptime-bar";
+import { UptimeBar } from "./uptime-bar";
 
 interface MonitorListItemProps {
 	name: string;

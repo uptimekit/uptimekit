@@ -386,16 +386,16 @@ export function MonitorsTable() {
 							{(activeFilter !== undefined ||
 								typeFilter !== undefined ||
 								statusFilter !== undefined) && (
-									<>
-										<div className="my-2 h-px bg-muted" />
-										<DropdownMenuItem
-											onClick={clearFilters}
-											className="justify-center text-red-500 hover:text-red-600"
-										>
-											Clear filters
-										</DropdownMenuItem>
-									</>
-								)}
+								<>
+									<div className="my-2 h-px bg-muted" />
+									<DropdownMenuItem
+										onClick={clearFilters}
+										className="justify-center text-red-500 hover:text-red-600"
+									>
+										Clear filters
+									</DropdownMenuItem>
+								</>
+							)}
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button
@@ -433,9 +433,9 @@ export function MonitorsTable() {
 										<p className="font-medium text-lg">No monitors found</p>
 										<p className="text-muted-foreground text-sm">
 											{search ||
-												activeFilter !== undefined ||
-												typeFilter ||
-												statusFilter
+											activeFilter !== undefined ||
+											typeFilter ||
+											statusFilter
 												? "Try adjusting your filters"
 												: "Get started by creating your first monitor."}
 										</p>
@@ -466,15 +466,15 @@ export function MonitorsTable() {
 											className={cn(
 												"h-2.5 w-2.5 rounded-full shadow-sm",
 												monitor.status === "up" &&
-												"bg-emerald-500 shadow-emerald-500/20",
+													"bg-emerald-500 shadow-emerald-500/20",
 												monitor.status === "down" &&
-												"bg-red-500 shadow-red-500/20",
+													"bg-red-500 shadow-red-500/20",
 												monitor.status === "degraded" &&
-												"bg-amber-500 shadow-amber-500/20",
+													"bg-amber-500 shadow-amber-500/20",
 												monitor.status === "maintenance" &&
-												"bg-blue-500 shadow-blue-500/20",
+													"bg-blue-500 shadow-blue-500/20",
 												monitor.status === "pending" &&
-												"bg-zinc-500 shadow-zinc-500/20",
+													"bg-zinc-500 shadow-zinc-500/20",
 											)}
 										/>
 									</TableCell>
@@ -499,7 +499,7 @@ export function MonitorsTable() {
 															monitor.status === "down" && "text-red-500",
 															monitor.status === "degraded" && "text-amber-500",
 															monitor.status === "maintenance" &&
-															"text-blue-500",
+																"text-blue-500",
 															monitor.status === "pending" && "text-zinc-500",
 														)}
 													>

@@ -1,6 +1,14 @@
 "use client";
 
-import { AQ, AU, BR, CA, EU, HK, type FlagComponent } from "country-flag-icons/react/3x2";
+import {
+	AQ,
+	AU,
+	BR,
+	CA,
+	EU,
+	type FlagComponent,
+	HK,
+} from "country-flag-icons/react/3x2";
 import { Globe } from "lucide-react";
 
 export interface RegionInfo {
@@ -56,9 +64,11 @@ export const WORKER_REGIONS: RegionInfo[] = [
 
 // Helper function to get region info with fallback
 export function getRegionInfo(regionCode: string): RegionInfo {
-	return REGION_MAPPING[regionCode] || {
-		value: regionCode,
-		label: regionCode,
-		Flag: Globe,
-	};
+	return (
+		REGION_MAPPING[regionCode] || {
+			value: regionCode,
+			label: regionCode,
+			Flag: Globe,
+		}
+	);
 }

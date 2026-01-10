@@ -172,13 +172,13 @@ export function WorkersTable() {
 											className={cn(
 												"h-2.5 w-2.5 rounded-full shadow-sm",
 												!worker.lastHeartbeat &&
-												"bg-gray-400 shadow-gray-400/20",
+													"bg-gray-400 shadow-gray-400/20",
 												worker.lastHeartbeat &&
-												worker.active &&
-												"bg-emerald-500 shadow-emerald-500/20",
+													worker.active &&
+													"bg-emerald-500 shadow-emerald-500/20",
 												worker.lastHeartbeat &&
-												!worker.active &&
-												"bg-red-500 shadow-red-500/20",
+													!worker.active &&
+													"bg-red-500 shadow-red-500/20",
 											)}
 										/>
 									</TableCell>
@@ -195,11 +195,11 @@ export function WorkersTable() {
 													className={cn(
 														!worker.lastHeartbeat && "text-gray-500",
 														worker.lastHeartbeat &&
-														worker.active &&
-														"text-emerald-500",
+															worker.active &&
+															"text-emerald-500",
 														worker.lastHeartbeat &&
-														!worker.active &&
-														"text-red-500",
+															!worker.active &&
+															"text-red-500",
 													)}
 												>
 													{!worker.lastHeartbeat
@@ -218,11 +218,11 @@ export function WorkersTable() {
 													Last seen{" "}
 													{worker.lastHeartbeat
 														? formatDistanceToNow(
-															new Date(worker.lastHeartbeat),
-															{
-																addSuffix: true,
-															},
-														)
+																new Date(worker.lastHeartbeat),
+																{
+																	addSuffix: true,
+																},
+															)
 														: "Never"}
 												</span>
 											</div>

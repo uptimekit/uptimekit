@@ -32,7 +32,11 @@ export function DashboardBreadcrumbs() {
 	const segments = pathname.split("/").filter((segment) => segment !== "");
 
 	const uuidSegments = segments
-		.map((segment, index) => ({ segment, index, previousSegment: segments[index - 1] }))
+		.map((segment, index) => ({
+			segment,
+			index,
+			previousSegment: segments[index - 1],
+		}))
 		.filter(({ segment }) => isUUID(segment));
 
 	useQueries({
@@ -55,7 +59,11 @@ export function DashboardBreadcrumbs() {
 					staleTime: Number.POSITIVE_INFINITY,
 				};
 			}
-			return { queryKey: ["noop", segment], queryFn: () => null, enabled: false };
+			return {
+				queryKey: ["noop", segment],
+				queryFn: () => null,
+				enabled: false,
+			};
 		}),
 	});
 
@@ -67,20 +75,32 @@ export function DashboardBreadcrumbs() {
 		const previousSegment = segments[index - 1];
 
 		if (previousSegment === "status-pages") {
-			const queryKey = orpc.statusPages.get.queryOptions({ input: { id: segment } }).queryKey;
-			const data = queryClient.getQueryData(queryKey) as { name?: string } | undefined;
+			const queryKey = orpc.statusPages.get.queryOptions({
+				input: { id: segment },
+			}).queryKey;
+			const data = queryClient.getQueryData(queryKey) as
+				| { name?: string }
+				| undefined;
 			if (data?.name) return data.name;
 		}
 
 		if (previousSegment === "monitors") {
-			const queryKey = orpc.monitors.get.queryOptions({ input: { id: segment } }).queryKey;
-			const data = queryClient.getQueryData(queryKey) as { name?: string } | undefined;
+			const queryKey = orpc.monitors.get.queryOptions({
+				input: { id: segment },
+			}).queryKey;
+			const data = queryClient.getQueryData(queryKey) as
+				| { name?: string }
+				| undefined;
 			if (data?.name) return data.name;
 		}
 
 		if (previousSegment === "incidents") {
-			const queryKey = orpc.incidents.get.queryOptions({ input: { id: segment } }).queryKey;
-			const data = queryClient.getQueryData(queryKey) as { title?: string } | undefined;
+			const queryKey = orpc.incidents.get.queryOptions({
+				input: { id: segment },
+			}).queryKey;
+			const data = queryClient.getQueryData(queryKey) as
+				| { title?: string }
+				| undefined;
 			if (data?.title) return data.title;
 		}
 

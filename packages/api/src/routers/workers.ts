@@ -160,7 +160,8 @@ export const workersRouter = {
 				path: "/workers/{id}/rotate-key",
 				tags: ["Worker Management"],
 				summary: "Rotate worker key",
-				description: "Generate a new API key for a worker and invalidate the old one.",
+				description:
+					"Generate a new API key for a worker and invalidate the old one.",
 			},
 		})
 		.input(z.object({ id: z.string() }))

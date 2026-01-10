@@ -10,46 +10,45 @@ const logger = createLogger("DATA-RETENTION");
  * based on the configured data_retention_days value.
  */
 export async function processDataRetention() {
-    // Get retention days from configuration
-    const config = await db.query.configuration.findFirst({
-        where: eq(configuration.key, "data_retention_days"),
-    });
+	// Get retention days from configuration
+	const config = await db.query.configuration.findFirst({
+		where: eq(configuration.key, "data_retention_days"),
+	});
 
-    const retentionDays = Number.parseInt(config?.value || "30", 10);
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+	const retentionDays = Number.parseInt(config?.value || "30", 10);
+	const cutoffDate = new Date();
+	cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-    logger.info(
-        `Deleting records older than ${retentionDays} days (before ${cutoffDate.toISOString()})`,
-    );
+	logger.info(
+		`Deleting records older than ${retentionDays} days (before ${cutoffDate.toISOString()})`,
+	);
 
-    try {
-        // Delete old monitor events
-        await clickhouse.command({
-            query: `
+	try {
+		// Delete old monitor events
+		await clickhouse.command({
+			query: `
 				ALTER TABLE uptimekit.monitor_events 
 				DELETE WHERE timestamp < toDateTime64({cutoff:String}, 3)
 			`,
-            query_params: { cutoff: cutoffDate.toISOString() },
-        });
-        logger.info("Deleted old monitor_events");
+			query_params: { cutoff: cutoffDate.toISOString() },
+		});
+		logger.info("Deleted old monitor_events");
 
-        // Delete old monitor changes
-        await clickhouse.command({
-            query: `
+		// Delete old monitor changes
+		await clickhouse.command({
+			query: `
 				ALTER TABLE uptimekit.monitor_changes 
 				DELETE WHERE timestamp < toDateTime64({cutoff:String}, 3)
 			`,
-            query_params: { cutoff: cutoffDate.toISOString() },
-        });
-        logger.info("Deleted old monitor_changes");
+			query_params: { cutoff: cutoffDate.toISOString() },
+		});
+		logger.info("Deleted old monitor_changes");
 
-        logger.info(
-            `Completed data retention cleanup for records older than ${retentionDays} days`,
-        );
-    } catch (error) {
-        logger.error("Failed to delete old records:", error);
-        throw error;
-    }
+		logger.info(
+			`Completed data retention cleanup for records older than ${retentionDays} days`,
+		);
+	} catch (error) {
+		logger.error("Failed to delete old records:", error);
+		throw error;
+	}
 }
-
