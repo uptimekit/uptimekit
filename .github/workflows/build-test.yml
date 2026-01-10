@@ -1,0 +1,190 @@
+name: Build Test
+
+on:
+  pull_request:
+    branches:
+      - release
+  push:
+    branches:
+      - development
+
+jobs:
+  build-test:
+    name: Build and Type Check
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    outputs:
+      biome-summary: ${{ steps.biome-check.outputs.summary }}
+      typecheck-status: ${{ steps.typecheck.outcome }}
+      build-status: ${{ steps.build.outcome }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Biome Check
+        id: biome-check
+        run: |
+          echo "::group::Biome Check"
+          OUTPUT=$(pnpm run check 2>&1 || true)
+          echo "$OUTPUT"
+          echo "::endgroup::"
+          
+          # Extract summary information
+          FILES_CHECKED=$(echo "$OUTPUT" | grep -oP "Checked \K\d+" || echo "0")
+          TIME_TAKEN=$(echo "$OUTPUT" | grep -oP "Checked \d+ files in \K[^\s]+" || echo "N/A")
+          ERRORS=$(echo "$OUTPUT" | grep -oP "Found \K\d+(?= errors)" || echo "0")
+          WARNINGS=$(echo "$OUTPUT" | grep -oP "Found \K\d+(?= warnings)" || echo "0")
+          INFOS=$(echo "$OUTPUT" | grep -oP "Found \K\d+(?= infos)" || echo "0")
+          
+          # Create summary for GitHub Actions UI
+          echo "### 🔍 Biome Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Checked ${FILES_CHECKED} files in ${TIME_TAKEN}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$ERRORS" != "0" ]; then
+            echo "❌ **${ERRORS} errors**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "$WARNINGS" != "0" ]; then
+            echo "⚠️ **${WARNINGS} warnings**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "$INFOS" != "0" ]; then
+            echo "ℹ️ **${INFOS} infos**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Create summary for PR comment
+          SUMMARY="### 🔍 Biome Check Summary\n\n"
+          SUMMARY+="📊 **Checked ${FILES_CHECKED} files in ${TIME_TAKEN}**\n\n"
+          
+          if [ "$ERRORS" != "0" ]; then
+            SUMMARY+="❌ **${ERRORS} errors**\n"
+          fi
+          
+          if [ "$WARNINGS" != "0" ]; then
+            SUMMARY+="⚠️ **${WARNINGS} warnings**\n"
+          fi
+          
+          if [ "$INFOS" != "0" ]; then
+            SUMMARY+="ℹ️ **${INFOS} infos**\n"
+          fi
+          
+          # Save to output
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Save error count for later
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          
+          # Fail if there are errors
+          if [ "$ERRORS" != "0" ]; then
+            echo "::error::Biome check failed with ${ERRORS} errors"
+            exit 1
+          fi
+
+      - name: Run Type Check
+        id: typecheck
+        continue-on-error: true
+        run: pnpm run check-types
+
+      - name: Build All Packages
+        id: build
+        continue-on-error: true
+        run: pnpm run build
+      
+      - name: Fail if any step failed
+        if: steps.typecheck.outcome == 'failure' || steps.build.outcome == 'failure'
+        run: exit 1
+
+  comment-pr:
+    name: Comment on PR
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const biomeSummary = `${{ needs.build-test.outputs.biome-summary }}`;
+            const buildStatus = '${{ needs.build-test.result }}';
+            const typecheckStatus = '${{ needs.build-test.outputs.typecheck-status }}';
+            const buildStepStatus = '${{ needs.build-test.outputs.build-status }}';
+            
+            let statusEmoji = '✅';
+            let statusText = 'Build Passed';
+            
+            if (buildStatus === 'failure') {
+              statusEmoji = '❌';
+              statusText = 'Build Failed';
+            } else if (buildStatus === 'cancelled') {
+              statusEmoji = '⚠️';
+              statusText = 'Build Cancelled';
+            }
+            
+            // Build detailed status
+            let detailedStatus = '';
+            
+            // Type Check Status
+            if (typecheckStatus === 'success') {
+              detailedStatus += '✅ **Type Check**: Passed\n';
+            } else if (typecheckStatus === 'failure') {
+              detailedStatus += '❌ **Type Check**: Failed\n';
+            }
+            
+            // Build Status
+            if (buildStepStatus === 'success') {
+              detailedStatus += '✅ **Build**: Passed\n';
+            } else if (buildStepStatus === 'failure') {
+              detailedStatus += '❌ **Build**: Failed\n';
+            }
+            
+            const comment = `## ${statusEmoji} ${statusText}\n\n${detailedStatus}\n${biomeSummary}\n\n___\n*Build test completed for commit ${context.sha.substring(0, 7)}*`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Build test completed')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
