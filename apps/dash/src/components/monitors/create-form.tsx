@@ -63,7 +63,6 @@ import { getRegionInfo } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
-
 // --- Configuration Registry ---
 
 const baseSchema = z.object({
@@ -79,6 +78,7 @@ const httpSchema = z.object({
 	type: z.literal("http"),
 	url: z.string().url("Must be a valid URL"),
 	checkSsl: z.boolean().default(true),
+	sslCertExpiryNotificationDays: z.coerce.number().min(1).max(90).default(30),
 	headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
 	body: z.string().optional(),
 	method: z
@@ -92,6 +92,7 @@ const httpJsonSchema = z.object({
 	url: z.string().url("Must be a valid URL"),
 	jsonPath: z.string().min(1, "JSONata expression is required"),
 	checkSsl: z.boolean().default(true),
+	sslCertExpiryNotificationDays: z.coerce.number().min(1).max(90).default(30),
 	headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
 	body: z.string().optional(),
 	method: z
@@ -105,6 +106,7 @@ const keywordSchema = z.object({
 	url: z.string().url("Must be a valid URL"),
 	keyword: z.string().min(1, "Keyword is required"),
 	checkSsl: z.boolean().default(true),
+	sslCertExpiryNotificationDays: z.coerce.number().min(1).max(90).default(30),
 	headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
 	body: z.string().optional(),
 	method: z
@@ -124,8 +126,6 @@ const tcpSchema = z.object({
 	port: z.coerce.number().min(1).max(65535, "Port must be between 1 and 65535"),
 });
 
-
-
 // Union schema
 const monitorConfigSchema = z.discriminatedUnion("type", [
 	httpSchema,
@@ -133,7 +133,6 @@ const monitorConfigSchema = z.discriminatedUnion("type", [
 	keywordSchema,
 	pingSchema,
 	tcpSchema,
-
 ]);
 
 const formSchema = z.intersection(baseSchema, monitorConfigSchema);
@@ -320,19 +319,58 @@ const HttpAdvancedFields = ({ form }: { form: any }) => {
 				control={form.control}
 				name="checkSsl"
 				render={({ field }) => (
-					<FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
-						<div className="space-y-0.5">
-							<FormLabel className="text-base">
-								SSL & domain verification
-							</FormLabel>
-							<FormDescription>
-								Receive an alert when your certificate is about to expire.
-							</FormDescription>
-						</div>
-						<FormControl>
-							<Switch checked={field.value} onCheckedChange={field.onChange} />
-						</FormControl>
-					</FormItem>
+					<>
+						<FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
+							<div className="space-y-0.5">
+								<FormLabel className="text-base">
+									SSL & domain verification
+								</FormLabel>
+								<FormDescription>
+									Receive an alert when your certificate is about to expire.
+								</FormDescription>
+							</div>
+							<FormControl>
+								<Switch
+									checked={field.value}
+									onCheckedChange={field.onChange}
+								/>
+							</FormControl>
+						</FormItem>
+
+						{field.value !== false && (
+							<FormField
+								control={form.control}
+								name="sslCertExpiryNotificationDays"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Certificate expiration notification</FormLabel>
+										<FormControl>
+											<Input
+												type="number"
+												min={1}
+												max={90}
+												required
+												value={field.value ?? 30}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value ? Number(e.target.value) : 30,
+													)
+												}
+												onBlur={field.onBlur}
+												name={field.name}
+												ref={field.ref}
+											/>
+										</FormControl>
+										<FormDescription>
+											Number of days before SSL certificate expiration to send a
+											notification (1-90 days).
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						)}
+					</>
 				)}
 			/>
 
@@ -473,6 +511,8 @@ export function CreateMonitorForm({
 			type: defaults.type || "http",
 			interval: defaults.interval || 60,
 			checkSsl: defaults.checkSsl ?? true,
+			sslCertExpiryNotificationDays:
+				defaults.sslCertExpiryNotificationDays || 30,
 			incidentPendingDuration: defaults.incidentPendingDuration || 0,
 			incidentRecoveryDuration: defaults.incidentRecoveryDuration || 0,
 			locations: defaults.locations || [],
@@ -539,7 +579,7 @@ export function CreateMonitorForm({
 		onError: (error) => {
 			toast.error(
 				error.message ||
-				(monitorId ? "Failed to update monitor" : "Failed to create monitor"),
+					(monitorId ? "Failed to update monitor" : "Failed to create monitor"),
 			);
 			console.error(error);
 		},
@@ -776,14 +816,14 @@ export function CreateMonitorForm({
 																			onCheckedChange={(checked) => {
 																				return checked
 																					? field.onChange([
-																						...field.value,
-																						region,
-																					])
+																							...field.value,
+																							region,
+																						])
 																					: field.onChange(
-																						field.value?.filter(
-																							(value) => value !== region,
-																						),
-																					);
+																							field.value?.filter(
+																								(value) => value !== region,
+																							),
+																						);
 																			}}
 																		/>
 																	</FormControl>

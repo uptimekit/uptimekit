@@ -4,6 +4,7 @@ export * from "./incidents";
 export * from "./integrations";
 export * from "./maintenance";
 export * from "./monitors";
+export * from "./ssl-notifications";
 export * from "./status-pages";
 export * from "./status-updates";
 export * from "./workers";
