@@ -56,7 +56,7 @@ function shouldSendNotification(
 
 export async function POST(
 	request: Request,
-	{ params }: { params: { monitorId: string } },
+	{ params }: { params: Promise<{ monitorId: string }> },
 ) {
 	const authResult = await authenticateWorker(request);
 
@@ -67,7 +67,7 @@ export async function POST(
 		);
 	}
 
-	const { monitorId } = params;
+	const { monitorId } = await params;
 
 	const monitorRecord = await db.query.monitor.findFirst({
 		where: eq(monitor.id, monitorId),
