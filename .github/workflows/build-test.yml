@@ -38,7 +38,7 @@ jobs:
         id: biome-check
         run: |
           echo "::group::Biome Check"
-          OUTPUT=$(pnpm run check 2>&1 || true)
+          OUTPUT=$(npx @biomejs/biome check . 2>&1 || true)
           echo "$OUTPUT"
           echo "::endgroup::"
           
