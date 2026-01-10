@@ -30,17 +30,14 @@ function shouldSendNotification(
 	} | null,
 	threshold: number,
 ): boolean {
-	// Always notify if certificate has errors or is invalid
 	if (daysUntilExpiry < 0) {
 		return true;
 	}
 
-	// Don't notify if we're still above the threshold
 	if (daysUntilExpiry > threshold) {
 		return false;
 	}
 
-	// If no previous notification, send one
 	if (!lastNotification) {
 		return true;
 	}
@@ -50,13 +47,10 @@ function shouldSendNotification(
 	);
 	const daysSinceLastNotification = lastDays - daysUntilExpiry;
 
-	// If we're within 7 days of expiry, notify every day
 	if (daysUntilExpiry <= 7) {
-		// Notify if at least 1 day has passed
 		return daysSinceLastNotification >= 1;
 	}
 
-	// For > 7 days, notify every 7 days (30→23→16→9→2)
 	return daysSinceLastNotification >= 7;
 }
 
@@ -75,7 +69,6 @@ export async function POST(
 
 	const { monitorId } = params;
 
-	// Verify monitor exists
 	const monitorRecord = await db.query.monitor.findFirst({
 		where: eq(monitor.id, monitorId),
 	});
@@ -91,7 +84,6 @@ export async function POST(
 		return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
 	}
 
-	// Validate required fields
 	if (!body.domain || body.daysUntilExpiry === undefined) {
 		return NextResponse.json(
 			{ error: "Missing required fields: domain, daysUntilExpiry" },
@@ -99,7 +91,6 @@ export async function POST(
 		);
 	}
 
-	// Get the SSL cert expiry notification threshold from monitor config
 	const config = monitorRecord.config as {
 		checkSsl?: boolean;
 		sslCertExpiryNotificationDays?: number;
@@ -108,7 +99,6 @@ export async function POST(
 	const checkSsl = config.checkSsl ?? true;
 	const notificationThreshold = config.sslCertExpiryNotificationDays ?? 30;
 
-	// Only process if SSL checking is enabled
 	if (!checkSsl) {
 		return NextResponse.json({
 			success: true,
@@ -116,7 +106,6 @@ export async function POST(
 		});
 	}
 
-	// Get last notification for this monitor and domain
 	const lastNotification = await db.query.sslCertificateNotification.findFirst({
 		where: and(
 			eq(sslCertificateNotification.monitorId, monitorId),
@@ -125,7 +114,6 @@ export async function POST(
 		orderBy: (table, { desc }) => [desc(table.lastNotifiedAt)],
 	});
 
-	// Check if we should send a notification
 	const shouldNotify =
 		body.error ||
 		!body.isValid ||
@@ -138,7 +126,6 @@ export async function POST(
 	if (shouldNotify) {
 		const now = new Date();
 
-		// Upsert notification record
 		if (lastNotification) {
 			await db
 				.update(sslCertificateNotification)
@@ -158,7 +145,6 @@ export async function POST(
 			});
 		}
 
-		// Emit event for certificate expiration warning
 		eventBus.emit("monitor.ssl.expiring", {
 			monitorId: monitorRecord.id,
 			organizationId: monitorRecord.organizationId,
