@@ -1,0 +1,101 @@
+---
+trigger: always_on
+---
+
+<!-- Source: .ruler/rules.md -->
+
+# Uptimekit Rules
+
+## Project Structure
+
+This is a monorepo with the following structure:
+
+### Apps
+
+- **`apps/dash/`** - Main dashboard application (Next.js)
+- **`apps/status-page/`** - Public status page application (Next.js)
+- **`apps/docs/`** - Documentation site (Next.js)
+
+### Packages
+
+- **`packages/api/`** - Shared API logic and types (oRPC)
+- **`packages/auth/`** - Authentication logic and utilities (Better Auth)
+- **`packages/db/`** - Database schema and utilities (Drizzle ORM)
+- **`packages/config/`** - Shared configuration
+- **`packages/scheduler/`** - Job scheduling utilities
+
+## Available Scripts
+
+- `pnpm run dev` - Start all apps in development mode
+
+## Database Commands
+
+All database operations should be run from the web workspace:
+
+- `pnpm run db:push` - Push schema changes to database
+- `pnpm run db:studio` - Open database studio
+- `pnpm run db:generate` - Generate Drizzle files
+- `pnpm run db:migrate` - Run database migrations
+
+Database schema files are located in `packages/db/src/schema/`
+
+Schema includes:
+
+- `auth.ts` - User authentication and session management
+- `monitors.ts` - Monitor configurations
+- `status-pages.ts` - Status page definitions
+- `incidents.ts` - Incident tracking
+- `maintenance.ts` - Scheduled maintenance
+- `status-updates.ts` - Status update entries
+- `integrations.ts` - Third-party integrations (Discord, Slack, etc.)
+- `workers.ts` - Worker configurations
+- `ssl-notifications.ts` - SSL certificate expiry notifications
+- `configuration.ts` - Global configuration settings
+
+## API Structure
+
+- oRPC endpoints are in `packages/api/src/api/`
+- Client-side API utils are in `apps/web/src/utils/api.ts`
+
+## Authentication
+
+Authentication is enabled in this project:
+
+- Server auth logic is in `packages/auth/src/lib/auth.ts`
+- Web app auth client is in `apps/web/src/lib/auth-client.ts`
+
+## Key Points
+
+- This is a Turborepo monorepo using pnpm workspaces
+- Each app has its own `package.json` and dependencies
+- Run commands from the root to execute across all workspaces
+- Run workspace-specific commands with `pnpm run command-name`
+- Turborepo handles build caching and parallel execution
+
+## Code Guidelines
+
+### Formatting & Style
+
+- **Consistency**: Rely on Prettier and ESLint to enforce standard formatting.
+- **Imports**: Organize imports logically (External packages -> Internal monorepo packages -> Relative imports).
+- **Naming**: Use `camelCase` for functions/variables and `PascalCase` for components/interfaces. Make names descriptive (e.g., `fetchUserData` instead of `getData`).
+
+### Functions
+
+- **Single Responsibility**: Functions should aim to do one thing well.
+- **Guard Clauses**: Use early returns to reduce nesting and cognitive load.
+- **Size**: Keep functions small. distinct logic blocks should often be extracted into helper functions.
+- **Parameters**: Limit the number of arguments (max ~3). Use a configuration object for more complex signatures.
+
+### Comments
+
+- **Self-Documenting Code First**: Write code that is self-explanatory through clear function names, variable names, and structure. If your function name and code clearly describe what it does, **do not add unnecessary comments**.
+- **Explain "Why", Not "What"**: The code itself explains what is happening. Use comments to explain the *intent*, business logic, or complex decisions behind the code.
+- **Avoid Clutter**: Do not comment obvious logic (e.g., `// Update count` above `count++`). Unnecessary comments add noise and maintenance burden.
+- **Function headers**: Use JSDoc/TSDoc for public-facing utilities to document params and return values, but only when the signature isn't self-evident.
+- **TODOs**: Use `// TODO:` to mark areas for improvement, but address them sooner rather than later.
+
+### Self Hosting
+
+- App has two variants, self-hosted and cloud-hosted. We define if this instance is self-hosted with NEXT_PUBLIC_SELF_HOSTED environment variable.
+- Some features are only available in cloud-hosted variant, or look different in self-hosted variant.

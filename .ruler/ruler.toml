@@ -16,17 +16,13 @@ merge_strategy = "merge"
 command = "npx"
 args = ["-y", "@upstash/context7-mcp"]
 
-
-
 [mcp_servers.shadcn]
 command = "npx"
 args = ["shadcn@latest", "mcp"]
 
 
-
 [mcp_servers.better-auth]
 url = "https://mcp.chonkie.ai/better-auth/better-auth-builder/mcp"
-
 
 [mcp_servers.next-devtools]
 command = "npx"
