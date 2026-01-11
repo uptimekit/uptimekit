@@ -210,6 +210,55 @@ export const workersRouter = {
 
 			return { key: rawKey };
 		}),
+
+	delete: protectedProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/workers/{id}",
+				tags: ["Worker Management"],
+				summary: "Delete worker",
+				description: "Delete a worker and its associated API keys.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			if (context.session.user.role !== "admin") {
+				throw new ORPCError("UNAUTHORIZED");
+			}
+
+			const [workerRecord] = await db
+				.select()
+				.from(worker)
+				.where(eq(worker.id, input.id))
+				.limit(1);
+
+			if (!workerRecord) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			// Get API key hashes for cache invalidation
+			const apiKeys = await db
+				.select({ keyHash: workerApiKey.keyHash })
+				.from(workerApiKey)
+				.where(eq(workerApiKey.workerId, input.id));
+
+			// Delete API keys first (foreign key constraint)
+			await db.delete(workerApiKey).where(eq(workerApiKey.workerId, input.id));
+
+			// Delete the worker
+			await db.delete(worker).where(eq(worker.id, input.id));
+
+			// Invalidate cached API keys
+			for (const key of apiKeys) {
+				invalidateApiKeyCache(key.keyHash);
+			}
+
+			logger.info(`Deleted worker ${workerRecord.name}`);
+
+			return { success: true };
+		}),
+
 	listLocations: protectedProcedure
 		.meta({
 			openapi: {

@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { AQ, AU, BR, CA, EU, HK, US, ZA } from "country-flag-icons/react/3x2";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
 	ChevronDown,
@@ -12,7 +11,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -35,6 +45,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { getRegionInfo } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -47,19 +58,6 @@ interface Worker {
 	version: string | null;
 }
 
-function getRegionFlag(location: string) {
-	if (location.startsWith("eu-")) return <EU className="h-3 w-4" />;
-	if (location.startsWith("us-")) return <US className="h-3 w-4" />;
-	if (location.startsWith("na-")) return <CA className="h-3 w-4" />;
-	if (location.startsWith("ca-")) return <CA className="h-3 w-4" />; // Canada explicit
-	if (location.startsWith("sa-")) return <BR className="h-3 w-4" />;
-	if (location.startsWith("br-")) return <BR className="h-3 w-4" />; // Brazil explicit
-	if (location.startsWith("af-")) return <ZA className="h-3 w-4" />;
-	if (location.startsWith("ap-")) return <HK className="h-3 w-4" />; // Changed generalized AP to HK for now based on req, or logic
-	if (location.startsWith("au-")) return <AU className="h-3 w-4" />;
-	return <AQ className="h-3 w-4" />;
-}
-
 export function WorkersTable() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -67,7 +65,13 @@ export function WorkersTable() {
 		"all" | "online" | "offline" | "unknown"
 	>("all");
 	const [page, setPage] = useState(1);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [workerToDelete, setWorkerToDelete] = useState<{
+		id: string;
+		name: string;
+	} | null>(null);
 	const pageSize = 10;
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
@@ -87,6 +91,30 @@ export function WorkersTable() {
 			},
 		}),
 	);
+
+	const deleteMutation = useMutation({
+		...orpc.workers.delete.mutationOptions(),
+		onSuccess: () => {
+			toast.success("Worker deleted successfully");
+			queryClient.invalidateQueries({ queryKey: orpc.workers.list.key() });
+			setDeleteDialogOpen(false);
+			setWorkerToDelete(null);
+		},
+		onError: (error: Error) => {
+			toast.error(error.message || "Failed to delete worker");
+		},
+	});
+
+	const handleDeleteClick = (workerId: string, workerName: string) => {
+		setWorkerToDelete({ id: workerId, name: workerName });
+		setDeleteDialogOpen(true);
+	};
+
+	const confirmDelete = () => {
+		if (workerToDelete) {
+			deleteMutation.mutate({ id: workerToDelete.id });
+		}
+	};
 
 	const workers = data?.items || [];
 	const total = data?.total || 0;
@@ -210,8 +238,16 @@ export function WorkersTable() {
 												</span>
 												<span>·</span>
 												<span className="flex items-center gap-1.5 align-middle">
-													{getRegionFlag(worker.location)}
-													{worker.location}
+													{(() => {
+														const regionInfo = getRegionInfo(worker.location);
+														const Flag = regionInfo.Flag;
+														return (
+															<>
+																<Flag className="h-3 w-4 rounded-sm object-cover" />
+																<span>{regionInfo.label}</span>
+															</>
+														);
+													})()}
 												</span>
 												<span>·</span>
 												<span>
@@ -248,7 +284,12 @@ export function WorkersTable() {
 													</Link>
 												</DropdownMenuItem>
 												<DropdownMenuItem>Rotate Token</DropdownMenuItem>
-												<DropdownMenuItem className="text-red-500">
+												<DropdownMenuItem
+													className="text-red-500"
+													onClick={() =>
+														handleDeleteClick(worker.id, worker.name)
+													}
+												>
 													Delete
 												</DropdownMenuItem>
 											</DropdownMenuContent>
@@ -321,6 +362,28 @@ export function WorkersTable() {
 					</div>
 				)}
 			</div>
+
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will permanently delete the worker{" "}
+							<span className="font-semibold">{workerToDelete?.name}</span> and
+							its associated API keys. This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={confirmDelete}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Delete Worker
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

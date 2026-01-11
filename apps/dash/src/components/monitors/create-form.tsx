@@ -596,6 +596,32 @@ export function CreateMonitorForm({
 	const locations = form.watch("locations") || [];
 	const hasAnySelection = locations.length > 0;
 
+	// State for collapsible continents
+	const [openContinents, setOpenContinents] = useState<Record<string, boolean>>(
+		{},
+	);
+
+	// Group regions by continent
+	const regionsByContinent = (regions || []).reduce(
+		(acc, region) => {
+			const regionInfo = getRegionInfo(region);
+			const continent = regionInfo.continent || "Other";
+			if (!acc[continent]) {
+				acc[continent] = [];
+			}
+			acc[continent].push(region);
+			return acc;
+		},
+		{} as Record<string, string[]>,
+	);
+
+	const toggleContinent = (continent: string) => {
+		setOpenContinents((prev) => ({
+			...prev,
+			[continent]: !prev[continent],
+		}));
+	};
+
 	// Helper to select all regions
 	const handleSelectAllRegions = () => {
 		if (!regions) return;
@@ -794,53 +820,79 @@ export function CreateMonitorForm({
 												{hasAnySelection ? "Deselect all" : "Select all"}
 											</Button>
 										</FormLabel>
-										<div className="grid grid-cols-2 gap-2">
-											{regions?.map((region) => {
-												const regionInfo = getRegionInfo(region);
-												const Flag = regionInfo.Flag;
+										<div className="space-y-2">
+											{Object.entries(regionsByContinent)
+												.sort(([a], [b]) => a.localeCompare(b))
+												.map(([continent, continentRegions]) => (
+													<Collapsible
+														key={continent}
+														open={openContinents[continent]}
+														onOpenChange={() => toggleContinent(continent)}
+													>
+														<CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-muted/30 px-4 py-2 font-semibold text-sm hover:bg-muted/50">
+															<span>{continent}</span>
+															<ChevronRight
+																className={cn(
+																	"h-4 w-4 transition-transform duration-200",
+																	openContinents[continent] && "rotate-90",
+																)}
+															/>
+														</CollapsibleTrigger>
+														<CollapsibleContent>
+															<div className="grid grid-cols-2 gap-2 pt-2">
+																{continentRegions.map((region) => {
+																	const regionInfo = getRegionInfo(region);
+																	const Flag = regionInfo.Flag;
 
-												return (
-													<FormField
-														key={region}
-														control={form.control}
-														name="locations"
-														render={({ field }) => {
-															return (
-																<FormItem
-																	key={region}
-																	className="flex flex-row items-start space-x-3 space-y-0 rounded-md bg-muted/50 p-4"
-																>
-																	<FormControl>
-																		<Checkbox
-																			checked={field.value?.includes(region)}
-																			onCheckedChange={(checked) => {
-																				return checked
-																					? field.onChange([
-																							...field.value,
-																							region,
-																						])
-																					: field.onChange(
-																							field.value?.filter(
-																								(value) => value !== region,
-																							),
-																						);
+																	return (
+																		<FormField
+																			key={region}
+																			control={form.control}
+																			name="locations"
+																			render={({ field }) => {
+																				return (
+																					<FormItem
+																						key={region}
+																						className="flex flex-row items-start space-x-3 space-y-0 rounded-md bg-muted/50 p-4"
+																					>
+																						<FormControl>
+																							<Checkbox
+																								checked={field.value?.includes(
+																									region,
+																								)}
+																								onCheckedChange={(checked) => {
+																									return checked
+																										? field.onChange([
+																												...field.value,
+																												region,
+																											])
+																										: field.onChange(
+																												field.value?.filter(
+																													(value) =>
+																														value !== region,
+																												),
+																											);
+																								}}
+																							/>
+																						</FormControl>
+																						<div className="flex items-center gap-2 space-y-1 leading-none">
+																							<div className="relative h-3.5 w-5 overflow-hidden rounded-[2px] shadow-sm">
+																								<Flag className="h-full w-full object-cover" />
+																							</div>
+																							<FormLabel className="cursor-pointer font-normal">
+																								{regionInfo.label}
+																							</FormLabel>
+																						</div>
+																					</FormItem>
+																				);
 																			}}
 																		/>
-																	</FormControl>
-																	<div className="flex items-center gap-2 space-y-1 leading-none">
-																		<div className="relative h-3.5 w-5 overflow-hidden rounded-[2px] shadow-sm">
-																			<Flag className="h-full w-full object-cover" />
-																		</div>
-																		<FormLabel className="cursor-pointer font-normal">
-																			{regionInfo.label}
-																		</FormLabel>
-																	</div>
-																</FormItem>
-															);
-														}}
-													/>
-												);
-											})}
+																	);
+																})}
+															</div>
+														</CollapsibleContent>
+													</Collapsible>
+												))}
 										</div>
 										<FormMessage />
 									</FormItem>
