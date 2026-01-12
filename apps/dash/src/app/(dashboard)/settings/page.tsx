@@ -5,7 +5,9 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { GroupSettings } from "@/components/settings/group-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
+import { TagSettings } from "@/components/settings/tag-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -130,6 +132,8 @@ export default function SettingsPage() {
 					<PageNav.List>
 						<PageNav.Trigger value="general">General</PageNav.Trigger>
 						<PageNav.Trigger value="team">Team</PageNav.Trigger>
+						<PageNav.Trigger value="groups">Groups</PageNav.Trigger>
+						<PageNav.Trigger value="tags">Tags</PageNav.Trigger>
 					</PageNav.List>
 
 					<PageNav.Content value="general">
@@ -251,6 +255,14 @@ export default function SettingsPage() {
 
 					<PageNav.Content value="team">
 						<TeamSettings />
+					</PageNav.Content>
+
+					<PageNav.Content value="groups">
+						<GroupSettings />
+					</PageNav.Content>
+
+					<PageNav.Content value="tags">
+						<TagSettings />
 					</PageNav.Content>
 				</PageNav>
 			</div>

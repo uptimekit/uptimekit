@@ -9,6 +9,7 @@ import {
 	timestamp,
 } from "drizzle-orm/pg-core";
 import { organization } from "./auth";
+import { monitorTag } from "./tags";
 
 export const monitorGroup = pgTable(
 	"monitor_group",
@@ -64,7 +65,7 @@ export const monitor = pgTable(
 	],
 );
 
-export const monitorRelations = relations(monitor, ({ one }) => ({
+export const monitorRelations = relations(monitor, ({ one, many }) => ({
 	organization: one(organization, {
 		fields: [monitor.organizationId],
 		references: [organization.id],
@@ -73,6 +74,7 @@ export const monitorRelations = relations(monitor, ({ one }) => ({
 		fields: [monitor.groupId],
 		references: [monitorGroup.id],
 	}),
+	monitorTags: many(monitorTag),
 }));
 
 export const monitorGroupRelations = relations(

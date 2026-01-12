@@ -10,15 +10,17 @@ import {
 	ChevronRight,
 	ChevronRightIcon,
 	Filter,
+	Folder,
 	Loader2,
 	MoreHorizontal,
 	PlayCircle,
 	Plus,
 	Search,
+	Settings,
 	ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
 	AlertDialog,
@@ -49,7 +51,9 @@ import {
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
+import { GroupCreationDialog } from "./group-creation-dialog";
 import { LatencySparkline } from "./latency-sparkline";
+import { TagCreationDialog } from "./tag-creation-dialog";
 
 export type MonitorStatus =
 	| "up"
@@ -69,11 +73,14 @@ export interface Monitor {
 	frequency: string;
 	hasIncident: boolean;
 	active: boolean;
+	tags?: Array<{ id: string; name: string; color: string }>;
 }
 
 export function MonitorsTable() {
 	const [search, setSearch] = useState("");
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [groupsOpen, setGroupsOpen] = useState(false);
+	const [tagsOpen, setTagsOpen] = useState(false);
 	const [activeFilter, setActiveFilter] = useState<boolean | undefined>(
 		undefined,
 	);
@@ -81,8 +88,13 @@ export function MonitorsTable() {
 	const [statusFilter, setStatusFilter] = useState<string | undefined>(
 		undefined,
 	);
+	const [groupFilter, setGroupFilter] = useState<string | undefined>(undefined);
+	const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
 	const [page, setPage] = useState(1);
 	const pageSize = 10;
+	const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+		{},
+	);
 
 	// Debounce search
 	const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -101,11 +113,22 @@ export function MonitorsTable() {
 				active: activeFilter,
 				type: typeFilter as any,
 				status: statusFilter as any,
+				groupId: groupFilter,
+				tagId: tagFilter,
 				limit: pageSize,
 				offset: (page - 1) * pageSize,
 			},
 		}),
 		refetchInterval: 60_000,
+	});
+
+	// Fetch groups and tags for filters
+	const { data: groups } = useQuery({
+		...orpc.monitors.listGroups.queryOptions(),
+	});
+
+	const { data: tags } = useQuery({
+		...orpc.monitors.listTags.queryOptions(),
 	});
 
 	// Fetch latency sparkline data for all visible monitors
@@ -122,7 +145,7 @@ export function MonitorsTable() {
 	const total = data?.total || 0;
 	const totalPages = Math.ceil(total / pageSize);
 
-	const tableData: Monitor[] =
+	const tableData: (Monitor & { groupId?: string })[] =
 		monitors?.map((m) => ({
 			id: m.id,
 			name: m.name,
@@ -155,13 +178,37 @@ export function MonitorsTable() {
 			frequency: `${m.interval}s`,
 			hasIncident: false,
 			active: m.active,
+			tags: (m as any).tags || [],
+			groupId: (m as any).groupId,
 		})) ?? [];
+
+	// Group monitors by groupId
+	const groupedMonitors = tableData.reduce(
+		(acc, monitor) => {
+			const groupId = monitor.groupId || "ungrouped";
+			if (!acc[groupId]) {
+				acc[groupId] = [];
+			}
+			acc[groupId].push(monitor);
+			return acc;
+		},
+		{} as Record<string, (Monitor & { groupId?: string })[]>,
+	);
+
+	const toggleGroup = (groupId: string) => {
+		setExpandedGroups((prev) => ({
+			...prev,
+			[groupId]: !prev[groupId],
+		}));
+	};
 
 	const clearFilters = () => {
 		setSearch("");
 		setActiveFilter(undefined);
 		setTypeFilter(undefined);
 		setStatusFilter(undefined);
+		setGroupFilter(undefined);
+		setTagFilter(undefined);
 		setPage(1);
 	};
 
@@ -169,6 +216,8 @@ export function MonitorsTable() {
 		activeFilter !== undefined,
 		typeFilter !== undefined,
 		statusFilter !== undefined,
+		groupFilter !== undefined,
+		tagFilter !== undefined,
 	].filter(Boolean).length;
 
 	return (
@@ -383,9 +432,102 @@ export function MonitorsTable() {
 								{activeFilter === false && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 flex items-center justify-between px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Group
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-4 w-4"
+									onClick={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										setGroupsOpen(true);
+									}}
+								>
+									<Plus className="h-3 w-3" />
+								</Button>
+							</div>
+							<DropdownMenuItem
+								onClick={() => {
+									setGroupFilter(undefined);
+									setPage(1);
+								}}
+								className="flex justify-between"
+							>
+								All Groups
+								{!groupFilter && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							{groups?.map((group) => (
+								<DropdownMenuItem
+									key={group.id}
+									onClick={() => {
+										setGroupFilter(group.id);
+										setPage(1);
+									}}
+									className="flex justify-between"
+								>
+									<div className="flex items-center gap-2">
+										<Folder className="h-3 w-3 text-muted-foreground" />
+										{group.name}
+									</div>
+									{groupFilter === group.id && <Check className="h-4 w-4" />}
+								</DropdownMenuItem>
+							))}
+
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 flex items-center justify-between px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Tag
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-4 w-4"
+									onClick={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										setTagsOpen(true);
+									}}
+								>
+									<Plus className="h-3 w-3" />
+								</Button>
+							</div>
+							<DropdownMenuItem
+								onClick={() => {
+									setTagFilter(undefined);
+									setPage(1);
+								}}
+								className="flex justify-between"
+							>
+								All Tags
+								{!tagFilter && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+							{tags?.map((tag) => (
+								<DropdownMenuItem
+									key={tag.id}
+									onClick={() => {
+										setTagFilter(tag.id);
+										setPage(1);
+									}}
+									className="flex justify-between"
+								>
+									<div className="flex items-center gap-2">
+										<div
+											className="h-3 w-3 rounded-full"
+											style={{ backgroundColor: tag.color }}
+										/>
+										{tag.name}
+									</div>
+									{tagFilter === tag.id && <Check className="h-4 w-4" />}
+								</DropdownMenuItem>
+							))}
+
 							{(activeFilter !== undefined ||
 								typeFilter !== undefined ||
-								statusFilter !== undefined) && (
+								statusFilter !== undefined ||
+								groupFilter !== undefined ||
+								tagFilter !== undefined) && (
 								<>
 									<div className="my-2 h-px bg-muted" />
 									<DropdownMenuItem
@@ -435,14 +577,18 @@ export function MonitorsTable() {
 											{search ||
 											activeFilter !== undefined ||
 											typeFilter ||
-											statusFilter
+											statusFilter ||
+											groupFilter ||
+											tagFilter
 												? "Try adjusting your filters"
 												: "Get started by creating your first monitor."}
 										</p>
 										{!search &&
 											activeFilter === undefined &&
 											!typeFilter &&
-											!statusFilter && (
+											!statusFilter &&
+											!groupFilter &&
+											!tagFilter && (
 												<div className="mt-2">
 													<Button asChild>
 														<Link href="/monitors/new">Create monitor</Link>
@@ -453,94 +599,151 @@ export function MonitorsTable() {
 								</TableCell>
 							</TableRow>
 						) : (
-							tableData.map((monitor) => (
-								<TableRow
-									key={monitor.id}
-									className={cn(
-										"group h-[72px] hover:bg-muted/40",
-										!monitor.active && "opacity-50 grayscale",
-									)}
-								>
-									<TableCell className="w-[50px] pl-6">
-										<div
-											className={cn(
-												"h-2.5 w-2.5 rounded-full shadow-sm",
-												monitor.status === "up" &&
-													"bg-emerald-500 shadow-emerald-500/20",
-												monitor.status === "down" &&
-													"bg-red-500 shadow-red-500/20",
-												monitor.status === "degraded" &&
-													"bg-amber-500 shadow-amber-500/20",
-												monitor.status === "maintenance" &&
-													"bg-blue-500 shadow-blue-500/20",
-												monitor.status === "pending" &&
-													"bg-zinc-500 shadow-zinc-500/20",
-											)}
-										/>
-									</TableCell>
-									<TableCell>
-										<Link
-											href={`/monitors/${monitor.id}`}
-											className="block h-full w-full"
-										>
-											<div className="grid gap-1">
-												<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
-													{monitor.name}
-													{!monitor.active && (
-														<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
-															PAUSED
+							<>
+								{Object.entries(groupedMonitors).map(([groupId, monitors]) => {
+									const group = groups?.find((g) => g.id === groupId);
+									const groupName = group?.name || "Ungrouped";
+									const isExpanded = expandedGroups[groupId] ?? true;
+
+									return (
+										<Fragment key={groupId}>
+											{/* Group Header */}
+											<TableRow
+												className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
+												onClick={() => toggleGroup(groupId)}
+											>
+												<TableCell colSpan={6} className="py-3">
+													<div className="flex items-center gap-2 font-medium text-sm">
+														<ChevronRight
+															className={cn(
+																"h-4 w-4 transition-transform",
+																isExpanded && "rotate-90",
+															)}
+														/>
+														<Folder className="h-4 w-4 text-muted-foreground" />
+														<span>{groupName}</span>
+														<span className="text-muted-foreground text-xs">
+															({monitors.length})
 														</span>
-													)}
-												</span>
-												<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
-													<span
+													</div>
+												</TableCell>
+											</TableRow>
+
+											{/* Group Monitors */}
+											{isExpanded &&
+												monitors.map((monitor) => (
+													<TableRow
+														key={monitor.id}
 														className={cn(
-															monitor.status === "up" && "text-emerald-500",
-															monitor.status === "down" && "text-red-500",
-															monitor.status === "degraded" && "text-amber-500",
-															monitor.status === "maintenance" &&
-																"text-blue-500",
-															monitor.status === "pending" && "text-zinc-500",
+															"group h-[72px] hover:bg-muted/40",
+															!monitor.active && "opacity-50 grayscale",
 														)}
 													>
-														{monitor.statusText}
-													</span>
-													<span>·</span>
-													<span>{monitor.duration}</span>
-													<span>·</span>
-													<span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
-														Used on {monitor.usedOn} status page
-														{monitor.usedOn !== 1 ? "s" : ""}
-													</span>
-												</div>
-											</div>
-										</Link>
-									</TableCell>
-									<TableCell className="w-[200px]">
-										{monitor.hasIncident && (
-											<div className="inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
-												<ShieldAlert className="h-3.5 w-3.5" />
-												Ongoing Incident
-												<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
-											</div>
-										)}
-									</TableCell>
-									<TableCell className="w-[100px] font-medium text-muted-foreground text-sm">
-										<div className="flex items-center gap-2">
-											<PlayCircle className="h-4 w-4 opacity-50" />
-											{monitor.frequency}
-										</div>
-									</TableCell>
-									<TableCell className="w-[50px]">
-										<MonitorActions monitor={monitor} />
-									</TableCell>
-									<TableCell className="relative hidden w-[140px] p-0 lg:table-cell">
-										<LatencySparkline
-											data={sparklineData?.[monitor.id] ?? []}
-										/>
-									</TableCell>
-								</TableRow>
-							))
+														<TableCell className="w-[50px] pl-6">
+															<div
+																className={cn(
+																	"h-2.5 w-2.5 rounded-full shadow-sm",
+																	monitor.status === "up" &&
+																		"bg-emerald-500 shadow-emerald-500/20",
+																	monitor.status === "down" &&
+																		"bg-red-500 shadow-red-500/20",
+																	monitor.status === "degraded" &&
+																		"bg-amber-500 shadow-amber-500/20",
+																	monitor.status === "maintenance" &&
+																		"bg-blue-500 shadow-blue-500/20",
+																	monitor.status === "pending" &&
+																		"bg-zinc-500 shadow-zinc-500/20",
+																)}
+															/>
+														</TableCell>
+														<TableCell>
+															<Link
+																href={`/monitors/${monitor.id}`}
+																className="block h-full w-full"
+															>
+																<div className="grid gap-1">
+																	<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
+																		{monitor.name}
+																		{!monitor.active && (
+																			<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+																				PAUSED
+																			</span>
+																		)}
+																		{monitor.tags &&
+																			monitor.tags.length > 0 && (
+																				<div className="flex items-center gap-1">
+																					{monitor.tags.map((tag) => (
+																						<span
+																							key={tag.id}
+																							className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-[10px]"
+																							style={{
+																								backgroundColor: `${tag.color}20`,
+																								color: tag.color,
+																							}}
+																						>
+																							{tag.name}
+																						</span>
+																					))}
+																				</div>
+																			)}
+																	</span>
+																	<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+																		<span
+																			className={cn(
+																				monitor.status === "up" &&
+																					"text-emerald-500",
+																				monitor.status === "down" &&
+																					"text-red-500",
+																				monitor.status === "degraded" &&
+																					"text-amber-500",
+																				monitor.status === "maintenance" &&
+																					"text-blue-500",
+																				monitor.status === "pending" &&
+																					"text-zinc-500",
+																			)}
+																		>
+																			{monitor.statusText}
+																		</span>
+																		<span>·</span>
+																		<span>{monitor.duration}</span>
+																		<span>·</span>
+																		<span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
+																			Used on {monitor.usedOn} status page
+																			{monitor.usedOn !== 1 ? "s" : ""}
+																		</span>
+																	</div>
+																</div>
+															</Link>
+														</TableCell>
+														<TableCell className="w-[200px]">
+															{monitor.hasIncident && (
+																<div className="inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
+																	<ShieldAlert className="h-3.5 w-3.5" />
+																	Ongoing Incident
+																	<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
+																</div>
+															)}
+														</TableCell>
+														<TableCell className="w-[100px] font-medium text-muted-foreground text-sm">
+															<div className="flex items-center gap-2">
+																<PlayCircle className="h-4 w-4 opacity-50" />
+																{monitor.frequency}
+															</div>
+														</TableCell>
+														<TableCell className="w-[50px]">
+															<MonitorActions monitor={monitor} />
+														</TableCell>
+														<TableCell className="relative hidden w-[140px] p-0 lg:table-cell">
+															<LatencySparkline
+																data={sparklineData?.[monitor.id] ?? []}
+															/>
+														</TableCell>
+													</TableRow>
+												))}
+										</Fragment>
+									);
+								})}
+							</>
 						)}
 					</TableBody>
 				</Table>
@@ -607,6 +810,9 @@ export function MonitorsTable() {
 					</div>
 				)}
 			</div>
+
+			<GroupCreationDialog open={groupsOpen} onOpenChange={setGroupsOpen} />
+			<TagCreationDialog open={tagsOpen} onOpenChange={setTagsOpen} />
 		</div>
 	);
 }

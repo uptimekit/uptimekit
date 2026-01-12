@@ -7,6 +7,7 @@ import {
 } from "@uptimekit/db/schema/incidents";
 import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
+import { monitorTag, tag } from "@uptimekit/db/schema/tags";
 import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
@@ -54,6 +55,8 @@ export const monitorsRouter = {
 					status: z
 						.enum(["up", "down", "degraded", "maintenance", "pending"])
 						.optional(),
+					groupId: z.string().optional(),
+					tagId: z.string().optional(),
 					limit: z.number().default(50),
 					offset: z.number().default(0),
 				})
@@ -89,6 +92,10 @@ export const monitorsRouter = {
 				filters.push(eq(monitor.type, input.type));
 			}
 
+			if (input?.groupId) {
+				filters.push(eq(monitor.groupId, input.groupId));
+			}
+
 			const [monitors, total] = await Promise.all([
 				db
 					.select()
@@ -120,6 +127,32 @@ export const monitorsRouter = {
 
 			// Batch fetch latest events and changes for all monitors to avoid N+1 query problem
 			const monitorIds = monitors.map((row) => row.monitor.id);
+
+			// Fetch tags for all monitors
+			const tagsForMonitors =
+				monitorIds.length > 0
+					? await db
+							.select({
+								monitorId: monitorTag.monitorId,
+								tag: tag,
+							})
+							.from(monitorTag)
+							.innerJoin(tag, eq(monitorTag.tagId, tag.id))
+							.where(
+								sql`${monitorTag.monitorId} IN (${sql.join(
+									monitorIds.map((id) => sql`${id}`),
+									sql`, `,
+								)})`,
+							)
+					: [];
+
+			const tagsByMonitor = new Map<string, (typeof tag.$inferSelect)[]>();
+			for (const { monitorId, tag: tagRecord } of tagsForMonitors) {
+				if (!tagsByMonitor.has(monitorId)) {
+					tagsByMonitor.set(monitorId, []);
+				}
+				tagsByMonitor.get(monitorId)!.push(tagRecord);
+			}
 
 			// Fetch latest events for all monitors in a single query
 			const latestEventsQuery = await clickhouse.query({
@@ -167,6 +200,7 @@ export const monitorsRouter = {
 				return {
 					...row.monitor,
 					group: row.monitor_group || null,
+					tags: tagsByMonitor.get(row.monitor.id) || [],
 					status: latestEvent?.status || "pending",
 					lastCheck: latestEvent
 						? parseClickhouseTimestamp(latestEvent.timestamp)
@@ -261,7 +295,8 @@ export const monitorsRouter = {
 				name: z.string().min(1),
 				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
 				interval: z.number().min(30).default(60),
-				groupId: z.string().optional(),
+				groupId: z.string().nullish(),
+				tags: z.array(z.string()).optional(),
 				config: z.record(z.any(), z.any()),
 				locations: z.array(z.string()).min(1), // Require at least one location
 				incidentPendingDuration: z.number().min(0).default(0),
@@ -287,6 +322,15 @@ export const monitorsRouter = {
 
 			if (!newMonitor) {
 				throw new ORPCError("INTERNAL_SERVER_ERROR");
+			}
+
+			if (input.tags && input.tags.length > 0) {
+				await db.insert(monitorTag).values(
+					input.tags.map((tagId) => ({
+						monitorId: newMonitor.id,
+						tagId,
+					})),
+				);
 			}
 
 			return newMonitor;
@@ -412,7 +456,8 @@ export const monitorsRouter = {
 				name: z.string().min(1),
 				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
 				interval: z.number().min(30).default(60),
-				groupId: z.string().optional(),
+				groupId: z.string().nullish(),
+				tags: z.array(z.string()).optional(),
 				config: z.record(z.any(), z.any()),
 				locations: z.array(z.string()).min(1),
 				incidentPendingDuration: z.number().min(0).default(0),
@@ -446,6 +491,21 @@ export const monitorsRouter = {
 					active: input.active,
 				})
 				.where(eq(monitor.id, input.id));
+
+			if (input.tags) {
+				// Remove existing tags
+				await db.delete(monitorTag).where(eq(monitorTag.monitorId, input.id));
+
+				// Add new tags
+				if (input.tags.length > 0) {
+					await db.insert(monitorTag).values(
+						input.tags.map((tagId) => ({
+							monitorId: input.id,
+							tagId,
+						})),
+					);
+				}
+			}
 
 			return { success: true };
 		}),
@@ -509,9 +569,19 @@ export const monitorsRouter = {
 				return new Date(ts);
 			};
 
+			// Fetch tags for this monitor
+			const monitorTags = await db
+				.select({
+					tag: tag,
+				})
+				.from(monitorTag)
+				.innerJoin(tag, eq(monitorTag.tagId, tag.id))
+				.where(eq(monitorTag.monitorId, found.monitor.id));
+
 			return {
 				...found.monitor,
 				group: found.monitor_group || null,
+				tags: monitorTags.map((mt) => mt.tag),
 				status: latestEvent?.status || "pending",
 				lastCheck: latestEvent
 					? parseClickhouseTimestamp(latestEvent.timestamp)
@@ -1079,5 +1149,266 @@ export const monitorsRouter = {
 			}
 
 			return sparklineData;
+		}),
+
+	updateGroup: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/monitors/groups/{id}",
+				tags: ["Monitor Management"],
+				summary: "Update monitor group",
+				description: "Update the name of an existing monitor group.",
+			},
+		})
+		.input(z.object({ id: z.string(), name: z.string().min(1) }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.monitorGroup.findFirst({
+				where: eq(monitorGroup.id, input.id),
+			});
+
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			const [updated] = await db
+				.update(monitorGroup)
+				.set({ name: input.name })
+				.where(eq(monitorGroup.id, input.id))
+				.returning();
+
+			return updated;
+		}),
+
+	deleteGroup: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/monitors/groups/{id}",
+				tags: ["Monitor Management"],
+				summary: "Delete monitor group",
+				description:
+					"Delete a monitor group. Monitors in this group will have their groupId set to null.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.monitorGroup.findFirst({
+				where: eq(monitorGroup.id, input.id),
+			});
+
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			await db.delete(monitorGroup).where(eq(monitorGroup.id, input.id));
+			return { success: true };
+		}),
+
+	listTags: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/monitors/tags",
+				tags: ["Monitor Management"],
+				summary: "List monitor tags",
+				description: "Retrieve all monitor tags.",
+			},
+		})
+		.handler(async ({ context }) => {
+			const tags = await db
+				.select()
+				.from(tag)
+				.where(
+					eq(tag.organizationId, context.session.session.activeOrganizationId!),
+				)
+				.orderBy(desc(tag.createdAt));
+			return tags;
+		}),
+
+	createTag: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/monitors/tags",
+				tags: ["Monitor Management"],
+				summary: "Create monitor tag",
+				description: "Create a new tag for organizing monitors.",
+			},
+		})
+		.input(
+			z.object({
+				name: z.string().min(1),
+				color: z.string().default("#3b82f6"),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const [newTag] = await db
+				.insert(tag)
+				.values({
+					id: crypto.randomUUID(),
+					name: input.name,
+					color: input.color,
+					organizationId: context.session.session.activeOrganizationId!,
+				})
+				.returning();
+			return newTag;
+		}),
+
+	updateTag: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/monitors/tags/{id}",
+				tags: ["Monitor Management"],
+				summary: "Update monitor tag",
+				description: "Update a tag's name or color.",
+			},
+		})
+		.input(
+			z.object({
+				id: z.string(),
+				name: z.string().min(1).optional(),
+				color: z.string().optional(),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.tag.findFirst({
+				where: eq(tag.id, input.id),
+			});
+
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			const updates: { name?: string; color?: string } = {};
+			if (input.name) updates.name = input.name;
+			if (input.color) updates.color = input.color;
+
+			const [updated] = await db
+				.update(tag)
+				.set(updates)
+				.where(eq(tag.id, input.id))
+				.returning();
+
+			return updated;
+		}),
+
+	deleteTag: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/monitors/tags/{id}",
+				tags: ["Monitor Management"],
+				summary: "Delete monitor tag",
+				description:
+					"Delete a tag. This will also remove the tag from all monitors.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.tag.findFirst({
+				where: eq(tag.id, input.id),
+			});
+
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			await db.delete(tag).where(eq(tag.id, input.id));
+			return { success: true };
+		}),
+
+	addTagToMonitor: writeProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/monitors/{monitorId}/tags/{tagId}",
+				tags: ["Monitor Management"],
+				summary: "Add tag to monitor",
+				description: "Associate a tag with a monitor.",
+			},
+		})
+		.input(z.object({ monitorId: z.string(), tagId: z.string() }))
+		.handler(async ({ input, context }) => {
+			const mon = await db.query.monitor.findFirst({
+				where: eq(monitor.id, input.monitorId),
+			});
+
+			if (
+				!mon ||
+				mon.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND", { message: "Monitor not found" });
+			}
+
+			const tagRecord = await db.query.tag.findFirst({
+				where: eq(tag.id, input.tagId),
+			});
+
+			if (
+				!tagRecord ||
+				tagRecord.organizationId !==
+					context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND", { message: "Tag not found" });
+			}
+
+			await db
+				.insert(monitorTag)
+				.values({
+					monitorId: input.monitorId,
+					tagId: input.tagId,
+				})
+				.onConflictDoNothing();
+
+			return { success: true };
+		}),
+
+	removeTagFromMonitor: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/monitors/{monitorId}/tags/{tagId}",
+				tags: ["Monitor Management"],
+				summary: "Remove tag from monitor",
+				description: "Remove a tag association from a monitor.",
+			},
+		})
+		.input(z.object({ monitorId: z.string(), tagId: z.string() }))
+		.handler(async ({ input, context }) => {
+			const mon = await db.query.monitor.findFirst({
+				where: eq(monitor.id, input.monitorId),
+			});
+
+			if (
+				!mon ||
+				mon.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND");
+			}
+
+			await db
+				.delete(monitorTag)
+				.where(
+					and(
+						eq(monitorTag.monitorId, input.monitorId),
+						eq(monitorTag.tagId, input.tagId),
+					),
+				);
+
+			return { success: true };
 		}),
 };
