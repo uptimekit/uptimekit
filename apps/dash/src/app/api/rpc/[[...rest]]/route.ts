@@ -4,8 +4,8 @@ import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { createContext } from "@uptimekit/api/context";
-import { appRouter } from "@uptimekit/api/routers/index";
 import { createLogger } from "@uptimekit/api/lib/logger";
+import { appRouter } from "@uptimekit/api/routers/index";
 import type { NextRequest } from "next/server";
 
 const logger = createLogger("RPC");
@@ -51,4 +51,3 @@ export const POST = handleRequest;
 export const PUT = handleRequest;
 export const PATCH = handleRequest;
 export const DELETE = handleRequest;
-

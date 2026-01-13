@@ -34,20 +34,6 @@ import {
 	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +45,13 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -66,6 +59,13 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Tooltip,
@@ -98,6 +98,15 @@ interface StructureEditorProps {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
+/**
+ * Render a drag-and-drop editor for configuring a status page's groups and monitors.
+ *
+ * Loads the status page, its current structure, and available monitors; provides UI and interactions
+ * to create, rename, reorder, group, configure, and remove monitors, and to persist the resulting structure.
+ *
+ * @param statusPageId - The ID of the status page being edited
+ * @returns A JSX element containing the structure editor UI
+ */
 export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	const queryClient = useQueryClient();
 	const { isLoading: isPageLoading } = useQuery(
@@ -141,7 +150,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 						id: m.id,
 						name: m.name,
 						style: m.style as MonitorStyle,
-					description: m.description,
+						description: m.description,
 					})),
 				})),
 			);
@@ -337,16 +346,18 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		);
 	};
 
-	const updateMonitorConfig = (groupId: string, instanceId: string, updates: Partial<MonitorItem>) => {
+	const updateMonitorConfig = (
+		groupId: string,
+		instanceId: string,
+		updates: Partial<MonitorItem>,
+	) => {
 		setGroups(
 			groups.map((g) => {
 				if (g.id === groupId) {
 					return {
 						...g,
 						monitors: g.monitors.map((m) =>
-							m.instanceId === instanceId
-								? { ...m, ...updates }
-								: m,
+							m.instanceId === instanceId ? { ...m, ...updates } : m,
 						),
 					};
 				}
@@ -361,7 +372,11 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 			groups: groups.map((g) => ({
 				id: g.id.startsWith("temp-") ? undefined : g.id,
 				name: g.name || "Untitled Section",
-				monitors: g.monitors.map((m) => ({ id: m.id, style: m.style, description: m.description })),
+				monitors: g.monitors.map((m) => ({
+					id: m.id,
+					style: m.style,
+					description: m.description,
+				})),
 			})),
 		});
 	};
@@ -638,6 +653,16 @@ function GroupCard({
 	);
 }
 
+/**
+ * Renders a searchable popover control for adding monitors to a group.
+ *
+ * The control lists `availableMonitors` excluding any whose ids appear in `existingMonitorIds`; selecting an item invokes `onAdd` with the chosen monitor and closes the popover.
+ *
+ * @param onAdd - Callback invoked with the selected monitor object when a monitor is chosen
+ * @param availableMonitors - Array of monitor objects available for addition; each must include an `id` and `name`
+ * @param existingMonitorIds - Array of monitor ids that should be excluded from the choices
+ * @returns The Add Monitor input popover component
+ */
 function AddMonitorInput({
 	onAdd,
 	availableMonitors,
@@ -689,7 +714,19 @@ function AddMonitorInput({
 	);
 }
 
-function SortableMonitor({ monitor, onRemove, onConfigChange }: {
+/**
+ * A draggable monitor list item that renders a MonitorRow and wires drag-and-drop behavior.
+ *
+ * @param monitor - The monitor instance to display (includes instanceId, id, name, style, and optional description).
+ * @param onRemove - Called when the monitor should be removed from its group.
+ * @param onConfigChange - Called with partial monitor fields to update the monitor's configuration.
+ * @returns A JSX element representing a draggable monitor row connected to the DnD system.
+ */
+function SortableMonitor({
+	monitor,
+	onRemove,
+	onConfigChange,
+}: {
 	monitor: MonitorItem;
 	onRemove: () => void;
 	onConfigChange: (updates: Partial<MonitorItem>) => void;
@@ -886,7 +923,16 @@ function MonitorConfigModal({
 }
 
 // Monitor Preview Component - shows how monitor will look on status page
-// Monitor Preview Component - shows how monitor will look on status page
+/**
+ * Render a visual preview of a monitor as it will appear on the status page for the given display style.
+ *
+ * Shows a compact status-only representation when `style` is "status" and a history-style view with a 90-day uptime bar when `style` is "history".
+ *
+ * @param name - The monitor's display name.
+ * @param style - The monitor display style; `"history"` shows an uptime bar and `"status"` shows current status.
+ * @param description - Optional descriptive text shown in a tooltip next to the name.
+ * @returns A JSX element containing the monitor preview for the specified style.
+ */
 function MonitorPreview({
 	name,
 	style,
@@ -918,7 +964,9 @@ function MonitorPreview({
 							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
 							<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
 						</span>
-						<span className="text-foreground font-semibold text-lg">{name}</span>
+						<span className="font-semibold text-foreground text-lg">
+							{name}
+						</span>
 						{description && (
 							<Tooltip>
 								<TooltipTrigger asChild>
@@ -930,7 +978,9 @@ function MonitorPreview({
 							</Tooltip>
 						)}
 					</div>
-					<span className="text-green-500 font-medium text-sm">Operational</span>
+					<span className="font-medium text-green-500 text-sm">
+						Operational
+					</span>
 				</div>
 			</div>
 		);
@@ -946,7 +996,7 @@ function MonitorPreview({
 						<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
 						<span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
 					</span>
-					<span className="text-foreground font-semibold text-lg">{name}</span>
+					<span className="font-semibold text-foreground text-lg">{name}</span>
 					{description && (
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -958,7 +1008,9 @@ function MonitorPreview({
 						</Tooltip>
 					)}
 				</div>
-				<span className="text-green-500 font-medium text-sm">99.81% uptime</span>
+				<span className="font-medium text-green-500 text-sm">
+					99.81% uptime
+				</span>
 			</div>
 
 			{/* Uptime Bar */}
@@ -972,11 +1024,10 @@ function MonitorPreview({
 			</div>
 
 			{/* Legend */}
-			<div className="mt-2 flex justify-between text-muted-foreground/60 text-xs select-none">
+			<div className="mt-2 flex select-none justify-between text-muted-foreground/60 text-xs">
 				<span>90 days ago</span>
 				<span>Today</span>
 			</div>
 		</div>
 	);
 }
-

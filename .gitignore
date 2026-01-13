@@ -49,19 +49,4 @@ coverage
 tmp
 temp
 
-# START Ruler Generated Files
-/.agent/rules/ruler.md
-/.agent/rules/ruler.md.bak
-/.cursor/mcp.json
-/.cursor/mcp.json.bak
-/.gemini/settings.json
-/.gemini/settings.json.bak
-/.mcp.json
-/.mcp.json.bak
-/.vscode/mcp.json
-/.vscode/mcp.json.bak
-/AGENTS.md
-/AGENTS.md.bak
-/CLAUDE.md
-/CLAUDE.md.bak
-# END Ruler Generated Files
+.claude

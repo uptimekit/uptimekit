@@ -13,7 +13,6 @@
 		"check-types": "turbo check-types",
 		"dev": "turbo dev",
 		"dev:dash": "turbo -F @uptimekit/dash dev",
-		"dev:docs": "turbo -F @uptimekit/docs dev",
 		"dev:status-page": "turbo -F @uptimekit/status-page dev",
 		"db:push": "turbo -F @uptimekit/db db:push",
 		"db:studio": "turbo -F @uptimekit/db db:studio",

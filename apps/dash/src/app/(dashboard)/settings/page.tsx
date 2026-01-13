@@ -5,7 +5,9 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { GroupSettings } from "@/components/settings/group-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
+import { TagSettings } from "@/components/settings/tag-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +46,14 @@ const formSchema = z.object({
 		.or(z.literal("")),
 });
 
+/**
+ * Render the Organization Settings page with editable General, Team, Groups, and Tags sections.
+ *
+ * Syncs form state with the active organization, shows loading/no-active-organization states,
+ * and submits updates to the organization (displaying success or error toasts and mapping slug conflicts to a form error).
+ *
+ * @returns The Settings page React element.
+ */
 export default function SettingsPage() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
 
@@ -130,6 +140,8 @@ export default function SettingsPage() {
 					<PageNav.List>
 						<PageNav.Trigger value="general">General</PageNav.Trigger>
 						<PageNav.Trigger value="team">Team</PageNav.Trigger>
+						<PageNav.Trigger value="groups">Groups</PageNav.Trigger>
+						<PageNav.Trigger value="tags">Tags</PageNav.Trigger>
 					</PageNav.List>
 
 					<PageNav.Content value="general">
@@ -251,6 +263,14 @@ export default function SettingsPage() {
 
 					<PageNav.Content value="team">
 						<TeamSettings />
+					</PageNav.Content>
+
+					<PageNav.Content value="groups">
+						<GroupSettings />
+					</PageNav.Content>
+
+					<PageNav.Content value="tags">
+						<TagSettings />
 					</PageNav.Content>
 				</PageNav>
 			</div>

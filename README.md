@@ -76,7 +76,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 3. **Environment Setup**
 
-    Copy the `.env.example` files in `apps/dash`.
+    Copy the `.env.example` files in `apps/dash`, `apps/status-page`, `apps/scheduler`.
 
 4. **Database Setup**
 
@@ -96,7 +96,6 @@ Follow these steps to get UptimeKit running locally on your machine.
 
     - **Dashboard**: [http://localhost:3000](http://localhost:3000)
     - **Status Page**: [http://localhost:3001](http://localhost:3001)
-    - **Documentation**: [http://localhost:4000](http://localhost:4000)
 
 ## 📂 Project Structure
 
@@ -104,13 +103,12 @@ Follow these steps to get UptimeKit running locally on your machine.
 uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application
-│   ├── status-page/   # Public Status Page application
-│   ├── worker/        # Worker application
-│   └── docs/          # Documentation site
+│   └── status-page/   # Public Status Page application
 ├── packages/
 │   ├── api/           # Shared API definition & logic
 │   ├── auth/          # Authentication configuration
 │   ├── db/            # Database schema & Drizzle config
+│   ├── scheduler/     # Scheduler application
 │   └── config/        # Shared configuration (TS, ESLint, etc.)
 └── ....
 ```

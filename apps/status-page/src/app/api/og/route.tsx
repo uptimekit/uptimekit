@@ -1,4 +1,6 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: no need to pass it */
+
+import { createLogger } from "@uptimekit/api/lib/logger";
 import { ImageResponse } from "next/og";
 import {
 	getActiveMaintenances,
@@ -6,7 +8,6 @@ import {
 	getMonitorStatus,
 	getStatusPageByDomain,
 } from "@/lib/db-queries";
-import { createLogger } from "@uptimekit/api/lib/logger";
 
 const logger = createLogger("STATUS-PAGE");
 

@@ -32,6 +32,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
+/**
+ * Render a detailed view for a single incident, including status, metadata, affected monitors, timeline, and action buttons.
+ *
+ * Renders an interactive UI that lets users acknowledge, resolve, and add comments to the incident; shows a loading skeleton while fetching and a not-found message if the incident does not exist.
+ *
+ * @param id - The incident's unique identifier used to fetch its data
+ * @returns The rendered IncidentDetails UI for the specified incident (or a loading skeleton / not-found message when appropriate)
+ */
 export function IncidentDetails({ id }: { id: string }) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -245,9 +253,13 @@ export function IncidentDetails({ id }: { id: string }) {
 										<div className="flex items-center gap-1.5 text-sm leading-none">
 											{activity.user && (
 												<Avatar className="h-4 w-4">
-													<AvatarImage src={activity.user.image ?? undefined} alt={activity.user.name} />
+													<AvatarImage
+														src={activity.user.image ?? undefined}
+														alt={activity.user.name}
+													/>
 													<AvatarFallback className="text-[8px]">
-														{activity.user.name?.slice(0, 2).toUpperCase() ?? "??"}
+														{activity.user.name?.slice(0, 2).toUpperCase() ??
+															"??"}
 													</AvatarFallback>
 												</Avatar>
 											)}

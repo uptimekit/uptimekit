@@ -26,13 +26,27 @@ function formatSegment(segment: string): string {
 		.join(" ");
 }
 
+/**
+ * Render breadcrumb navigation for the current pathname, resolving UUID segments to human-friendly titles.
+ *
+ * Uses the current pathname to build a breadcrumb trail. For segments that are UUIDs, attempts to resolve a
+ * display title from the query cache based on the preceding segment (e.g., "status-pages", "monitors", "incidents").
+ * Falls back to a formatted segment label for non-UUIDs or a shortened UUID (first 8 chars + ellipsis) when no cached
+ * data is available. Special-case labels: "status-updates" -> "Update" and "maintenance" -> "Maintenance".
+ *
+ * @returns A breadcrumb React element representing the current path, using cached resource names for UUID segments when available.
+ */
 export function DashboardBreadcrumbs() {
 	const pathname = usePathname();
 	const queryClient = useQueryClient();
 	const segments = pathname.split("/").filter((segment) => segment !== "");
 
 	const uuidSegments = segments
-		.map((segment, index) => ({ segment, index, previousSegment: segments[index - 1] }))
+		.map((segment, index) => ({
+			segment,
+			index,
+			previousSegment: segments[index - 1],
+		}))
 		.filter(({ segment }) => isUUID(segment));
 
 	useQueries({
@@ -55,7 +69,11 @@ export function DashboardBreadcrumbs() {
 					staleTime: Number.POSITIVE_INFINITY,
 				};
 			}
-			return { queryKey: ["noop", segment], queryFn: () => null, enabled: false };
+			return {
+				queryKey: ["noop", segment],
+				queryFn: () => null,
+				enabled: false,
+			};
 		}),
 	});
 
@@ -67,20 +85,32 @@ export function DashboardBreadcrumbs() {
 		const previousSegment = segments[index - 1];
 
 		if (previousSegment === "status-pages") {
-			const queryKey = orpc.statusPages.get.queryOptions({ input: { id: segment } }).queryKey;
-			const data = queryClient.getQueryData(queryKey) as { name?: string } | undefined;
+			const queryKey = orpc.statusPages.get.queryOptions({
+				input: { id: segment },
+			}).queryKey;
+			const data = queryClient.getQueryData(queryKey) as
+				| { name?: string }
+				| undefined;
 			if (data?.name) return data.name;
 		}
 
 		if (previousSegment === "monitors") {
-			const queryKey = orpc.monitors.get.queryOptions({ input: { id: segment } }).queryKey;
-			const data = queryClient.getQueryData(queryKey) as { name?: string } | undefined;
+			const queryKey = orpc.monitors.get.queryOptions({
+				input: { id: segment },
+			}).queryKey;
+			const data = queryClient.getQueryData(queryKey) as
+				| { name?: string }
+				| undefined;
 			if (data?.name) return data.name;
 		}
 
 		if (previousSegment === "incidents") {
-			const queryKey = orpc.incidents.get.queryOptions({ input: { id: segment } }).queryKey;
-			const data = queryClient.getQueryData(queryKey) as { title?: string } | undefined;
+			const queryKey = orpc.incidents.get.queryOptions({
+				input: { id: segment },
+			}).queryKey;
+			const data = queryClient.getQueryData(queryKey) as
+				| { title?: string }
+				| undefined;
 			if (data?.title) return data.title;
 		}
 

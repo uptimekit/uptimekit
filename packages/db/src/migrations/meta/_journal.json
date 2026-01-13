@@ -57,6 +57,20 @@
 			"when": 1767868309307,
 			"tag": "0007_tricky_whiplash",
 			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "7",
+			"when": 1768002978100,
+			"tag": "0008_breezy_lester",
+			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "7",
+			"when": 1768280107072,
+			"tag": "0009_organic_cobalt_man",
+			"breakpoints": true
 		}
 	]
 }
