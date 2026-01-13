@@ -16,6 +16,17 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +37,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,12 +50,12 @@ import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 /**
- * Render a detailed view for a single incident, including status, metadata, affected monitors, timeline, and action buttons.
+ * Renders a detailed incident view that shows status, metadata, affected monitors, timeline, and action controls.
  *
- * Renders an interactive UI that lets users acknowledge, resolve, and add comments to the incident; shows a loading skeleton while fetching and a not-found message if the incident does not exist.
+ * Shows a loading skeleton while the incident is being fetched and a not-found message if the incident does not exist.
  *
- * @param id - The incident's unique identifier used to fetch its data
- * @returns The rendered IncidentDetails UI for the specified incident (or a loading skeleton / not-found message when appropriate)
+ * @param id - The incident's unique identifier
+ * @returns The rendered IncidentDetails UI, a loading skeleton when fetching, or a not-found message when the incident is missing
  */
 export function IncidentDetails({ id }: { id: string }) {
 	const router = useRouter();
@@ -88,6 +105,18 @@ export function IncidentDetails({ id }: { id: string }) {
 			},
 			onError: (err) => {
 				toast.error("Failed to resolve incident: " + err.message);
+			},
+		}),
+	);
+
+	const deleteIncident = useMutation(
+		orpc.incidents.delete.mutationOptions({
+			onSuccess: () => {
+				toast.success("Incident deleted");
+				router.push("/incidents");
+			},
+			onError: (err) => {
+				toast.error("Failed to delete incident: " + err.message);
 			},
 		}),
 	);
@@ -171,9 +200,46 @@ export function IncidentDetails({ id }: { id: string }) {
 								Resolve
 							</Button>
 						)}
-						{/* <Button variant="ghost" size="icon">
-							<MoreHorizontal className="h-4 w-4" />
-						</Button> */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="ghost" size="icon">
+									<MoreHorizontal className="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<DropdownMenuItem
+											className="text-red-500"
+											onSelect={(e) => e.preventDefault()}
+										>
+											<Trash2 className="mr-2 h-4 w-4" />
+											Delete incident
+										</DropdownMenuItem>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>Delete incident?</AlertDialogTitle>
+											<AlertDialogDescription>
+												This action cannot be undone. This will permanently
+												delete the incident "{incident.title}" and all of its
+												activity history.
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>Cancel</AlertDialogCancel>
+											<AlertDialogAction
+												className="bg-red-500 hover:bg-red-600"
+												onClick={() => deleteIncident.mutate({ id })}
+												disabled={deleteIncident.isPending}
+											>
+												Delete
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 				</div>
 			</div>
@@ -347,6 +413,11 @@ export function IncidentDetails({ id }: { id: string }) {
 	);
 }
 
+/**
+ * Render a skeleton placeholder matching the IncidentDetails layout.
+ *
+ * @returns A JSX element containing skeleton blocks used while incident details are loading.
+ */
 function IncidentSkeleton() {
 	return (
 		<div className="mx-auto max-w-5xl p-6">

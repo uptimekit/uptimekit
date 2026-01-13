@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
 	ArrowRight,
@@ -19,6 +19,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -37,8 +49,19 @@ import {
 } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { orpc } from "@/utils/orpc";
+import { client, orpc } from "@/utils/orpc";
 
+/**
+ * Renders a paginated, filterable incidents table with search, filters, and per-incident actions (view, delete).
+ *
+ * The component debounces the search input (500ms) and resets pagination on search or filter changes. It fetches
+ * incidents via the incidents list query using status, severity, type, search, limit (10) and offset derived from the
+ * current page. Shows loading and empty states, displays severity/type badges and status indicators, and provides
+ * a per-incident delete action that confirms with the user, performs a deletion mutation, shows success/error toasts,
+ * and invalidates the incidents list cache on success.
+ *
+ * @returns The component's JSX element containing the incidents table UI.
+ */
 export function IncidentsTable() {
 	const [statusFilter, setStatusFilter] = useState<
 		"all" | "open" | "resolved" | undefined
@@ -79,6 +102,17 @@ export function IncidentsTable() {
 	const incidents = data?.items;
 	const total = data?.total || 0;
 	const totalPages = Math.ceil(total / pageSize);
+
+	const queryClient = useQueryClient();
+
+	const { mutate: deleteIncident, isPending: isDeleting } = useMutation({
+		mutationFn: (id: string) => client.incidents.delete({ id }),
+		onSuccess: () => {
+			toast.success("Incident deleted");
+			queryClient.invalidateQueries({ queryKey: orpc.incidents.list.key() });
+		},
+		onError: () => toast.error("Failed to delete incident"),
+	});
 
 	const getStatusIcon = (status: string) => {
 		switch (status) {
@@ -472,6 +506,51 @@ export function IncidentsTable() {
 														View details
 													</Link>
 												</DropdownMenuItem>
+												<AlertDialog>
+													<AlertDialogTrigger asChild>
+														<DropdownMenuItem
+															className="text-red-500"
+															onSelect={(e) => e.preventDefault()}
+														>
+															Delete
+														</DropdownMenuItem>
+													</AlertDialogTrigger>
+													<AlertDialogContent>
+														<AlertDialogHeader>
+															<AlertDialogTitle>
+																Are you absolutely sure?
+															</AlertDialogTitle>
+															<AlertDialogDescription>
+																This action cannot be undone. This will
+																permanently delete the incident "
+																{incident.title}" and all of its activity
+																history.
+															</AlertDialogDescription>
+														</AlertDialogHeader>
+														<AlertDialogFooter>
+															<AlertDialogCancel disabled={isDeleting}>
+																Cancel
+															</AlertDialogCancel>
+															<AlertDialogAction
+																className="bg-red-500 hover:bg-red-600"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	deleteIncident(incident.id);
+																}}
+																disabled={isDeleting}
+															>
+																{isDeleting ? (
+																	<>
+																		<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																		Deleting...
+																	</>
+																) : (
+																	"Delete"
+																)}
+															</AlertDialogAction>
+														</AlertDialogFooter>
+													</AlertDialogContent>
+												</AlertDialog>
 											</DropdownMenuContent>
 										</DropdownMenu>
 									</TableCell>
