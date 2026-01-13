@@ -50,6 +50,15 @@ const planColors: Record<string, string> = {
 		"bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
 };
 
+/**
+ * Renders a paginated, searchable table of organizations with plan filtering and basic stats.
+ *
+ * The UI includes a search input (debounced), a plan selector, a table showing each organization's
+ * avatar, name, plan badge, slug, member and monitor counts, and relative creation date,
+ * plus loading/empty states and pagination controls.
+ *
+ * @returns The Organizations table UI as a JSX element.
+ */
 export function OrganizationsTable() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");

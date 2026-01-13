@@ -76,6 +76,14 @@ export interface Monitor {
 	tags?: Array<{ id: string; name: string; color: string }>;
 }
 
+/**
+ * Render the monitors list view with search, filters, grouping, and pagination.
+ *
+ * Displays a searchable, filterable, and paginated table of monitors with group
+ * collapse/expand, tag badges, latency sparklines, and per-monitor actions.
+ *
+ * @returns The React element for the monitors management UI.
+ */
 export function MonitorsTable() {
 	const [search, setSearch] = useState("");
 	const [searchOpen, setSearchOpen] = useState(false);

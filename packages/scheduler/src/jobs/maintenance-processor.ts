@@ -9,9 +9,11 @@ import { createLogger } from "../lib/logger";
 const logger = createLogger("MAINTENANCE");
 
 /**
- * Process maintenance status transitions:
- * - scheduled → in_progress when startAt <= NOW()
- * - in_progress → completed when endAt <= NOW()
+ * Automatically transition maintenance records to the next status based on the current time.
+ *
+ * Transitions records from "scheduled" to "in_progress" when `startAt` is less than or equal to now,
+ * and from "in_progress" to "completed" when `endAt` is less than or equal to now. For each transitioned
+ * record, updates the maintenance row and inserts a corresponding `maintenanceUpdate` entry.
  */
 export async function processMaintenanceTransitions() {
 	const now = new Date();

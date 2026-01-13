@@ -22,6 +22,17 @@ interface GroupCreationDialogProps {
 	onCreated?: () => void;
 }
 
+/**
+ * Renders a dialog UI that lets the user create a new monitor group.
+ *
+ * The dialog contains an input for the group name and actions to cancel or create.
+ * Submitting (Enter or Create) with a non-empty name triggers a creation request,
+ * shows a success or error toast, refreshes the group list on success, closes the dialog,
+ * clears the input, and calls `onCreated` if provided.
+ *
+ * @param onCreated - Optional callback invoked after a group is successfully created
+ * @returns The dialog React element for creating a monitor group
+ */
 export function GroupCreationDialog({
 	open,
 	onOpenChange,

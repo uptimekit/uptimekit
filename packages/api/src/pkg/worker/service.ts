@@ -45,7 +45,12 @@ interface MonitorChangeInsert {
 	location?: string | null;
 }
 
-// Get monitors assigned to a worker location
+/**
+ * Retrieve active monitors assigned to the given worker location and return their runtime configuration.
+ *
+ * @param workerLocation - The worker location identifier used to filter monitors whose `locations` include this value
+ * @returns An array of monitor configuration objects containing: `id`, `type`, `url` (defaults to `""`), `hostname` (defaults to `""`), `port` (defaults to `0`), `interval`, `timeout`, `method` (defaults to `"GET"`), `headers` (defaults to `{}`), `body`, `acceptedStatusCodes`, `keyword`, `jsonPath`, `expectedValue`, `checkSsl` (defaults to `true`), and `sslCertExpiryNotificationDays` (defaults to `30`)
+ */
 export async function getMonitorsForWorker(workerLocation: string) {
 	const allActiveMonitors = await db.query.monitor.findMany({
 		where: (t, { eq }) => eq(t.active, true),
@@ -93,7 +98,13 @@ export async function getMonitorsForWorker(workerLocation: string) {
 		});
 }
 
-// Process incoming monitor events
+/**
+ * Process a batch of monitor events for a given worker location, persisting monitor changes, creating or resolving incidents, recording incident activities, and storing raw events.
+ *
+ * @param events - Array of monitor events to process
+ * @param workerLocation - Worker location used as the event location when an event does not include one
+ * @returns An object with `success: true` and `count` equal to the number of processed events
+ */
 export async function processMonitorEvents(
 	events: MonitorEvent[],
 	workerLocation: string,
@@ -182,7 +193,19 @@ export async function processMonitorEvents(
 	return { success: true, count: events.length };
 }
 
-// Process events for a single monitor
+/**
+ * Processes a batch of events for a single monitor, producing monitor change records,
+ * opening or resolving automatic incidents based on the monitor's pending duration,
+ * and recording incident-monitor mappings and incident activities. May emit incident events and update incident rows in the database.
+ *
+ * @param monitorId - ID of the monitor whose events are being processed
+ * @param monitorEvents - Chronologically ordered (will be sorted if not) events for the monitor
+ * @param workerLocation - Location identifier of the worker processing the events; used as a fallback event location
+ * @param changesToInsert - Array that will be appended with MonitorChangeInsert entries to persist monitor status changes
+ * @param incidentsToInsert - Array that will be appended with incident insert objects for newly created automatic incidents
+ * @param incidentMonitorsToInsert - Array that will be appended with incident-monitor mapping entries for new incidents
+ * @param activitiesToInsert - Array that will be appended with incident activity entries describing automated actions
+ */
 async function processMonitorEventGroup(
 	monitorId: string,
 	monitorEvents: MonitorEvent[],

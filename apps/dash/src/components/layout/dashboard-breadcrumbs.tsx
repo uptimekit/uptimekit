@@ -26,6 +26,16 @@ function formatSegment(segment: string): string {
 		.join(" ");
 }
 
+/**
+ * Render breadcrumb navigation for the current pathname, resolving UUID segments to human-friendly titles.
+ *
+ * Uses the current pathname to build a breadcrumb trail. For segments that are UUIDs, attempts to resolve a
+ * display title from the query cache based on the preceding segment (e.g., "status-pages", "monitors", "incidents").
+ * Falls back to a formatted segment label for non-UUIDs or a shortened UUID (first 8 chars + ellipsis) when no cached
+ * data is available. Special-case labels: "status-updates" -> "Update" and "maintenance" -> "Maintenance".
+ *
+ * @returns A breadcrumb React element representing the current path, using cached resource names for UUID segments when available.
+ */
 export function DashboardBreadcrumbs() {
 	const pathname = usePathname();
 	const queryClient = useQueryClient();

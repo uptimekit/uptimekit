@@ -41,6 +41,16 @@ import { REGIONS_BY_CONTINENT } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
+/**
+ * Render a dialog that lets the user create a worker and, on success, displays the worker's API key.
+ *
+ * The component shows a form for entering a worker name and selecting a region grouped by continent,
+ * performs the create mutation, displays success/error toasts, invalidates the workers list on success,
+ * and exposes the generated API key with copy or reveal controls. Closing the dialog after creation refreshes
+ * the router and resets the dialog's local state.
+ *
+ * @returns The dialog React element for creating a worker and presenting the generated API key.
+ */
 export function CreateWorkerDialog() {
 	const [open, setOpen] = useState(false);
 	const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);

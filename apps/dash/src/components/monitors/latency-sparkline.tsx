@@ -7,6 +7,16 @@ interface LatencySparklineProps {
 	data: number[];
 }
 
+/**
+ * Render a compact sparkline area chart for a sequence of latency samples.
+ *
+ * The component returns null when `data` is undefined or empty. When rendering,
+ * the input values are plotted in order and an initial point at zero is prepended
+ * to anchor the sparkline to the baseline.
+ *
+ * @param data - Ordered latency samples (numbers). If empty or undefined, nothing is rendered.
+ * @returns A JSX element containing the sparkline area chart, or `null` when `data` is empty.
+ */
 export function LatencySparkline({ data }: LatencySparklineProps) {
 	const gradientId = useId();
 

@@ -13,6 +13,12 @@ export interface UptimeDay {
 	duration?: string;
 }
 
+/**
+ * Convert a duration in milliseconds into a concise human-readable downtime string.
+ *
+ * @param ms - Downtime duration in milliseconds.
+ * @returns `"No downtime"` if `ms` is less than or equal to zero; otherwise a string describing the duration using hours, minutes, and/or seconds (e.g. `5h 3m down`, `12m 4s down`, `30s down`).
+ */
 function formatDowntime(ms: number): string {
 	if (ms <= 0) return "No downtime";
 

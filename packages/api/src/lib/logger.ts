@@ -8,10 +8,12 @@ interface Logger {
 }
 
 /**
- * Creates a logger with consistent formatting across all services.
- * Format: [ISO_TIMESTAMP] [SERVICE] [LEVEL] message
+ * Create a logger that prefixes messages with an ISO timestamp, service name, and log level.
+ *
+ * Log entries use the format: [ISO_TIMESTAMP] [SERVICE] [LEVEL] message
  *
  * @param service - Service name to prefix logs with (e.g., "SCHEDULER", "API")
+ * @returns A Logger whose methods emit console output prefixed by `[ISO_TIMESTAMP] [SERVICE] [LEVEL]` before the message
  */
 export function createLogger(service: string): Logger {
 	const log = (level: LogLevel, msg: string, args: unknown[]) => {
