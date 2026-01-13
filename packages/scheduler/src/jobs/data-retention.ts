@@ -6,8 +6,11 @@ import { createLogger } from "../lib/logger";
 const logger = createLogger("DATA-RETENTION");
 
 /**
- * Process data retention by deleting old records from ClickHouse
- * based on the configured data_retention_days value.
+ * Delete records older than the configured `data_retention_days` from ClickHouse.
+ *
+ * Retrieves the `data_retention_days` configuration (defaults to 30 if absent) and deletes rows with a timestamp older than the computed cutoff from the `uptimekit.monitor_events` and `uptimekit.monitor_changes` tables. Logs progress and rethrows any error encountered during deletion.
+ *
+ * @throws The underlying error if any deletion command fails
  */
 export async function processDataRetention() {
 	// Get retention days from configuration

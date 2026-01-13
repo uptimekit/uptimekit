@@ -17,10 +17,19 @@ interface CertificateInfo {
 }
 
 /**
- * Determines if we should send a notification based on:
- * 1. Days until expiry
- * 2. Last notification time
- * 3. 7-day interval rule for notifications > 7 days out
+ * Decides whether an SSL expiry notification should be sent for a certificate.
+ *
+ * @param daysUntilExpiry - Number of days remaining until the certificate expires; negative values indicate the certificate is already expired.
+ * @param lastNotification - The most recent notification record for this domain and monitor, or `null` if none. `daysUntilExpiryAtNotification` should be a string parseable as a number representing the days until expiry at the time of that notification.
+ * @param threshold - The configured notification threshold in days; certificates with more days remaining than this value are not notified.
+ * @returns `true` if a notification should be sent, `false` otherwise.
+ *
+ * Behavior notes:
+ * - Always notify if the certificate is already expired (`daysUntilExpiry < 0`).
+ * - Do not notify if `daysUntilExpiry` is greater than `threshold`.
+ * - If there is no prior notification, notify.
+ * - If `daysUntilExpiry` is 7 or fewer, require at least 1 day since the last notification (based on the last recorded days-until-expiry) to notify again.
+ * - If `daysUntilExpiry` is greater than 7 (and within `threshold`), require at least 7 days since the last notification to notify again.
  */
 function shouldSendNotification(
 	daysUntilExpiry: number,
@@ -54,6 +63,15 @@ function shouldSendNotification(
 	return daysSinceLastNotification >= 7;
 }
 
+/**
+ * Handle POST requests from worker agents reporting an SSL certificate's status for a specific monitor and emit notifications when appropriate.
+ *
+ * Attempts worker authentication, validates the target monitor, parses and validates the JSON payload containing certificate info, respects the monitor's SSL-check configuration and notification threshold, updates or inserts a last-notified record if a notification should be sent, emits a "monitor.ssl.expiring" event with certificate and monitor metadata when notifying, and returns a compact JSON status object.
+ *
+ * @param request - The incoming HTTP request carrying the certificate report JSON
+ * @param params - An object whose `monitorId` route parameter identifies the target monitor
+ * @returns A NextResponse with a JSON body. On success the body includes `success`, `notified`, `threshold`, `daysUntilExpiry`, and `nextNotificationIn` when applicable. On error the body includes an `error` message and an appropriate HTTP status (e.g., authentication failure, monitor not found, invalid JSON, or missing required fields).
+ */
 export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ monitorId: string }> },

@@ -33,6 +33,18 @@ interface TagCreationDialogProps {
 	onCreated?: () => void;
 }
 
+/**
+ * Render a dialog UI for creating a new tag with a name and color.
+ *
+ * The dialog lets users enter a tag name, pick a color from preset swatches, and submit to create the tag.
+ * On successful creation it shows a success toast, invalidates the tags query, closes the dialog, resets inputs,
+ * and calls `onCreated` if provided. On failure it shows an error toast.
+ *
+ * @param open - Whether the dialog is visible
+ * @param onOpenChange - Callback to update the dialog open state
+ * @param onCreated - Optional callback invoked after a tag is successfully created
+ * @returns A JSX element containing the tag creation dialog
+ */
 export function TagCreationDialog({
 	open,
 	onOpenChange,

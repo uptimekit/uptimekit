@@ -55,6 +55,13 @@ interface User {
 	createdAt: Date;
 }
 
+/**
+ * Renders a paginated, searchable users table with role and status filters and actions to ban/unban users or change roles.
+ *
+ * The UI includes a debounced search input, role and status selectors, a table showing user avatars, names, emails, join date, and action menu items for role and ban management, plus pagination controls when needed.
+ *
+ * @returns A React element containing the users management table and its controls.
+ */
 export function UsersTable() {
 	const queryClient = useQueryClient();
 	const [searchQuery, setSearchQuery] = useState("");

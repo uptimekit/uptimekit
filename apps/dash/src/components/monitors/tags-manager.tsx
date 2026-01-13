@@ -50,6 +50,17 @@ interface TagsManagerProps {
 	autoCreate?: boolean;
 }
 
+/**
+ * Render a UI for listing, creating, editing, and deleting monitor tags.
+ *
+ * The component displays existing tags, provides dialogs to create or edit a tag
+ * (including selecting a color from a preset palette), and exposes per-tag actions
+ * for editing or deleting with confirmation. Mutations refresh the tag list and
+ * show success or error toasts.
+ *
+ * @param autoCreate - If `true`, opens the create-tag dialog when the component mounts.
+ * @returns The rendered TagsManager React element.
+ */
 export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 	const [createOpen, setCreateOpen] = useState(autoCreate);
 	const [editOpen, setEditOpen] = useState(false);

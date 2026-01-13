@@ -59,6 +59,16 @@ const TIMING_LABELS: Record<TimingKey, string> = {
 	transfer: "Transfer",
 };
 
+/**
+ * Renders a response time chart for a monitor, showing either a stacked breakdown of HTTP timing components or a single latency series.
+ *
+ * The chart supports selecting a time range (24h, 7d, 30d) and a region from the provided locations. For HTTP-based monitors, individual timing series (DNS lookup, TCP connect, TLS handshake, TTFB, transfer) can be toggled via the interactive legend.
+ *
+ * @param monitorId - The ID of the monitor to fetch response time data for
+ * @param locations - Available region/location identifiers; the component defaults selection to the first entry (or empty string when none)
+ * @param monitorType - Monitor type; when set to an HTTP-based type the chart shows detailed timing breakdowns. Defaults to `"http"`.
+ * @returns A React element containing the response time chart and its controls
+ */
 export function ResponseTimeChart({
 	monitorId,
 	locations,

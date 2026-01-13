@@ -29,7 +29,11 @@ const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 const invalidKeyCache = new Map<string, number>();
 const INVALID_CACHE_TTL_MS = 10 * 1000; // 10 seconds
 
-// Cleanup old cache entries periodically
+/**
+ * Removes expired entries from both API key caches.
+ *
+ * Iterates the positive `apiKeyCache` and negative `invalidKeyCache`, deleting any entries whose `expiresAt` timestamp is earlier than the current time.
+ */
 function cleanupCache() {
 	const now = Date.now();
 	for (const [key, entry] of apiKeyCache.entries()) {
@@ -47,7 +51,12 @@ function cleanupCache() {
 // Run cleanup every 30 seconds
 setInterval(cleanupCache, 30 * 1000);
 
-// Hash function for API keys using Web Crypto API
+/**
+ * Compute the SHA-256 hash of an API key and return it as a lowercase hex string.
+ *
+ * @param key - The raw API key to hash.
+ * @returns The SHA-256 digest of `key` encoded as a lowercase hexadecimal string.
+ */
 async function hashApiKey(key: string): Promise<string> {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(key);
@@ -56,7 +65,13 @@ async function hashApiKey(key: string): Promise<string> {
 	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Authenticate worker via API key and update heartbeat
+/**
+ * Authenticate an incoming Request using a Bearer API key and return the corresponding worker context.
+ *
+ * @param request - HTTP request whose `Authorization` header must be `Bearer <apiKey>`
+ * @returns The authenticated `WorkerContext` on success; otherwise an object `{ error: string; status: number }`
+ *          describing the failure and the HTTP status code
+ */
 export async function authenticateWorker(
 	request: Request,
 ): Promise<WorkerContext | { error: string; status: number }> {
@@ -143,7 +158,13 @@ export async function authenticateWorker(
 	return result;
 }
 
-// Update heartbeat without blocking the response
+/**
+ * Update the worker's lastHeartbeat timestamp in the database without blocking the caller.
+ *
+ * Errors encountered while performing the update are logged and not propagated.
+ *
+ * @param workerId - The ID of the worker whose heartbeat should be updated
+ */
 function updateHeartbeatAsync(workerId: string) {
 	db.update(worker)
 		.set({ lastHeartbeat: new Date() })
@@ -151,14 +172,23 @@ function updateHeartbeatAsync(workerId: string) {
 		.catch((err) => logger.error("Failed to update heartbeat:", err));
 }
 
-// Helper to check if result is an error
+/**
+ * Determines whether the provided result represents an authentication error.
+ *
+ * @param result - The value to test for an authentication error object
+ * @returns `true` if `result` is an error object containing `error` and `status`, `false` otherwise
+ */
 export function isAuthError(
 	result: WorkerContext | { error: string; status: number },
 ): result is { error: string; status: number } {
 	return "error" in result;
 }
 
-// Export for testing/manual cache invalidation
+/**
+ * Remove cached entries for a specific API key hash or clear all API key caches.
+ *
+ * @param keyHash - Hexadecimal SHA-256 hash of the API key to invalidate; if omitted, both positive and negative API key caches are fully cleared
+ */
 export function invalidateApiKeyCache(keyHash?: string) {
 	if (keyHash) {
 		apiKeyCache.delete(keyHash);

@@ -32,6 +32,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
+/**
+ * Render a detailed view for a single incident, including status, metadata, affected monitors, timeline, and action buttons.
+ *
+ * Renders an interactive UI that lets users acknowledge, resolve, and add comments to the incident; shows a loading skeleton while fetching and a not-found message if the incident does not exist.
+ *
+ * @param id - The incident's unique identifier used to fetch its data
+ * @returns The rendered IncidentDetails UI for the specified incident (or a loading skeleton / not-found message when appropriate)
+ */
 export function IncidentDetails({ id }: { id: string }) {
 	const router = useRouter();
 	const queryClient = useQueryClient();

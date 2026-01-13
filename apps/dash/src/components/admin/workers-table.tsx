@@ -58,6 +58,13 @@ interface Worker {
 	version: string | null;
 }
 
+/**
+ * Render a paginated, searchable table for managing workers with status filtering, creation, and deletion workflows.
+ *
+ * Shows loading and empty states, per-worker actions (edit, rotate token, delete with confirmation), region info, last-seen timestamps, and pagination controls.
+ *
+ * @returns The rendered JSX element for the Workers table and its associated controls.
+ */
 export function WorkersTable() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [debouncedSearch, setDebouncedSearch] = useState("");

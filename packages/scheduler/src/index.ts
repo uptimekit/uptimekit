@@ -59,7 +59,11 @@ worker.on("error", (err: Error) => {
 	logger.error("Worker error:", err);
 });
 
-// Register repeatable jobs
+/**
+ * Registers repeatable scheduler jobs used by the application.
+ *
+ * Registers a "maintenance-processor" job to run every minute and a "data-retention" job to run daily at 2:00 AM.
+ */
 async function registerJobs() {
 	logger.info("Registering scheduler jobs...");
 
@@ -88,7 +92,11 @@ async function registerJobs() {
 	logger.info("All scheduler jobs registered!");
 }
 
-// Graceful shutdown
+/**
+ * Initiates a graceful shutdown by closing the worker, the scheduler queue, and the Redis connection, then exits the process with code 0.
+ *
+ * Closes resources in sequence to finalize processing before terminating the process.
+ */
 async function shutdown() {
 	logger.info("Shutting down scheduler...");
 	await worker.close();

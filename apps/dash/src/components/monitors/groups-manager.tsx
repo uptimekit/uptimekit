@@ -39,6 +39,14 @@ interface GroupsManagerProps {
 	autoCreate?: boolean;
 }
 
+/**
+ * Render a UI for viewing and managing monitor groups.
+ *
+ * Allows creating, renaming, and deleting groups via dialogs and confirmation flows, and displays success/error toasts for those actions.
+ *
+ * @param autoCreate - If true, opens the Create Group dialog when the component mounts
+ * @returns A React element that renders the groups management interface
+ */
 export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 	const [createOpen, setCreateOpen] = useState(autoCreate);
 	const [editOpen, setEditOpen] = useState(false);

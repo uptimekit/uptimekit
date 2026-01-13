@@ -776,7 +776,12 @@ export const WORKER_REGIONS: RegionInfo[] = [
 	{ value: "global", label: "Global", Flag: AQ },
 ];
 
-// Helper function to get region info with fallback
+/**
+ * Retrieve RegionInfo for a given region code, returning a fallback entry with the Globe flag when the code is unknown.
+ *
+ * @param regionCode - The region code to look up (e.g., "us", "eu-general", "global").
+ * @returns The matching RegionInfo from REGION_MAPPING, or a fallback RegionInfo whose `value` and `label` equal `regionCode` and whose `Flag` is `Globe`.
+ */
 export function getRegionInfo(regionCode: string): RegionInfo {
 	return (
 		REGION_MAPPING[regionCode] || {

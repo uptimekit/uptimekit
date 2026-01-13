@@ -98,6 +98,15 @@ interface StructureEditorProps {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
+/**
+ * Render a drag-and-drop editor for configuring a status page's groups and monitors.
+ *
+ * Loads the status page, its current structure, and available monitors; provides UI and interactions
+ * to create, rename, reorder, group, configure, and remove monitors, and to persist the resulting structure.
+ *
+ * @param statusPageId - The ID of the status page being edited
+ * @returns A JSX element containing the structure editor UI
+ */
 export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	const queryClient = useQueryClient();
 	const { isLoading: isPageLoading } = useQuery(
@@ -644,6 +653,16 @@ function GroupCard({
 	);
 }
 
+/**
+ * Renders a searchable popover control for adding monitors to a group.
+ *
+ * The control lists `availableMonitors` excluding any whose ids appear in `existingMonitorIds`; selecting an item invokes `onAdd` with the chosen monitor and closes the popover.
+ *
+ * @param onAdd - Callback invoked with the selected monitor object when a monitor is chosen
+ * @param availableMonitors - Array of monitor objects available for addition; each must include an `id` and `name`
+ * @param existingMonitorIds - Array of monitor ids that should be excluded from the choices
+ * @returns The Add Monitor input popover component
+ */
 function AddMonitorInput({
 	onAdd,
 	availableMonitors,
@@ -695,6 +714,14 @@ function AddMonitorInput({
 	);
 }
 
+/**
+ * A draggable monitor list item that renders a MonitorRow and wires drag-and-drop behavior.
+ *
+ * @param monitor - The monitor instance to display (includes instanceId, id, name, style, and optional description).
+ * @param onRemove - Called when the monitor should be removed from its group.
+ * @param onConfigChange - Called with partial monitor fields to update the monitor's configuration.
+ * @returns A JSX element representing a draggable monitor row connected to the DnD system.
+ */
 function SortableMonitor({
 	monitor,
 	onRemove,
@@ -896,7 +923,16 @@ function MonitorConfigModal({
 }
 
 // Monitor Preview Component - shows how monitor will look on status page
-// Monitor Preview Component - shows how monitor will look on status page
+/**
+ * Render a visual preview of a monitor as it will appear on the status page for the given display style.
+ *
+ * Shows a compact status-only representation when `style` is "status" and a history-style view with a 90-day uptime bar when `style` is "history".
+ *
+ * @param name - The monitor's display name.
+ * @param style - The monitor display style; `"history"` shows an uptime bar and `"status"` shows current status.
+ * @param description - Optional descriptive text shown in a tooltip next to the name.
+ * @returns A JSX element containing the monitor preview for the specified style.
+ */
 function MonitorPreview({
 	name,
 	style,

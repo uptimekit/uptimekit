@@ -38,6 +38,17 @@ interface AddMaintenanceUpdateFormProps {
 	onSuccess?: () => void;
 }
 
+/**
+ * Renders a form for posting updates to a maintenance record.
+ *
+ * The form validates input, posts the update to the server, refreshes the maintenance data on success,
+ * resets the message while preserving the selected status, and shows success or error toasts.
+ *
+ * @param maintenanceId - The ID of the maintenance record to which the update will be posted
+ * @param currentStatus - The initial status value selected in the form ("scheduled", "in_progress", or "completed")
+ * @param onSuccess - Optional callback invoked after a successful post
+ * @returns The rendered form component for creating a maintenance update
+ */
 export function AddMaintenanceUpdateForm({
 	maintenanceId,
 	currentStatus,

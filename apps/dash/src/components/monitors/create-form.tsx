@@ -497,6 +497,17 @@ interface CreateMonitorFormProps {
 	initialData?: FormValues & { active?: boolean };
 }
 
+/**
+ * Renders a form for creating or editing a monitor and manages its client-side behavior.
+ *
+ * The form fetches available regions, groups, and tags; validates input against the form schema;
+ * and submits a create or update request. On success it invalidates relevant queries and navigates
+ * back to the monitors list; on failure it surfaces an error toast.
+ *
+ * @param monitorId - Optional monitor ID. If provided the form is initialized for editing and submission updates the existing monitor.
+ * @param initialData - Optional initial values used to prefill the form for editing.
+ * @returns The rendered CreateMonitorForm component UI.
+ */
 export function CreateMonitorForm({
 	monitorId,
 	initialData,

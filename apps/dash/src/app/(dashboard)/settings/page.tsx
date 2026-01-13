@@ -46,6 +46,14 @@ const formSchema = z.object({
 		.or(z.literal("")),
 });
 
+/**
+ * Render the Organization Settings page with editable General, Team, Groups, and Tags sections.
+ *
+ * Syncs form state with the active organization, shows loading/no-active-organization states,
+ * and submits updates to the organization (displaying success or error toasts and mapping slug conflicts to a form error).
+ *
+ * @returns The Settings page React element.
+ */
 export default function SettingsPage() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
 
