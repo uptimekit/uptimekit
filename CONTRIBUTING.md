@@ -19,7 +19,7 @@ Before diving in, it helps to be familiar with the core technologies we use:
 
 ## 🚀 Getting Started
 
-1.  **Fork and Clone**
+1. **Fork and Clone**
     Fork the repository to your GitHub account and clone it locally:
 
     ```bash
@@ -27,19 +27,19 @@ Before diving in, it helps to be familiar with the core technologies we use:
     cd uptimekit
     ```
 
-2.  **Install Prerequisites**
+2. **Install Prerequisites**
     Ensure you have the following installed:
     - Node.js 20+
     - pnpm 9+ (`npm install -g pnpm`)
     - Docker (optional, but recommended for local DB)
 
-3.  **Install Dependencies**
+3. **Install Dependencies**
 
     ```bash
     pnpm install
     ```
 
-4.  **Environment Setup**
+4. **Environment Setup**
     Copy the `.env.example` file in `apps/dash` to `.env` and configure your environment variables.
 
     ```bash
@@ -48,14 +48,14 @@ Before diving in, it helps to be familiar with the core technologies we use:
 
     You will need a connection string for a PostgreSQL database.
 
-5.  **Database Setup**
+5. **Database Setup**
     Push the database schema:
 
     ```bash
     pnpm run db:push
     ```
 
-6.  **Run Development Server**
+6. **Run Development Server**
 
     ```bash
     pnpm run dev
@@ -86,6 +86,7 @@ uptimekit/
 ## 💻 Development Workflow
 
 ### Creating a Branch
+
 Create a new branch for your feature or fix:
 
 ```bash
@@ -95,6 +96,7 @@ git checkout -b fix/bug-description
 ```
 
 ### Code Style
+
 We use **Biome** for linting and formatting. Please ensure your code passes checks before pushing.
 
 ```bash
@@ -108,21 +110,26 @@ pnpm run check --write
 Pre-commit hooks (Husky) are configured to run these checks automatically.
 
 ### Database Changes
+
 If you modify the database schema (in `packages/db/src/schema.ts`):
-1.  Run `pnpm run db:push` to apply changes to your local DB.
-2.  (Optional) Use `pnpm run db:studio` to inspect your database.
+
+1. Run `pnpm run db:push` to apply changes to your local DB.
+2. (Optional) Use `pnpm run db:studio` to inspect your database.
 
 ### Committing
+
 Please write clear and descriptive commit messages.
 
 ### Pull Requests
-1.  Push your branch to your fork.
-2.  Open a Pull Request against the `development` branch of the original repository.
-3.  Provide a clear description of your changes, screenshots (if UI related), and link to any relevant issues.
+
+1. Push your branch to your fork.
+2. Open a Pull Request against the `development` branch of the original repository.
+3. Provide a clear description of your changes, screenshots (if UI related), and link to any relevant issues.
 
 ## 🐛 Reporting Issues
 
 If you find a bug or have a feature request, please open an issue on GitHub.
+
 - Check existing issues to avoid duplicates.
 - Provide a detailed description, reproduction steps, and environments.
 
