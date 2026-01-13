@@ -51,6 +51,17 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
+/**
+ * Renders a paginated, filterable incidents table with search, filters, and per-incident actions (view, delete).
+ *
+ * The component debounces the search input (500ms) and resets pagination on search or filter changes. It fetches
+ * incidents via the incidents list query using status, severity, type, search, limit (10) and offset derived from the
+ * current page. Shows loading and empty states, displays severity/type badges and status indicators, and provides
+ * a per-incident delete action that confirms with the user, performs a deletion mutation, shows success/error toasts,
+ * and invalidates the incidents list cache on success.
+ *
+ * @returns The component's JSX element containing the incidents table UI.
+ */
 export function IncidentsTable() {
 	const [statusFilter, setStatusFilter] = useState<
 		"all" | "open" | "resolved" | undefined
