@@ -94,7 +94,7 @@ export function IncidentsTable() {
 
 	const queryClient = useQueryClient();
 
-	const { mutate: deleteIncident } = useMutation({
+	const { mutate: deleteIncident, isPending: isDeleting } = useMutation({
 		mutationFn: (id: string) => client.incidents.delete({ id }),
 		onSuccess: () => {
 			toast.success("Incident deleted");
@@ -517,15 +517,25 @@ export function IncidentsTable() {
 															</AlertDialogDescription>
 														</AlertDialogHeader>
 														<AlertDialogFooter>
-															<AlertDialogCancel>Cancel</AlertDialogCancel>
+															<AlertDialogCancel disabled={isDeleting}>
+																Cancel
+															</AlertDialogCancel>
 															<AlertDialogAction
 																className="bg-red-500 hover:bg-red-600"
 																onClick={(e) => {
 																	e.stopPropagation();
 																	deleteIncident(incident.id);
 																}}
+																disabled={isDeleting}
 															>
-																Delete
+																{isDeleting ? (
+																	<>
+																		<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																		Deleting...
+																	</>
+																) : (
+																	"Delete"
+																)}
 															</AlertDialogAction>
 														</AlertDialogFooter>
 													</AlertDialogContent>
