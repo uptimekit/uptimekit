@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
 	ArrowRight,
@@ -19,6 +19,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -37,7 +49,7 @@ import {
 } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { orpc } from "@/utils/orpc";
+import { client, orpc } from "@/utils/orpc";
 
 export function IncidentsTable() {
 	const [statusFilter, setStatusFilter] = useState<
@@ -79,6 +91,17 @@ export function IncidentsTable() {
 	const incidents = data?.items;
 	const total = data?.total || 0;
 	const totalPages = Math.ceil(total / pageSize);
+
+	const queryClient = useQueryClient();
+
+	const { mutate: deleteIncident } = useMutation({
+		mutationFn: (id: string) => client.incidents.delete({ id }),
+		onSuccess: () => {
+			toast.success("Incident deleted");
+			queryClient.invalidateQueries({ queryKey: orpc.incidents.list.key() });
+		},
+		onError: () => toast.error("Failed to delete incident"),
+	});
 
 	const getStatusIcon = (status: string) => {
 		switch (status) {
@@ -472,6 +495,41 @@ export function IncidentsTable() {
 														View details
 													</Link>
 												</DropdownMenuItem>
+												<AlertDialog>
+													<AlertDialogTrigger asChild>
+														<DropdownMenuItem
+															className="text-red-500"
+															onSelect={(e) => e.preventDefault()}
+														>
+															Delete
+														</DropdownMenuItem>
+													</AlertDialogTrigger>
+													<AlertDialogContent>
+														<AlertDialogHeader>
+															<AlertDialogTitle>
+																Are you absolutely sure?
+															</AlertDialogTitle>
+															<AlertDialogDescription>
+																This action cannot be undone. This will
+																permanently delete the incident "
+																{incident.title}" and all of its activity
+																history.
+															</AlertDialogDescription>
+														</AlertDialogHeader>
+														<AlertDialogFooter>
+															<AlertDialogCancel>Cancel</AlertDialogCancel>
+															<AlertDialogAction
+																className="bg-red-500 hover:bg-red-600"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	deleteIncident(incident.id);
+																}}
+															>
+																Delete
+															</AlertDialogAction>
+														</AlertDialogFooter>
+													</AlertDialogContent>
+												</AlertDialog>
 											</DropdownMenuContent>
 										</DropdownMenu>
 									</TableCell>

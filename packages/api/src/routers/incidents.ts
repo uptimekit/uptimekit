@@ -337,4 +337,39 @@ export const incidentsRouter = {
 
 			return { success: true };
 		}),
+
+	delete: writeProcedure
+		.meta({
+			openapi: {
+				method: "DELETE",
+				path: "/incidents/{id}",
+				tags: ["Incident Management"],
+				summary: "Delete incident",
+				description: "Delete a specific incident by ID.",
+			},
+		})
+		.input(z.object({ id: z.string() }))
+		.handler(async ({ input, context }) => {
+			const existing = await db.query.incident.findFirst({
+				where: eq(incident.id, input.id),
+			});
+
+			if (
+				!existing ||
+				existing.organizationId !== context.session.session.activeOrganizationId
+			) {
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+			}
+
+			await db.delete(incident).where(eq(incident.id, input.id));
+
+			eventBus.emit("incident.deleted", {
+				incidentId: input.id,
+				organizationId: existing.organizationId,
+				title: existing.title,
+				severity: existing.severity as any,
+			});
+
+			return { success: true };
+		}),
 };

@@ -31,6 +31,12 @@ type AppEvents = {
 		severity: "minor" | "major" | "critical";
 		userId?: string | null;
 	};
+	"incident.deleted": {
+		incidentId: string;
+		organizationId: string;
+		title: string;
+		severity: "minor" | "major" | "critical";
+	};
 	"monitor.ssl.expiring": {
 		monitorId: string;
 		organizationId: string;
