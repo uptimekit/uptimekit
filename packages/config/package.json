@@ -1,5 +1,15 @@
 {
 	"name": "@uptimekit/config",
 	"version": "2.0.3",
-	"private": true
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./env": {
+			"types": "./src/env.ts",
+			"default": "./src/env.ts"
+		}
+	},
+	"dependencies": {
+		"dotenv": "catalog:"
+	}
 }

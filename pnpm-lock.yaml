@@ -413,7 +413,11 @@ importers:
         specifier: workspace:2.0.3
         version: link:../config
 
-  packages/config: {}
+  packages/config:
+    dependencies:
+      dotenv:
+        specifier: 'catalog:'
+        version: 17.2.3
 
   packages/db:
     dependencies:
@@ -448,15 +452,15 @@ importers:
 
   packages/scheduler:
     dependencies:
+      '@uptimekit/config':
+        specifier: workspace:2.0.3
+        version: link:../config
       '@uptimekit/db':
         specifier: workspace:2.0.3
         version: link:../db
       bullmq:
         specifier: ^5.34.8
         version: 5.66.2
-      dotenv:
-        specifier: 'catalog:'
-        version: 17.2.3
       ioredis:
         specifier: ^5.4.2
         version: 5.8.2
@@ -464,9 +468,6 @@ importers:
       '@types/node':
         specifier: ^22.13.11
         version: 22.19.2
-      '@uptimekit/config':
-        specifier: workspace:2.0.3
-        version: link:../config
       tsx:
         specifier: ^4.19.2
         version: 4.21.0

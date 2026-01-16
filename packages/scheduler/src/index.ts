@@ -1,4 +1,7 @@
-import "dotenv/config";
+import { loadEnv } from "@uptimekit/config/env";
+
+loadEnv();
+
 import { type Job, Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 import { ensureConfiguration } from "./jobs/config-integrity";
