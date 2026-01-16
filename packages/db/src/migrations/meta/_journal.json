@@ -71,6 +71,13 @@
 			"when": 1768280107072,
 			"tag": "0009_organic_cobalt_man",
 			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "7",
+			"when": 1768588206545,
+			"tag": "0010_careless_king_cobra",
+			"breakpoints": true
 		}
 	]
 }

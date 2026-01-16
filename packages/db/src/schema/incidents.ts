@@ -30,10 +30,17 @@ export const incident = pgTable(
 			.$onUpdate(() => new Date())
 			.notNull(),
 		resolvedAt: timestamp("resolved_at"),
+		externalId: text("external_id"),
+		externalSource: text("external_source"),
 	},
 	(table) => [
 		index("incident_organization_idx").on(table.organizationId),
 		index("incident_status_idx").on(table.status),
+		index("incident_external_idx").on(
+			table.organizationId,
+			table.externalSource,
+			table.externalId,
+		),
 	],
 );
 

@@ -23,6 +23,12 @@
 		},
 		"./pkg/integrations/definitions/webhook-meta": {
 			"default": "./src/pkg/integrations/definitions/webhook-meta.ts"
+		},
+		"./pkg/integrations/definitions/alertmanager-meta": {
+			"default": "./src/pkg/integrations/definitions/alertmanager-meta.ts"
+		},
+		"./pkg/integrations/definitions/alertmanager": {
+			"default": "./src/pkg/integrations/definitions/alertmanager.ts"
 		}
 	},
 	"type": "module",

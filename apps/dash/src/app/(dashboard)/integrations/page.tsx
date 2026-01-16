@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { alertManagerIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { discordIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/discord-meta";
 import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/telegram-meta";
 import { webhookIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/webhook-meta";
@@ -78,6 +79,10 @@ export default function IntegrationsPage() {
 		} as IntegrationDefinition,
 		telegram: {
 			...telegramIntegrationMeta,
+			handler: async () => {},
+		} as IntegrationDefinition,
+		alertmanager: {
+			...alertManagerIntegrationMeta,
 			handler: async () => {},
 		} as IntegrationDefinition,
 	};
@@ -191,23 +196,23 @@ export default function IntegrationsPage() {
 								let Icon: React.ReactNode;
 								if (fullDef.logo) {
 									Icon = (
-										<div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+										<div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted sm:size-12">
 											<img
 												src={fullDef.logo}
 												alt={fullDef.name}
-												className="h-8 w-8 object-contain"
+												className="size-6 object-contain sm:size-8"
 											/>
 										</div>
 									);
 								} else {
 									Icon =
 										integrationMeta.id === "webhook" ? (
-											<div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-muted">
-												<Webhook className="h-6 w-6" />
+											<div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted sm:size-12">
+												<Webhook className="size-5 sm:size-6" />
 											</div>
 										) : (
-											<div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-muted">
-												<Settings2 className="h-6 w-6" />
+											<div className="flex size-10 shrink-0 items-center justify-center rounded-lg border bg-muted sm:size-12">
+												<Settings2 className="size-5 sm:size-6" />
 											</div>
 										);
 								}

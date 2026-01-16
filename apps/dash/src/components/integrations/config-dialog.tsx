@@ -4,6 +4,17 @@ import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/regi
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { AlertManagerConfig } from "@/components/integrations/alertmanager-config";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -43,11 +54,14 @@ export function ConfigDialog({
 	const [saving, setSaving] = useState(false);
 	const [testing, setTesting] = useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
 	// Basic schema parsing for MVP (assumes object with string fields)
 	// In a real robust system, use something like 'auto-form'
 	const shape = (integration.configSchema as any).shape;
 	const fields = Object.keys(shape || {});
+
+	const isImportIntegration = integration.type === "import";
 
 	const handleSave = async () => {
 		try {
@@ -94,17 +108,10 @@ export function ConfigDialog({
 	const handleDelete = async () => {
 		if (!onDelete) return;
 
-		if (
-			!confirm(
-				"Are you sure you want to remove this integration? This action cannot be undone.",
-			)
-		) {
-			return;
-		}
-
 		setDeleting(true);
 		try {
 			await onDelete();
+			setDeleteDialogOpen(false);
 			onOpenChange(false);
 			toast.success("Integration removed");
 		} catch (error: any) {
@@ -116,70 +123,102 @@ export function ConfigDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Configure {integration.name}</DialogTitle>
-					<DialogDescription>{integration.description}</DialogDescription>
-				</DialogHeader>
+		<>
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+					<DialogHeader>
+						<DialogTitle>Configure {integration.name}</DialogTitle>
+						<DialogDescription>{integration.description}</DialogDescription>
+					</DialogHeader>
 
-				<div className="grid gap-4 py-4">
-					{fields.map((field) => {
-						// Detect type if possible, default to text
-						const isSecret =
-							field.toLowerCase().includes("secret") ||
-							field.toLowerCase().includes("token");
+					<div className="grid gap-4 py-4">
+						{integration.id === "alertmanager" ? (
+							<AlertManagerConfig
+								config={config}
+								configId={configId}
+								onChange={setConfig}
+							/>
+						) : (
+							fields.map((field) => {
+								// Detect type if possible, default to text
+								const isSecret =
+									field.toLowerCase().includes("secret") ||
+									field.toLowerCase().includes("token");
 
-						return (
-							<div key={field} className="grid w-full items-center gap-1.5">
-								<Label htmlFor={field} className="capitalize">
-									{field}
-								</Label>
-								<Input
-									id={field}
-									type={isSecret ? "password" : "text"}
-									value={config[field] || ""}
-									onChange={(e) =>
-										setConfig({ ...config, [field]: e.target.value })
-									}
-									placeholder={`Enter ${field}...`}
-								/>
-							</div>
-						);
-					})}
-				</div>
-
-				<DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-					<div className="flex gap-2">
-						{configId && onDelete && (
-							<Button
-								variant="destructive"
-								onClick={handleDelete}
-								disabled={deleting || saving || testing}
-							>
-								{deleting ? "Removing..." : "Remove"}
-							</Button>
+								return (
+									<div key={field} className="grid w-full items-center gap-1.5">
+										<Label htmlFor={field} className="capitalize">
+											{field}
+										</Label>
+										<Input
+											id={field}
+											type={isSecret ? "password" : "text"}
+											value={config[field] || ""}
+											onChange={(e) =>
+												setConfig({ ...config, [field]: e.target.value })
+											}
+											placeholder={`Enter ${field}...`}
+										/>
+									</div>
+								);
+							})
 						)}
 					</div>
-					<div className="flex gap-2">
-						{configId && onTest && (
+
+					<DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+						<div className="flex gap-2">
+							{configId && onDelete && (
+								<Button
+									variant="destructive"
+									onClick={() => setDeleteDialogOpen(true)}
+									disabled={deleting || saving || testing}
+								>
+									Remove
+								</Button>
+							)}
+						</div>
+						<div className="flex gap-2">
+							{configId && onTest && !isImportIntegration && (
+								<Button
+									variant="outline"
+									onClick={handleTest}
+									disabled={testing || saving || deleting}
+								>
+									{testing ? "Testing..." : "Test"}
+								</Button>
+							)}
 							<Button
-								variant="outline"
-								onClick={handleTest}
-								disabled={testing || saving || deleting}
+								onClick={handleSave}
+								disabled={saving || testing || deleting}
 							>
-								{testing ? "Testing..." : "Test"}
+								{saving ? "Saving..." : "Save Changes"}
 							</Button>
-						)}
-						<Button
-							onClick={handleSave}
-							disabled={saving || testing || deleting}
+						</div>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Remove integration</AlertDialogTitle>
+						<AlertDialogDescription>
+							Are you sure you want to remove this integration? This action
+							cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleDelete}
+							disabled={deleting}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
-							{saving ? "Saving..." : "Save Changes"}
-						</Button>
-					</div>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+							{deleting ? "Removing..." : "Remove"}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }
