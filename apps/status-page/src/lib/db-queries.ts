@@ -213,6 +213,36 @@ export const getStatusPageByDomain = async (domain: string) => {
 	);
 };
 
+export const getStatusPageBySlug = async (slug: string) => {
+	return cached(
+		`status-page:slug:${slug}`,
+		600, // 10 minutes
+		async () => {
+			const page = await db.query.statusPage.findFirst({
+				where: eq(statusPage.slug, slug),
+			});
+
+			if (!page) {
+				return undefined;
+			}
+
+			const monitors = await db.query.statusPageMonitor.findMany({
+				where: eq(statusPageMonitor.statusPageId, page.id),
+				with: {
+					monitor: true,
+					group: true,
+				},
+				orderBy: [asc(statusPageMonitor.order)],
+			});
+
+			return {
+				...page,
+				monitors,
+			};
+		},
+	);
+};
+
 export const getMonitorUptime = async (monitorId: string, days = 90) => {
 	return cached(
 		`monitor-uptime:${monitorId}:${days}`,
