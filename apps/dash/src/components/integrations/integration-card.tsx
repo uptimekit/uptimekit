@@ -22,24 +22,24 @@ export function IntegrationCard({
 	onConfigure,
 }: IntegrationCardProps) {
 	return (
-		<Card className="flex w-full flex-row items-center justify-between p-4 transition-colors hover:bg-muted/50">
-			<div className="flex items-center gap-4">
-				{icon}
-				<div className="space-y-1">
-					<div className="flex items-center gap-2">
+		<Card className="flex w-full flex-row items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/50">
+			<div className="flex min-w-0 items-center gap-3 sm:gap-4">
+				<div className="shrink-0">{icon}</div>
+				<div className="min-w-0 space-y-1">
+					<div className="flex flex-wrap items-center gap-2">
 						<h3 className="font-semibold text-sm leading-none">
 							{integration.name}
 						</h3>
-						<span className="inline-flex items-center rounded-full border px-2 py-0.5 font-semibold text-muted-foreground text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+						<span className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-semibold text-muted-foreground text-xs">
 							{category}
 						</span>
 					</div>
-					<p className="text-muted-foreground text-sm">
+					<p className="line-clamp-2 text-muted-foreground text-sm">
 						{integration.description}
 					</p>
 				</div>
 			</div>
-			<div className="flex items-center gap-2">
+			<div className="flex shrink-0 items-center gap-2">
 				{configured ? (
 					<Button
 						variant="outline"

@@ -1,5 +1,6 @@
 import { db } from "@uptimekit/db";
 import { eventBus } from "../../lib/events";
+import { alertManagerIntegration } from "./definitions/alertmanager";
 import { discordIntegration } from "./definitions/discord";
 import { telegramIntegration } from "./definitions/telegram";
 import { webhookIntegration } from "./definitions/webhook";
@@ -9,6 +10,7 @@ import { integrationRegistry } from "./registry";
 integrationRegistry.register(webhookIntegration);
 integrationRegistry.register(discordIntegration);
 integrationRegistry.register(telegramIntegration);
+integrationRegistry.register(alertManagerIntegration);
 
 export class IntegrationService {
 	constructor() {
