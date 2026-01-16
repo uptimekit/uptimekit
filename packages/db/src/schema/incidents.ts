@@ -1,10 +1,11 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	index,
 	pgTable,
 	primaryKey,
 	text,
 	timestamp,
+	uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth";
 import { monitor } from "./monitors";
@@ -36,11 +37,11 @@ export const incident = pgTable(
 	(table) => [
 		index("incident_organization_idx").on(table.organizationId),
 		index("incident_status_idx").on(table.status),
-		index("incident_external_idx").on(
-			table.organizationId,
-			table.externalSource,
-			table.externalId,
-		),
+		uniqueIndex("incident_external_unique_idx")
+			.on(table.organizationId, table.externalSource, table.externalId)
+			.where(
+				sql`${table.externalSource} IS NOT NULL AND ${table.externalId} IS NOT NULL`,
+			),
 	],
 );
 

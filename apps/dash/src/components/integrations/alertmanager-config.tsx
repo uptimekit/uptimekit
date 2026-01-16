@@ -44,7 +44,7 @@ export function AlertManagerConfig({
 	configId,
 	onChange,
 }: AlertManagerConfigProps) {
-	const [copied, setCopied] = useState<"url" | "token" | null>(null);
+	const [copied, setCopied] = useState<"url" | "token" | "config" | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [configRevealed, setConfigRevealed] = useState(false);
 	const [tokenRevealed, setTokenRevealed] = useState(false);
@@ -56,10 +56,17 @@ export function AlertManagerConfig({
 		? `${baseUrl}/api/webhooks/integrations/${configId}`
 		: "Save to generate webhook URL";
 
-	const handleCopy = async (value: string, type: "url" | "token") => {
-		await navigator.clipboard.writeText(value);
-		setCopied(type);
-		setTimeout(() => setCopied(null), 2000);
+	const handleCopy = async (
+		value: string,
+		type: "url" | "token" | "config",
+	) => {
+		try {
+			await navigator.clipboard.writeText(value);
+			setCopied(type);
+			setTimeout(() => setCopied(null), 2000);
+		} catch (error) {
+			console.error("Failed to copy to clipboard:", error);
+		}
 	};
 
 	const handleRegenerate = () => {
@@ -274,10 +281,14 @@ route:
 							variant="ghost"
 							size="sm"
 							className="absolute top-2 right-2"
-							onClick={() => handleCopy(alertmanagerConfigCopy, "url")}
+							onClick={() => handleCopy(alertmanagerConfigCopy, "config")}
 						>
-							<Copy className="mr-2 h-4 w-4" />
-							Copy
+							{copied === "config" ? (
+								<Check className="mr-2 h-4 w-4" />
+							) : (
+								<Copy className="mr-2 h-4 w-4" />
+							)}
+							{copied === "config" ? "Copied" : "Copy"}
 						</Button>
 					) : (
 						<Button

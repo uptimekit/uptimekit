@@ -7,23 +7,9 @@ import type { IntegrationDefinition } from "../registry";
 import {
 	type AlertManagerConfig,
 	type AlertManagerConfigSchema,
+	type AlertManagerPayload,
 	alertManagerIntegrationMeta,
 } from "./alertmanager-meta";
-
-interface AlertManagerAlert {
-	status: "firing" | "resolved";
-	labels: Record<string, string>;
-	annotations: Record<string, string>;
-	startsAt: string;
-	endsAt: string;
-	fingerprint: string;
-}
-
-interface AlertManagerPayload {
-	version: string;
-	status: "firing" | "resolved";
-	alerts: AlertManagerAlert[];
-}
 
 export interface AlertManagerWebhookResult {
 	created: number;
@@ -51,7 +37,10 @@ function interpolateTemplate(
 	template: string,
 	labels: Record<string, string>,
 ): string {
-	return template.replace(/\{\{(\w+)\}\}/g, (_, key) => labels[key] || key);
+	return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => {
+		const value = labels[key];
+		return value !== undefined ? value : match;
+	});
 }
 
 export async function processAlertManagerWebhook(

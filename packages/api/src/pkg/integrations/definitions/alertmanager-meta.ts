@@ -10,6 +10,23 @@ export const AlertManagerConfigSchema = z.object({
 
 export type AlertManagerConfig = z.infer<typeof AlertManagerConfigSchema>;
 
+const AlertManagerAlertSchema = z.object({
+	status: z.enum(["firing", "resolved"]),
+	labels: z.record(z.string(), z.string()),
+	annotations: z.record(z.string(), z.string()),
+	startsAt: z.string(),
+	endsAt: z.string(),
+	fingerprint: z.string(),
+});
+
+export const AlertManagerPayloadSchema = z.object({
+	version: z.string(),
+	status: z.enum(["firing", "resolved"]),
+	alerts: z.array(AlertManagerAlertSchema),
+});
+
+export type AlertManagerPayload = z.infer<typeof AlertManagerPayloadSchema>;
+
 export const alertManagerIntegrationMeta: Omit<
 	IntegrationDefinition<AlertManagerConfig>,
 	"handler"

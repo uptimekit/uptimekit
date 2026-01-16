@@ -1,7 +1,11 @@
 import { processAlertManagerWebhook } from "@uptimekit/api/pkg/integrations/definitions/alertmanager";
-import type { AlertManagerConfig } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
+import {
+	type AlertManagerConfig,
+	AlertManagerPayloadSchema,
+} from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { db } from "@uptimekit/db";
 import { integrationConfig } from "@uptimekit/db/schema/integrations";
+import { timingSafeEqual } from "crypto";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -34,7 +38,18 @@ export async function POST(
 
 	if (configData.bearerToken) {
 		const expectedToken = `Bearer ${configData.bearerToken}`;
-		if (authHeader !== expectedToken) {
+		if (!authHeader) {
+			return NextResponse.json(
+				{ error: "Invalid authorization token" },
+				{ status: 401 },
+			);
+		}
+		const expectedBuffer = Buffer.from(expectedToken);
+		const authBuffer = Buffer.from(authHeader);
+		if (
+			expectedBuffer.length !== authBuffer.length ||
+			!timingSafeEqual(expectedBuffer, authBuffer)
+		) {
 			return NextResponse.json(
 				{ error: "Invalid authorization token" },
 				{ status: 401 },
@@ -52,10 +67,21 @@ export async function POST(
 	try {
 		switch (config.type) {
 			case "alertmanager": {
+				const parseResult = AlertManagerPayloadSchema.safeParse(body);
+				if (!parseResult.success) {
+					console.error(
+						"[Webhook] Invalid AlertManager payload:",
+						parseResult.error.flatten(),
+					);
+					return NextResponse.json(
+						{ error: "Invalid AlertManager payload" },
+						{ status: 400 },
+					);
+				}
 				const result = await processAlertManagerWebhook(
 					configData,
 					config.organizationId,
-					body as any,
+					parseResult.data,
 				);
 				return NextResponse.json({
 					success: true,
