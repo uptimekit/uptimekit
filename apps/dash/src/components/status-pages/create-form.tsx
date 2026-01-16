@@ -109,7 +109,9 @@ export function CreateStatusPageForm({
 									<FormControl>
 										<div className="flex h-9 items-center rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
 											<span className="shrink-0 select-none pl-3 text-muted-foreground text-sm">
-												uptimekit.com/s/
+												{process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
+													"status.uptimekit.com"}
+												/
 											</span>
 											<Input
 												{...field}

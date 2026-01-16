@@ -233,6 +233,11 @@ export const statusPagesRouter = {
 			if (input.domain && input.domain !== existing.domain) {
 				await redis.del(`status-page:${input.domain}`);
 			}
+			// Invalidate slug-based cache
+			await redis.del(`status-page:slug:${existing.slug}`);
+			if (input.slug && input.slug !== existing.slug) {
+				await redis.del(`status-page:slug:${input.slug}`);
+			}
 
 			return { success: true };
 		}),
@@ -365,6 +370,8 @@ export const statusPagesRouter = {
 			if (existing.domain) {
 				await redis.del(`status-page:${existing.domain}`);
 			}
+			// Invalidate slug-based cache
+			await redis.del(`status-page:slug:${existing.slug}`);
 
 			return { success: true };
 		}),
@@ -401,6 +408,8 @@ export const statusPagesRouter = {
 			if (existing.domain) {
 				await redis.del(`status-page:${existing.domain}`);
 			}
+			// Invalidate slug-based cache
+			await redis.del(`status-page:slug:${existing.slug}`);
 
 			return { success: true };
 		}),

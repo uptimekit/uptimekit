@@ -184,32 +184,27 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 									control={form.control}
 									name="slug"
 									render={({ field }) => (
-										<FormItem className="relative flex h-full flex-col">
-											<div className="absolute inset-0 z-10 flex items-center justify-center">
-												<Badge className="border-0 bg-white text-neutral-900 shadow-md hover:bg-neutral-100">
-													Soon
-												</Badge>
-											</div>
-											<div className="pointer-events-none flex h-full select-none flex-col opacity-50 blur-[2px]">
-												<FormLabel className="flex h-6 items-end pb-1">
-													Subdomain *
-												</FormLabel>
-												<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset">
-													<Input
-														placeholder="acme"
-														{...field}
-														disabled
-														className="min-w-0 rounded-r-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-													/>
-													<div className="flex select-none items-center rounded-r-md border-l bg-muted/50 px-3 text-muted-foreground text-sm">
-														.uptimekit.com
-													</div>
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
+												Slug *
+											</FormLabel>
+											<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset">
+												<div className="flex select-none items-center rounded-l-md border-r bg-muted/50 px-3 text-muted-foreground text-sm">
+													{process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
+														"status.uptimekit.com"}
+													/
 												</div>
-												<FormDescription className="pt-2">
-													You can configure a custom domain below.
-												</FormDescription>
-												<FormMessage />
+												<Input
+													placeholder="acme"
+													{...field}
+													className="min-w-0 rounded-l-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+												/>
 											</div>
+											<FormDescription className="pt-2">
+												Your status page URL. You can also configure a custom
+												domain below.
+											</FormDescription>
+											<FormMessage />
 										</FormItem>
 									)}
 								/>
