@@ -185,7 +185,10 @@ function LandingPage() {
 
 export default async function StatusPage() {
 	const headersList = await headers();
-	const host = headersList.get("host");
+	const host =
+		headersList.get("x-forwarded-host") ||
+		headersList.get("x-original-host") ||
+		headersList.get("host");
 
 	if (!host) {
 		notFound();

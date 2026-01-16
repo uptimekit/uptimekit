@@ -134,7 +134,7 @@ export default async function SlugUpdatesPage({
 							Back to status
 						</Link>
 						<h1 className="mt-4 font-bold text-3xl">
-							Updated & Maintenance History
+							Updates & Maintenance History
 						</h1>
 					</div>
 
