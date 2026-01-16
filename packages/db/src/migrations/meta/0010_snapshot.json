@@ -1,5 +1,5 @@
 {
-	"id": "5cc90efe-b9b5-4ca8-9ba2-7666fa470411",
+	"id": "33c02222-d2e9-458e-b660-6d137a899d9c",
 	"prevId": "c7a10240-ab31-4e8a-9d0f-f18d68ee6142",
 	"version": "7",
 	"dialect": "postgresql",
@@ -1076,8 +1076,8 @@
 					"method": "btree",
 					"with": {}
 				},
-				"incident_external_idx": {
-					"name": "incident_external_idx",
+				"incident_external_unique_idx": {
+					"name": "incident_external_unique_idx",
 					"columns": [
 						{
 							"expression": "organization_id",
@@ -1098,7 +1098,8 @@
 							"nulls": "last"
 						}
 					],
-					"isUnique": false,
+					"isUnique": true,
+					"where": "\"incident\".\"external_source\" IS NOT NULL AND \"incident\".\"external_id\" IS NOT NULL",
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
