@@ -7,7 +7,8 @@
 		"./env": {
 			"types": "./src/env.ts",
 			"default": "./src/env.ts"
-		}
+		},
+		"./tsconfig.base.json": "./tsconfig.base.json"
 	},
 	"dependencies": {
 		"dotenv": "catalog:"
