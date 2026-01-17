@@ -18,6 +18,8 @@ export default {
 				boxHeight: 100,
 				container: { sidePadding: 30 },
 			},
+			composeInTier: true,
+			composer: "circles",
 		},
 		{
 			title: "Silver Sponsors",
@@ -28,6 +30,8 @@ export default {
 				boxHeight: 80,
 				container: { sidePadding: 25 },
 			},
+			composeInTier: true,
+			composer: "circles",
 		},
 		{
 			title: "Bronze Sponsors",
@@ -38,6 +42,8 @@ export default {
 				boxHeight: 60,
 				container: { sidePadding: 20 },
 			},
+			composeInTier: true,
+			composer: "circles",
 		},
 		{
 			title: "Supporters",
@@ -48,6 +54,8 @@ export default {
 				boxHeight: 50,
 				container: { sidePadding: 15 },
 			},
+			composeInTier: true,
+			composer: "circles",
 		},
 	],
 
@@ -55,7 +63,6 @@ export default {
 		{
 			name: "sponsors",
 			width: 800,
-			renderer: "circles",
 		},
 	],
 };
