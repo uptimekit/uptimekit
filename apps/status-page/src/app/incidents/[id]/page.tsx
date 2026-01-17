@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
+import { checkStatusPageAccess } from "@/lib/access-check";
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -32,6 +33,9 @@ export default async function IncidentDetailsPage({
 	if (!pageConfig) {
 		notFound();
 	}
+
+	// Check access for private pages
+	await checkStatusPageAccess(pageConfig, `/incidents/${id}`);
 
 	// Reuse list fetch logic for now (inefficient)
 	const [reports, activeReports, activeMaintenances] = await Promise.all([

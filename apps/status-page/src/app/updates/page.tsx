@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
+import { checkStatusPageAccess } from "@/lib/access-check";
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -26,6 +27,9 @@ export default async function UpdatesPage() {
 	if (!pageConfig) {
 		notFound();
 	}
+
+	// Check access for private pages
+	await checkStatusPageAccess(pageConfig, "/updates");
 
 	// Fetch ALL history (todo: pagination)
 	// For now, let's fetch more items, e.g., 20 or 50

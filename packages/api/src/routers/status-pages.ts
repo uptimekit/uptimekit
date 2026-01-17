@@ -8,6 +8,7 @@ import {
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+import { hashPassword } from "../lib/password";
 import { redis } from "../lib/redis";
 
 export const statusPagesRouter = {
@@ -70,8 +71,10 @@ export const statusPagesRouter = {
 					// TODO: Implement subscriber count when subscribers table is ready
 					const subscriberCount = 0;
 
+					const { password, ...pageData } = page;
 					return {
-						...page,
+						...pageData,
+						hasPassword: !!password,
 						monitorsCount: monitorCount,
 						subscribers: subscriberCount,
 					};
@@ -151,7 +154,11 @@ export const statusPagesRouter = {
 				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
 			}
 
-			return page;
+			const { password, ...pageData } = page;
+			return {
+				...pageData,
+				hasPassword: !!password,
+			};
 		}),
 
 	update: writeProcedure
@@ -182,6 +189,11 @@ export const statusPagesRouter = {
 					.optional(),
 				description: z.string().optional(),
 				public: z.boolean().optional(),
+				password: z
+					.string()
+					.min(6, "Password must be at least 6 characters")
+					.optional()
+					.nullable(),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -214,6 +226,19 @@ export const statusPagesRouter = {
 				? { ...currentDesign, ...input.design }
 				: currentDesign;
 
+			// Handle password: hash if provided, clear if page is public
+			let passwordHash: string | null | undefined;
+			if (input.public === true) {
+				// Setting to public, clear password
+				passwordHash = null;
+			} else if (input.password) {
+				// New password provided, hash it
+				passwordHash = await hashPassword(input.password);
+			} else if (input.password === null) {
+				// Explicitly clearing password
+				passwordHash = null;
+			}
+
 			await db
 				.update(statusPage)
 				.set({
@@ -223,6 +248,7 @@ export const statusPagesRouter = {
 					description: input.description,
 					public: input.public,
 					design: newDesign,
+					...(passwordHash !== undefined && { password: passwordHash }),
 				})
 				.where(eq(statusPage.id, input.id));
 
