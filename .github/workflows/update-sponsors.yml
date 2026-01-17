@@ -9,7 +9,7 @@ on:
       - release
     paths:
       - '.github/workflows/update-sponsors.yml'
-      - 'sponsor.config.ts'
+      - 'sponsor.config.js'
 
 jobs:
   update-sponsors:
