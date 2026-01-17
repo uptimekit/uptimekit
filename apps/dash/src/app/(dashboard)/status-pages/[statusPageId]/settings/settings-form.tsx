@@ -56,6 +56,11 @@ const settingsSchema = z.object({
 	headerLayout: z.enum(["vertical", "horizontal"]),
 	customDomain: z.string().optional().or(z.literal("")),
 	isPrivate: z.boolean(),
+	password: z
+		.string()
+		.min(6, "Password must be at least 6 characters")
+		.optional()
+		.or(z.literal("")),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -101,6 +106,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			headerLayout: "vertical",
 			customDomain: "",
 			isPrivate: false,
+			password: "",
 		},
 	});
 
@@ -122,12 +128,22 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 	}, [statusPage, form]);
 
 	function onSubmit(data: SettingsFormValues) {
+		// Require password when setting to private without an existing password
+		if (data.isPrivate && !statusPage?.password && !data.password) {
+			form.setError("password", {
+				type: "manual",
+				message: "Password is required for private status pages",
+			});
+			return;
+		}
+
 		updateStatusPage.mutate({
 			id: statusPageId,
 			name: data.name,
 			slug: data.slug,
 			domain: data.customDomain || null,
 			public: !data.isPrivate,
+			password: data.isPrivate ? data.password || undefined : null,
 			design: {
 				logoUrl: data.logoUrl,
 				websiteUrl: data.websiteUrl,
@@ -311,7 +327,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												}
 												defaultValue={field.value ? "private" : "public"}
 												value={field.value ? "private" : "public"}
-												disabled
 											>
 												<SelectTrigger className="w-full">
 													<SelectValue placeholder="Select visibility" />
@@ -352,6 +367,39 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 									)}
 								/>
 							</div>
+
+							{form.watch("isPrivate") && (
+								<FormField
+									control={form.control}
+									name="password"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Password</FormLabel>
+											<FormControl>
+												<Input
+													type="password"
+													placeholder={
+														statusPage?.password
+															? "Leave empty to keep existing password"
+															: "Enter a password"
+													}
+													{...field}
+												/>
+											</FormControl>
+											<FormDescription>
+												{statusPage?.password ? (
+													<span className="text-green-600 dark:text-green-400">
+														Password is currently set.{" "}
+													</span>
+												) : null}
+												Visitors will need to enter this password to view your
+												status page.
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							)}
 
 							<FormField
 								control={form.control}

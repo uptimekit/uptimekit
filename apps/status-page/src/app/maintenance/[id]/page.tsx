@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
+import { checkStatusPageAccess } from "@/lib/access-check";
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -31,6 +32,9 @@ export default async function MaintenanceDetailsPage({
 	if (!pageConfig) {
 		notFound();
 	}
+
+	// Check access for private pages
+	await checkStatusPageAccess(pageConfig, `/maintenance/${id}`);
 
 	// We don't have a single-fetch function for maintenance by ID yet exposed efficiently for public view
 	// reusing fetching all history and finding one (inefficient but works for now)

@@ -41,6 +41,7 @@
 	},
 	"dependencies": {
 		"@clickhouse/client": "^1.15.0",
+		"@node-rs/argon2": "^2.0.2",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",

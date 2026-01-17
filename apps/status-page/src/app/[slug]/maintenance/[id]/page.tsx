@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
+import { checkStatusPageAccess } from "@/lib/access-check";
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -24,6 +25,9 @@ export default async function SlugMaintenanceDetailsPage({
 	if (!pageConfig) {
 		notFound();
 	}
+
+	// Check access for private pages
+	await checkStatusPageAccess(pageConfig, `/${slug}/maintenance/${id}`);
 
 	const [history, activeReports, activeMaintenances] = await Promise.all([
 		getMaintenanceHistory(pageConfig.id, 1000),

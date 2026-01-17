@@ -9,6 +9,7 @@ import { OverallStatus } from "@/components/overall-status";
 import type { StatusType } from "@/components/status-indicator";
 import { ThemeSetter } from "@/components/theme-setter";
 import type { UptimeDay } from "@/components/uptime-bar";
+import { checkStatusPageAccess } from "@/lib/access-check";
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -162,6 +163,9 @@ export default async function SlugStatusPage({
 	if (!pageConfig) {
 		notFound();
 	}
+
+	// Check access for private pages
+	await checkStatusPageAccess(pageConfig, `/${slug}`);
 
 	const [activeReports, activeMaintenances] = await Promise.all([
 		getActiveStatusPageReports(pageConfig.id),
