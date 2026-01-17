@@ -126,7 +126,10 @@ export async function generateMetadata() {
 		title,
 		description,
 		applicationName: pageConfig?.name || "Status Page",
-		icons: logoUrl ? { icon: logoUrl } : undefined,
+		icons:
+			design.faviconUrl || logoUrl
+				? { icon: design.faviconUrl || logoUrl }
+				: undefined,
 		openGraph: {
 			title,
 			description,
