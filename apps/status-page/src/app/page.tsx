@@ -16,6 +16,7 @@ import {
 	getMaintenanceHistory,
 	getMonitorStatus,
 	getMonitorUptime,
+	getScheduledMaintenances,
 	getStatusPageByDomain,
 	getStatusPageEvents,
 	getStatusPageReports,
@@ -215,10 +216,12 @@ export default async function StatusPage() {
 	// Check access for private pages
 	await checkStatusPageAccess(pageConfig, "/");
 
-	const [activeReports, activeMaintenances] = await Promise.all([
-		getActiveStatusPageReports(pageConfig.id),
-		getActiveMaintenances(pageConfig.id),
-	]);
+	const [activeReports, activeMaintenances, scheduledMaintenances] =
+		await Promise.all([
+			getActiveStatusPageReports(pageConfig.id),
+			getActiveMaintenances(pageConfig.id),
+			getScheduledMaintenances(pageConfig.id),
+		]);
 
 	const [reports, maintenances, events] = await Promise.all([
 		getStatusPageReports(pageConfig.id),
@@ -257,6 +260,18 @@ export default async function StatusPage() {
 	].sort(
 		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	);
+
+	const mappedScheduledMaintenances = scheduledMaintenances.map((m: any) => ({
+		id: m.id,
+		title: m.title,
+		status: m.status,
+		severity: "maintenance",
+		createdAt: m.startAt,
+		resolvedAt: null,
+		monitors: m.monitors,
+		activities: [],
+		detailsLink: `/maintenance/${m.id}`,
+	}));
 
 	const pastIncidents = [
 		...reports.map((r) => ({
@@ -679,6 +694,25 @@ export default async function StatusPage() {
 										isExpanded={true}
 										detailsLink={(incident as any).detailsLink}
 										onToggle={undefined}
+									/>
+								))}
+							</div>
+						</section>
+					)}
+
+					{mappedScheduledMaintenances.length > 0 && (
+						<section className="mb-16 animate-slide-up">
+							<h2 className="mb-6 flex items-center gap-3 font-bold text-2xl text-foreground">
+								Scheduled Maintenance
+							</h2>
+							<div className="space-y-6">
+								{mappedScheduledMaintenances.map((maintenance) => (
+									<IncidentCard
+										key={maintenance.id}
+										incident={maintenance as any}
+										isExpanded={false}
+										detailsLink={(maintenance as any).detailsLink}
+										className="border-none bg-card/50 shadow-none hover:bg-card/80"
 									/>
 								))}
 							</div>

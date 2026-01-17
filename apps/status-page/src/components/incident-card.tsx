@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Link as LinkIcon } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { StatusDot, type StatusType } from "./status-indicator";
@@ -40,7 +40,7 @@ interface IncidentCardProps {
 }
 
 // Map severity to StatusDot type
-function getSeverityStatus(severity: string): StatusType {
+function getSeverityStatus(severity: string, status?: string): StatusType {
 	switch (severity) {
 		case "critical":
 			return "major_outage";
@@ -50,6 +50,8 @@ function getSeverityStatus(severity: string): StatusType {
 		case "degraded":
 			return "degraded";
 		case "maintenance":
+			if (status === "scheduled") return "maintenance_scheduled";
+			if (status === "completed") return "maintenance_completed";
 			return "maintenance";
 		default:
 			return "major_outage"; // Default to outage if unknown but incident exists
@@ -73,7 +75,9 @@ export function IncidentCard({
 		>
 			<div className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-muted/50">
 				<div className="flex items-center gap-3">
-					<StatusDot status={getSeverityStatus(incident.severity)} />
+					<StatusDot
+						status={getSeverityStatus(incident.severity, incident.status)}
+					/>
 					<div>
 						<h3 className="font-semibold text-card-foreground">
 							{incident.title}
@@ -172,9 +176,9 @@ export function IncidentCard({
 										/>
 										<div>
 											<div className="mb-1 flex items-center gap-2">
-												{/* 
-                                                    If activity had a 'status' field we'd label it. 
-                                                    For now just showing timestamp. 
+												{/*
+                                                    If activity had a 'status' field we'd label it.
+                                                    For now just showing timestamp.
                                                 */}
 												<span className="text-muted-foreground text-xs">
 													{new Date(activity.createdAt).toLocaleString(
