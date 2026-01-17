@@ -1,23 +1,30 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 const TOKEN_EXPIRY_HOURS = 24;
-const SECRET =
-	process.env.STATUS_PAGE_ACCESS_SECRET || process.env.BETTER_AUTH_SECRET;
-
-if (!SECRET) {
-	throw new Error(
-		"Missing required environment variable: STATUS_PAGE_ACCESS_SECRET or BETTER_AUTH_SECRET must be set",
-	);
-}
 
 interface TokenPayload {
 	statusPageId: string;
 	expiresAt: number;
 }
 
+function getSecret(): string {
+	const secret =
+		process.env.STATUS_PAGE_ACCESS_SECRET || process.env.BETTER_AUTH_SECRET;
+
+	if (!secret) {
+		throw new Error(
+			"Missing required environment variable: STATUS_PAGE_ACCESS_SECRET or BETTER_AUTH_SECRET must be set",
+		);
+	}
+
+	return secret;
+}
+
 function sign(payload: TokenPayload): string {
 	const data = JSON.stringify(payload);
-	const signature = createHmac("sha256", SECRET!).update(data).digest("hex");
+	const signature = createHmac("sha256", getSecret())
+		.update(data)
+		.digest("hex");
 	return Buffer.from(JSON.stringify({ ...payload, signature })).toString(
 		"base64url",
 	);
@@ -28,7 +35,7 @@ function verify(token: string): TokenPayload | null {
 		const decoded = JSON.parse(Buffer.from(token, "base64url").toString());
 		const { signature, ...payload } = decoded;
 
-		const expectedSignature = createHmac("sha256", SECRET!)
+		const expectedSignature = createHmac("sha256", getSecret())
 			.update(JSON.stringify(payload))
 			.digest("hex");
 
