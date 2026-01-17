@@ -1,8 +1,12 @@
 /** @type {import('sponsorkit').SponsorkitConfig} */
 export default {
-	login: "stripsior",
 	outputDir: ".github/sponsors",
 	formats: ["svg", "png"],
+
+	github: {
+		login: "stripsior",
+		type: "user",
+	},
 
 	tiers: [
 		{
