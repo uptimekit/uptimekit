@@ -1,10 +1,14 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 const TOKEN_EXPIRY_HOURS = 24;
 const SECRET =
-	process.env.STATUS_PAGE_ACCESS_SECRET ||
-	process.env.BETTER_AUTH_SECRET ||
-	"fallback-secret-change-me";
+	process.env.STATUS_PAGE_ACCESS_SECRET || process.env.BETTER_AUTH_SECRET;
+
+if (!SECRET) {
+	throw new Error(
+		"Missing required environment variable: STATUS_PAGE_ACCESS_SECRET or BETTER_AUTH_SECRET must be set",
+	);
+}
 
 interface TokenPayload {
 	statusPageId: string;
@@ -28,7 +32,14 @@ function verify(token: string): TokenPayload | null {
 			.update(JSON.stringify(payload))
 			.digest("hex");
 
-		if (signature !== expectedSignature) {
+		if (signature.length !== expectedSignature.length) {
+			return null;
+		}
+
+		const signatureBuffer = Buffer.from(signature, "utf8");
+		const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+
+		if (!timingSafeEqual(signatureBuffer, expectedBuffer)) {
 			return null;
 		}
 

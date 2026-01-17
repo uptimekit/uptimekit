@@ -152,7 +152,11 @@ export const statusPagesRouter = {
 				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
 			}
 
-			return page;
+			const { password, ...pageData } = page;
+			return {
+				...pageData,
+				hasPassword: !!password,
+			};
 		}),
 
 	update: writeProcedure

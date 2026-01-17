@@ -14,8 +14,13 @@ export async function checkRateLimit(
 		await redis.pexpire(key, WINDOW_MS);
 	}
 
-	const ttl = await redis.pttl(key);
-	const resetAt = now + (ttl > 0 ? ttl : WINDOW_MS);
+	let ttl = await redis.pttl(key);
+	if (ttl <= 0) {
+		await redis.pexpire(key, WINDOW_MS);
+		ttl = WINDOW_MS;
+	}
+
+	const resetAt = now + ttl;
 
 	return {
 		allowed: count <= MAX_ATTEMPTS,

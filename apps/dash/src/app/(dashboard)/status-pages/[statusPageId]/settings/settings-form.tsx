@@ -129,7 +129,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 	function onSubmit(data: SettingsFormValues) {
 		// Require password when setting to private without an existing password
-		if (data.isPrivate && !statusPage?.password && !data.password) {
+		if (data.isPrivate && !statusPage?.hasPassword && !data.password) {
 			form.setError("password", {
 				type: "manual",
 				message: "Password is required for private status pages",
@@ -379,7 +379,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												<Input
 													type="password"
 													placeholder={
-														statusPage?.password
+														statusPage?.hasPassword
 															? "Leave empty to keep existing password"
 															: "Enter a password"
 													}
@@ -387,7 +387,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												/>
 											</FormControl>
 											<FormDescription>
-												{statusPage?.password ? (
+												{statusPage?.hasPassword ? (
 													<span className="text-green-600 dark:text-green-400">
 														Password is currently set.{" "}
 													</span>

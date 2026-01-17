@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 				{
 					status: 401,
 					headers: {
-						"X-RateLimit-Remaining": String(remaining - 1),
+						"X-RateLimit-Remaining": String(Math.max(0, remaining)),
 					},
 				},
 			);

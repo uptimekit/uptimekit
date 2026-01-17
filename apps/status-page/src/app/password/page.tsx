@@ -7,6 +7,25 @@ import { PasswordForm } from "@/components/password-form";
 import { ThemeSetter } from "@/components/theme-setter";
 import { getCookieName, verifyAccessToken } from "@/lib/access-token";
 
+function isSafeInternalPath(path: string): boolean {
+	return (
+		path.startsWith("/") &&
+		!path.startsWith("//") &&
+		!/^\/[a-z][a-z0-9+.-]*:/i.test(path)
+	);
+}
+
+function safeDecodeRedirectPath(redirectPath: string | undefined): string {
+	if (!redirectPath) return "/";
+
+	try {
+		const decoded = decodeURIComponent(redirectPath);
+		return isSafeInternalPath(decoded) ? decoded : "/";
+	} catch {
+		return "/";
+	}
+}
+
 interface PasswordPageProps {
 	searchParams: Promise<{
 		pageId?: string;
@@ -43,16 +62,18 @@ export default async function PasswordPage({
 		notFound();
 	}
 
+	const safeRedirectPath = safeDecodeRedirectPath(redirectPath);
+
 	// If page is public or has no password, redirect away
 	if (page.public || !page.password) {
-		redirect((redirectPath || "/") as never);
+		redirect(safeRedirectPath as never);
 	}
 
 	// Check if already authenticated
 	const cookieStore = await cookies();
 	const token = cookieStore.get(getCookieName(pageId))?.value;
 	if (token && verifyAccessToken(token, pageId)) {
-		redirect((redirectPath || "/") as never);
+		redirect(safeRedirectPath as never);
 	}
 
 	const design = (page.design as { theme?: string }) || {};
@@ -62,10 +83,7 @@ export default async function PasswordPage({
 		<>
 			<ThemeSetter theme={theme} />
 			<main className="min-h-screen bg-background">
-				<PasswordForm
-					statusPageId={pageId}
-					redirectUrl={decodeURIComponent(redirectPath || "/")}
-				/>
+				<PasswordForm statusPageId={pageId} redirectUrl={safeRedirectPath} />
 			</main>
 		</>
 	);
