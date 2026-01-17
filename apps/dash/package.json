@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/dash",
-	"version": "2.0.3",
+	"version": "2.1.0",
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port=3000",
@@ -45,8 +45,8 @@
 		"@radix-ui/react-tooltip": "^1.2.8",
 		"@tanstack/react-form": "^1.12.3",
 		"@tanstack/react-query": "^5.85.5",
-		"@uptimekit/api": "workspace:2.0.3",
-		"@uptimekit/auth": "workspace:2.0.3",
+		"@uptimekit/api": "workspace:2.1.0",
+		"@uptimekit/auth": "workspace:2.1.0",
 		"babel-plugin-react-compiler": "^1.0.0",
 		"better-auth": "catalog:",
 		"class-variance-authority": "^0.7.1",
@@ -78,7 +78,7 @@
 		"@types/node": "^20",
 		"@types/react": "19.2.2",
 		"@types/react-dom": "19.2.2",
-		"@uptimekit/config": "workspace:2.0.3",
+		"@uptimekit/config": "workspace:2.1.0",
 		"tailwindcss": "^4.1.10",
 		"typescript": "^5"
 	}

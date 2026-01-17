@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/auth",
-	"version": "2.0.3",
+	"version": "2.1.0",
 	"private": true,
 	"exports": {
 		".": {
@@ -13,13 +13,13 @@
 	"type": "module",
 	"scripts": {},
 	"devDependencies": {
-		"@uptimekit/config": "workspace:2.0.3"
+		"@uptimekit/config": "workspace:2.1.0"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@uptimekit/db": "workspace:2.0.3",
+		"@uptimekit/db": "workspace:2.1.0",
 		"better-auth": "catalog:",
 		"dotenv": "catalog:",
 		"zod": "catalog:"

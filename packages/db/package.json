@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/db",
-	"version": "2.0.3",
+	"version": "2.1.0",
 	"private": true,
 	"type": "module",
 	"exports": {
@@ -19,7 +19,7 @@
 	},
 	"devDependencies": {
 		"@types/pg": "^8.15.6",
-		"@uptimekit/config": "workspace:2.0.3",
+		"@uptimekit/config": "workspace:2.1.0",
 		"drizzle-kit": "^0.31.8"
 	},
 	"peerDependencies": {
