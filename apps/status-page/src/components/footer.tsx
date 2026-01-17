@@ -12,24 +12,30 @@ export function Footer({
 	companyUrl = "https://github.com/uptimekit/uptimekit",
 	className,
 }: FooterProps) {
+	const currentYear = new Date().getFullYear();
+
 	return (
-		<footer className={cn("border-border border-t bg-card/50", className)}>
-			<div className="mx-auto max-w-4xl px-4 py-8">
-				<div className="flex flex-col items-center justify-between gap-4 text-muted-foreground text-sm sm:flex-row">
-					<p className="flex items-center gap-1">
-						Powered by{" "}
-						<a
-							href={companyUrl}
-							className="font-medium text-foreground transition-colors hover:text-primary"
-						>
-							{companyName}
-						</a>
-					</p>
-					<p className="flex items-center gap-1">
-						Made with{" "}
-						<Heart className="h-3.5 w-3.5 fill-current text-status-major-outage" />{" "}
-						for reliability
-					</p>
+		<footer
+			className={cn(
+				"w-full border-border/40 border-t bg-background py-5",
+				className,
+			)}
+		>
+			<div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 text-[13px] text-muted-foreground/80">
+				<div className="flex items-center gap-1.5">
+					<span>&copy; {currentYear}</span>
+					<a
+						href={companyUrl}
+						className="font-medium transition-colors hover:text-foreground"
+					>
+						{companyName}
+					</a>
+				</div>
+
+				<div className="flex items-center gap-1.5 opacity-70 transition-opacity hover:opacity-100">
+					<span>Made with</span>
+					<Heart className="h-3 w-3 fill-current text-red-500/70" />
+					<span className="hidden sm:inline">for global reliability</span>
 				</div>
 			</div>
 		</footer>
