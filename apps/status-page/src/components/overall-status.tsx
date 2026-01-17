@@ -81,10 +81,6 @@ export function OverallStatus({ status, className }: OverallStatusProps) {
 				className,
 			)}
 		>
-			{/* Gradient background - keeping it subtle or removing if desired, but user asked for compact, not necessarily flat.
-                Let's keep a very subtle hint or just standard card bg.
-                The screenshot implies a clean dark bar. Let's stick to standard card bg with the gradient hint for flavor if active.
-            */}
 			<div
 				className={cn(
 					"absolute inset-0 bg-gradient-to-r opacity-20",

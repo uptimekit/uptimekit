@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
 import { MonitorListItem } from "@/components/monitor-list-item";
 import { OverallStatus } from "@/components/overall-status";
+import { ScheduledMaintenanceSection } from "@/components/scheduled-maintenance-section";
 import type { StatusType } from "@/components/status-indicator";
 import { ThemeSetter } from "@/components/theme-setter";
 import type { UptimeDay } from "@/components/uptime-bar";
@@ -215,18 +216,6 @@ export default async function SlugStatusPage({
 	].sort(
 		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	);
-
-	const mappedScheduledMaintenances = scheduledMaintenances.map((m: any) => ({
-		id: m.id,
-		title: m.title,
-		status: m.status,
-		severity: "maintenance",
-		createdAt: m.startAt,
-		resolvedAt: null,
-		monitors: m.monitors,
-		activities: [],
-		detailsLink: buildPath(`/maintenance/${m.id}`, slug),
-	}));
 
 	const pastIncidents = [
 		...reports.map((r) => ({
@@ -597,24 +586,10 @@ export default async function SlugStatusPage({
 						</section>
 					)}
 
-					{mappedScheduledMaintenances.length > 0 && (
-						<section className="mb-16 animate-slide-up">
-							<h2 className="mb-6 flex items-center gap-3 font-bold text-2xl text-foreground">
-								Scheduled Maintenance
-							</h2>
-							<div className="space-y-6">
-								{mappedScheduledMaintenances.map((maintenance) => (
-									<IncidentCard
-										key={maintenance.id}
-										incident={maintenance as any}
-										isExpanded={false}
-										detailsLink={(maintenance as any).detailsLink}
-										className="border-none bg-card/50 shadow-none hover:bg-card/80"
-									/>
-								))}
-							</div>
-						</section>
-					)}
+					<ScheduledMaintenanceSection
+						scheduledMaintenances={scheduledMaintenances}
+						slug={slug}
+					/>
 
 					<section
 						className="animate-slide-up"
@@ -665,6 +640,7 @@ export default async function SlugStatusPage({
 										strokeLinejoin="round"
 										className="lucide lucide-arrow-down-circle"
 									>
+										<title>update</title>
 										<circle cx="12" cy="12" r="10" />
 										<path d="M8 12l4 4 4-4" />
 										<path d="M12 8v8" />
