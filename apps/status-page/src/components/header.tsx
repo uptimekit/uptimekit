@@ -17,7 +17,7 @@ export function Header({
 
 	return (
 		<header className={cn("relative", className)}>
-			<div className="relative mx-auto max-w-4xl px-4 py-8">
+			<div className="relative mx-auto max-w-5xl px-4 py-8">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						{logoUrl ? (
