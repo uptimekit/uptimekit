@@ -56,7 +56,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 ### Prerequisites
 
 - Node.js 20+
-- pnpm 9+
+- pnpm 10+
 - PostgreSQL
 
 ### Installation

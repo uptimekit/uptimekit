@@ -30,7 +30,7 @@ Before diving in, it helps to be familiar with the core technologies we use:
 2. **Install Prerequisites**
     Ensure you have the following installed:
     - Node.js 20+
-    - pnpm 9+ (`npm install -g pnpm`)
+    - pnpm 10+ (`npm install -g pnpm`)
     - Docker (optional, but recommended for local DB)
 
 3. **Install Dependencies**
@@ -123,7 +123,7 @@ Please write clear and descriptive commit messages.
 ### Pull Requests
 
 1. Push your branch to your fork.
-2. Open a Pull Request against the `development` branch of the original repository.
+2. Open a Pull Request against the `release` branch of the original repository.
 3. Provide a clear description of your changes, screenshots (if UI related), and link to any relevant issues.
 
 ## 🐛 Reporting Issues

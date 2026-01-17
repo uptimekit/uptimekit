@@ -4,10 +4,12 @@ We take the security of UptimeKit very seriously. If you discover a security vul
 
 ## Supported Versions
 
+We only provide security fixes for the **latest version** of UptimeKit. Please ensure you are running the most recent release to receive security updates.
+
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.x-2.x     | :white_check_mark: |
-| 0.x       | :x:                |
+| Latest  | :white_check_mark: |
+| Older   | :x:                |
 
 ## Reporting a Vulnerability
 
