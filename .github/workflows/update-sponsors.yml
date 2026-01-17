@@ -23,11 +23,15 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Sponsors
-        uses: antfu/sponsorkit-action@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          token: ${{ secrets.SPONSORS_TOKEN }}
-          login: stripsior
+          node-version: '20'
+
+      - name: Generate Sponsors
+        run: npx sponsorkit@latest
+        env:
+          SPONSORKIT_GITHUB_TOKEN: ${{ secrets.SPONSORS_TOKEN }}
 
       - name: Commit and Push Changes
         run: |
