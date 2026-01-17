@@ -3,19 +3,25 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	ChevronDown,
 	ExternalLink,
 	Image as ImageIcon,
 	LayoutGrid,
 	LayoutList,
 	Loader2,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Form,
 	FormControl,
@@ -35,12 +41,18 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 const settingsSchema = z.object({
 	name: z.string().min(1, "Company name is required"),
 	slug: z.string().min(1, "Subdomain is required"),
 	logoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+	faviconUrl: z
+		.string()
+		.url("Must be a valid URL")
+		.optional()
+		.or(z.literal("")),
 	websiteUrl: z
 		.string()
 		.url("Must be a valid URL")
@@ -100,6 +112,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			name: "",
 			slug: "",
 			logoUrl: "",
+			faviconUrl: "",
 			websiteUrl: "",
 			contactUrl: "",
 			theme: "light",
@@ -110,22 +123,29 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 		},
 	});
 
+	const [faviconOpen, setFaviconOpen] = useState(false);
+
 	useEffect(() => {
 		if (statusPage) {
 			const design = (statusPage.design as any) || {};
-			form.reset({
-				name: statusPage.name,
-				slug: statusPage.slug,
-				logoUrl: design.logoUrl || "",
-				websiteUrl: design.websiteUrl || "",
-				contactUrl: design.contactUrl || "",
-				theme: design.theme || "light",
-				headerLayout: design.headerLayout || "vertical",
-				customDomain: statusPage.domain || "",
-				isPrivate: !statusPage.public,
-			});
+			form.reset(
+				{
+					name: statusPage.name,
+					slug: statusPage.slug,
+					logoUrl: design.logoUrl || "",
+					faviconUrl: design.faviconUrl || "",
+					websiteUrl: design.websiteUrl || "",
+					contactUrl: design.contactUrl || "",
+					theme: design.theme || "light",
+					headerLayout: design.headerLayout || "vertical",
+					customDomain: statusPage.domain || "",
+					isPrivate: !statusPage.public,
+					password: "",
+				},
+				{ keepDefaultValues: false },
+			);
 		}
-	}, [statusPage, form]);
+	}, [statusPage]);
 
 	function onSubmit(data: SettingsFormValues) {
 		// Require password when setting to private without an existing password
@@ -146,6 +166,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			password: data.isPrivate ? data.password || undefined : null,
 			design: {
 				logoUrl: data.logoUrl,
+				faviconUrl: data.faviconUrl,
 				websiteUrl: data.websiteUrl,
 				contactUrl: data.contactUrl,
 				theme: data.theme,
@@ -325,7 +346,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												onValueChange={(val) =>
 													field.onChange(val === "private")
 												}
-												defaultValue={field.value ? "private" : "public"}
 												value={field.value ? "private" : "public"}
 											>
 												<SelectTrigger className="w-full">
@@ -351,7 +371,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											</FormLabel>
 											<Select
 												onValueChange={field.onChange}
-												defaultValue={field.value}
 												value={field.value}
 											>
 												<SelectTrigger className="w-full">
@@ -518,6 +537,61 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 									</FormItem>
 								)}
 							/>
+
+							{/* Favicon (Optional) */}
+							<Collapsible open={faviconOpen} onOpenChange={setFaviconOpen}>
+								<CollapsibleTrigger asChild>
+									<Button
+										variant="ghost"
+										className="flex w-full items-center justify-between p-0 hover:bg-transparent"
+										type="button"
+									>
+										<span className="text-muted-foreground text-sm">
+											Custom Favicon (Optional)
+										</span>
+										<ChevronDown
+											className={cn(
+												"h-4 w-4 text-muted-foreground transition-transform duration-200",
+												faviconOpen && "rotate-180",
+											)}
+										/>
+									</Button>
+								</CollapsibleTrigger>
+								<CollapsibleContent className="mt-4">
+									<FormField
+										control={form.control}
+										name="faviconUrl"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Favicon URL</FormLabel>
+												<div className="flex items-center gap-4 rounded-lg border bg-card p-4">
+													{field.value ? (
+														<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
+															{/* eslint-disable-next-line @next/next/no-img-element */}
+															<img
+																src={field.value}
+																alt="Favicon preview"
+																className="h-full w-full object-contain p-1"
+															/>
+														</div>
+													) : (
+														<div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted">
+															<ImageIcon className="h-6 w-6 text-muted-foreground" />
+														</div>
+													)}
+													<div className="flex-1 space-y-2">
+														<Input placeholder="https://..." {...field} />
+														<p className="text-muted-foreground text-xs">
+															Custom favicon for browser tabs. If not set, your
+															logo will be used as the favicon.
+														</p>
+													</div>
+												</div>
+											</FormItem>
+										)}
+									/>
+								</CollapsibleContent>
+							</Collapsible>
 						</CardContent>
 					</Card>
 				</div>
