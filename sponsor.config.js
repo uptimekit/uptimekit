@@ -47,7 +47,6 @@ export default {
 		},
 		{
 			title: "Supporters",
-			monthlyDollars: -1,
 			preset: {
 				avatar: { size: 35 },
 				boxWidth: 50,
