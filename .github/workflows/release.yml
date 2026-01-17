@@ -60,6 +60,13 @@ jobs:
           
           # Push to release branch
           git push origin HEAD:release
+          
+          # Sync to development
+          git fetch origin release
+          git checkout development
+          git pull origin development
+          git merge origin/release
+          git push origin development
 
       - name: Find All Packages with Dockerfiles
         id: detect
@@ -108,7 +115,7 @@ jobs:
     name: Publish Docker Images
     needs: prepare
     if: needs.prepare.outputs.has_releases == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     permissions:
       contents: read
       packages: write
