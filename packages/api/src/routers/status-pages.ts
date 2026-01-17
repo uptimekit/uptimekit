@@ -71,8 +71,10 @@ export const statusPagesRouter = {
 					// TODO: Implement subscriber count when subscribers table is ready
 					const subscriberCount = 0;
 
+					const { password, ...pageData } = page;
 					return {
-						...page,
+						...pageData,
+						hasPassword: !!password,
 						monitorsCount: monitorCount,
 						subscribers: subscriberCount,
 					};
