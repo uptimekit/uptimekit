@@ -17,7 +17,7 @@ interface TokenPayload {
 
 function sign(payload: TokenPayload): string {
 	const data = JSON.stringify(payload);
-	const signature = createHmac("sha256", SECRET).update(data).digest("hex");
+	const signature = createHmac("sha256", SECRET!).update(data).digest("hex");
 	return Buffer.from(JSON.stringify({ ...payload, signature })).toString(
 		"base64url",
 	);
@@ -28,7 +28,7 @@ function verify(token: string): TokenPayload | null {
 		const decoded = JSON.parse(Buffer.from(token, "base64url").toString());
 		const { signature, ...payload } = decoded;
 
-		const expectedSignature = createHmac("sha256", SECRET)
+		const expectedSignature = createHmac("sha256", SECRET!)
 			.update(JSON.stringify(payload))
 			.digest("hex");
 
