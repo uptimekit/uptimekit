@@ -60,13 +60,6 @@ jobs:
           
           # Push to release branch
           git push origin HEAD:release
-          
-          # Sync to development
-          git fetch origin release
-          git checkout development
-          git pull origin development
-          git merge origin/release
-          git push origin development
 
       - name: Find All Packages with Dockerfiles
         id: detect
