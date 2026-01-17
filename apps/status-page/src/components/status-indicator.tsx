@@ -14,6 +14,8 @@ export type StatusType =
 	| "partial_outage"
 	| "major_outage"
 	| "maintenance"
+	| "maintenance_scheduled"
+	| "maintenance_completed"
 	| "unknown";
 
 interface StatusIndicatorProps {
@@ -61,6 +63,18 @@ export const statusConfig: Record<
 		color: "text-status-maintenance",
 		bgColor: "bg-status-maintenance",
 		icon: Wrench,
+	},
+	maintenance_scheduled: {
+		label: "Scheduled Maintenance",
+		color: "text-status-partial-outage",
+		bgColor: "bg-status-partial-outage",
+		icon: Wrench,
+	},
+	maintenance_completed: {
+		label: "Maintenance Completed",
+		color: "text-status-operational",
+		bgColor: "bg-status-operational",
+		icon: CheckCircle2,
 	},
 	unknown: {
 		label: "Unknown",

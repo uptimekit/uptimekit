@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
 import { MonitorListItem } from "@/components/monitor-list-item";
 import { OverallStatus } from "@/components/overall-status";
+import { ScheduledMaintenanceSection } from "@/components/scheduled-maintenance-section";
 import type { StatusType } from "@/components/status-indicator";
 import { ThemeSetter } from "@/components/theme-setter";
 import type { UptimeDay } from "@/components/uptime-bar";
@@ -16,6 +17,7 @@ import {
 	getMaintenanceHistory,
 	getMonitorStatus,
 	getMonitorUptime,
+	getScheduledMaintenances,
 	getStatusPageBySlug,
 	getStatusPageEvents,
 	getStatusPageReports,
@@ -170,10 +172,12 @@ export default async function SlugStatusPage({
 	// Check access for private pages
 	await checkStatusPageAccess(pageConfig, `/${slug}`);
 
-	const [activeReports, activeMaintenances] = await Promise.all([
-		getActiveStatusPageReports(pageConfig.id),
-		getActiveMaintenances(pageConfig.id),
-	]);
+	const [activeReports, activeMaintenances, scheduledMaintenances] =
+		await Promise.all([
+			getActiveStatusPageReports(pageConfig.id),
+			getActiveMaintenances(pageConfig.id),
+			getScheduledMaintenances(pageConfig.id),
+		]);
 
 	const [reports, maintenances, events] = await Promise.all([
 		getStatusPageReports(pageConfig.id),
@@ -582,6 +586,11 @@ export default async function SlugStatusPage({
 						</section>
 					)}
 
+					<ScheduledMaintenanceSection
+						scheduledMaintenances={scheduledMaintenances}
+						slug={slug}
+					/>
+
 					<section
 						className="animate-slide-up"
 						style={{ animationDelay: "0.2s" }}
@@ -631,6 +640,7 @@ export default async function SlugStatusPage({
 										strokeLinejoin="round"
 										className="lucide lucide-arrow-down-circle"
 									>
+										<title>update</title>
 										<circle cx="12" cy="12" r="10" />
 										<path d="M8 12l4 4 4-4" />
 										<path d="M12 8v8" />

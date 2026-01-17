@@ -9,6 +9,7 @@ import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
 	getMaintenanceHistory,
+	getScheduledMaintenances,
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
 import { buildPath } from "@/lib/route-utils";
@@ -26,17 +27,19 @@ export default async function SlugMaintenanceDetailsPage({
 		notFound();
 	}
 
-	// Check access for private pages
 	await checkStatusPageAccess(pageConfig, `/${slug}/maintenance/${id}`);
 
-	const [history, activeReports, activeMaintenances] = await Promise.all([
-		getMaintenanceHistory(pageConfig.id, 1000),
-		getActiveStatusPageReports(pageConfig.id),
-		getActiveMaintenances(pageConfig.id),
-	]);
+	const [history, activeReports, activeMaintenances, scheduledMaintenances] =
+		await Promise.all([
+			getMaintenanceHistory(pageConfig.id, 1000),
+			getActiveStatusPageReports(pageConfig.id),
+			getActiveMaintenances(pageConfig.id),
+			getScheduledMaintenances(pageConfig.id),
+		]);
 
 	const maintenanceItem =
 		activeMaintenances.find((m) => m.id === id) ||
+		scheduledMaintenances.find((m) => m.id === id) ||
 		history.find((m) => m.id === id);
 
 	if (!maintenanceItem) {
@@ -48,7 +51,10 @@ export default async function SlugMaintenanceDetailsPage({
 		title: maintenanceItem.title,
 		status: maintenanceItem.status,
 		severity: "maintenance",
-		createdAt: maintenanceItem.createdAt,
+		createdAt:
+			maintenanceItem.status === "scheduled"
+				? maintenanceItem.startAt
+				: maintenanceItem.createdAt,
 		resolvedAt: maintenanceItem.endAt,
 		monitors: maintenanceItem.monitors,
 		activities:
@@ -61,7 +67,7 @@ export default async function SlugMaintenanceDetailsPage({
 		detailsLink: buildPath(`/maintenance/${maintenanceItem.id}`, slug),
 	};
 
-	const combinedActive = [
+	const filteredCombinedActive = [
 		...activeReports.map((r: any) => ({
 			id: r.id,
 			title: r.title,
@@ -78,17 +84,19 @@ export default async function SlugMaintenanceDetailsPage({
 			})),
 			detailsLink: buildPath(`/incidents/${r.id}`, slug),
 		})),
-		...activeMaintenances.map((m: any) => ({
-			id: m.id,
-			title: m.title,
-			status: m.status,
-			severity: "maintenance",
-			createdAt: m.createdAt,
-			resolvedAt: m.endAt,
-			monitors: m.monitors,
-			activities: [],
-			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
-		})),
+		...activeMaintenances
+			.filter((m) => m.id !== id)
+			.map((m: any) => ({
+				id: m.id,
+				title: m.title,
+				status: m.status,
+				severity: "maintenance",
+				createdAt: m.createdAt,
+				resolvedAt: m.endAt,
+				monitors: m.monitors,
+				activities: [],
+				detailsLink: buildPath(`/maintenance/${m.id}`, slug),
+			})),
 	].sort(
 		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 	);
@@ -104,7 +112,7 @@ export default async function SlugMaintenanceDetailsPage({
 			/>
 
 			<main className="w-full flex-1">
-				<div className="mx-auto max-w-3xl px-4 py-12">
+				<div className="mx-auto max-w-5xl px-4 py-12">
 					<div className="mb-8">
 						<Link
 							href={`/${slug}` as any}
@@ -115,7 +123,7 @@ export default async function SlugMaintenanceDetailsPage({
 						</Link>
 					</div>
 
-					{combinedActive.length > 0 && (
+					{filteredCombinedActive.length > 0 && (
 						<section className="mb-12 animate-slide-up">
 							<h2 className="mb-6 flex items-center gap-3 font-bold text-foreground/80 text-lg">
 								<span className="relative flex h-2.5 w-2.5">
@@ -125,7 +133,7 @@ export default async function SlugMaintenanceDetailsPage({
 								Current Issues
 							</h2>
 							<div className="space-y-6">
-								{combinedActive.map((item) => (
+								{filteredCombinedActive.map((item) => (
 									<IncidentCard
 										key={item.id}
 										incident={item as any}
@@ -141,7 +149,7 @@ export default async function SlugMaintenanceDetailsPage({
 
 					<div className="opacity-80">
 						<div className="mb-2 font-medium text-muted-foreground text-sm uppercase tracking-wider">
-							Historical Maintenance Report
+							Maintenance Details
 						</div>
 						<IncidentCard
 							incident={incidentData}

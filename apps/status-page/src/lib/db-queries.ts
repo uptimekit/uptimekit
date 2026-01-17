@@ -345,7 +345,6 @@ export const getActiveMaintenances = async (statusPageId: string) => {
 				)
 				.orderBy(desc(maintenance.startAt));
 
-			// Fetch monitors for each maintenance
 			const maintenanceWithMonitors = await Promise.all(
 				activeMaintenances.map(async (m) => {
 					const monitors = await db.query.maintenanceMonitor.findMany({
@@ -367,6 +366,53 @@ export const getActiveMaintenances = async (statusPageId: string) => {
 			return maintenanceWithMonitors;
 		},
 	);
+};
+
+export const getScheduledMaintenances = async (statusPageId: string) => {
+	return cached(`scheduled-maintenances:${statusPageId}`, 60, async () => {
+		const scheduledMaintenances = await db
+			.select({
+				id: maintenance.id,
+				title: maintenance.title,
+				status: maintenance.status,
+				startAt: maintenance.startAt,
+				endAt: maintenance.endAt,
+				createdAt: maintenance.createdAt,
+				description: maintenance.description,
+			})
+			.from(maintenance)
+			.innerJoin(
+				maintenanceStatusPage,
+				eq(maintenance.id, maintenanceStatusPage.maintenanceId),
+			)
+			.where(
+				and(
+					eq(maintenanceStatusPage.statusPageId, statusPageId),
+					eq(maintenance.status, "scheduled"),
+				),
+			)
+			.orderBy(asc(maintenance.startAt));
+
+		const maintenanceWithMonitors = await Promise.all(
+			scheduledMaintenances.map(async (m) => {
+				const monitors = await db.query.maintenanceMonitor.findMany({
+					where: eq(maintenanceMonitor.maintenanceId, m.id),
+					with: {
+						monitor: true,
+					},
+				});
+
+				const updates = await db.query.maintenanceUpdate.findMany({
+					where: eq(maintenanceUpdate.maintenanceId, m.id),
+					orderBy: [desc(maintenanceUpdate.createdAt)],
+				});
+
+				return { ...m, monitors, updates };
+			}),
+		);
+
+		return maintenanceWithMonitors;
+	});
 };
 
 export const getActiveStatusPageReports = async (statusPageId: string) => {

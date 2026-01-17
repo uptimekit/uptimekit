@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { IncidentCard } from "@/components/incident-card";
 import { MonitorListItem } from "@/components/monitor-list-item";
 import { OverallStatus } from "@/components/overall-status";
+import { ScheduledMaintenanceSection } from "@/components/scheduled-maintenance-section";
 import type { StatusType } from "@/components/status-indicator";
 import { ThemeSetter } from "@/components/theme-setter";
 import type { UptimeDay } from "@/components/uptime-bar";
@@ -16,6 +17,7 @@ import {
 	getMaintenanceHistory,
 	getMonitorStatus,
 	getMonitorUptime,
+	getScheduledMaintenances,
 	getStatusPageByDomain,
 	getStatusPageEvents,
 	getStatusPageReports,
@@ -215,10 +217,12 @@ export default async function StatusPage() {
 	// Check access for private pages
 	await checkStatusPageAccess(pageConfig, "/");
 
-	const [activeReports, activeMaintenances] = await Promise.all([
-		getActiveStatusPageReports(pageConfig.id),
-		getActiveMaintenances(pageConfig.id),
-	]);
+	const [activeReports, activeMaintenances, scheduledMaintenances] =
+		await Promise.all([
+			getActiveStatusPageReports(pageConfig.id),
+			getActiveMaintenances(pageConfig.id),
+			getScheduledMaintenances(pageConfig.id),
+		]);
 
 	const [reports, maintenances, events] = await Promise.all([
 		getStatusPageReports(pageConfig.id),
@@ -684,6 +688,10 @@ export default async function StatusPage() {
 							</div>
 						</section>
 					)}
+
+					<ScheduledMaintenanceSection
+						scheduledMaintenances={scheduledMaintenances}
+					/>
 
 					{/* Previous Incidents */}
 					<section
