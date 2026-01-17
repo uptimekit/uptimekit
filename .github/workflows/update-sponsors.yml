@@ -2,223 +2,38 @@ name: Update Sponsors
 
 on:
   schedule:
-    # Run daily at 00:00 UTC
     - cron: '0 0 * * *'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
   push:
     branches:
       - release
     paths:
       - '.github/workflows/update-sponsors.yml'
+      - 'sponsor.config.ts'
 
 jobs:
   update-sponsors:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Generate Sponsors
+        uses: antfu/sponsorkit-action@v1
         with:
-          node-version: '20'
-
-      - name: Fetch GitHub Sponsors
-        id: fetch-sponsors
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.SPONSORS_TOKEN }}
-          script: |
-            const query = `
-              query {
-                user(login: "stripsior") {
-                  sponsorshipsAsMaintainer(first: 100, activeOnly: false) {
-                    totalCount
-                    nodes {
-                      sponsorEntity {
-                        ... on User {
-                          login
-                          name
-                          avatarUrl
-                          url
-                        }
-                        ... on Organization {
-                          login
-                          name
-                          avatarUrl
-                          url
-                        }
-                      }
-                      tier {
-                        monthlyPriceInDollars
-                      }
-                      isActive
-                    }
-                  }
-                }
-              }
-            `;
-
-            try {
-              console.log('Fetching sponsors for user: stripsior');
-              const result = await github.graphql(query);
-              console.log('GraphQL result:', JSON.stringify(result, null, 2));
-              
-              const totalCount = result.user.sponsorshipsAsMaintainer.totalCount;
-              console.log(`Total sponsorships found: ${totalCount}`);
-              
-              const sponsors = result.user.sponsorshipsAsMaintainer.nodes
-                .filter(node => node.isActive)
-                .map(node => ({
-                  login: node.sponsorEntity.login,
-                  name: node.sponsorEntity.name || node.sponsorEntity.login,
-                  avatarUrl: node.sponsorEntity.avatarUrl,
-                  url: node.sponsorEntity.url,
-                  tier: node.tier?.monthlyPriceInDollars || 0
-                }))
-                .sort((a, b) => b.tier - a.tier); // Sort by tier (highest first)
-
-              console.log(`Active sponsors: ${sponsors.length}`);
-              console.log('Sponsors data:', JSON.stringify(sponsors, null, 2));
-              
-              return sponsors;
-            } catch (error) {
-              console.error('Error fetching sponsors:', error);
-              console.error('Error details:', JSON.stringify(error, null, 2));
-              return [];
-            }
-
-      - name: Generate and Update Sponsors Section
-        uses: actions/github-script@v7
-        env:
-          SPONSORS_DATA: ${{ steps.fetch-sponsors.outputs.result }}
-        with:
-          script: |
-            const fs = require('fs');
-            const sponsors = JSON.parse(process.env.SPONSORS_DATA || '[]');
-
-            if (sponsors.length === 0) {
-              console.log('No sponsors found, keeping placeholder');
-              return;
-            }
-
-            // Group sponsors by tier
-            const goldSponsors = sponsors.filter(s => s.tier >= 100);
-            const silverSponsors = sponsors.filter(s => s.tier >= 50 && s.tier < 100);
-            const bronzeSponsors = sponsors.filter(s => s.tier >= 10 && s.tier < 50);
-            const supporters = sponsors.filter(s => s.tier < 10);
-
-            let sections = [];
-            sections.push('## 💝 Sponsors');
-            sections.push('');
-            sections.push('Thank you to all our amazing sponsors who make this project possible!');
-            sections.push('');
-
-            // Gold Sponsors (>= $100/month)
-            if (goldSponsors.length > 0) {
-              sections.push('### 🥇 Gold Sponsors');
-              sections.push('');
-              sections.push('<div align="center">');
-              for (const sponsor of goldSponsors) {
-                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
-                sections.push(`    <img src="${sponsor.avatarUrl}" width="80" height="80" alt="${sponsor.name}" style="border-radius: 50%; margin: 10px;" />`);
-                sections.push(`  </a>`);
-              }
-              sections.push('</div>');
-              sections.push('');
-            }
-
-            // Silver Sponsors ($50-$99/month)
-            if (silverSponsors.length > 0) {
-              sections.push('### 🥈 Silver Sponsors');
-              sections.push('');
-              sections.push('<div align="center">');
-              for (const sponsor of silverSponsors) {
-                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
-                sections.push(`    <img src="${sponsor.avatarUrl}" width="60" height="60" alt="${sponsor.name}" style="border-radius: 50%; margin: 8px;" />`);
-                sections.push(`  </a>`);
-              }
-              sections.push('</div>');
-              sections.push('');
-            }
-
-            // Bronze Sponsors ($10-$49/month)
-            if (bronzeSponsors.length > 0) {
-              sections.push('### 🥉 Bronze Sponsors');
-              sections.push('');
-              sections.push('<div align="center">');
-              for (const sponsor of bronzeSponsors) {
-                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
-                sections.push(`    <img src="${sponsor.avatarUrl}" width="50" height="50" alt="${sponsor.name}" style="border-radius: 50%; margin: 6px;" />`);
-                sections.push(`  </a>`);
-              }
-              sections.push('</div>');
-              sections.push('');
-            }
-
-            // Supporters (< $10/month)
-            if (supporters.length > 0) {
-              sections.push('### ❤️ Supporters');
-              sections.push('');
-              sections.push('<div align="center">');
-              for (const sponsor of supporters) {
-                sections.push(`  <a href="${sponsor.url}" title="${sponsor.name}">`);
-                sections.push(`    <img src="${sponsor.avatarUrl}" width="40" height="40" alt="${sponsor.name}" style="border-radius: 50%; margin: 4px;" />`);
-                sections.push(`  </a>`);
-              }
-              sections.push('</div>');
-              sections.push('');
-            }
-
-            sections.push('**[Become a sponsor](https://github.com/sponsors/stripsior)** and get your logo/avatar here!');
-
-            const sponsorsSection = sections.join('\n');
-
-            // Now update the README directly
-            let readme = fs.readFileSync('README.md', 'utf8');
-
-            // Define markers for the sponsors section
-            const startMarker = '<!-- SPONSORS:START -->';
-            const endMarker = '<!-- SPONSORS:END -->';
-
-            // Check if markers exist
-            if (readme.includes(startMarker) && readme.includes(endMarker)) {
-              // Replace existing content between markers
-              const regex = new RegExp(`${startMarker}[\\s\\S]*?${endMarker}`, 'g');
-              readme = readme.replace(regex, `${startMarker}\n${sponsorsSection}\n${endMarker}`);
-            } else {
-              // Add markers and section before the Contributing section
-              const contributingIndex = readme.indexOf('## 🤝 Contributing');
-              if (contributingIndex !== -1) {
-                const beforeContributing = readme.substring(0, contributingIndex);
-                const afterContributing = readme.substring(contributingIndex);
-                readme = `${beforeContributing}${startMarker}\n${sponsorsSection}\n${endMarker}\n\n${afterContributing}`;
-              } else {
-                // If no Contributing section, add at the end before the footer
-                const footerIndex = readme.indexOf('---\n\n<div align="center">');
-                if (footerIndex !== -1) {
-                  const beforeFooter = readme.substring(0, footerIndex);
-                  const afterFooter = readme.substring(footerIndex);
-                  readme = `${beforeFooter}${startMarker}\n${sponsorsSection}\n${endMarker}\n\n${afterFooter}`;
-                } else {
-                  // Just add at the end
-                  readme += `\n\n${startMarker}\n${sponsorsSection}\n${endMarker}\n`;
-                }
-              }
-            }
-
-            fs.writeFileSync('README.md', readme);
+          token: ${{ secrets.SPONSORS_TOKEN }}
+          login: stripsior
 
       - name: Commit and Push Changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add README.md
+          git add .
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
