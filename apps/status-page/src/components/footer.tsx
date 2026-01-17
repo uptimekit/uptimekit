@@ -34,7 +34,11 @@ export function Footer({
 
 				<div className="flex items-center gap-1.5 opacity-70 transition-opacity hover:opacity-100">
 					<span>Made with</span>
-					<Heart className="h-3 w-3 fill-current text-red-500/70" />
+					<Heart
+						aria-hidden="true"
+						focusable="false"
+						className="h-3 w-3 fill-current text-red-500/70"
+					/>
 					<span className="hidden sm:inline">for global reliability</span>
 				</div>
 			</div>
