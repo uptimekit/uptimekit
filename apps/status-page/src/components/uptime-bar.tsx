@@ -52,6 +52,8 @@ const statusColors: Record<StatusType, string> = {
 	partial_outage: "bg-status-partial-outage",
 	major_outage: "bg-status-major-outage",
 	maintenance: "bg-status-maintenance",
+	maintenance_scheduled: "bg-status-partial-outage",
+	maintenance_completed: "bg-status-operational",
 	unknown: "bg-status-unknown/20",
 };
 

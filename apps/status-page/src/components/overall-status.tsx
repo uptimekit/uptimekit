@@ -30,9 +30,17 @@ const statusMessages: Record<
 			"Multiple services are experiencing issues. Our team is working on it.",
 	},
 	maintenance: {
-		title: "Scheduled Maintenance",
+		title: "Under Maintenance",
 		description:
 			"System is undergoing planned maintenance. Services may be temporarily unavailable.",
+	},
+	maintenance_scheduled: {
+		title: "Maintenance Scheduled",
+		description: "Upcoming maintenance is scheduled.",
+	},
+	maintenance_completed: {
+		title: "Maintenance Completed",
+		description: "Planned maintenance has been completed.",
 	},
 	unknown: {
 		title: "Status Unknown",
@@ -50,6 +58,10 @@ const statusGradients: Record<StatusType, string> = {
 		"from-status-major-outage/10 via-status-major-outage/5 to-transparent",
 	maintenance:
 		"from-status-maintenance/10 via-status-maintenance/5 to-transparent",
+	maintenance_scheduled:
+		"from-status-partial-outage/10 via-status-partial-outage/5 to-transparent",
+	maintenance_completed:
+		"from-status-operational/10 via-status-operational/5 to-transparent",
 	unknown: "from-status-unknown/10 via-status-unknown/5 to-transparent",
 };
 
@@ -69,8 +81,8 @@ export function OverallStatus({ status, className }: OverallStatusProps) {
 				className,
 			)}
 		>
-			{/* Gradient background - keeping it subtle or removing if desired, but user asked for compact, not necessarily flat. 
-                Let's keep a very subtle hint or just standard card bg. 
+			{/* Gradient background - keeping it subtle or removing if desired, but user asked for compact, not necessarily flat.
+                Let's keep a very subtle hint or just standard card bg.
                 The screenshot implies a clean dark bar. Let's stick to standard card bg with the gradient hint for flavor if active.
             */}
 			<div
