@@ -180,6 +180,7 @@ export const statusPagesRouter = {
 				websiteUrl: z.string().optional().nullable(),
 				design: z
 					.object({
+						themeId: z.string().optional(),
 						logoUrl: z.string().optional(),
 						websiteUrl: z.string().optional(),
 						contactUrl: z.string().optional(),
