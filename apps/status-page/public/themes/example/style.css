@@ -1,0 +1,78 @@
+/* Minimal Theme Custom Styles */
+/* Override CSS variables to customize colors, fonts, shadows, and more */
+
+/*
+ * This theme can override any CSS variable from index.css
+ * All components use these variables via Tailwind/shadcn classes
+ */
+
+/* Light mode overrides */
+[data-theme="example"] {
+	/* Brand Colors */
+	--primary: oklch(0.45 0.25 264);
+	/* Custom primary color (purple) */
+	--primary-foreground: oklch(1 0 0);
+
+	/* Background & Surface */
+	--background: oklch(0.98 0 0);
+	/* Slightly warmer background */
+	--card: oklch(1 0 0);
+	--border: oklch(0.90 0 0);
+	/* Slightly darker borders */
+
+	/* Text Colors */
+	--foreground: oklch(0.15 0 0);
+	/* Darker text for better contrast */
+	--muted-foreground: oklch(0.50 0 0);
+
+	/* Status Colors - can be customized for brand alignment */
+	--status-operational: oklch(0.60 0.20 150);
+	/* Green */
+	--status-degraded: oklch(0.70 0.20 85);
+	/* Yellow */
+	--status-partial-outage: oklch(0.65 0.22 50);
+	/* Orange */
+	--status-major-outage: oklch(0.55 0.25 25);
+	/* Red */
+	--status-maintenance: oklch(0.58 0.22 250);
+	/* Purple */
+
+	/* Typography */
+	--font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+	/* Spacing & Borders */
+	--radius: 0.75rem;
+	/* More rounded corners */
+
+	/* Shadows - lighter for minimal aesthetic */
+	--shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-md: 0px 2px 4px 0px hsl(0 0% 0% / 0.08);
+}
+
+/* Dark mode overrides (if theme supports dark mode) */
+[data-theme="example"].dark {
+	--background: oklch(0.15 0 0);
+	--foreground: oklch(0.95 0 0);
+	--card: oklch(0.18 0 0);
+	--border: oklch(0.25 0 0);
+
+	/* Status colors can be adjusted for dark mode visibility */
+	--status-operational: oklch(0.65 0.20 150);
+	--status-major-outage: oklch(0.60 0.25 25);
+}
+
+/* Custom component-specific styles (optional) */
+[data-theme="example"] .status-badge {
+	/* Custom animations or effects */
+	transition: all 0.2s ease;
+}
+
+[data-theme="example"] .status-badge:hover {
+	transform: scale(1.02);
+}
+
+/* Example: Custom card hover effect */
+[data-theme="example"] [class*="bg-card"]:hover {
+	box-shadow: var(--shadow-md);
+	transition: box-shadow 0.2s ease;
+}

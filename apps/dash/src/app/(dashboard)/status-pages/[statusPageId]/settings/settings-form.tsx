@@ -64,6 +64,7 @@ const settingsSchema = z.object({
 		.or(z.string().url("Must be a valid URL"))
 		.optional()
 		.or(z.literal("")),
+	themeId: z.string().optional(),
 	theme: z.enum(["light", "dark"]),
 	headerLayout: z.enum(["vertical", "horizontal"]),
 	customDomain: z.string().optional().or(z.literal("")),
@@ -115,6 +116,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			faviconUrl: "",
 			websiteUrl: "",
 			contactUrl: "",
+			themeId: "default",
 			theme: "light",
 			headerLayout: "vertical",
 			customDomain: "",
@@ -136,6 +138,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 					faviconUrl: design.faviconUrl || "",
 					websiteUrl: design.websiteUrl || "",
 					contactUrl: design.contactUrl || "",
+					themeId: design.themeId || "default",
 					theme: design.theme || "light",
 					headerLayout: design.headerLayout || "vertical",
 					customDomain: statusPage.domain || "",
@@ -165,6 +168,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			public: !data.isPrivate,
 			password: data.isPrivate ? data.password || undefined : null,
 			design: {
+				themeId: data.themeId,
 				logoUrl: data.logoUrl,
 				faviconUrl: data.faviconUrl,
 				websiteUrl: data.websiteUrl,
@@ -336,26 +340,31 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 								<FormField
 									control={form.control}
-									name="isPrivate"
+									name="themeId"
 									render={({ field }) => (
 										<FormItem className="flex h-full flex-col">
 											<FormLabel className="flex h-6 items-end pb-1">
-												Status page visibility
+												Page theme
 											</FormLabel>
 											<Select
-												onValueChange={(val) =>
-													field.onChange(val === "private")
-												}
-												value={field.value ? "private" : "public"}
+												onValueChange={field.onChange}
+												value={field.value}
 											>
 												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select visibility" />
+													<SelectValue placeholder="Select page theme" />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="public">Public</SelectItem>
-													<SelectItem value="private">Private</SelectItem>
+													<SelectItem value="default">
+														Default - Classic design with uptime history
+													</SelectItem>
+													{/* <SelectItem value="example">
+														Example Theme
+													</SelectItem> */}
 												</SelectContent>
 											</Select>
+											<FormDescription className="pt-2">
+												Choose the layout and style for your status page
+											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
@@ -379,6 +388,35 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												<SelectContent>
 													<SelectItem value="dark">Dark version</SelectItem>
 													<SelectItem value="light">Light version</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+								<FormField
+									control={form.control}
+									name="isPrivate"
+									render={({ field }) => (
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
+												Status page visibility
+											</FormLabel>
+											<Select
+												onValueChange={(val) =>
+													field.onChange(val === "private")
+												}
+												value={field.value ? "private" : "public"}
+											>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Select visibility" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="public">Public</SelectItem>
+													<SelectItem value="private">Private</SelectItem>
 												</SelectContent>
 											</Select>
 											<FormMessage />
