@@ -17,10 +17,12 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 }: ThemePageWrapperProps<T>) {
 	const manifest = getThemeManifest(themeId);
 
+	const sanitizedThemeId = JSON.stringify(themeId);
+
 	const themeScript = `
 		(function() {
 			const root = document.documentElement;
-			root.setAttribute('data-theme', '${themeId}');
+			root.setAttribute('data-theme', ${sanitizedThemeId});
 			${theme ? `root.classList.${theme === "dark" ? "add" : "remove"}('dark');` : ""}
 		})();
 	`;

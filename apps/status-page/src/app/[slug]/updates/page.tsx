@@ -25,7 +25,12 @@ export default async function SlugUpdatesPage({
 
 	const UpdatesPage = await loadUpdatesComponent(themeId);
 
-	const data = await prepareUpdatesPageData(pageConfig, slug);
+	let data;
+	try {
+		data = await prepareUpdatesPageData(pageConfig, slug);
+	} catch (error) {
+		notFound();
+	}
 
 	return (
 		<ThemePageWrapper

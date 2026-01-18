@@ -7,7 +7,7 @@
  */
 
 /* Light mode overrides */
-[data-theme="minimal"] {
+[data-theme="example"] {
 	/* Brand Colors */
 	--primary: oklch(0.45 0.25 264);
 	/* Custom primary color (purple) */
@@ -50,7 +50,7 @@
 }
 
 /* Dark mode overrides (if theme supports dark mode) */
-[data-theme="minimal"].dark {
+[data-theme="example"].dark {
 	--background: oklch(0.15 0 0);
 	--foreground: oklch(0.95 0 0);
 	--card: oklch(0.18 0 0);
@@ -62,17 +62,17 @@
 }
 
 /* Custom component-specific styles (optional) */
-[data-theme="minimal"] .status-badge {
+[data-theme="example"] .status-badge {
 	/* Custom animations or effects */
 	transition: all 0.2s ease;
 }
 
-[data-theme="minimal"] .status-badge:hover {
+[data-theme="example"] .status-badge:hover {
 	transform: scale(1.02);
 }
 
 /* Example: Custom card hover effect */
-[data-theme="minimal"] [class*="bg-card"]:hover {
+[data-theme="example"] [class*="bg-card"]:hover {
 	box-shadow: var(--shadow-md);
 	transition: box-shadow 0.2s ease;
 }
