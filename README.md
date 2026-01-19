@@ -76,7 +76,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 3. **Environment Setup**
 
-    Copy the `.env.example` files in `apps/dash`, `apps/status-page`, `apps/scheduler`.
+    Copy the `.env.example` file in `.env`
 
 4. **Database Setup**
 
