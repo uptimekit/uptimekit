@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
+import { WorkerVersionBadge } from "@/components/admin/worker-version-badge";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -23,6 +24,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -56,6 +58,7 @@ interface Worker {
 	active: boolean;
 	lastHeartbeat: Date | null;
 	version: string | null;
+	features: string[] | null;
 }
 
 /**
@@ -219,12 +222,25 @@ export function WorkersTable() {
 									</TableCell>
 									<TableCell>
 										<div className="grid gap-1">
-											<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
-												{worker.name}
-												<span className="ml-2 rounded border px-1 font-normal text-muted-foreground text-xs">
-													{worker.version}
+											<div className="flex items-center gap-2">
+												<span className="font-semibold leading-none transition-colors group-hover:text-primary">
+													{worker.name}
 												</span>
-											</span>
+												<WorkerVersionBadge version={worker.version} />
+											</div>
+											{worker.features && worker.features.length > 0 && (
+												<div className="mt-1 flex flex-wrap gap-1">
+													{worker.features.map((feature) => (
+														<Badge
+															key={feature}
+															variant="secondary"
+															className="text-xs"
+														>
+															{feature}
+														</Badge>
+													))}
+												</div>
+											)}
 											<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
 												<span
 													className={cn(

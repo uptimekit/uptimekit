@@ -10,6 +10,7 @@ export const worker = pgTable(
 		active: boolean("active").default(true).notNull(),
 		lastHeartbeat: timestamp("last_heartbeat"),
 		version: text("version"), // worker version
+		features: text("features").array(), // worker features (e.g., ["http", "tcp", "ssl"])
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at")
 			.defaultNow()

@@ -13,10 +13,11 @@ import {
 	Plus,
 	Search,
 	Server,
+	Wifi,
 	X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -132,6 +133,13 @@ const tcpSchema = z.object({
 	port: z.coerce.number().min(1).max(65535, "Port must be between 1 and 65535"),
 });
 
+const networkLossSchema = z.object({
+	type: z.literal("network-loss"),
+	target: z.string().min(1, "Target hostname or IP is required"),
+	threshold: z.coerce.number().min(1).max(100).default(10),
+	packetCount: z.coerce.number().min(1).max(100).default(10),
+});
+
 // Union schema
 const monitorConfigSchema = z.discriminatedUnion("type", [
 	httpSchema,
@@ -139,6 +147,7 @@ const monitorConfigSchema = z.discriminatedUnion("type", [
 	keywordSchema,
 	pingSchema,
 	tcpSchema,
+	networkLossSchema,
 ]);
 
 const formSchema = z.intersection(baseSchema, monitorConfigSchema);
@@ -257,6 +266,61 @@ const HttpJsonFields = ({ form }: { form: any }) => (
 	</>
 );
 
+const NetworkLossFields = ({ form }: { form: any }) => (
+	<div className="space-y-4">
+		<FormField
+			control={form.control}
+			name="target"
+			render={({ field }) => (
+				<FormItem>
+					<FormLabel>Target</FormLabel>
+					<FormControl>
+						<Input placeholder="8.8.8.8 or example.com" {...field} />
+					</FormControl>
+					<FormDescription>
+						The hostname or IP address to monitor for packet loss.
+					</FormDescription>
+					<FormMessage />
+				</FormItem>
+			)}
+		/>
+		<div className="grid grid-cols-2 gap-4">
+			<FormField
+				control={form.control}
+				name="threshold"
+				render={({ field }) => (
+					<FormItem>
+						<FormLabel>Threshold (%)</FormLabel>
+						<FormControl>
+							<Input type="number" min={1} max={100} {...field} />
+						</FormControl>
+						<FormDescription>
+							Alert when packet loss exceeds this percentage.
+						</FormDescription>
+						<FormMessage />
+					</FormItem>
+				)}
+			/>
+			<FormField
+				control={form.control}
+				name="packetCount"
+				render={({ field }) => (
+					<FormItem>
+						<FormLabel>Packet Count</FormLabel>
+						<FormControl>
+							<Input type="number" min={1} max={100} {...field} />
+						</FormControl>
+						<FormDescription>
+							Number of packets to send per check.
+						</FormDescription>
+						<FormMessage />
+					</FormItem>
+				)}
+			/>
+		</div>
+	</div>
+);
+
 const monitorTypes: MonitorTypeDefinition[] = [
 	{
 		id: "http",
@@ -298,6 +362,14 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		description: "Monitor a specific port on a server",
 		icon: Server,
 		Fields: TcpFields,
+	},
+	{
+		id: "network-loss",
+		group: "Infrastructure",
+		label: "Network Loss",
+		description: "Monitor packet loss to a target",
+		icon: Wifi,
+		Fields: NetworkLossFields,
 	},
 ];
 
@@ -508,12 +580,25 @@ interface CreateMonitorFormProps {
  * @param initialData - Optional initial values used to prefill the form for editing.
  * @returns The rendered CreateMonitorForm component UI.
  */
+const FEATURE_BY_TYPE: Record<string, string | undefined> = {
+	"network-loss": "network_loss",
+};
+
 export function CreateMonitorForm({
 	monitorId,
 	initialData,
 }: CreateMonitorFormProps) {
-	// Fetch regions
-	const { data: regions } = useQuery(orpc.workers.listLocations.queryOptions());
+	const [selectedType, setSelectedType] = useState<string>(
+		(initialData as any)?.type || "http",
+	);
+
+	// Fetch regions filtered by feature requirement
+	const featureFilter = FEATURE_BY_TYPE[selectedType];
+	const { data: regions } = useQuery(
+		orpc.workers.listLocations.queryOptions({
+			input: featureFilter ? { feature: featureFilter } : undefined,
+		}),
+	);
 	const { data: groups } = useQuery(orpc.monitors.listGroups.queryOptions());
 	const { data: tags } = useQuery(orpc.monitors.listTags.queryOptions());
 
@@ -552,6 +637,9 @@ export function CreateMonitorForm({
 			body: defaults.body || "",
 			headers: defaults.headers || [],
 			acceptedStatusCodes: defaults.acceptedStatusCodes || "",
+			target: defaults.target || "",
+			threshold: defaults.threshold || 10,
+			packetCount: defaults.packetCount || 10,
 		} as any,
 	});
 
@@ -619,8 +707,23 @@ export function CreateMonitorForm({
 	}
 
 	const type = form.watch("type");
-	const selectedType =
+	const selectedTypeConfig =
 		monitorTypes.find((t) => t.id === type) || monitorTypes[0];
+
+	// Sync selectedType state with form type for region filtering
+	const prevTypeRef = React.useRef(type);
+	React.useEffect(() => {
+		if (prevTypeRef.current !== type) {
+			setSelectedType(type);
+			// Clear locations when switching to/from a type with different feature requirements
+			const prevFeature = FEATURE_BY_TYPE[prevTypeRef.current];
+			const newFeature = FEATURE_BY_TYPE[type];
+			if (prevFeature !== newFeature) {
+				form.setValue("locations", []);
+			}
+			prevTypeRef.current = type;
+		}
+	}, [type, form]);
 
 	const locations = form.watch("locations") || [];
 	const hasAnySelection = locations.length > 0;
@@ -775,7 +878,9 @@ export function CreateMonitorForm({
 								/>
 
 								{/* Dynamic Fields based on Type */}
-								{selectedType && <selectedType.Fields form={form} />}
+								{selectedTypeConfig && (
+									<selectedTypeConfig.Fields form={form} />
+								)}
 							</CardContent>
 						</Card>
 					</div>
@@ -1259,7 +1364,7 @@ export function CreateMonitorForm({
 									</div>
 
 									{["http", "http-json", "keyword"].includes(
-										selectedType.id,
+										selectedTypeConfig.id,
 									) && <HttpAdvancedFields form={form} />}
 								</CardContent>
 							</Card>

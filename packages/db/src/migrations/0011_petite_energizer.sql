@@ -1,0 +1,1 @@
+ALTER TABLE "worker" ADD COLUMN "features" text[];

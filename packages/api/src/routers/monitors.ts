@@ -50,7 +50,15 @@ export const monitorsRouter = {
 					q: z.string().optional(),
 					active: z.boolean().optional(),
 					type: z
-						.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"])
+						.enum([
+							"http",
+							"http-json",
+							"tcp",
+							"ping",
+							"dns",
+							"keyword",
+							"network-loss",
+						])
 						.optional(),
 					status: z
 						.enum(["up", "down", "degraded", "maintenance", "pending"])
@@ -293,7 +301,15 @@ export const monitorsRouter = {
 		.input(
 			z.object({
 				name: z.string().min(1),
-				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
+				type: z.enum([
+					"http",
+					"http-json",
+					"tcp",
+					"ping",
+					"dns",
+					"keyword",
+					"network-loss",
+				]),
 				interval: z.number().min(30).default(60),
 				groupId: z.string().nullish(),
 				tags: z.array(z.string()).optional(),
@@ -454,7 +470,15 @@ export const monitorsRouter = {
 			z.object({
 				id: z.string(),
 				name: z.string().min(1),
-				type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
+				type: z.enum([
+					"http",
+					"http-json",
+					"tcp",
+					"ping",
+					"dns",
+					"keyword",
+					"network-loss",
+				]),
 				interval: z.number().min(30).default(60),
 				groupId: z.string().nullish(),
 				tags: z.array(z.string()).optional(),

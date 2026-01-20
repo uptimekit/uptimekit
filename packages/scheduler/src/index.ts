@@ -7,6 +7,7 @@ import IORedis from "ioredis";
 import { ensureConfiguration } from "./jobs/config-integrity";
 import { processDataRetention } from "./jobs/data-retention";
 import { processMaintenanceTransitions } from "./jobs/maintenance-processor";
+import { processWorkerHealthCheck } from "./jobs/worker-health-check";
 import { createLogger } from "./lib/logger";
 
 const logger = createLogger("SCHEDULER");
@@ -25,6 +26,7 @@ const schedulerQueue = new Queue("scheduler", { connection });
 const JOBS = {
 	MAINTENANCE_PROCESSOR: "maintenance-processor",
 	DATA_RETENTION: "data-retention",
+	WORKER_HEALTH_CHECK: "worker-health-check",
 } as const;
 
 // Create worker to process jobs
@@ -40,6 +42,9 @@ const worker = new Worker(
 					break;
 				case JOBS.DATA_RETENTION:
 					await processDataRetention();
+					break;
+				case JOBS.WORKER_HEALTH_CHECK:
+					await processWorkerHealthCheck();
 					break;
 				default:
 					logger.warn(`Unknown job: ${job.name}`);
@@ -91,6 +96,17 @@ async function registerJobs() {
 		},
 	);
 	logger.info("Registered: data-retention (daily at 2:00 AM)");
+
+	// Worker health check - runs every minute
+	await schedulerQueue.upsertJobScheduler(
+		JOBS.WORKER_HEALTH_CHECK,
+		{ pattern: "* * * * *" }, // Every minute
+		{
+			name: JOBS.WORKER_HEALTH_CHECK,
+			data: {},
+		},
+	);
+	logger.info("Registered: worker-health-check (every minute)");
 
 	logger.info("All scheduler jobs registered!");
 }

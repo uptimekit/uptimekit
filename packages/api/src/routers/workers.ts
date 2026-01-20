@@ -269,12 +269,27 @@ export const workersRouter = {
 				description: "List unique locations of active workers.",
 			},
 		})
-		.handler(async () => {
-			const locations = await db
-				.selectDistinct({ location: worker.location })
+		.input(
+			z
+				.object({
+					feature: z.string().optional(),
+				})
+				.optional(),
+		)
+		.handler(async ({ input }) => {
+			const workers = await db
+				.select({ location: worker.location, features: worker.features })
 				.from(worker)
 				.where(eq(worker.active, true));
 
-			return locations.map((l) => l.location);
+			const filteredWorkers = input?.feature
+				? workers.filter((w) => w.features?.includes(input.feature!))
+				: workers;
+
+			const uniqueLocations = [
+				...new Set(filteredWorkers.map((w) => w.location)),
+			];
+
+			return uniqueLocations;
 		}),
 };

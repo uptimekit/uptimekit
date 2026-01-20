@@ -6,6 +6,8 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WorkerApiKeyManager } from "@/components/admin/worker-api-key-manager";
+import { WorkerVersionBadge } from "@/components/admin/worker-version-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -122,6 +124,57 @@ export default async function EditWorkerPage({
 						)}
 						<Separator />
 						<WorkerApiKeyManager workerId={w.id} />
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Features</CardTitle>
+						<CardDescription>
+							Capabilities reported by this worker.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{w.features && w.features.length > 0 ? (
+							<div className="flex flex-wrap gap-2">
+								{w.features.map((feature) => (
+									<Badge key={feature} variant="secondary">
+										{feature}
+									</Badge>
+								))}
+							</div>
+						) : (
+							<p className="text-muted-foreground text-sm">
+								No features reported yet
+							</p>
+						)}
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Version Information</CardTitle>
+						<CardDescription>Worker version and update status.</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="flex items-center justify-between">
+							<span className="font-medium text-sm">Current Version</span>
+							<WorkerVersionBadge version={w.version} />
+						</div>
+						{w.version && (
+							<p className="text-muted-foreground text-xs">
+								Check the{" "}
+								<a
+									href="https://github.com/uptimekit/worker/releases"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-primary underline"
+								>
+									releases page
+								</a>{" "}
+								for update instructions.
+							</p>
+						)}
 					</CardContent>
 				</Card>
 			</div>

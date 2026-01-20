@@ -388,3 +388,219 @@ async function processMonitorEventGroup(
 		}
 	}
 }
+
+// Network Loss Alert Types
+export interface NetworkLossAlert {
+	monitorId: string;
+	timestamp: string;
+	averagePacketLoss: number;
+	threshold: number;
+	target: string;
+	alertType: "triggered" | "resolved";
+	packetsSent: number;
+	packetsReceived: number;
+}
+
+export interface NetworkLossMonitorConfig {
+	id: string;
+	target: string;
+	threshold: number;
+	packetCount: number;
+	interval: number;
+	incidentPendingDuration: number;
+	incidentRecoveryDuration: number;
+}
+
+/**
+ * Retrieve active network-loss monitors assigned to the given worker location.
+ *
+ * @param workerLocation - The worker location identifier used to filter monitors whose `locations` include this value
+ * @returns An array of network-loss monitor configuration objects
+ */
+export async function getNetworkLossMonitorsForWorker(
+	workerLocation: string,
+): Promise<NetworkLossMonitorConfig[]> {
+	const allActiveMonitors = await db.query.monitor.findMany({
+		where: (t, { eq, and }) =>
+			and(eq(t.active, true), eq(t.type, "network-loss")),
+	});
+
+	return allActiveMonitors
+		.filter((m) => {
+			const locations = m.locations as string[];
+			return locations.includes(workerLocation);
+		})
+		.map((m) => {
+			const config = m.config as {
+				target?: string;
+				threshold?: number;
+				packetCount?: number;
+			};
+			return {
+				id: m.id,
+				target: config.target || "",
+				threshold: config.threshold ?? 10,
+				packetCount: config.packetCount ?? 10,
+				interval: m.interval,
+				incidentPendingDuration: m.incidentPendingDuration,
+				incidentRecoveryDuration: m.incidentRecoveryDuration,
+			};
+		});
+}
+
+/**
+ * Process a network-loss alert event from a worker.
+ *
+ * @param alert - The network-loss alert data from the worker
+ * @param workerLocation - The worker location that sent the alert
+ * @returns Result object indicating the action taken
+ */
+export async function processNetworkLossEvent(
+	alert: NetworkLossAlert,
+	workerLocation: string,
+): Promise<{
+	success: boolean;
+	action:
+		| "incident_created"
+		| "incident_resolved"
+		| "no_action"
+		| "monitor_not_found"
+		| "location_mismatch"
+		| "maintenance_active";
+}> {
+	const monitorConfig = await db.query.monitor.findFirst({
+		where: eq(monitor.id, alert.monitorId),
+	});
+
+	if (!monitorConfig) {
+		return { success: false, action: "monitor_not_found" };
+	}
+
+	const locations = monitorConfig.locations as string[];
+	if (!locations.includes(workerLocation)) {
+		return { success: false, action: "location_mismatch" };
+	}
+
+	// Check for active maintenance
+	const activeMaintenance = await db
+		.select({ id: maintenance.id })
+		.from(maintenance)
+		.innerJoin(
+			maintenanceMonitor,
+			eq(maintenance.id, maintenanceMonitor.maintenanceId),
+		)
+		.where(
+			and(
+				eq(maintenanceMonitor.monitorId, alert.monitorId),
+				eq(maintenance.status, "in_progress"),
+			),
+		)
+		.limit(1);
+
+	if (activeMaintenance.length > 0) {
+		return { success: true, action: "maintenance_active" };
+	}
+
+	const eventTime = new Date(alert.timestamp);
+
+	// Fetch active automatic incident for this monitor
+	const activeIncidentList = await db
+		.select({
+			id: incident.id,
+			status: incident.status,
+			resolvedAt: incident.resolvedAt,
+			type: incident.type,
+		})
+		.from(incident)
+		.innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
+		.where(
+			and(
+				eq(incidentMonitor.monitorId, alert.monitorId),
+				eq(incident.type, "automatic"),
+				isNull(incident.resolvedAt),
+			),
+		)
+		.limit(1);
+
+	const activeIncident = activeIncidentList[0];
+
+	if (alert.alertType === "triggered") {
+		if (activeIncident) {
+			return { success: true, action: "no_action" };
+		}
+
+		const newIncidentId = crypto.randomUUID();
+
+		await db.insert(incident).values({
+			id: newIncidentId,
+			organizationId: monitorConfig.organizationId,
+			title: `Network packet loss detected on ${monitorConfig.name}`,
+			description: `${alert.averagePacketLoss}% packet loss to ${alert.target} (threshold: ${alert.threshold}%)`,
+			status: "investigating",
+			severity: "major",
+			type: "automatic",
+			createdAt: eventTime,
+			updatedAt: eventTime,
+		});
+
+		await db.insert(incidentMonitor).values({
+			incidentId: newIncidentId,
+			monitorId: alert.monitorId,
+		});
+
+		await db.insert(incidentActivity).values({
+			id: crypto.randomUUID(),
+			incidentId: newIncidentId,
+			message: `Incident opened automatically. Network packet loss detected: ${alert.averagePacketLoss}% to ${alert.target} (sent: ${alert.packetsSent}, received: ${alert.packetsReceived}). (Region: ${workerLocation})`,
+			type: "event",
+			createdAt: eventTime,
+			userId: null,
+		});
+
+		eventBus.emit("incident.created", {
+			incidentId: newIncidentId,
+			organizationId: monitorConfig.organizationId,
+			title: `Network packet loss detected on ${monitorConfig.name}`,
+			description: `${alert.averagePacketLoss}% packet loss to ${alert.target} (threshold: ${alert.threshold}%)`,
+			severity: "major",
+		});
+
+		return { success: true, action: "incident_created" };
+	}
+
+	if (alert.alertType === "resolved") {
+		if (!activeIncident) {
+			return { success: true, action: "no_action" };
+		}
+
+		await db
+			.update(incident)
+			.set({
+				status: "resolved",
+				resolvedAt: eventTime,
+				updatedAt: eventTime,
+			})
+			.where(eq(incident.id, activeIncident.id));
+
+		await db.insert(incidentActivity).values({
+			id: crypto.randomUUID(),
+			incidentId: activeIncident.id,
+			message: `Network packet loss recovered. Current loss: ${alert.averagePacketLoss}% to ${alert.target}. Incident resolved automatically.`,
+			type: "event",
+			createdAt: eventTime,
+			userId: null,
+		});
+
+		eventBus.emit("incident.resolved", {
+			incidentId: activeIncident.id,
+			organizationId: monitorConfig.organizationId,
+			title: `Network packet loss recovered on ${monitorConfig.name}`,
+			description: `Packet loss to ${alert.target} has recovered below threshold.`,
+			severity: "major",
+		});
+
+		return { success: true, action: "incident_resolved" };
+	}
+
+	return { success: true, action: "no_action" };
+}
