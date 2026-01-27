@@ -357,6 +357,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													<SelectItem value="default">
 														Default - Classic design with uptime history
 													</SelectItem>
+													<SelectItem value="flat">
+														Flat - Simple and modern design
+													</SelectItem>
 													{/* <SelectItem value="example">
 														Example Theme
 													</SelectItem> */}

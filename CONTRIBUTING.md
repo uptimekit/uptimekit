@@ -43,7 +43,7 @@ Before diving in, it helps to be familiar with the core technologies we use:
     Copy the `.env.example` file in `apps/dash` to `.env` and configure your environment variables.
 
     ```bash
-    cp apps/dash/.env.example apps/dash/.env
+    cp .env.example .env
     ```
 
     You will need a connection string for a PostgreSQL database.
@@ -64,7 +64,6 @@ Before diving in, it helps to be familiar with the core technologies we use:
     This will start all applications in the monorepo.
     - Dashboard: `http://localhost:3000`
     - Status Page: `http://localhost:3001`
-    - Docs: `http://localhost:4000`
 
 ## 📂 Project Structure
 
@@ -74,7 +73,6 @@ uptimekit/
 │   ├── dash/          # Main Dashboard application (Next.js)
 │   ├── status-page/   # Public Status Page application (Next.js)
 │   ├── worker/        # Worker application (Node.js)
-│   └── docs/          # Documentation (Next.js)
 ├── packages/
 │   ├── api/           # Shared API definition & logic (oRPC)
 │   ├── auth/          # Authentication configuration (Better-Auth)
