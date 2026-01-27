@@ -53,7 +53,7 @@ export function calculateAggregateStatus(
     }
 
     if (hasMajor) return "major_outage";
-    if (hasPartial) return allOutage ? "major_outage" : "partial_outage";
+    if (hasPartial) return "partial_outage";
     if (hasDegraded) return "degraded";
     if (hasMaintenance) return "maintenance";
     if (hasScheduled) return "maintenance_scheduled";

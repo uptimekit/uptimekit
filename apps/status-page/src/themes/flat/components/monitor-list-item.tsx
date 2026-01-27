@@ -39,7 +39,13 @@ export function MonitorListItem({
 						{description && (
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<Info className="h-3.5 w-3.5 text-muted-foreground/60" />
+									<button
+										type="button"
+										className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										aria-label="More information"
+									>
+										<Info className="h-3.5 w-3.5 text-muted-foreground/60" />
+									</button>
 								</TooltipTrigger>
 								<TooltipContent>
 									<p className="max-w-xs text-sm">{description}</p>
@@ -53,7 +59,7 @@ export function MonitorListItem({
 							statusConfig[status]?.color || "text-muted-foreground",
 						)}
 					>
-						{statusConfig[status].label}
+						{statusConfig[status]?.label || status || "Unknown"}
 					</div>
 				</div>
 			</div>
@@ -72,7 +78,13 @@ export function MonitorListItem({
 					{description && (
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+								<button
+									type="button"
+									className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									aria-label="More information"
+								>
+									<Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+								</button>
 							</TooltipTrigger>
 							<TooltipContent>
 								<p className="max-w-xs text-sm">{description}</p>

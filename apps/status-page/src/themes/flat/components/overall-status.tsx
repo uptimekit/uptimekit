@@ -50,8 +50,8 @@ const statusConfig = {
 };
 
 export function OverallStatus({ status, lastUpdated }: OverallStatusProps) {
-    const config = statusConfig[status];
-    const Icon = config.icon;
+    const config = statusConfig[status] ?? statusConfig.unknown;
+    const Icon = config?.icon;
 
     const formattedDate = new Date(lastUpdated).toLocaleString("en-US", {
         month: "short",
@@ -72,7 +72,7 @@ export function OverallStatus({ status, lastUpdated }: OverallStatusProps) {
                     <div
                         className={`relative flex h-12 w-12 items-center justify-center rounded-full ${config.bgColor}`}
                     >
-                        <Icon className="h-6 w-6 text-background" strokeWidth={2.5} />
+                        {Icon && <Icon className="h-6 w-6 text-background" strokeWidth={2.5} />}
                     </div>
                 </div>
             </div>

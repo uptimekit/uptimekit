@@ -23,27 +23,32 @@ export function ThemeProvider({ themeId, cssFile, theme }: ThemeProviderProps) {
 
 		// Load custom CSS if specified
 		const linkId = `theme-css-${themeId}`;
+		let createdLink = false;
+
 		if (cssFile) {
 			const existingLink = document.getElementById(linkId) as HTMLLinkElement;
 			if (existingLink) {
-				if (existingLink.getAttribute("href") === cssFile) {
-					return;
+				if (existingLink.getAttribute("href") !== cssFile) {
+					existingLink.href = cssFile; // Update if different
 				}
-				existingLink.remove();
+				// If it equals, we do nothing but we still register cleanup logic if needed
+			} else {
+				const link = document.createElement("link");
+				link.id = linkId;
+				link.rel = "stylesheet";
+				link.href = cssFile;
+				document.head.appendChild(link);
+				createdLink = true;
 			}
-
-			const link = document.createElement("link");
-			link.id = linkId;
-			link.rel = "stylesheet";
-			link.href = cssFile;
-			document.head.appendChild(link);
 		}
 
 		return () => {
 			document.documentElement.removeAttribute("data-theme");
-			const linkToRemove = document.getElementById(linkId);
-			if (linkToRemove) {
-				linkToRemove.remove();
+			if (createdLink) {
+				const linkToRemove = document.getElementById(linkId);
+				if (linkToRemove) {
+					linkToRemove.remove();
+				}
 			}
 		};
 	}, [themeId, cssFile, theme, setTheme]);

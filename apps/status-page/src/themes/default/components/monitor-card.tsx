@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "./status-indicator";
-import type { StatusType } from "../../types";
+import type { StatusType, UptimeDay } from "../../types";
 import { generateMockUptimeData, UptimeBar } from "./uptime-bar";
 
 interface MonitorCardProps {
@@ -11,6 +11,7 @@ interface MonitorCardProps {
     responseTime?: number;
     url?: string;
     className?: string;
+    uptimeHistory?: UptimeDay[];
 }
 
 export function MonitorCard({
@@ -20,8 +21,9 @@ export function MonitorCard({
     responseTime,
     url,
     className,
+    uptimeHistory,
 }: MonitorCardProps) {
-    const uptimeData = generateMockUptimeData(90);
+    const uptimeData = uptimeHistory || generateMockUptimeData(90);
 
     return (
         <div
@@ -45,7 +47,13 @@ export function MonitorCard({
                                 rel="noopener noreferrer"
                                 className="mt-0.5 flex items-center gap-1 text-muted-foreground text-xs hover:text-primary"
                             >
-                                {new URL(url).hostname}
+                                {(() => {
+                                    try {
+                                        return new URL(url).hostname;
+                                    } catch {
+                                        return url;
+                                    }
+                                })()}
                                 <ExternalLink className="h-3 w-3" />
                             </a>
                         )}
