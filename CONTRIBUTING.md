@@ -40,7 +40,7 @@ Before diving in, it helps to be familiar with the core technologies we use:
     ```
 
 4. **Environment Setup**
-    Copy the `.env.example` file in `apps/dash` to `.env` and configure your environment variables.
+    Copy the `.env.example` to `.env` and configure your environment variables.
 
     ```bash
     cp .env.example .env

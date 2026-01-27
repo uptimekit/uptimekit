@@ -2,16 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { type StatusType, statusConfig } from "./status-indicator";
-
-export interface UptimeDay {
-	date: string;
-	status: StatusType;
-	uptime: number;
-	downtimeMs?: number;
-	annotation?: string;
-	duration?: string;
-}
+import { statusConfig } from "../../status-config";
+import type { StatusType, UptimeDay } from "../../types";
 
 /**
  * Convert a duration in milliseconds into a concise human-readable downtime string.
@@ -54,7 +46,7 @@ const statusColors: Record<StatusType, string> = {
 	maintenance: "bg-status-maintenance",
 	maintenance_scheduled: "bg-status-partial-outage",
 	maintenance_completed: "bg-status-operational",
-	unknown: "bg-status-unknown/20"
+	unknown: "bg-status-unknown",
 };
 
 export function UptimeBar({ days, className }: UptimeBarProps) {

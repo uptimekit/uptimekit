@@ -24,8 +24,11 @@ export function ThemeProvider({ themeId, cssFile, theme }: ThemeProviderProps) {
 		// Load custom CSS if specified
 		const linkId = `theme-css-${themeId}`;
 		if (cssFile) {
-			const existingLink = document.getElementById(linkId);
+			const existingLink = document.getElementById(linkId) as HTMLLinkElement;
 			if (existingLink) {
+				if (existingLink.getAttribute("href") === cssFile) {
+					return;
+				}
 				existingLink.remove();
 			}
 

@@ -1,5 +1,5 @@
-import { Footer } from "@/components/footer";
-import { Header } from "@/components/header";
+import { Footer } from "./components/footer";
+import { Header } from "./components/header";
 import { buildPath } from "@/lib/route-utils";
 import type { ThemeUpdatesProps } from "../types";
 import { BackLink } from "./components/back-link";

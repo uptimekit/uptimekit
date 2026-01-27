@@ -1,31 +1,8 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { StatusDot, type StatusType } from "./status-indicator";
-
-interface IncidentActivity {
-	id: string;
-	message: string;
-	createdAt: Date;
-	type: string;
-}
-
-interface IncidentMonitor {
-	monitor: {
-		name: string;
-	};
-}
-
-interface Incident {
-	id: string;
-	title: string;
-	status: string; // 'investigating', 'identified', 'monitoring', 'resolved'
-	severity: string; // 'minor', 'major', 'critical'
-	activities: IncidentActivity[];
-	monitors: IncidentMonitor[];
-	createdAt: Date;
-	resolvedAt?: Date | null;
-}
+import { StatusDot } from "./status-indicator";
+import type { Incident, StatusType } from "../../types";
 
 interface IncidentCardProps {
 	incident: Incident;
@@ -121,7 +98,7 @@ export function IncidentCard({
 							<div className="flex flex-wrap gap-2">
 								{incident.monitors.map((m) => (
 									<span
-										key={m.monitor.name}
+										key={m.monitor.id}
 										className="inline-flex items-center rounded-md bg-secondary px-2.5 py-1 font-medium text-secondary-foreground text-xs"
 									>
 										{m.monitor.name}

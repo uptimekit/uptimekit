@@ -5,8 +5,9 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { StatusDot, type StatusType, statusConfig } from "./status-indicator";
-import type { UptimeDay } from "./uptime-bar";
+import { statusConfig } from "../../status-config";
+import { StatusDot } from "./status-indicator";
+import type { StatusType, UptimeDay } from "../../types";
 import { UptimeBar } from "./uptime-bar";
 
 interface MonitorListItemProps {
@@ -49,11 +50,7 @@ export function MonitorListItem({
 					<div
 						className={cn(
 							"font-medium text-xs",
-							status === "operational"
-								? "text-status-operational"
-								: status === "maintenance"
-									? "text-status-maintenance"
-									: "text-status-major-outage",
+							statusConfig[status]?.color || "text-muted-foreground",
 						)}
 					>
 						{statusConfig[status].label}
@@ -86,17 +83,7 @@ export function MonitorListItem({
 				<div
 					className={cn(
 						"shrink-0 font-semibold text-xs",
-						status === "operational"
-							? "text-status-operational"
-							: status === "degraded"
-								? "text-status-degraded"
-								: status === "partial_outage"
-									? "text-status-partial-outage"
-									: status === "major_outage"
-										? "text-status-major-outage"
-										: status === "maintenance"
-											? "text-status-maintenance"
-											: "text-muted-foreground",
+						statusConfig[status].color,
 					)}
 				>
 					{uptimePercentage.toFixed(2)}%
@@ -104,6 +91,6 @@ export function MonitorListItem({
 			</div>
 
 			<UptimeBar days={history} />
-		</div>
+		</div >
 	);
 }

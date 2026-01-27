@@ -6,7 +6,7 @@ import type { ThemePageProps } from "../types";
 import { ActiveIssuesSection } from "./components/active-issues-section";
 import { MonitorGroups } from "./components/monitor-groups";
 import { PreviousIncidents } from "./components/previous-incidents";
-import "./style.css";
+
 
 export default function DefaultTheme({ data }: ThemePageProps) {
 	const {
@@ -16,6 +16,7 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 		activeIssues,
 		scheduledMaintenances,
 		pastIncidents,
+		lastUpdated,
 	} = data;
 	const { design } = config;
 
@@ -31,14 +32,14 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 			<main className="w-full flex-1">
 				<div className="mx-auto max-w-4xl px-4 py-10">
 					<section className="mb-10">
-						<OverallStatus status={overallStatus} />
+						<OverallStatus status={overallStatus} lastUpdated={lastUpdated} />
 					</section>
 
 					<MonitorGroups monitorGroups={monitorGroups} />
 					<ActiveIssuesSection activeIssues={activeIssues} />
 
 					<ScheduledMaintenanceSection
-						scheduledMaintenances={scheduledMaintenances as any}
+						scheduledMaintenances={scheduledMaintenances}
 						slug={config.slug}
 					/>
 

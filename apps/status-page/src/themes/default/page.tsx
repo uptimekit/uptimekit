@@ -1,6 +1,6 @@
-import { Footer } from "@/components/footer";
-import { Header } from "@/components/header";
-import { OverallStatus } from "@/components/overall-status";
+import { Footer } from "./components/footer";
+import { Header } from "./components/header";
+import { OverallStatus } from "./components/overall-status";
 import { ScheduledMaintenanceSection } from "@/components/scheduled-maintenance-section";
 import type { ThemePageProps } from "../types";
 import { ActiveIssuesSection } from "./components/active-issues-section";
@@ -36,7 +36,7 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 					<ActiveIssuesSection activeIssues={activeIssues} />
 
 					<ScheduledMaintenanceSection
-						scheduledMaintenances={scheduledMaintenances as any}
+						scheduledMaintenances={scheduledMaintenances}
 						slug={config.slug}
 					/>
 

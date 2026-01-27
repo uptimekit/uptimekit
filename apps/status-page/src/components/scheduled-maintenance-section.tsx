@@ -1,8 +1,9 @@
 import { IncidentCard } from "@/components/incident-card";
 import { buildPath } from "@/lib/route-utils";
+import type { Maintenance } from "@/themes/types";
 
 interface ScheduledMaintenanceSectionProps {
-	scheduledMaintenances: any[];
+	scheduledMaintenances: Maintenance[];
 	slug?: string;
 }
 
@@ -14,7 +15,7 @@ export function ScheduledMaintenanceSection({
 		return null;
 	}
 
-	const mappedScheduledMaintenances = scheduledMaintenances.map((m: any) => ({
+	const mappedScheduledMaintenances = scheduledMaintenances.map((m) => ({
 		id: m.id,
 		title: m.title,
 		status: m.status,

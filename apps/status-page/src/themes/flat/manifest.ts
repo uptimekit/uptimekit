@@ -5,5 +5,6 @@ export const manifest: ThemeManifest = {
     name: "Flat",
     description: "Simple and modern design",
     version: "1.0.0",
-    supportsDarkMode: true
+    supportsDarkMode: true,
+    cssFile: "/themes/flat/style.css"
 };

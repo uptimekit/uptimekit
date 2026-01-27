@@ -31,7 +31,7 @@ export function MaintenanceDetailCard({
 				className="border-border bg-card"
 			/>
 			{maintenance.description && (
-				<div className="mt-6 rounded-xl border border-border bg-gray-50/50 px-4 py-3">
+				<div className="mt-6 rounded-xl border border-border bg-muted/50 px-4 py-3">
 					<h3 className="mb-2 font-semibold text-foreground">Description</h3>
 					<p className="text-muted-foreground">{maintenance.description}</p>
 				</div>

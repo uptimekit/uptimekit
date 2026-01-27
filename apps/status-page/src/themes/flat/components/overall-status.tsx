@@ -1,8 +1,9 @@
 import { Check, AlertTriangle, AlertCircle, X, Wrench } from "lucide-react";
-import type { StatusType } from "./status-indicator";
+import type { StatusType } from "../../types";
 
 interface OverallStatusProps {
     status: StatusType;
+    lastUpdated: string | number | Date;
 }
 
 const statusConfig = {
@@ -43,16 +44,16 @@ const statusConfig = {
     },
     unknown: {
         icon: AlertCircle,
-        bgColor: "bg-muted",
+        bgColor: "bg-status-unknown",
         title: "Status Unknown",
     },
 };
 
-export function OverallStatus({ status }: OverallStatusProps) {
+export function OverallStatus({ status, lastUpdated }: OverallStatusProps) {
     const config = statusConfig[status];
     const Icon = config.icon;
 
-    const lastUpdated = new Date().toLocaleString("en-US", {
+    const formattedDate = new Date(lastUpdated).toLocaleString("en-US", {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -79,7 +80,7 @@ export function OverallStatus({ status }: OverallStatusProps) {
                 {config.title}
             </h1>
             <p className="text-muted-foreground text-sm font-medium">
-                Last updated: {lastUpdated} UTC
+                Last updated: {formattedDate} UTC
             </p>
         </div>
     );

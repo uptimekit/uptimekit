@@ -1,4 +1,4 @@
-import { MonitorListItem } from "@/components/monitor-list-item";
+import { MonitorListItem } from "./monitor-list-item";
 import type { GroupedMonitors } from "../../types";
 
 interface MonitorGroupsProps {

@@ -29,6 +29,13 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 
 	return (
 		<>
+			{manifest?.cssFile && (
+				<link
+					id={`theme-css-${themeId}`}
+					rel="stylesheet"
+					href={manifest.cssFile}
+				/>
+			)}
 			<script
 				dangerouslySetInnerHTML={{ __html: themeScript }}
 				suppressHydrationWarning

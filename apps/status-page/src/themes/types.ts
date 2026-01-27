@@ -1,5 +1,23 @@
-import type { StatusType } from "@/components/status-indicator";
-import type { UptimeDay } from "@/components/uptime-bar";
+// Status Type Definition
+export type StatusType =
+	| "operational"
+	| "degraded"
+	| "partial_outage"
+	| "major_outage"
+	| "maintenance"
+	| "maintenance_scheduled"
+	| "maintenance_completed"
+	| "unknown";
+
+// Uptime Day Definition
+export interface UptimeDay {
+	date: string;
+	status: StatusType;
+	uptime: number;
+	downtimeMs?: number;
+	annotation?: string;
+	duration?: string;
+}
 
 export interface StatusPageDesign {
 	themeId?: string;
@@ -93,6 +111,7 @@ export interface StatusPageData {
 	activeIssues: Incident[];
 	scheduledMaintenances: Maintenance[];
 	pastIncidents: Record<string, Incident[]>;
+	lastUpdated: string;
 }
 
 export interface ThemePageProps {

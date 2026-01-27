@@ -1,6 +1,5 @@
-import type { StatusType } from "@/components/status-indicator";
-import type { UptimeDay } from "@/components/uptime-bar";
-import type { Monitor, MonitorGroup, StatusPageData } from "@/themes/types";
+import type { Monitor, MonitorGroup, StatusPageData, StatusType, UptimeDay } from "@/themes/types";
+
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -12,6 +11,7 @@ import {
 	getStatusPageReports,
 } from "./db-queries";
 import { buildPath } from "./route-utils";
+import { calculateAggregateStatus } from "./status-utils";
 
 function calculateDailyStatus(total: number, up: number): StatusType {
 	if (total === 0) return "unknown";
@@ -361,7 +361,7 @@ export async function prepareStatusPageData(
 			const avgUptime =
 				knownDays.length > 0
 					? knownDays.reduce((acc, curr) => acc + curr.uptime, 0) /
-						knownDays.length
+					knownDays.length
 					: 100;
 
 			return {
@@ -408,21 +408,9 @@ export async function prepareStatusPageData(
 		return (a.group.order ?? 0) - (b.group.order ?? 0);
 	});
 
-	const worstStatus = monitorsData.reduce((acc, curr) => {
-		if (curr.currentStatus === "maintenance" || acc === "maintenance") {
-			return "maintenance";
-		}
-		if (curr.currentStatus === "major_outage" || acc === "major_outage") {
-			return "major_outage";
-		}
-		if (curr.currentStatus === "partial_outage" || acc === "partial_outage") {
-			return "partial_outage";
-		}
-		if (curr.currentStatus === "degraded" || acc === "degraded") {
-			return "degraded";
-		}
-		return acc;
-	}, "operational" as StatusType);
+	const worstStatus = calculateAggregateStatus(
+		monitorsData.map((m) => m.currentStatus),
+	);
 
 	const incidentsByDate = pastIncidents.reduce(
 		(acc, incident) => {
@@ -465,5 +453,6 @@ export async function prepareStatusPageData(
 			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
 		})),
 		pastIncidents: incidentsByDate,
+		lastUpdated: new Date().toISOString(),
 	};
 }
