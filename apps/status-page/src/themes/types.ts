@@ -157,5 +157,4 @@ export interface ThemeManifest {
 	supportsDarkMode: boolean;
 	previewImage?: string;
 	configSchema?: Record<string, unknown>;
-	cssFile?: string;
 }

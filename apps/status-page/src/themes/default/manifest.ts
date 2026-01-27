@@ -6,5 +6,4 @@ export const manifest: ThemeManifest = {
 	description: "The classic UptimeKit status page design with uptime history",
 	version: "1.0.0",
 	supportsDarkMode: true,
-	// cssFile: "/themes/default/style.css",
 };

@@ -1,4 +1,4 @@
-:root {
+[data-theme="flat"] {
 	--radius: 0.5rem;
 
 	--shadow-sm: none;
@@ -18,7 +18,7 @@
 	--spacing-card: 1rem;
 }
 
-.dark {
+[data-theme="flat"].dark {
 	--color-neutral-900: #0f121a;
 	--color-neutral-800: #191c24;
 	--color-neutral-700: #21242d;
@@ -58,37 +58,37 @@
 }
 
 /* Explicitly define status utilities to overwrite Tailwind generated utilities */
-.bg-status-operational { background-color: var(--color-status-operational); }
-.bg-status-degraded { background-color: var(--color-status-degraded); }
-.bg-status-partial-outage { background-color: var(--color-status-partial-outage); }
-.bg-status-major-outage { background-color: var(--color-status-major-outage); }
-.bg-status-maintenance { background-color: var(--color-status-maintenance); }
-.bg-status-unknown { background-color: var(--color-status-unknown); }
+[data-theme="flat"] .bg-status-operational { background-color: var(--color-status-operational); }
+[data-theme="flat"] .bg-status-degraded { background-color: var(--color-status-degraded); }
+[data-theme="flat"] .bg-status-partial-outage { background-color: var(--color-status-partial-outage); }
+[data-theme="flat"] .bg-status-major-outage { background-color: var(--color-status-major-outage); }
+[data-theme="flat"] .bg-status-maintenance { background-color: var(--color-status-maintenance); }
+[data-theme="flat"] .bg-status-unknown { background-color: var(--color-status-unknown); }
 
-.text-status-operational { color: var(--color-status-operational); }
-.text-status-degraded { color: var(--color-status-degraded); }
-.text-status-partial-outage { color: var(--color-status-partial-outage); }
-.text-status-major-outage { color: var(--color-status-major-outage); }
-.text-status-maintenance { color: var(--color-status-maintenance); }
-.text-status-unknown { color: var(--color-status-unknown); }
+[data-theme="flat"] .text-status-operational { color: var(--color-status-operational); }
+[data-theme="flat"] .text-status-degraded { color: var(--color-status-degraded); }
+[data-theme="flat"] .text-status-partial-outage { color: var(--color-status-partial-outage); }
+[data-theme="flat"] .text-status-major-outage { color: var(--color-status-major-outage); }
+[data-theme="flat"] .text-status-maintenance { color: var(--color-status-maintenance); }
+[data-theme="flat"] .text-status-unknown { color: var(--color-status-unknown); }
 
-.dark .bg-white {
+[data-theme="flat"].dark .bg-white {
 	background-color: var(--color-neutral-800) !important;
 }
 
-.dark h1,
-.dark h2,
-.dark h3,
-.dark .text-foreground,
-.dark .text-card-foreground {
+[data-theme="flat"].dark h1,
+[data-theme="flat"].dark h2,
+[data-theme="flat"].dark h3,
+[data-theme="flat"].dark .text-foreground,
+[data-theme="flat"].dark .text-card-foreground {
 	color: var(--color-neutral-50);
 }
 
-[class*="shadow"] {
+[data-theme="flat"] [class*="shadow"] {
 	box-shadow: none !important;
 }
 
-.border {
+[data-theme="flat"] .border {
 	border-width: 1px;
 }
 

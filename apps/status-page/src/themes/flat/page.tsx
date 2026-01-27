@@ -6,6 +6,7 @@ import type { ThemePageProps } from "../types";
 import { ActiveIssuesSection } from "./components/active-issues-section";
 import { MonitorGroups } from "./components/monitor-groups";
 import { PreviousIncidents } from "./components/previous-incidents";
+import "./style.css";
 
 
 export default function DefaultTheme({ data }: ThemePageProps) {
