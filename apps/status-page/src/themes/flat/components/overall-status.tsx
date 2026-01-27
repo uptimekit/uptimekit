@@ -53,14 +53,19 @@ export function OverallStatus({ status, lastUpdated }: OverallStatusProps) {
     const config = statusConfig[status] ?? statusConfig.unknown;
     const Icon = config?.icon;
 
-    const formattedDate = new Date(lastUpdated).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "UTC",
-        hour12: false,
-    });
+    const date = new Date(lastUpdated);
+    const isValidDate = !isNaN(date.getTime());
+
+    const formattedDate = isValidDate
+        ? date.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC",
+            hour12: false,
+        })
+        : "Unknown";
 
     return (
         <div className="px-8 pb-6 pt-2 text-center">
