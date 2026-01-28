@@ -8,6 +8,7 @@ import { MonitorGroups } from "./components/monitor-groups";
 import { PreviousIncidents } from "./components/previous-incidents";
 import "./style.css";
 
+
 export default function DefaultTheme({ data }: ThemePageProps) {
 	const {
 		config,
@@ -16,6 +17,7 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 		activeIssues,
 		scheduledMaintenances,
 		pastIncidents,
+		lastUpdated,
 	} = data;
 	const { design } = config;
 
@@ -25,12 +27,13 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 				title={config.name}
 				logoUrl={design.logoUrl}
 				contactUrl={design.contactUrl}
+				slug={config.slug}
 			/>
 
 			<main className="w-full flex-1">
-				<div className="mx-auto max-w-5xl px-4 py-12">
-					<section className="mb-16">
-						<OverallStatus status={overallStatus} />
+				<div className="mx-auto max-w-4xl px-4 py-10">
+					<section className="mb-10">
+						<OverallStatus status={overallStatus} lastUpdated={lastUpdated} />
 					</section>
 
 					<MonitorGroups monitorGroups={monitorGroups} />

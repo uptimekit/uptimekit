@@ -13,6 +13,7 @@ const themeLoaders: Record<
 	() => Promise<{ default: ComponentType<ThemePageProps> }>
 > = {
 	default: () => import("@/themes/default/page"),
+	flat: () => import("@/themes/flat/page"),
 };
 
 const incidentDetailLoaders: Record<
@@ -20,6 +21,7 @@ const incidentDetailLoaders: Record<
 	() => Promise<{ default: ComponentType<ThemeIncidentDetailProps> }>
 > = {
 	default: () => import("@/themes/default/incident-detail"),
+	flat: () => import("@/themes/flat/incident-detail"),
 };
 
 const maintenanceDetailLoaders: Record<
@@ -27,6 +29,7 @@ const maintenanceDetailLoaders: Record<
 	() => Promise<{ default: ComponentType<ThemeMaintenanceDetailProps> }>
 > = {
 	default: () => import("@/themes/default/maintenance-detail"),
+	flat: () => import("@/themes/flat/maintenance-detail"),
 };
 
 const updatesLoaders: Record<
@@ -34,6 +37,7 @@ const updatesLoaders: Record<
 	() => Promise<{ default: ComponentType<ThemeUpdatesProps> }>
 > = {
 	default: () => import("@/themes/default/updates"),
+	flat: () => import("@/themes/flat/updates"),
 };
 
 export async function loadThemeComponent(

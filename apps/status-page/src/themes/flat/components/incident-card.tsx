@@ -1,9 +1,8 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { StatusDot } from "@/themes/default/components/status-indicator";
-import type { StatusType } from "@/themes/types";
-import type { Incident } from "@/themes/types";
+import { StatusDot } from "./status-indicator";
+import type { Incident, StatusType } from "../../types";
 
 interface IncidentCardProps {
 	incident: Incident;
@@ -13,7 +12,6 @@ interface IncidentCardProps {
 	className?: string;
 }
 
-// Map severity to StatusDot type
 function getSeverityStatus(severity: string, status?: string): StatusType {
 	switch (severity) {
 		case "critical":
@@ -28,7 +26,7 @@ function getSeverityStatus(severity: string, status?: string): StatusType {
 			if (status === "completed") return "maintenance_completed";
 			return "maintenance";
 		default:
-			return "major_outage"; // Default to outage if unknown but incident exists
+			return "major_outage";
 	}
 }
 
@@ -42,12 +40,11 @@ export function IncidentCard({
 	return (
 		<div
 			className={cn(
-				"overflow-hidden rounded-xl border border-border bg-card transition-all duration-300",
-				"hover:border-primary/20",
+				"overflow-hidden rounded-xl border border-border bg-white transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700!",
 				className,
 			)}
 		>
-			<div className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-muted/50">
+			<div className="flex w-full items-center justify-between p-5 text-left">
 				<div className="flex items-center gap-3">
 					<StatusDot
 						status={getSeverityStatus(incident.severity, incident.status)}
@@ -61,7 +58,9 @@ export function IncidentCard({
 								month: "short",
 								day: "numeric",
 								year: "numeric",
-							})}
+								timeZone: "UTC",
+								hour12: false,
+							})} UTC
 							{incident.resolvedAt && " — Resolved"}
 						</p>
 					</div>
@@ -91,7 +90,6 @@ export function IncidentCard({
 
 			{isExpanded && !detailsLink && (
 				<div className="animate-slide-up border-border border-t px-5 pt-4 pb-5">
-					{/* Affected services */}
 					{incident.monitors && incident.monitors.length > 0 && (
 						<div className="mb-4">
 							<h4 className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
@@ -110,7 +108,6 @@ export function IncidentCard({
 						</div>
 					)}
 
-					{/* Updates timeline */}
 					{incident.activities && incident.activities.length > 0 && (
 						<div>
 							<h4 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
@@ -122,7 +119,6 @@ export function IncidentCard({
 										key={activity.id}
 										className="relative pb-6 pl-6 last:pb-0"
 									>
-										{/* Timeline line */}
 										{incident.activities.length > 1 && (
 											<div
 												className="absolute left-[7px] w-px bg-border"
@@ -139,7 +135,6 @@ export function IncidentCard({
 												}}
 											/>
 										)}
-										{/* Timeline dot */}
 										<div
 											className={cn(
 												"absolute top-1.5 left-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-card-foreground",
@@ -150,10 +145,6 @@ export function IncidentCard({
 										/>
 										<div>
 											<div className="mb-1 flex items-center gap-2">
-												{/*
-                                                    If activity had a 'status' field we'd label it.
-                                                    For now just showing timestamp.
-                                                */}
 												<span className="text-muted-foreground text-xs">
 													{new Date(activity.createdAt).toLocaleString(
 														"en-US",
@@ -162,9 +153,10 @@ export function IncidentCard({
 															day: "numeric",
 															hour: "numeric",
 															minute: "2-digit",
-															timeZone: "UTC", // Or user local? Next.js server side uses UTC by default commonly
+															timeZone: "UTC",
+															hour12: false,
 														},
-													)}
+													)} UTC
 												</span>
 											</div>
 											<p className="text-card-foreground text-sm">

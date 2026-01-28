@@ -1,5 +1,4 @@
 import type { ComponentType } from "react";
-import { getThemeManifest } from "@/lib/theme-loader";
 import { ThemeProvider } from "./theme-provider";
 
 interface ThemePageWrapperProps<T extends Record<string, any>> {
@@ -15,15 +14,12 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 	ThemeComponent,
 	componentProps,
 }: ThemePageWrapperProps<T>) {
-	const manifest = getThemeManifest(themeId);
-
 	const sanitizedThemeId = JSON.stringify(themeId);
 
 	const themeScript = `
 		(function() {
-			const root = document.documentElement;
-			root.setAttribute('data-theme', ${sanitizedThemeId});
-			${theme ? `root.classList.${theme === "dark" ? "add" : "remove"}('dark');` : ""}
+			document.documentElement.setAttribute('data-theme', ${sanitizedThemeId});
+			${theme ? `document.documentElement.classList.${theme === "dark" ? "add" : "remove"}('dark');` : ""}
 		})();
 	`;
 
@@ -33,11 +29,7 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 				dangerouslySetInnerHTML={{ __html: themeScript }}
 				suppressHydrationWarning
 			/>
-			<ThemeProvider
-				themeId={themeId}
-				cssFile={manifest?.cssFile}
-				theme={theme}
-			/>
+			<ThemeProvider themeId={themeId} theme={theme} />
 			<ThemeComponent {...componentProps} />
 		</>
 	);

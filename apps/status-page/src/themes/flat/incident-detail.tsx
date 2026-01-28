@@ -1,13 +1,15 @@
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { buildPath } from "@/lib/route-utils";
-import type { ThemeUpdatesProps } from "../types";
+import type { ThemeIncidentDetailProps } from "../types";
 import { BackLink } from "./components/back-link";
 import { CurrentIssuesBanner } from "./components/current-issues-banner";
-import { UpdatesList } from "./components/updates-list";
+import { IncidentDetailCard } from "./components/incident-detail-card";
 
-export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
-	const { config, incidentsByDate, activeIssues } = data;
+export default function DefaultIncidentDetail({
+	data,
+}: ThemeIncidentDetailProps) {
+	const { config, incident, activeIssues } = data;
 	const { design } = config;
 
 	return (
@@ -16,18 +18,14 @@ export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
 				title={config.name}
 				logoUrl={design.logoUrl}
 				contactUrl={design.contactUrl}
+				slug={config.slug}
 			/>
 
 			<main className="w-full flex-1">
-				<div className="mx-auto max-w-5xl px-4 py-12">
+				<div className="mx-auto max-w-3xl px-4 py-10">
 					<BackLink href={buildPath("/", config.slug)} />
-
-					<h1 className="mb-8 font-bold text-3xl text-foreground">
-						Incident History
-					</h1>
-
 					<CurrentIssuesBanner activeIssues={activeIssues} />
-					<UpdatesList incidentsByDate={incidentsByDate} />
+					<IncidentDetailCard incident={incident} />
 				</div>
 			</main>
 
