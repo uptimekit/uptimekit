@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This project is no longer continued, because of lack of time for actively maintaining it. Checkout similar projects like [pongo](https://www.pongo.sh/) or [openstatus](https://www.openstatus.dev/), they did better job than I do, and are actively maintained
+
 <div align="center">
   <a href="https://uptimekit.dev">
     <img src="https://r2.uptimekit.dev/logos/uptimekit.svg" alt="UptimeKit Logo" width="120" height="120">
@@ -22,9 +25,6 @@
 </div>
 
 <br/>
-
-> [!CAUTION]
-> This project is in early stage of development and some problems can occur. Please open issue for all bugs and feature requests.
 
 ## ✨ Features
 
