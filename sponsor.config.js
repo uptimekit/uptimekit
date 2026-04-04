@@ -4,7 +4,7 @@ export default {
 	formats: ["svg", "png"],
 
 	github: {
-		login: "stripsior",
+		login: "irazvan2745",
 		type: "user",
 	},
 

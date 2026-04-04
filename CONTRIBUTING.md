@@ -11,7 +11,7 @@ Before diving in, it helps to be familiar with the core technologies we use:
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Monorepo**: [Turborepo](https://turbo.build/)
-- **Package Manager**: [pnpm](https://pnpm.io/)
+- **Package Manager**: [bun](https://bun.com/)
 - **Database**: [PostgreSQL](https://www.postgresql.org/) & [Drizzle ORM](https://orm.drizzle.team/)
 - **Styling**: [TailwindCSS](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
 - **State/Data**: [TanStack Query](https://tanstack.com/query/latest) & [oRPC](https://orpc.unstack.io/)
@@ -29,14 +29,13 @@ Before diving in, it helps to be familiar with the core technologies we use:
 
 2. **Install Prerequisites**
     Ensure you have the following installed:
-    - Node.js 20+
-    - pnpm 10+ (`npm install -g pnpm`)
+    - Bun
     - Docker (optional, but recommended for local DB)
 
 3. **Install Dependencies**
 
     ```bash
-    pnpm install
+    bun install
     ```
 
 4. **Environment Setup**
@@ -52,13 +51,13 @@ Before diving in, it helps to be familiar with the core technologies we use:
     Push the database schema:
 
     ```bash
-    pnpm run db:push
+    bun run db:push
     ```
 
 6. **Run Development Server**
 
     ```bash
-    pnpm run dev
+    bun run dev
     ```
 
     This will start all applications in the monorepo.
@@ -99,10 +98,10 @@ We use **Biome** for linting and formatting. Please ensure your code passes chec
 
 ```bash
 # Check for issues
-pnpm run check
+bun run check
 
 # Fix issues automatically
-pnpm run check --write
+bun run check --write
 ```
 
 Pre-commit hooks (Husky) are configured to run these checks automatically.
@@ -111,8 +110,8 @@ Pre-commit hooks (Husky) are configured to run these checks automatically.
 
 If you modify the database schema (in `packages/db/src/schema.ts`):
 
-1. Run `pnpm run db:push` to apply changes to your local DB.
-2. (Optional) Use `pnpm run db:studio` to inspect your database.
+1. Run `bun run db:push` to apply changes to your local DB.
+2. (Optional) Use `bun run db:studio` to inspect your database.
 
 ### Committing
 

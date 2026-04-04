@@ -25,23 +25,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: 'pnpm'
+          bun-version-file: package.json
 
       - name: Extract Version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
       - name: Set Versions
-        run: node scripts/set-version.js ${{ env.VERSION }}
+        run: bun scripts/set-version.js ${{ env.VERSION }}
       
       - name: Update Lockfile
-        run: pnpm install --lockfile-only
+        run: bun install --lockfile-only
 
       - name: Git Identity
         run: |
@@ -81,8 +78,8 @@ jobs:
             
             # Only include packages that have a Dockerfile
             if [ -f "$DIR/Dockerfile" ]; then
-              NAME=$(node -p "require('./$PKG_FILE').name" 2>/dev/null || echo "")
-              VERSION=$(node -p "require('./$PKG_FILE').version" 2>/dev/null || echo "")
+              NAME=$(jq -r '.name // empty' "$PKG_FILE" 2>/dev/null || echo "")
+              VERSION=$(jq -r '.version // empty' "$PKG_FILE" 2>/dev/null || echo "")
               
               if [ -n "$NAME" ] && [ -n "$VERSION" ]; then
                 ITEM=$(jq -n \

@@ -22,7 +22,7 @@
   "examples": [],
   "auth": "better-auth",
   "payments": "none",
-  "packageManager": "pnpm",
+  "packageManager": "pnpm", // sigh
   "dbSetup": "none",
   "api": "orpc",
   "webDeploy": "none",

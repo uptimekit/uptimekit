@@ -19,24 +19,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: 'pnpm'
+          bun-version-file: package.json
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Run Biome Check
         id: biome-check
         continue-on-error: true
         run: |
           echo "::group::Biome Check"
-          OUTPUT=$(npx @biomejs/biome check . 2>&1 || true)
+          OUTPUT=$(bunx @biomejs/biome check . 2>&1 || true)
           echo "$OUTPUT"
           echo "::endgroup::"
           
@@ -97,12 +93,12 @@ jobs:
       - name: Run Type Check
         id: typecheck
         continue-on-error: true
-        run: pnpm run check-types
+        run: bun run check-types
 
       - name: Build All Packages
         id: build
         continue-on-error: true
-        run: pnpm run build
+        run: bun run build
       
       - name: Fail if any step failed
         if: steps.biome-check.outcome == 'failure' || steps.typecheck.outcome == 'failure' || steps.build.outcome == 'failure'
@@ -184,4 +180,3 @@ jobs:
                 body: comment
               });
             }
-
