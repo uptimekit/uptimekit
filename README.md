@@ -21,6 +21,8 @@
   <img src="https://r2.uptimekit.dev/banners/banner-smaller.png" alt="UptimeKit Banner" width="100%">
 </div>
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/new/template/uptimekit)
+
 <br/>
 
 ## ✨ Features
