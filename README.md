@@ -118,11 +118,6 @@ uptimekit/
 
 Thank you to all our amazing sponsors who make this project possible!
 
-[//]: #<p align="center">
-[//]: #  <a href="https://github.com/sponsors/irazvan2745">
-[//]: #    <img src=".github/sponsors/sponsors.svg" alt="Sponsors" />
-[//]: #  </a>
-[//]: #</p>
 
 **[Become a sponsor](https://github.com/sponsors/irazvan2745)** and get your logo here!
 
