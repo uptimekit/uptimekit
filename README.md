@@ -122,7 +122,7 @@ Thank you to all our amazing sponsors who make this project possible!
   </a>
 </p>
 
-**[Become a sponsor](https://github.com/sponsors/stripsior)** and get your logo here!
+**[Become a sponsor](https://github.com/sponsors/irazvan2745)** and get your logo here!
 
 ## 🤝 Contributing
 
