@@ -49,6 +49,7 @@
 		"@uptimekit/auth": "workspace:2.1.0",
 		"@uptimekit/db": "workspace:2.1.0",
 		"dotenv": "catalog:",
+		"drizzle-orm": "catalog:",
 		"ioredis": "^5.8.2",
 		"next": "^16.1.5",
 		"zod": "catalog:"

@@ -24,16 +24,16 @@ This is a monorepo with the following structure:
 
 ## Available Scripts
 
-- `pnpm run dev` - Start all apps in development mode
+- `bun run dev` - Start all apps in development mode
 
 ## Database Commands
 
 All database operations should be run from the web workspace:
 
-- `pnpm run db:push` - Push schema changes to database
-- `pnpm run db:studio` - Open database studio
-- `pnpm run db:generate` - Generate Drizzle files
-- `pnpm run db:migrate` - Run database migrations
+- `bun run db:push` - Push schema changes to database
+- `bun run db:studio` - Open database studio
+- `bun run db:generate` - Generate Drizzle files
+- `bun run db:migrate` - Run database migrations
 
 Database schema files are located in `packages/db/src/schema/`
 
@@ -64,10 +64,10 @@ Authentication is enabled in this project:
 
 ## Key Points
 
-- This is a Turborepo monorepo using pnpm workspaces
+- This is a Turborepo monorepo using bun workspaces
 - Each app has its own `package.json` and dependencies
 - Run commands from the root to execute across all workspaces
-- Run workspace-specific commands with `pnpm run command-name`
+- Run workspace-specific commands with `bun run command-name`
 - Turborepo handles build caching and parallel execution
 
 ## Code Guidelines
@@ -92,8 +92,3 @@ Authentication is enabled in this project:
 - **Avoid Clutter**: Do not comment obvious logic (e.g., `// Update count` above `count++`). Unnecessary comments add noise and maintenance burden.
 - **Function headers**: Use JSDoc/TSDoc for public-facing utilities to document params and return values, but only when the signature isn't self-evident.
 - **TODOs**: Use `// TODO:` to mark areas for improvement, but address them sooner rather than later.
-
-### Self Hosting
-
-- App has two variants, self-hosted and cloud-hosted. We define if this instance is self-hosted with NEXT_PUBLIC_SELF_HOSTED environment variable.
-- Some features are only available in cloud-hosted variant, or look different in self-hosted variant.

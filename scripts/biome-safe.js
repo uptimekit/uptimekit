@@ -16,7 +16,7 @@ const args = [
 	...files,
 ];
 
-const child = spawn("npx", args, {
+const child = spawn("bunx", args, {
 	stdio: "inherit",
 	shell: true,
 });

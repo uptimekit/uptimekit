@@ -1,6 +1,39 @@
 import { type ClickHouseClient, createClient } from "@clickhouse/client";
 
 let _clickhouse: ClickHouseClient | null = null;
+let _clickhouseInit: Promise<void> | null = null;
+
+const CLICKHOUSE_BOOTSTRAP_QUERIES = [
+	"CREATE DATABASE IF NOT EXISTS uptimekit",
+	`
+		CREATE TABLE IF NOT EXISTS uptimekit.monitor_events (
+			id UUID,
+			monitorId String,
+			status String,
+			latency UInt32,
+			timestamp DateTime64(3),
+			statusCode Nullable(UInt16),
+			error Nullable(String),
+			location Nullable(String),
+			dnsLookup Nullable(UInt32),
+			tcpConnect Nullable(UInt32),
+			tlsHandshake Nullable(UInt32),
+			ttfb Nullable(UInt32),
+			transfer Nullable(UInt32)
+		) ENGINE = MergeTree()
+		ORDER BY (monitorId, timestamp)
+	`,
+	`
+		CREATE TABLE IF NOT EXISTS uptimekit.monitor_changes (
+			id UUID,
+			monitorId String,
+			status String,
+			timestamp DateTime64(3),
+			location Nullable(String)
+		) ENGINE = MergeTree()
+		ORDER BY (monitorId, timestamp)
+	`,
+] as const;
 
 function getClickHouse(): ClickHouseClient {
 	if (!_clickhouse) {
@@ -16,10 +49,47 @@ function getClickHouse(): ClickHouseClient {
 	return _clickhouse;
 }
 
-// Export getter function instead of Proxy
+async function ensureClickHouseSchema() {
+	if (!_clickhouseInit) {
+		_clickhouseInit = (async () => {
+			const client = getClickHouse();
+
+			for (const query of CLICKHOUSE_BOOTSTRAP_QUERIES) {
+				await client.command({ query });
+			}
+		})().catch((error) => {
+			_clickhouseInit = null;
+			throw error;
+		});
+	}
+
+	await _clickhouseInit;
+}
+
+const METHODS_REQUIRING_SCHEMA = new Set<keyof ClickHouseClient>([
+	"query",
+	"command",
+	"insert",
+	"exec",
+]);
+
 export const clickhouse = new Proxy({} as ClickHouseClient, {
 	get(_target, prop) {
-		return Reflect.get(getClickHouse(), prop);
+		const client = getClickHouse();
+		const value = Reflect.get(client, prop);
+
+		if (
+			typeof prop === "string" &&
+			METHODS_REQUIRING_SCHEMA.has(prop as keyof ClickHouseClient) &&
+			typeof value === "function"
+		) {
+			return async (...args: unknown[]) => {
+				await ensureClickHouseSchema();
+				return Reflect.apply(value, client, args);
+			};
+		}
+
+		return value;
 	},
 	apply(_target, thisArg, args) {
 		return Reflect.apply(getClickHouse() as any, thisArg, args);

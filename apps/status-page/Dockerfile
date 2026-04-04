@@ -1,10 +1,8 @@
-FROM node:20-alpine AS base
+FROM oven/bun:1.3.11-alpine AS base
 
 # Install libc6-compat for turbo/next
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@latest --activate
-# Install specific version of turbo to match local devDependencies
-RUN npm install -g turbo@^2.5.4
+RUN bun add -g turbo@^2.5.4
 
 FROM base AS builder
 # Set working directory
@@ -21,12 +19,12 @@ WORKDIR /app
 # First install dependencies (as they change less often)
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install
+COPY --from=builder /app/out/bun.lock ./bun.lock
+RUN bun install --frozen-lockfile
 
 # Build the project
 COPY --from=builder /app/out/full/ .
-RUN pnpm turbo build --filter=@uptimekit/status-page...
+RUN bun x turbo build --filter=@uptimekit/status-page...
 
 FROM base AS runner
 WORKDIR /app
@@ -45,4 +43,4 @@ COPY --from=installer --chown=nextjs:nodejs /app/apps/status-page/.next/static .
 ENV NODE_ENV=production
 ENV PORT=3001
 EXPOSE 3001
-CMD ["node", "apps/status-page/server.js"]
+CMD ["bun", "apps/status-page/server.js"]

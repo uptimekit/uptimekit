@@ -3,7 +3,7 @@ import * as schema from "@uptimekit/db/schema/auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
-import { admin, apiKey, organization, twoFactor } from "better-auth/plugins";
+import { admin, organization, twoFactor } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 
 function createSlugFromEmail(email: string): string {
@@ -23,7 +23,6 @@ export const auth = betterAuth({
 	plugins: [
 		nextCookies(),
 		admin(),
-		apiKey(),
 		organization({
 			organizationHooks: {
 				beforeCreateOrganization: async ({ organization }) => {

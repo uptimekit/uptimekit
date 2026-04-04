@@ -6,7 +6,6 @@ loadEnv();
 const nextConfig: NextConfig = {
 	typedRoutes: true,
 	reactCompiler: true,
-	serverExternalPackages: ["pg"],
 	output: "standalone",
 };
 

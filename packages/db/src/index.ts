@@ -1,21 +1,16 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { loadEnv } from "@uptimekit/config/env";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
-// Create connection pool - pg Pool doesn't connect until first query
-const pool = new Pool({
-	connectionString: process.env.DATABASE_URL,
-	connectionTimeoutMillis: 10000,
+loadEnv();
+
+const client = postgres(process.env.DATABASE_URL || "", {
 	max: 20,
-	idleTimeoutMillis: 30000,
+	idle_timeout: 30,
 });
 
-// Handle connection errors gracefully
-pool.on("error", (err) => {
-	console.error("Unexpected database pool error:", err);
-});
-
-export const db = drizzle(pool, { schema });
+export const db = drizzle(client, { schema });
 
 export * from "./clickhouse";
 export * from "./schema";

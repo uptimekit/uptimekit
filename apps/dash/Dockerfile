@@ -1,9 +1,8 @@
-FROM node:20-alpine AS base
+FROM oven/bun:1.3.11-alpine AS base
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN npm install -g turbo@^2.5.4
+RUN bun add -g turbo@^2.5.4
 
 FROM base AS builder
 COPY . .
@@ -11,10 +10,10 @@ RUN turbo prune --scope=@uptimekit/dash --docker
 
 FROM base AS installer
 COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install
+COPY --from=builder /app/out/bun.lock ./bun.lock
+RUN bun install --frozen-lockfile
 COPY --from=builder /app/out/full/ .
-RUN pnpm turbo build --filter=@uptimekit/dash...
+RUN bun x turbo build --filter=@uptimekit/dash...
 
 FROM base AS runner
 WORKDIR /app
@@ -40,4 +39,4 @@ ENV NODE_PATH=/app/node_modules
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "node migrate.cjs && node apps/dash/server.js"]
+CMD ["sh", "-c", "bun migrate.cjs && bun apps/dash/server.js"]

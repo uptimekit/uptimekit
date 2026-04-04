@@ -1,9 +1,7 @@
 const path = require("path");
-// Manually add root node_modules to require path if needed, though NODE_PATH should handle it.
-// Let's try to resolve from absolute path if possible or verify paths.
-const { drizzle } = require("drizzle-orm/node-postgres");
-const { migrate } = require("drizzle-orm/node-postgres/migrator");
-const { Pool } = require("pg");
+const postgres = require("postgres");
+const { drizzle } = require("drizzle-orm/postgres-js");
+const { migrate } = require("drizzle-orm/postgres-js/migrator");
 const { createClient } = require("@clickhouse/client");
 
 const runPostgresMigrations = async () => {
@@ -16,11 +14,8 @@ const runPostgresMigrations = async () => {
 		process.exit(1);
 	}
 
-	const pool = new Pool({
-		connectionString,
-	});
-
-	const db = drizzle(pool);
+	const client = postgres(connectionString);
+	const db = drizzle(client);
 
 	const start = Date.now();
 
@@ -39,7 +34,7 @@ const runPostgresMigrations = async () => {
 		console.error(err);
 		process.exit(1);
 	} finally {
-		await pool.end();
+		await client.end();
 	}
 };
 
@@ -136,9 +131,7 @@ const seedDefaultConfiguration = async () => {
 		process.exit(1);
 	}
 
-	const pool = new Pool({
-		connectionString,
-	});
+	const client = postgres(connectionString);
 
 	const start = Date.now();
 
@@ -150,12 +143,11 @@ const seedDefaultConfiguration = async () => {
 	try {
 		for (const config of defaults) {
 			// Use INSERT ... ON CONFLICT to upsert (only insert if not exists)
-			await pool.query(
-				`INSERT INTO configuration (id, key, value, created_at, updated_at)
-				 VALUES (gen_random_uuid(), $1, $2, NOW(), NOW())
-				 ON CONFLICT (key) DO NOTHING`,
-				[config.key, config.value],
-			);
+			await client`
+				INSERT INTO configuration (id, key, value, created_at, updated_at)
+				VALUES (gen_random_uuid(), ${config.key}, ${config.value}, NOW(), NOW())
+				ON CONFLICT (key) DO NOTHING
+			`;
 		}
 		const end = Date.now();
 		console.log(`✅ Default configuration seeded in ${end - start}ms`);
@@ -164,7 +156,7 @@ const seedDefaultConfiguration = async () => {
 		console.error(err);
 		// Don't exit - seeding is not critical
 	} finally {
-		await pool.end();
+		await client.end();
 	}
 };
 

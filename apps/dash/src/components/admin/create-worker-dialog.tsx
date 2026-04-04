@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
 	Check,
-	ChevronRight,
+	ChevronsUpDown,
 	Copy,
 	Eye,
 	EyeOff,
@@ -15,10 +15,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
 import {
 	Dialog,
 	DialogContent,
@@ -31,13 +34,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { REGIONS_BY_CONTINENT } from "@/lib/regions";
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { ALL_REGIONS, REGIONS_BY_CONTINENT } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -56,9 +57,8 @@ export function CreateWorkerDialog() {
 	const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);
 	const [isRevealed, setIsRevealed] = useState(false);
 	const [isCopied, setIsCopied] = useState(false);
-	const [openContinents, setOpenContinents] = useState<Record<string, boolean>>(
-		{},
-	);
+	const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
+	const [selectedLocation, setSelectedLocation] = useState("");
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
@@ -112,16 +112,15 @@ export function CreateWorkerDialog() {
 				setNewWorkerKey(null);
 				setIsRevealed(false);
 				setIsCopied(false);
+				setLocationPopoverOpen(false);
+				setSelectedLocation("");
 			}, 300);
 		}
 	};
 
-	const toggleContinent = (continent: string) => {
-		setOpenContinents((prev) => ({
-			...prev,
-			[continent]: !prev[continent],
-		}));
-	};
+	const selectedRegion = ALL_REGIONS.find(
+		(region) => region.value === selectedLocation,
+	);
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
@@ -196,40 +195,79 @@ export function CreateWorkerDialog() {
 							</div>
 							<div className="grid gap-2">
 								<Label htmlFor="location">Location</Label>
-								<Select name="location" required>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Select a region" />
-									</SelectTrigger>
-									<SelectContent className="max-h-[400px]">
-										{REGIONS_BY_CONTINENT.map((group) => (
-											<Collapsible
-												key={group.continent}
-												open={openContinents[group.continent]}
-												onOpenChange={() => toggleContinent(group.continent)}
-											>
-												<CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-1.5 font-semibold text-muted-foreground text-sm hover:bg-accent hover:text-accent-foreground">
-													<span>{group.continent}</span>
-													<ChevronRight
-														className={cn(
-															"h-4 w-4 transition-transform duration-200",
-															openContinents[group.continent] && "rotate-90",
-														)}
-													/>
-												</CollapsibleTrigger>
-												<CollapsibleContent>
-													{group.regions.map((region) => (
-														<SelectItem key={region.value} value={region.value}>
-															<div className="flex items-center gap-2">
-																<region.Flag className="h-4 w-5 rounded-sm object-cover" />
-																<span>{region.label}</span>
-															</div>
-														</SelectItem>
-													))}
-												</CollapsibleContent>
-											</Collapsible>
-										))}
-									</SelectContent>
-								</Select>
+								<input
+									id="location"
+									name="location"
+									value={selectedLocation}
+									required
+									readOnly
+									className="sr-only"
+									tabIndex={-1}
+								/>
+								<Popover
+									open={locationPopoverOpen}
+									onOpenChange={setLocationPopoverOpen}
+								>
+									<PopoverTrigger asChild>
+										<Button
+											variant="outline"
+											role="combobox"
+											aria-expanded={locationPopoverOpen}
+											className={cn(
+												"w-full justify-between",
+												!selectedRegion && "text-muted-foreground",
+											)}
+										>
+											{selectedRegion ? (
+												<div className="flex items-center gap-2">
+													<selectedRegion.Flag className="h-4 w-5 rounded-sm object-cover" />
+													<span>{selectedRegion.label}</span>
+												</div>
+											) : (
+												"Select a region"
+											)}
+											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+										<Command>
+											<CommandInput placeholder="Search regions..." />
+											<CommandList className="max-h-[400px]">
+												<CommandEmpty>No region found.</CommandEmpty>
+												{REGIONS_BY_CONTINENT.map((group) => (
+													<CommandGroup
+														key={group.continent}
+														heading={group.continent}
+													>
+														{group.regions.map((region) => (
+															<CommandItem
+																key={region.value}
+																value={`${region.label} ${group.continent}`}
+																onSelect={() => {
+																	setSelectedLocation(region.value);
+																	setLocationPopoverOpen(false);
+																}}
+															>
+																<div className="flex items-center gap-2">
+																	<region.Flag className="h-4 w-5 rounded-sm object-cover" />
+																	<span>{region.label}</span>
+																</div>
+																<Check
+																	className={cn(
+																		"ml-auto h-4 w-4",
+																		selectedLocation === region.value
+																			? "opacity-100"
+																			: "opacity-0",
+																	)}
+																/>
+															</CommandItem>
+														))}
+													</CommandGroup>
+												))}
+											</CommandList>
+										</Command>
+									</PopoverContent>
+								</Popover>
 							</div>
 						</div>
 						<DialogFooter>
