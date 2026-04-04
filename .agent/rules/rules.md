@@ -26,16 +26,16 @@ This is a monorepo with the following structure:
 
 ## Available Scripts
 
-- `pnpm run dev` - Start all apps in development mode
+- `bun run dev` - Start all apps in development mode
 
 ## Database Commands
 
 All database operations should be run from the web workspace:
 
-- `pnpm run db:push` - Push schema changes to database
-- `pnpm run db:studio` - Open database studio
-- `pnpm run db:generate` - Generate Drizzle files
-- `pnpm run db:migrate` - Run database migrations
+- `bun run db:push` - Push schema changes to database
+- `bun run db:studio` - Open database studio
+- `bun run db:generate` - Generate Drizzle files
+- `bun run db:migrate` - Run database migrations
 
 Database schema files are located in `packages/db/src/schema/`
 
@@ -66,10 +66,10 @@ Authentication is enabled in this project:
 
 ## Key Points
 
-- This is a Turborepo monorepo using pnpm workspaces
+- This is a Turborepo monorepo using bun workspaces
 - Each app has its own `package.json` and dependencies
 - Run commands from the root to execute across all workspaces
-- Run workspace-specific commands with `pnpm run command-name`
+- Run workspace-specific commands with `bun run command-name`
 - Turborepo handles build caching and parallel execution
 
 ## Code Guidelines
