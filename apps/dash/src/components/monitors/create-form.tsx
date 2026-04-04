@@ -77,6 +77,7 @@ const baseSchema = z.object({
 	tags: z.array(z.string()).default([]),
 	incidentPendingDuration: z.coerce.number().default(0),
 	incidentRecoveryDuration: z.coerce.number().default(0),
+	publishIncidentToStatusPage: z.boolean().default(false),
 	locations: z.array(z.string()).min(1, "At least one region must be selected"),
 });
 
@@ -542,6 +543,8 @@ export function CreateMonitorForm({
 				defaults.sslCertExpiryNotificationDays || 30,
 			incidentPendingDuration: defaults.incidentPendingDuration || 0,
 			incidentRecoveryDuration: defaults.incidentRecoveryDuration || 0,
+			publishIncidentToStatusPage:
+				defaults.publishIncidentToStatusPage ?? false,
 			locations: defaults.locations || [],
 			method: defaults.method || "GET",
 			url: defaults.url || "",
@@ -570,6 +573,7 @@ export function CreateMonitorForm({
 				locations,
 				incidentPendingDuration,
 				incidentRecoveryDuration,
+				publishIncidentToStatusPage,
 				...rest
 			} = data;
 
@@ -582,6 +586,7 @@ export function CreateMonitorForm({
 				locations,
 				incidentPendingDuration,
 				incidentRecoveryDuration,
+				publishIncidentToStatusPage,
 				config: rest,
 			};
 
@@ -693,7 +698,7 @@ export function CreateMonitorForm({
 										<FormItem className="flex flex-col">
 											<FormLabel>Monitor Type</FormLabel>
 											<Popover>
-												<PopoverTrigger asChild>
+												<PopoverTrigger render={
 													<FormControl>
 														<Button
 															variant="outline"
@@ -725,6 +730,7 @@ export function CreateMonitorForm({
 															<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 														</Button>
 													</FormControl>
+												}>
 												</PopoverTrigger>
 												<PopoverContent className="w-[400px] p-0">
 													<Command>
@@ -820,7 +826,7 @@ export function CreateMonitorForm({
 													open={groupPopoverOpen}
 													onOpenChange={setGroupPopoverOpen}
 												>
-													<PopoverTrigger asChild>
+													<PopoverTrigger render={
 														<FormControl>
 															<Button
 																variant="outline"
@@ -838,6 +844,7 @@ export function CreateMonitorForm({
 																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 															</Button>
 														</FormControl>
+													}>
 													</PopoverTrigger>
 													<PopoverContent className="w-[300px] p-0">
 														<Command>
@@ -928,7 +935,7 @@ export function CreateMonitorForm({
 													open={tagPopoverOpen}
 													onOpenChange={setTagPopoverOpen}
 												>
-													<PopoverTrigger asChild>
+													<PopoverTrigger render={
 														<FormControl>
 															<Button
 																variant="outline"
@@ -945,6 +952,7 @@ export function CreateMonitorForm({
 																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 															</Button>
 														</FormControl>
+													}>
 													</PopoverTrigger>
 													<PopoverContent className="w-[300px] p-0">
 														<Command>
@@ -1171,7 +1179,7 @@ export function CreateMonitorForm({
 						className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3"
 					>
 						<div className="col-span-1">
-							<CollapsibleTrigger asChild>
+							<CollapsibleTrigger render={
 								<Button
 									variant="ghost"
 									className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
@@ -1184,6 +1192,7 @@ export function CreateMonitorForm({
 									/>
 									Advanced settings
 								</Button>
+							}>
 							</CollapsibleTrigger>
 							{isAdvancedOpen && (
 								<p className="mt-1 text-muted-foreground text-sm">
@@ -1257,6 +1266,33 @@ export function CreateMonitorForm({
 											)}
 										/>
 									</div>
+
+									<FormField
+										control={form.control}
+										name="publishIncidentToStatusPage"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
+												<div className="space-y-0.5">
+													<FormLabel className="text-base">
+														Publish incidents to status pages
+													</FormLabel>
+													<FormDescription>
+														When this monitor opens an automatic incident,
+														publish it to every status page that already
+														includes this monitor.
+													</FormDescription>
+												</div>
+												<FormControl>
+													<Checkbox
+														checked={field.value}
+														onCheckedChange={(checked) =>
+															field.onChange(checked === true)
+														}
+													/>
+												</FormControl>
+											</FormItem>
+										)}
+									/>
 
 									{["http", "http-json", "keyword"].includes(
 										selectedType.id,

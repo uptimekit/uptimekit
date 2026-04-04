@@ -276,19 +276,21 @@ export function MonitorsTable() {
 					>
 						<Search className="h-4 w-4" />
 						{search && (
-							<span className="-right-1 -top-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
 					</Button>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="icon" className="relative">
-								<Filter className="h-4 w-4" />
-								{activeFilterCount > 0 && (
-									<span className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-										{activeFilterCount}
-									</span>
-								)}
-							</Button>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="outline" size="icon" className="relative" />
+							}
+						>
+							<Filter className="h-4 w-4" />
+							{activeFilterCount > 0 && (
+								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+									{activeFilterCount}
+								</span>
+							)}
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56 p-2">
 							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
@@ -549,14 +551,14 @@ export function MonitorsTable() {
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button
-						asChild
 						className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
-					>
-						<Link href="/monitors/new">
-							<Plus className="h-4 w-4" />
-							<span className="hidden md:inline">Create monitor</span>
-						</Link>
-					</Button>
+						render={
+							<Link href="/monitors/new">
+								<Plus className="h-4 w-4" />
+								<span className="hidden md:inline">Create monitor</span>
+							</Link>
+						}
+					/>
 				</div>
 			</div>
 
@@ -598,8 +600,8 @@ export function MonitorsTable() {
 											!groupFilter &&
 											!tagFilter && (
 												<div className="mt-2">
-													<Button asChild>
-														<Link href="/monitors/new">Create monitor</Link>
+													<Button render={<Link href="/monitors/new" />}>
+														Create monitor
 													</Button>
 												</div>
 											)}
@@ -849,19 +851,21 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-				>
-					<MoreHorizontal className="h-4 w-4" />
-					<span className="sr-only">Open menu</span>
-				</Button>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+					/>
+				}
+			>
+				<MoreHorizontal className="h-4 w-4" />
+				<span className="sr-only">Open menu</span>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
-				<DropdownMenuItem asChild>
-					<Link href={`/monitors/${monitor.id}`}>View details</Link>
+				<DropdownMenuItem render={<Link href={`/monitors/${monitor.id}`} />}>
+					View details
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					onClick={(e) => {
@@ -872,13 +876,15 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 					{monitor.active ? "Pause monitoring" : "Resume monitoring"}
 				</DropdownMenuItem>
 				<AlertDialog>
-					<AlertDialogTrigger asChild>
-						<DropdownMenuItem
-							className="text-red-500"
-							onSelect={(e) => e.preventDefault()}
-						>
-							Delete
-						</DropdownMenuItem>
+					<AlertDialogTrigger
+						render={
+							<DropdownMenuItem
+								className="text-red-500"
+								onSelect={(e) => e.preventDefault()}
+							/>
+						}
+					>
+						Delete
 					</AlertDialogTrigger>
 					<AlertDialogContent>
 						<AlertDialogHeader>

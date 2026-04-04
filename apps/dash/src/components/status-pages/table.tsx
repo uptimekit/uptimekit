@@ -171,19 +171,21 @@ export function StatusPagesTable() {
 					>
 						<Search className="h-4 w-4" />
 						{search && (
-							<span className="-right-1 -top-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
 					</Button>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="icon" className="relative">
-								<Filter className="h-4 w-4" />
-								{activeFilterCount > 0 && (
-									<span className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-										{activeFilterCount}
-									</span>
-								)}
-							</Button>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="outline" size="icon" className="relative" />
+							}
+						>
+							<Filter className="h-4 w-4" />
+							{activeFilterCount > 0 && (
+								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+									{activeFilterCount}
+								</span>
+							)}
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56 p-2">
 							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
@@ -334,28 +336,30 @@ export function StatusPagesTable() {
 										</TableCell>
 										<TableCell className="w-[50px] pr-4">
 											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-														onClick={(e) => e.stopPropagation()}
-													>
-														<MoreHorizontal className="h-4 w-4" />
-														<span className="sr-only">Open menu</span>
-													</Button>
+												<DropdownMenuTrigger
+													render={
+														<Button
+															variant="ghost"
+															size="icon"
+															className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+															onClick={(e) => e.stopPropagation()}
+														/>
+													}
+												>
+													<MoreHorizontal className="h-4 w-4" />
+													<span className="sr-only">Open menu</span>
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end">
 													<DropdownMenuItem
-														asChild
+														render={
+															<Link
+																href={`/s/${page.slug}` as any}
+																target="_blank"
+															/>
+														}
 														onClick={(e) => e.stopPropagation()}
 													>
-														<Link
-															href={`/s/${page.slug}` as any}
-															target="_blank"
-														>
-															View page
-														</Link>
+														View page
 													</DropdownMenuItem>
 													<DropdownMenuItem
 														className="text-red-500 focus:text-red-600"

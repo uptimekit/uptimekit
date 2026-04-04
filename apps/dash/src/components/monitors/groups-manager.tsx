@@ -108,11 +108,9 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 			<div className="flex items-center justify-between">
 				<h3 className="font-semibold text-sm">Groups</h3>
 				<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-					<DialogTrigger asChild>
-						<Button variant="outline" size="sm">
-							<Plus className="mr-2 h-4 w-4" />
-							New Group
-						</Button>
+					<DialogTrigger render={<Button variant="outline" size="sm" />}>
+						<Plus className="mr-2 h-4 w-4" />
+						New Group
 					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
@@ -171,10 +169,12 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 							<span className="font-medium text-sm">{group.name}</span>
 						</div>
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="icon" className="h-8 w-8">
-									<MoreHorizontal className="h-4 w-4" />
-								</Button>
+							<DropdownMenuTrigger
+								render={
+									<Button variant="ghost" size="icon" className="h-8 w-8" />
+								}
+							>
+								<MoreHorizontal className="h-4 w-4" />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem
@@ -188,14 +188,16 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 									Edit
 								</DropdownMenuItem>
 								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<DropdownMenuItem
-											className="text-red-500"
-											onSelect={(e) => e.preventDefault()}
-										>
-											<Trash2 className="mr-2 h-4 w-4" />
-											Delete
-										</DropdownMenuItem>
+									<AlertDialogTrigger
+										render={
+											<DropdownMenuItem
+												className="text-red-500"
+												onSelect={(e) => e.preventDefault()}
+											/>
+										}
+									>
+										<Trash2 className="mr-2 h-4 w-4" />
+										Delete
 									</AlertDialogTrigger>
 									<AlertDialogContent>
 										<AlertDialogHeader>

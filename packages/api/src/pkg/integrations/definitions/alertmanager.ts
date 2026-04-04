@@ -67,7 +67,7 @@ export async function processAlertManagerWebhook(
 		});
 
 		if (alert.status === "firing") {
-			if (existingIncident && !existingIncident.resolvedAt) {
+			if (existingIncident && !existingIncident.endedAt) {
 				result.skipped++;
 				continue;
 			}
@@ -96,8 +96,11 @@ export async function processAlertManagerWebhook(
 					type: "automatic",
 					externalId,
 					externalSource,
+					startedAt: now,
+					endedAt: null,
 					createdAt: now,
 					updatedAt: now,
+					resolvedAt: null,
 				});
 
 				await tx.insert(incidentActivity).values({
@@ -124,7 +127,7 @@ export async function processAlertManagerWebhook(
 				continue;
 			}
 
-			if (existingIncident.resolvedAt) {
+			if (existingIncident.endedAt) {
 				result.skipped++;
 				continue;
 			}
@@ -136,6 +139,7 @@ export async function processAlertManagerWebhook(
 					.update(incident)
 					.set({
 						status: "resolved",
+						endedAt: now,
 						resolvedAt: now,
 						updatedAt: now,
 					})

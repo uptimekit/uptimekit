@@ -6,8 +6,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
-import { StatusDot } from "./status-indicator";
 import type { StatusType, UptimeDay } from "../../types";
+import { StatusDot } from "./status-indicator";
 import { UptimeBar } from "./uptime-bar";
 
 interface MonitorListItemProps {
@@ -35,17 +35,19 @@ export function MonitorListItem({
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2.5">
 						<StatusDot status={status} />
-						<h3 className="font-medium text-foreground text-base">{name}</h3>
+						<h3 className="font-medium text-base text-foreground">{name}</h3>
 						{description && (
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<button
-										type="button"
-										className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										aria-label="More information"
-									>
-										<Info className="h-3.5 w-3.5 text-muted-foreground/60" />
-									</button>
+								<TooltipTrigger
+									render={
+										<button
+											type="button"
+											className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											aria-label="More information"
+										/>
+									}
+								>
+									<Info className="h-3.5 w-3.5 text-muted-foreground/60" />
 								</TooltipTrigger>
 								<TooltipContent>
 									<p className="max-w-xs text-sm">{description}</p>
@@ -77,14 +79,16 @@ export function MonitorListItem({
 					</h3>
 					{description && (
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									aria-label="More information"
-								>
-									<Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-								</button>
+							<TooltipTrigger
+								render={
+									<button
+										type="button"
+										className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										aria-label="More information"
+									/>
+								}
+							>
+								<Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
 							</TooltipTrigger>
 							<TooltipContent>
 								<p className="max-w-xs text-sm">{description}</p>
@@ -103,6 +107,6 @@ export function MonitorListItem({
 			</div>
 
 			<UptimeBar days={history} />
-		</div >
+		</div>
 	);
 }

@@ -207,7 +207,7 @@ export default function StatusUpdatesPage() {
 										</TableCell>
 										<TableCell className="w-[50px] pr-4">
 											<DropdownMenu>
-												<DropdownMenuTrigger asChild>
+												<DropdownMenuTrigger>
 													<Button
 														variant="ghost"
 														size="icon"
@@ -220,7 +220,6 @@ export default function StatusUpdatesPage() {
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end">
 													<DropdownMenuItem
-														asChild
 														onClick={(e) => e.stopPropagation()}
 													>
 														<Link

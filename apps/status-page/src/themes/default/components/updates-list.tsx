@@ -1,17 +1,28 @@
+import {
+	getIncidentHistoryLabel,
+	type IncidentHistoryPeriod,
+} from "@/lib/incident-history";
 import { IncidentCard } from "@/components/incident-card";
 import type { Incident } from "../../types";
 
 interface UpdatesListProps {
 	incidentsByDate: Record<string, Incident[]>;
+	selectedPeriod: IncidentHistoryPeriod;
 }
 
-export function UpdatesList({ incidentsByDate }: UpdatesListProps) {
+export function UpdatesList({
+	incidentsByDate,
+	selectedPeriod,
+}: UpdatesListProps) {
+	const emptyMessage =
+		selectedPeriod === "all"
+			? "No history items to display."
+			: `No history items in the last ${getIncidentHistoryLabel(selectedPeriod)}.`;
+
 	return (
 		<div className="space-y-12">
 			{Object.keys(incidentsByDate).length === 0 ? (
-				<p className="text-center text-muted-foreground">
-					No incidents to display.
-				</p>
+				<p className="text-center text-muted-foreground">{emptyMessage}</p>
 			) : (
 				Object.entries(incidentsByDate).map(([date, incidents]) => (
 					<div key={date}>

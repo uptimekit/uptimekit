@@ -1,9 +1,23 @@
 "use client";
 
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import type * as React from "react";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
+
+function renderWithChildren(
+	render: React.ReactElement,
+	children: React.ReactNode,
+) {
+	const renderElement = render as React.ReactElement<{
+		children?: React.ReactNode;
+	}>;
+	return React.cloneElement(
+		renderElement,
+		undefined,
+		children ?? renderElement.props.children,
+	);
+}
 
 function TooltipProvider({
 	delayDuration = 0,
@@ -29,9 +43,21 @@ function Tooltip({
 }
 
 function TooltipTrigger({
+	render,
+	children,
 	...props
-}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-	return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+}: Omit<React.ComponentProps<typeof TooltipPrimitive.Trigger>, "asChild"> & {
+	render?: React.ReactElement;
+}) {
+	return (
+		<TooltipPrimitive.Trigger
+			asChild={Boolean(render)}
+			data-slot="tooltip-trigger"
+			{...props}
+		>
+			{render ? renderWithChildren(render, children) : children}
+		</TooltipPrimitive.Trigger>
+	);
 }
 
 function TooltipContent({
@@ -58,4 +84,4 @@ function TooltipContent({
 	);
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger };

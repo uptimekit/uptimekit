@@ -4,11 +4,111 @@ import {
 	incident,
 	incidentActivity,
 	incidentMonitor,
+	incidentStatusPage,
 } from "@uptimekit/db/schema/incidents";
-import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import { monitor } from "@uptimekit/db/schema/monitors";
+import { statusPage } from "@uptimekit/db/schema/status-pages";
+import {
+	and,
+	desc,
+	eq,
+	ilike,
+	inArray,
+	isNull,
+	sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { eventBus } from "../lib/events";
+
+const incidentTimestampSchema = z.coerce.date();
+
+const incidentStatusSchema = z.enum([
+	"investigating",
+	"identified",
+	"monitoring",
+	"resolved",
+]);
+
+const incidentUpdateInputSchema = z.object({
+	id: z.string(),
+	title: z.string().min(1),
+	description: z.string().optional(),
+	severity: z.enum(["minor", "major", "critical"]),
+	startedAt: incidentTimestampSchema,
+	endedAt: incidentTimestampSchema.nullable().optional(),
+	monitorIds: z.array(z.string()).default([]),
+	statusPageIds: z.array(z.string()).default([]),
+});
+
+function ensureValidTimeline(startedAt: Date, endedAt: Date | null) {
+	if (endedAt && endedAt.getTime() < startedAt.getTime()) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Incident end time cannot be before the start time",
+		});
+	}
+}
+
+function formatTimelineChange(label: string, previous: Date | null, next: Date | null) {
+	const previousText = previous ? previous.toISOString() : "unset";
+	const nextText = next ? next.toISOString() : "unset";
+	return `${label} changed from ${previousText} to ${nextText}`;
+}
+
+function deriveStatusForEndedAt(existingStatus: string, acknowledgedAt: Date | null, endedAt: Date | null) {
+	if (endedAt) {
+		return "resolved";
+	}
+
+	if (existingStatus === "resolved") {
+		return acknowledgedAt ? "identified" : "investigating";
+	}
+
+	return existingStatus as z.infer<typeof incidentStatusSchema>;
+}
+
+async function assertOrganizationResources(
+	organizationId: string,
+	monitorIds: string[],
+	statusPageIds: string[],
+) {
+	const [matchingMonitors, matchingStatusPages] = await Promise.all([
+		monitorIds.length
+			? db
+					.select({ id: monitor.id })
+					.from(monitor)
+					.where(
+						and(
+							eq(monitor.organizationId, organizationId),
+							inArray(monitor.id, monitorIds),
+						),
+					)
+			: Promise.resolve([]),
+		statusPageIds.length
+			? db
+					.select({ id: statusPage.id })
+					.from(statusPage)
+					.where(
+						and(
+							eq(statusPage.organizationId, organizationId),
+							inArray(statusPage.id, statusPageIds),
+						),
+					)
+			: Promise.resolve([]),
+	]);
+
+	if (matchingMonitors.length !== monitorIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "One or more monitors do not belong to the active organization",
+		});
+	}
+
+	if (matchingStatusPages.length !== statusPageIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "One or more status pages do not belong to the active organization",
+		});
+	}
+}
 
 export const incidentsRouter = {
 	list: protectedProcedure
@@ -38,10 +138,11 @@ export const incidentsRouter = {
 					context.session.session.activeOrganizationId!,
 				),
 			];
+
 			if (input.status === "open") {
-				filters.push(isNull(incident.resolvedAt));
+				filters.push(isNull(incident.endedAt));
 			} else if (input.status === "resolved") {
-				filters.push(sql`${incident.resolvedAt} IS NOT NULL`);
+				filters.push(sql`${incident.endedAt} IS NOT NULL`);
 			}
 
 			if (input.q) {
@@ -60,14 +161,18 @@ export const incidentsRouter = {
 				db.$count(incident, and(...filters)),
 				db.query.incident.findMany({
 					where: and(...filters),
-
 					limit: input.limit,
 					offset: input.offset,
-					orderBy: [desc(incident.createdAt)],
+					orderBy: [desc(incident.startedAt)],
 					with: {
 						monitors: {
 							with: {
 								monitor: true,
+							},
+						},
+						statusPages: {
+							with: {
+								statusPage: true,
 							},
 						},
 						activities: {
@@ -95,13 +200,24 @@ export const incidentsRouter = {
 			},
 		})
 		.input(z.object({ id: z.string() }))
-		.handler(async ({ input }) => {
+		.handler(async ({ input, context }) => {
 			const item = await db.query.incident.findFirst({
-				where: eq(incident.id, input.id),
+				where: and(
+					eq(incident.id, input.id),
+					eq(
+						incident.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
 				with: {
 					monitors: {
 						with: {
 							monitor: true,
+						},
+					},
+					statusPages: {
+						with: {
+							statusPage: true,
 						},
 					},
 					activities: {
@@ -138,32 +254,56 @@ export const incidentsRouter = {
 				description: z.string().optional(),
 				severity: z.enum(["minor", "major", "critical"]),
 				monitorIds: z.array(z.string()).default([]),
+				statusPageIds: z.array(z.string()).default([]),
+				startedAt: incidentTimestampSchema.optional(),
+				endedAt: incidentTimestampSchema.nullable().optional(),
 			}),
 		)
 		.handler(async ({ input, context }) => {
 			const id = crypto.randomUUID();
 			const now = new Date();
+			const startedAt = input.startedAt ?? now;
+			const endedAt = input.endedAt ?? null;
+			const status = endedAt ? "resolved" : "investigating";
+			const organizationId = context.session.session.activeOrganizationId!;
+
+			ensureValidTimeline(startedAt, endedAt);
+			await assertOrganizationResources(
+				organizationId,
+				input.monitorIds,
+				input.statusPageIds,
+			);
 
 			await db.transaction(async (tx) => {
 				await tx.insert(incident).values({
 					id,
-					organizationId: context.session.session.activeOrganizationId!,
+					organizationId,
 					title: input.title,
 					description: input.description,
 					severity: input.severity,
-					status: "investigating",
+					status,
 					type: "manual",
+					startedAt,
+					endedAt,
 					createdAt: now,
 					updatedAt: now,
+					resolvedAt: endedAt,
 				});
 
 				if (input.monitorIds.length > 0) {
-					// Verify monitors belong to org?
-					// Assume yes for now, but good practice to verify in real app
 					await tx.insert(incidentMonitor).values(
 						input.monitorIds.map((mid) => ({
 							incidentId: id,
 							monitorId: mid,
+						})),
+					);
+				}
+
+				if (input.statusPageIds.length > 0) {
+					await tx.insert(incidentStatusPage).values(
+						input.statusPageIds.map((statusPageId) => ({
+							incidentId: id,
+							statusPageId,
 						})),
 					);
 				}
@@ -176,17 +316,190 @@ export const incidentsRouter = {
 					createdAt: now,
 					userId: context.session.user.id,
 				});
+
+				if (input.statusPageIds.length > 0) {
+					await tx.insert(incidentActivity).values({
+						id: crypto.randomUUID(),
+						incidentId: id,
+						message: `Published to ${input.statusPageIds.length} status page${input.statusPageIds.length === 1 ? "" : "s"}`,
+						type: "event",
+						createdAt: now,
+						userId: context.session.user.id,
+					});
+				}
 			});
 
 			eventBus.emit("incident.created", {
 				incidentId: id,
-				organizationId: context.session.session.activeOrganizationId!,
+				organizationId,
 				title: input.title,
 				description: input.description,
 				severity: input.severity,
 			});
 
 			return { id };
+		}),
+
+	update: writeProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/incidents/{id}",
+				tags: ["Incident Management"],
+				summary: "Update incident",
+				description: "Update incident metadata, timeline, monitors, and publishing.",
+			},
+		})
+		.input(incidentUpdateInputSchema)
+		.handler(async ({ input, context }) => {
+			const organizationId = context.session.session.activeOrganizationId!;
+			const existing = await db.query.incident.findFirst({
+				where: and(
+					eq(incident.id, input.id),
+					eq(incident.organizationId, organizationId),
+				),
+				with: {
+					monitors: true,
+					statusPages: {
+						with: {
+							statusPage: true,
+						},
+					},
+				},
+			});
+
+			if (!existing) {
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+			}
+
+			const endedAt = input.endedAt ?? null;
+			ensureValidTimeline(input.startedAt, endedAt);
+			await assertOrganizationResources(
+				organizationId,
+				input.monitorIds,
+				input.statusPageIds,
+			);
+
+			const nextStatus = deriveStatusForEndedAt(
+				existing.status,
+				existing.acknowledgedAt,
+				endedAt,
+			);
+			const previousMonitorIds = existing.monitors.map((item) => item.monitorId);
+			const previousStatusPageIds = existing.statusPages.map(
+				(item) => item.statusPageId,
+			);
+			const monitorsToAdd = input.monitorIds.filter(
+				(id) => !previousMonitorIds.includes(id),
+			);
+			const monitorsToRemove = previousMonitorIds.filter(
+				(id) => !input.monitorIds.includes(id),
+			);
+			const statusPagesToAdd = input.statusPageIds.filter(
+				(id) => !previousStatusPageIds.includes(id),
+			);
+			const statusPagesToRemove = previousStatusPageIds.filter(
+				(id) => !input.statusPageIds.includes(id),
+			);
+			const activityMessages: string[] = [];
+
+			if (existing.startedAt.getTime() !== input.startedAt.getTime()) {
+				activityMessages.push(
+					formatTimelineChange("Incident start time", existing.startedAt, input.startedAt),
+				);
+			}
+
+			const existingEndedAt = existing.endedAt ?? null;
+			if (
+				(existingEndedAt?.getTime() ?? null) !== (endedAt?.getTime() ?? null)
+			) {
+				activityMessages.push(
+					formatTimelineChange("Incident end time", existingEndedAt, endedAt),
+				);
+			}
+
+			if (statusPagesToAdd.length > 0) {
+				activityMessages.push(
+					`Published to ${statusPagesToAdd.length} additional status page${statusPagesToAdd.length === 1 ? "" : "s"}`,
+				);
+			}
+
+			if (statusPagesToRemove.length > 0) {
+				activityMessages.push(
+					`Removed from ${statusPagesToRemove.length} status page${statusPagesToRemove.length === 1 ? "" : "s"}`,
+				);
+			}
+
+			await db.transaction(async (tx) => {
+				await tx
+					.update(incident)
+					.set({
+						title: input.title,
+						description: input.description,
+						severity: input.severity,
+						startedAt: input.startedAt,
+						endedAt,
+						status: nextStatus,
+						resolvedAt: endedAt,
+						updatedAt: new Date(),
+					})
+					.where(eq(incident.id, input.id));
+
+				if (monitorsToRemove.length > 0) {
+					await tx
+						.delete(incidentMonitor)
+						.where(
+							and(
+								eq(incidentMonitor.incidentId, input.id),
+								inArray(incidentMonitor.monitorId, monitorsToRemove),
+							),
+						);
+				}
+
+				if (monitorsToAdd.length > 0) {
+					await tx.insert(incidentMonitor).values(
+						monitorsToAdd.map((monitorId) => ({
+							incidentId: input.id,
+							monitorId,
+						})),
+					);
+				}
+
+				if (statusPagesToRemove.length > 0) {
+					await tx
+						.delete(incidentStatusPage)
+						.where(
+							and(
+								eq(incidentStatusPage.incidentId, input.id),
+								inArray(incidentStatusPage.statusPageId, statusPagesToRemove),
+							),
+						);
+				}
+
+				if (statusPagesToAdd.length > 0) {
+					await tx.insert(incidentStatusPage).values(
+						statusPagesToAdd.map((statusPageId) => ({
+							incidentId: input.id,
+							statusPageId,
+						})),
+					);
+				}
+
+				if (activityMessages.length > 0) {
+					await tx.insert(incidentActivity).values(
+						activityMessages.map((message) => ({
+							id: crypto.randomUUID(),
+							incidentId: input.id,
+							message,
+							type: "event",
+							createdAt: new Date(),
+							userId: context.session.user.id,
+						})),
+					);
+				}
+			});
+
+			return { success: true };
 		}),
 
 	acknowledge: writeProcedure
@@ -204,10 +517,18 @@ export const incidentsRouter = {
 			const now = new Date();
 
 			const existing = await db.query.incident.findFirst({
-				where: eq(incident.id, input.id),
+				where: and(
+					eq(incident.id, input.id),
+					eq(
+						incident.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
 			});
-			if (!existing)
+
+			if (!existing) {
 				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+			}
 
 			if (existing.acknowledgedAt) {
 				return { success: true, message: "Already acknowledged" };
@@ -217,7 +538,7 @@ export const incidentsRouter = {
 				await tx
 					.update(incident)
 					.set({
-						status: "identified",
+						status: existing.endedAt ? "resolved" : "identified",
 						acknowledgedAt: now,
 						acknowledgedBy: context.session.user.id,
 						updatedAt: now,
@@ -258,13 +579,22 @@ export const incidentsRouter = {
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const now = new Date();
-			const existing = await db.query.incident.findFirst({
-				where: eq(incident.id, input.id),
-			});
-			if (!existing)
-				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
 
-			if (existing.resolvedAt) {
+			const existing = await db.query.incident.findFirst({
+				where: and(
+					eq(incident.id, input.id),
+					eq(
+						incident.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
+			});
+
+			if (!existing) {
+				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+			}
+
+			if (existing.endedAt) {
 				return { success: true, message: "Already resolved" };
 			}
 
@@ -273,6 +603,7 @@ export const incidentsRouter = {
 					.update(incident)
 					.set({
 						status: "resolved",
+						endedAt: now,
 						resolvedAt: now,
 						updatedAt: now,
 					})
@@ -313,10 +644,18 @@ export const incidentsRouter = {
 		.handler(async ({ input, context }) => {
 			const now = new Date();
 			const existing = await db.query.incident.findFirst({
-				where: eq(incident.id, input.incidentId),
+				where: and(
+					eq(incident.id, input.incidentId),
+					eq(
+						incident.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
 			});
-			if (!existing)
+
+			if (!existing) {
 				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
+			}
 
 			await db.insert(incidentActivity).values({
 				id: crypto.randomUUID(),
@@ -351,13 +690,16 @@ export const incidentsRouter = {
 		.input(z.object({ id: z.string() }))
 		.handler(async ({ input, context }) => {
 			const existing = await db.query.incident.findFirst({
-				where: eq(incident.id, input.id),
+				where: and(
+					eq(incident.id, input.id),
+					eq(
+						incident.organizationId,
+						context.session.session.activeOrganizationId!,
+					),
+				),
 			});
 
-			if (
-				!existing ||
-				existing.organizationId !== context.session.session.activeOrganizationId
-			) {
+			if (!existing) {
 				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
 			}
 

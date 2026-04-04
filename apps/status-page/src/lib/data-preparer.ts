@@ -109,8 +109,8 @@ export async function prepareStatusPageData(
 			title: r.title,
 			status: r.status,
 			severity: r.severity,
-			createdAt: r.createdAt,
-			resolvedAt: r.resolvedAt,
+			startedAt: r.startedAt,
+			endedAt: r.endedAt,
 			monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
 			activities: r.updates.map((u: any) => ({
 				id: u.id,
@@ -125,26 +125,26 @@ export async function prepareStatusPageData(
 			title: m.title,
 			status: m.status,
 			severity: "maintenance",
-			createdAt: m.createdAt,
-			resolvedAt: m.endAt,
+			startedAt: m.createdAt,
+			endedAt: m.endAt,
 			monitors: m.monitors,
 			activities: [],
 			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
 		})),
 	].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
 	const pastIncidents = [
-		...reports.map((r) => ({
+		...reports.map((r: any) => ({
 			id: r.id,
 			title: r.title,
 			status: r.status,
 			severity: r.severity,
-			createdAt: r.createdAt,
-			resolvedAt: r.resolvedAt,
-			monitors: r.affectedMonitors.map((am) => ({ monitor: am.monitor })),
-			activities: r.updates.map((u) => ({
+			startedAt: r.startedAt,
+			endedAt: r.endedAt,
+				monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
+				activities: r.updates.map((u: any) => ({
 				id: u.id,
 				message: u.message,
 				createdAt: u.createdAt,
@@ -152,19 +152,19 @@ export async function prepareStatusPageData(
 			})),
 			detailsLink: buildPath(`/incidents/${r.id}`, slug),
 		})),
-		...maintenances.map((m) => ({
+		...maintenances.map((m: any) => ({
 			id: m.id,
 			title: m.title,
 			status: m.status,
 			severity: "maintenance",
-			createdAt: m.createdAt,
-			resolvedAt: m.endAt,
-			monitors: m.monitors.map((mm) => ({ monitor: mm.monitor })),
+			startedAt: m.createdAt,
+			endedAt: m.endAt,
+				monitors: m.monitors.map((mm: any) => ({ monitor: mm.monitor })),
 			activities: [],
 			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
 		})),
 	].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
 	const monitorsWithStats = await Promise.all(
@@ -291,8 +291,8 @@ export async function prepareStatusPageData(
 					);
 					if (!affectsMonitor) return false;
 
-					const start = new Date(r.createdAt);
-					const end = r.resolvedAt ? new Date(r.resolvedAt) : new Date();
+					const start = new Date(r.startedAt);
+					const end = r.endedAt ? new Date(r.endedAt) : new Date();
 
 					return start <= dayEnd && end >= dayStart;
 				});
@@ -301,8 +301,8 @@ export async function prepareStatusPageData(
 					let totalDurationMs = 0;
 
 					for (const r of relevantReports) {
-						const start = new Date(r.createdAt);
-						const end = r.resolvedAt ? new Date(r.resolvedAt) : new Date();
+						const start = new Date(r.startedAt);
+						const end = r.endedAt ? new Date(r.endedAt) : new Date();
 
 						const overlapStart = start > dayStart ? start : dayStart;
 						const overlapEnd = end < dayEnd ? end : dayEnd;
@@ -414,7 +414,7 @@ export async function prepareStatusPageData(
 
 	const incidentsByDate = pastIncidents.reduce(
 		(acc, incident) => {
-			const date = new Date(incident.createdAt).toLocaleDateString("en-US", {
+			const date = new Date(incident.startedAt).toLocaleDateString("en-US", {
 				month: "short",
 				day: "numeric",
 				year: "numeric",

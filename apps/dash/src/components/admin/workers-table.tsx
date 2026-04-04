@@ -274,21 +274,23 @@ export function WorkersTable() {
 									<TableCell className="w-[200px] text-right font-medium text-muted-foreground text-sm" />
 									<TableCell className="w-[50px] pr-4">
 										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-												>
-													<MoreHorizontal className="h-4 w-4" />
-													<span className="sr-only">Open menu</span>
-												</Button>
+											<DropdownMenuTrigger
+												render={
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+													/>
+												}
+											>
+												<MoreHorizontal className="h-4 w-4" />
+												<span className="sr-only">Open menu</span>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
-												<DropdownMenuItem asChild>
-													<Link href={`/admin/workers/${worker.id}`}>
-														Edit worker
-													</Link>
+												<DropdownMenuItem
+													render={<Link href={`/admin/workers/${worker.id}`} />}
+												>
+													Edit worker
 												</DropdownMenuItem>
 												<DropdownMenuItem>Rotate Token</DropdownMenuItem>
 												<DropdownMenuItem

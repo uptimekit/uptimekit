@@ -7,10 +7,48 @@ import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
 	getMaintenanceHistory,
+	getMaintenanceHistoryForPeriod,
 	getScheduledMaintenances,
 	getStatusPageReports,
+	getStatusPageReportsForPeriod,
 } from "./db-queries";
+import type { IncidentHistoryPeriod } from "./incident-history";
 import { buildPath } from "./route-utils";
+
+function mapIncident(report: any, slug?: string) {
+	return {
+		id: report.id,
+		title: report.title,
+		status: report.status,
+		severity: report.severity,
+		startedAt: report.startedAt,
+		endedAt: report.endedAt,
+		monitors: report.affectedMonitors.map((am: any) => ({
+			monitor: am.monitor,
+		})),
+		activities: report.updates.map((u: any) => ({
+			id: u.id,
+			message: u.message,
+			createdAt: u.createdAt,
+			type: u.type,
+		})),
+		detailsLink: buildPath(`/incidents/${report.id}`, slug),
+	};
+}
+
+function mapMaintenanceIncident(maintenance: any, slug?: string) {
+	return {
+		id: maintenance.id,
+		title: maintenance.title,
+		status: maintenance.status,
+		severity: "maintenance",
+		startedAt: maintenance.createdAt,
+		endedAt: maintenance.endAt,
+		monitors: maintenance.monitors,
+		activities: [],
+		detailsLink: buildPath(`/maintenance/${maintenance.id}`, slug),
+	};
+}
 
 export async function prepareIncidentDetailData(
 	pageConfig: any,
@@ -31,55 +69,13 @@ export async function prepareIncidentDetailData(
 		throw new Error("Incident not found");
 	}
 
-	const incident = {
-		id: reportItem.id,
-		title: reportItem.title,
-		status: reportItem.status,
-		severity: reportItem.severity,
-		createdAt: reportItem.createdAt,
-		resolvedAt: reportItem.resolvedAt,
-		monitors: reportItem.affectedMonitors.map((am: any) => ({
-			monitor: am.monitor,
-		})),
-		activities: reportItem.updates.map((u: any) => ({
-			id: u.id,
-			message: u.message,
-			createdAt: u.createdAt,
-			type: "update",
-		})),
-		detailsLink: buildPath(`/incidents/${reportItem.id}`, slug),
-	};
-
 	const activeIssues = [
-		...activeReports.map((r: any) => ({
-			id: r.id,
-			title: r.title,
-			status: r.status,
-			severity: r.severity,
-			createdAt: r.createdAt,
-			resolvedAt: r.resolvedAt,
-			monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
-			activities: r.updates.map((u: any) => ({
-				id: u.id,
-				message: u.message,
-				createdAt: u.createdAt,
-				type: "update",
-			})),
-			detailsLink: buildPath(`/incidents/${r.id}`, slug),
-		})),
-		...activeMaintenances.map((m: any) => ({
-			id: m.id,
-			title: m.title,
-			status: m.status,
-			severity: "maintenance",
-			createdAt: m.createdAt,
-			resolvedAt: m.endAt,
-			monitors: m.monitors,
-			activities: [],
-			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
-		})),
+		...activeReports.map((report: any) => mapIncident(report, slug)),
+		...activeMaintenances.map((maintenance: any) =>
+			mapMaintenanceIncident(maintenance, slug),
+		),
 	].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
 	const design = (pageConfig.design as any) || {};
@@ -98,7 +94,7 @@ export async function prepareIncidentDetailData(
 				customCss: design.customCss,
 			},
 		},
-		incident,
+		incident: mapIncident(reportItem, slug),
 		activeIssues,
 	};
 }
@@ -128,7 +124,11 @@ export async function prepareMaintenanceDetailData(
 	const maintenance = {
 		id: maintenanceItem.id,
 		title: maintenanceItem.title,
-		description: (maintenanceItem as any).description || null,
+		description:
+			("description" in maintenanceItem &&
+			typeof maintenanceItem.description === "string"
+				? maintenanceItem.description
+				: null) || null,
 		status: maintenanceItem.status,
 		startAt:
 			maintenanceItem.status === "scheduled"
@@ -141,37 +141,12 @@ export async function prepareMaintenanceDetailData(
 	};
 
 	const activeIssues = [
-		...activeReports.map((r: any) => ({
-			id: r.id,
-			title: r.title,
-			status: r.status,
-			severity: r.severity,
-			createdAt: r.createdAt,
-			resolvedAt: r.resolvedAt,
-			monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
-			activities: r.updates.map((u: any) => ({
-				id: u.id,
-				message: u.message,
-				createdAt: u.createdAt,
-				type: "update",
-			})),
-			detailsLink: buildPath(`/incidents/${r.id}`, slug),
-		})),
+		...activeReports.map((report: any) => mapIncident(report, slug)),
 		...activeMaintenances
-			.filter((m: any) => m.id !== maintenanceId)
-			.map((m: any) => ({
-				id: m.id,
-				title: m.title,
-				status: m.status,
-				severity: "maintenance",
-				createdAt: m.createdAt,
-				resolvedAt: m.endAt,
-				monitors: m.monitors,
-				activities: [],
-				detailsLink: buildPath(`/maintenance/${m.id}`, slug),
-			})),
+			.filter((item: any) => item.id !== maintenanceId)
+			.map((item: any) => mapMaintenanceIncident(item, slug)),
 	].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
 	const design = (pageConfig.design as any) || {};
@@ -197,52 +172,36 @@ export async function prepareMaintenanceDetailData(
 
 export async function prepareUpdatesPageData(
 	pageConfig: any,
+	selectedPeriod: IncidentHistoryPeriod,
 	slug?: string,
 ): Promise<UpdatesPageData> {
-	const limit = 50;
+	const limit = selectedPeriod === "all" ? undefined : 50;
 	const [reports, maintenances, activeReports, activeMaintenances] =
 		await Promise.all([
-			getStatusPageReports(pageConfig.id, limit),
-			getMaintenanceHistory(pageConfig.id, limit),
+			getStatusPageReportsForPeriod(pageConfig.id, {
+				limit,
+				period: selectedPeriod,
+			}),
+			getMaintenanceHistoryForPeriod(pageConfig.id, {
+				limit,
+				period: selectedPeriod,
+			}),
 			getActiveStatusPageReports(pageConfig.id),
 			getActiveMaintenances(pageConfig.id),
 		]);
 
 	const allUpdates = [
-		...reports.map((r: any) => ({
-			id: r.id,
-			title: r.title,
-			status: r.status,
-			severity: r.severity,
-			createdAt: r.createdAt,
-			resolvedAt: r.resolvedAt,
-			monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
-			activities: r.updates.map((u: any) => ({
-				id: u.id,
-				message: u.message,
-				createdAt: u.createdAt,
-				type: "update",
-			})),
-			detailsLink: buildPath(`/incidents/${r.id}`, slug),
-		})),
-		...maintenances.map((m: any) => ({
-			id: m.id,
-			title: m.title,
-			status: m.status,
-			severity: "maintenance",
-			createdAt: m.createdAt,
-			resolvedAt: m.endAt,
-			monitors: m.monitors,
-			activities: [],
-			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
-		})),
+		...reports.map((report: any) => mapIncident(report, slug)),
+		...maintenances.map((maintenance: any) =>
+			mapMaintenanceIncident(maintenance, slug),
+		),
 	].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
 	const incidentsByDate = allUpdates.reduce(
-		(acc, incident) => {
-			const date = new Date(incident.createdAt).toLocaleDateString("en-US", {
+		(acc, item) => {
+			const date = new Date(item.startedAt).toLocaleDateString("en-US", {
 				month: "long",
 				day: "numeric",
 				year: "numeric",
@@ -250,42 +209,19 @@ export async function prepareUpdatesPageData(
 			if (!acc[date]) {
 				acc[date] = [];
 			}
-			acc[date].push(incident);
+			acc[date].push(item);
 			return acc;
 		},
 		{} as Record<string, typeof allUpdates>,
 	);
 
 	const activeIssues = [
-		...activeReports.map((r: any) => ({
-			id: r.id,
-			title: r.title,
-			status: r.status,
-			severity: r.severity,
-			createdAt: r.createdAt,
-			resolvedAt: r.resolvedAt,
-			monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
-			activities: r.updates.map((u: any) => ({
-				id: u.id,
-				message: u.message,
-				createdAt: u.createdAt,
-				type: "update",
-			})),
-			detailsLink: buildPath(`/incidents/${r.id}`, slug),
-		})),
-		...activeMaintenances.map((m: any) => ({
-			id: m.id,
-			title: m.title,
-			status: m.status,
-			severity: "maintenance",
-			createdAt: m.createdAt,
-			resolvedAt: m.endAt,
-			monitors: m.monitors,
-			activities: [],
-			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
-		})),
+		...activeReports.map((report: any) => mapIncident(report, slug)),
+		...activeMaintenances.map((maintenance: any) =>
+			mapMaintenanceIncident(maintenance, slug),
+		),
 	].sort(
-		(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
 	const design = (pageConfig.design as any) || {};
@@ -307,5 +243,6 @@ export async function prepareUpdatesPageData(
 		allUpdates,
 		incidentsByDate,
 		activeIssues,
+		selectedPeriod,
 	};
 }

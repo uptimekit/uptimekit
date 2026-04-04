@@ -202,19 +202,21 @@ export function IncidentsTable() {
 					>
 						<Search className="h-4 w-4" />
 						{search && (
-							<span className="-right-1 -top-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
 					</Button>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="icon" className="relative">
-								<Filter className="h-4 w-4" />
-								{activeFilterCount > 0 && (
-									<span className="-top-1 -right-1 absolute flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-										{activeFilterCount}
-									</span>
-								)}
-							</Button>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="outline" size="icon" className="relative" />
+							}
+						>
+							<Filter className="h-4 w-4" />
+							{activeFilterCount > 0 && (
+								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+									{activeFilterCount}
+								</span>
+							)}
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56 p-2">
 							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
@@ -350,13 +352,13 @@ export function IncidentsTable() {
 					</DropdownMenu>
 					<Button
 						className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
-						asChild
-					>
-						<Link href="/incidents/new">
-							<Plus className="h-4 w-4" />
-							<span className="hidden md:inline">Report a new incident</span>
-						</Link>
-					</Button>
+						render={
+							<Link href="/incidents/new">
+								<Plus className="h-4 w-4" />
+								<span className="hidden md:inline">Report a new incident</span>
+							</Link>
+						}>
+						</Button>
 				</div>
 			</div>
 
@@ -394,9 +396,11 @@ export function IncidentsTable() {
 											!severityFilter &&
 											!typeFilter && (
 												<div className="mt-2">
-													<Button asChild>
-														<Link href="/incidents/new">Create incident</Link>
-													</Button>
+													<Button
+														render={
+															<Link href="/incidents/new">Create incident</Link>
+														}
+													/>
 												</div>
 											)}
 									</div>
@@ -441,6 +445,14 @@ export function IncidentsTable() {
 															Auto
 														</Badge>
 													)}
+													{incident.statusPages.length > 0 && (
+														<Badge
+															variant="secondary"
+															className="h-5 px-1.5 text-[10px]"
+														>
+															Public
+														</Badge>
+													)}
 													{incident.severity && (
 														<Badge
 															variant="outline"
@@ -462,7 +474,7 @@ export function IncidentsTable() {
 										</Link>
 									</TableCell>
 									<TableCell className="font-medium text-muted-foreground text-sm">
-										{formatDistanceToNow(new Date(incident.createdAt), {
+										{formatDistanceToNow(new Date(incident.startedAt), {
 											addSuffix: true,
 										})}
 									</TableCell>
@@ -490,30 +502,34 @@ export function IncidentsTable() {
 									</TableCell>
 									<TableCell>
 										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-												>
-													<MoreHorizontal className="h-4 w-4" />
-													<span className="sr-only">Open menu</span>
-												</Button>
+											<DropdownMenuTrigger
+												render={
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+													/>
+												}
+											>
+												<MoreHorizontal className="h-4 w-4" />
+												<span className="sr-only">Open menu</span>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
-												<DropdownMenuItem asChild>
-													<Link href={`/incidents/${incident.id}`}>
-														View details
-													</Link>
+												<DropdownMenuItem
+													render={<Link href={`/incidents/${incident.id}`} />}
+												>
+													View details
 												</DropdownMenuItem>
 												<AlertDialog>
-													<AlertDialogTrigger asChild>
-														<DropdownMenuItem
-															className="text-red-500"
-															onSelect={(e) => e.preventDefault()}
-														>
-															Delete
-														</DropdownMenuItem>
+													<AlertDialogTrigger
+														render={
+															<DropdownMenuItem
+																className="text-red-500"
+																onSelect={(e) => e.preventDefault()}
+															/>
+														}
+													>
+														Delete
 													</AlertDialogTrigger>
 													<AlertDialogContent>
 														<AlertDialogHeader>

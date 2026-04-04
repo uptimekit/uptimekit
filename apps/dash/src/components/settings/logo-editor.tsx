@@ -57,18 +57,20 @@ export function LogoEditor({ value, onChange }: LogoEditorProps) {
 		return (
 			<>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<button
-							type="button"
-							className="relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border bg-muted transition-all hover:opacity-80"
-						>
-							{/* eslint-disable-next-line @next/next/no-img-element */}
-							<img
-								src={value}
-								alt="Organization logo"
-								className="h-full w-full object-cover"
+					<DropdownMenuTrigger
+						render={
+							<button
+								type="button"
+								className="relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border bg-muted transition-all hover:opacity-80"
 							/>
-						</button>
+						}
+					>
+						{/* eslint-disable-next-line @next/next/no-img-element */}
+						<img
+							src={value}
+							alt="Organization logo"
+							className="h-full w-full object-cover"
+						/>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start">
 						<DropdownMenuItem onClick={handleOpenDialog}>

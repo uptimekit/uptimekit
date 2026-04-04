@@ -49,6 +49,9 @@ export const monitor = pgTable(
 		incidentRecoveryDuration: integer("incident_recovery_duration")
 			.default(0)
 			.notNull(), // in seconds (recovery period)
+		publishIncidentToStatusPage: boolean("publish_incident_to_status_page")
+			.default(false)
+			.notNull(),
 		locations: json("locations").$type<string[]>().notNull(), // array of worker locations
 		config: json("config").notNull(), // flexible config: url, method, headers, body, etc.
 		successStatuses: json("success_statuses").$type<number[]>(), // e.g. [200, 201]

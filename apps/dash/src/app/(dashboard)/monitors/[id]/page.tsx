@@ -57,8 +57,9 @@ export default function MonitorDetailsPage() {
 		return (
 			<div className="flex flex-col items-center justify-center py-10">
 				<h2 className="font-bold text-xl">Monitor not found</h2>
-				<Button asChild className="mt-4">
+				<Button className="mt-4" render={
 					<Link href="/monitors">Go back to monitors</Link>
+					}>
 				</Button>
 			</div>
 		);
@@ -160,11 +161,12 @@ export default function MonitorDetailsPage() {
 		<div className="flex flex-col gap-6 p-6">
 			{/* Header */}
 			<div className="flex items-center gap-4">
-				<Button asChild variant="ghost" size="icon">
+				<Button variant="ghost" size="icon" render={
 					<Link href="/monitors">
 						<ArrowLeft className="h-4 w-4" />
 					</Link>
-				</Button>
+					}
+				/>
 				<div className="flex flex-col gap-1">
 					<div className="flex items-center gap-3">
 						<h1 className="font-bold text-2xl tracking-tight">
@@ -197,8 +199,9 @@ export default function MonitorDetailsPage() {
 					</div>
 				</div>
 				<div className="ml-auto flex items-center gap-2">
-					<Button variant="outline" size="sm" asChild>
+					<Button variant="outline" size="sm" render={
 						<Link href={`/monitors/${id}/edit` as any}>Edit</Link>
+						}>
 					</Button>
 					<Button
 						variant={monitor.active ? "destructive" : "default"}

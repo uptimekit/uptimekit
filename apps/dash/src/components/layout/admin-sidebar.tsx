@@ -68,16 +68,14 @@ export function AdminSidebar({
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton size="lg" asChild>
-							<Link href="/">
-								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-									<ChevronLeft className="size-4" />
-								</div>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-semibold">Back to App</span>
-									<span className="truncate text-xs">Exit admin area</span>
-								</div>
-							</Link>
+						<SidebarMenuButton size="lg" render={<Link href="/" />}>
+							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+								<ChevronLeft className="size-4" />
+							</div>
+							<div className="grid flex-1 text-left text-sm leading-tight">
+								<span className="truncate font-semibold">Back to App</span>
+								<span className="truncate text-xs">Exit admin area</span>
+							</div>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
@@ -90,18 +88,16 @@ export function AdminSidebar({
 							{adminNav.map((item) => (
 								<SidebarMenuItem key={item.title}>
 									<SidebarMenuButton
-										asChild
 										isActive={
 											item.url === "/admin"
 												? pathname === "/admin"
 												: pathname.startsWith(item.url)
 										}
 										tooltip={item.title}
+										render={<Link href={item.url} />}
 									>
-										<Link href={item.url}>
-											<item.icon />
-											<span>{item.title}</span>
-										</Link>
+										<item.icon />
+										<span>{item.title}</span>
 									</SidebarMenuButton>
 								</SidebarMenuItem>
 							))}

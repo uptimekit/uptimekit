@@ -124,13 +124,11 @@ export function CreateWorkerDialog() {
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogTrigger asChild>
-				<Button size="sm" className="h-8 gap-1">
-					<Plus className="h-3.5 w-3.5" />
-					<span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-						Add Worker
-					</span>
-				</Button>
+			<DialogTrigger render={<Button size="sm" className="h-8 gap-1" />}>
+				<Plus className="h-3.5 w-3.5" />
+				<span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+					Add Worker
+				</span>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
@@ -208,26 +206,28 @@ export function CreateWorkerDialog() {
 									open={locationPopoverOpen}
 									onOpenChange={setLocationPopoverOpen}
 								>
-									<PopoverTrigger asChild>
-										<Button
-											variant="outline"
-											role="combobox"
-											aria-expanded={locationPopoverOpen}
-											className={cn(
-												"w-full justify-between",
-												!selectedRegion && "text-muted-foreground",
-											)}
-										>
-											{selectedRegion ? (
-												<div className="flex items-center gap-2">
-													<selectedRegion.Flag className="h-4 w-5 rounded-sm object-cover" />
-													<span>{selectedRegion.label}</span>
-												</div>
-											) : (
-												"Select a region"
-											)}
-											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-										</Button>
+									<PopoverTrigger
+										render={
+											<Button
+												variant="outline"
+												role="combobox"
+												aria-expanded={locationPopoverOpen}
+												className={cn(
+													"w-full justify-between",
+													!selectedRegion && "text-muted-foreground",
+												)}
+											/>
+										}
+									>
+										{selectedRegion ? (
+											<div className="flex items-center gap-2">
+												<selectedRegion.Flag className="h-4 w-5 rounded-sm object-cover" />
+												<span>{selectedRegion.label}</span>
+											</div>
+										) : (
+											"Select a region"
+										)}
+										<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 									</PopoverTrigger>
 									<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
 										<Command>

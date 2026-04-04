@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { organization, user } from "./auth";
 import { monitor } from "./monitors";
+import { statusPage } from "./status-pages";
 
 // INTERNAL Incidents for team coordination
 export const incident = pgTable(
@@ -25,6 +26,8 @@ export const incident = pgTable(
 		type: text("type").default("manual").notNull(), // 'manual', 'automatic'
 		acknowledgedAt: timestamp("acknowledged_at"),
 		acknowledgedBy: text("acknowledged_by").references(() => user.id),
+		startedAt: timestamp("started_at").defaultNow().notNull(),
+		endedAt: timestamp("ended_at"),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at")
 			.defaultNow()
@@ -37,6 +40,8 @@ export const incident = pgTable(
 	(table) => [
 		index("incident_organization_idx").on(table.organizationId),
 		index("incident_status_idx").on(table.status),
+		index("incident_started_at_idx").on(table.startedAt),
+		index("incident_ended_at_idx").on(table.endedAt),
 		uniqueIndex("incident_external_unique_idx")
 			.on(table.organizationId, table.externalSource, table.externalId)
 			.where(
@@ -59,6 +64,23 @@ export const incidentMonitor = pgTable(
 		primaryKey({ columns: [t.incidentId, t.monitorId] }),
 		index("incident_monitor_incident_idx").on(t.incidentId),
 		index("incident_monitor_monitor_idx").on(t.monitorId),
+	],
+);
+
+export const incidentStatusPage = pgTable(
+	"incident_status_page",
+	{
+		incidentId: text("incident_id")
+			.notNull()
+			.references(() => incident.id, { onDelete: "cascade" }),
+		statusPageId: text("status_page_id")
+			.notNull()
+			.references(() => statusPage.id, { onDelete: "cascade" }),
+	},
+	(t) => [
+		primaryKey({ columns: [t.incidentId, t.statusPageId] }),
+		index("incident_status_page_incident_idx").on(t.incidentId),
+		index("incident_status_page_status_page_idx").on(t.statusPageId),
 	],
 );
 
@@ -88,6 +110,7 @@ export const incidentRelations = relations(incident, ({ one, many }) => ({
 	}),
 	activities: many(incidentActivity),
 	monitors: many(incidentMonitor),
+	statusPages: many(incidentStatusPage),
 }));
 
 export const incidentMonitorRelations = relations(
@@ -114,6 +137,20 @@ export const incidentActivityRelations = relations(
 		user: one(user, {
 			fields: [incidentActivity.userId],
 			references: [user.id],
+		}),
+	}),
+);
+
+export const incidentStatusPageRelations = relations(
+	incidentStatusPage,
+	({ one }) => ({
+		incident: one(incident, {
+			fields: [incidentStatusPage.incidentId],
+			references: [incident.id],
+		}),
+		statusPage: one(statusPage, {
+			fields: [incidentStatusPage.statusPageId],
+			references: [statusPage.id],
 		}),
 	}),
 );

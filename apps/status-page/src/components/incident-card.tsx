@@ -57,12 +57,12 @@ export function IncidentCard({
 							{incident.title}
 						</h3>
 						<p className="mt-0.5 text-muted-foreground text-xs">
-							{new Date(incident.createdAt).toLocaleDateString("en-US", {
+							{new Date(incident.startedAt).toLocaleDateString("en-US", {
 								month: "short",
 								day: "numeric",
 								year: "numeric",
 							})}
-							{incident.resolvedAt && " — Resolved"}
+							{incident.endedAt && " — Resolved"}
 						</p>
 					</div>
 				</div>

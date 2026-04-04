@@ -1,21 +1,24 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance, formatDistanceToNow } from "date-fns";
 import {
-	ArrowLeft,
+	Check,
 	CheckCircle2,
-	Clock,
 	CornerDownRight,
 	MoreHorizontal,
+	Pencil,
 	ShieldAlert,
 	Trash2,
-	User,
+	X,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -30,37 +33,70 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+	FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-/**
- * Renders a detailed incident view that shows status, metadata, affected monitors, timeline, and action controls.
- *
- * Shows a loading skeleton while the incident is being fetched and a not-found message if the incident does not exist.
- *
- * @param id - The incident's unique identifier
- * @returns The rendered IncidentDetails UI, a loading skeleton when fetching, or a not-found message when the incident is missing
- */
+const editIncidentSchema = z
+	.object({
+		title: z.string().min(1, "Title is required"),
+		description: z.string().optional(),
+		severity: z.enum(["minor", "major", "critical"]),
+		startedAt: z.date(),
+		endedAt: z.date().nullable(),
+		monitorIds: z.array(z.string()),
+		statusPageIds: z.array(z.string()),
+	})
+	.refine((value) => !value.endedAt || value.endedAt >= value.startedAt, {
+		message: "End time cannot be before start time",
+		path: ["endedAt"],
+	});
+
+type EditIncidentValues = z.infer<typeof editIncidentSchema>;
+
 export function IncidentDetails({ id }: { id: string }) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [comment, setComment] = useState("");
+	const [editOpen, setEditOpen] = useState(false);
 
 	const submitComment = useMutation(
 		orpc.incidents.addComment.mutationOptions({
@@ -127,9 +163,10 @@ export function IncidentDetails({ id }: { id: string }) {
 		return (
 			<div className="flex flex-col items-center justify-center py-10">
 				<h2 className="font-bold text-xl">Incident not found</h2>
-				<Button asChild className="mt-4">
-					<Link href="/incidents">Go back to incidents</Link>
-				</Button>
+				<Button
+					className="mt-4"
+					render={<Link href="/incidents">Go back to incidents</Link>}
+				/>
 			</div>
 		);
 	}
@@ -138,286 +175,651 @@ export function IncidentDetails({ id }: { id: string }) {
 	const isAcknowledged = !!incident.acknowledgedAt;
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-6 p-6">
-			{/* Header */}
-			<div className="flex flex-col gap-6">
-				<div className="flex items-start justify-between">
-					<div className="flex items-center gap-4">
-						<div
-							className={cn(
-								"flex h-12 w-12 items-center justify-center rounded-xl border",
-								isResolved
-									? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-									: "border-red-500/20 bg-red-500/10 text-red-500",
-							)}
-						>
-							{isResolved ? (
-								<CheckCircle2 className="h-6 w-6" />
-							) : (
-								<ShieldAlert className="h-6 w-6" />
-							)}
-						</div>
-						<div>
-							<h1 className="font-bold text-2xl tracking-tight">
-								{incident.title}
-							</h1>
-							<div className="flex items-center gap-2 text-muted-foreground text-sm">
-								<span
-									className={cn(
-										"font-medium",
-										isResolved ? "text-emerald-500" : "text-red-500",
+		<>
+			<div className="mx-auto max-w-5xl space-y-6 p-6">
+				<div className="flex flex-col gap-6">
+					<div className="flex items-start justify-between gap-4">
+						<div className="flex items-center gap-4">
+							<div
+								className={cn(
+									"flex h-12 w-12 items-center justify-center rounded-xl border",
+									isResolved
+										? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+										: "border-red-500/20 bg-red-500/10 text-red-500",
+								)}
+							>
+								{isResolved ? (
+									<CheckCircle2 className="h-6 w-6" />
+								) : (
+									<ShieldAlert className="h-6 w-6" />
+								)}
+							</div>
+							<div>
+								<h1 className="font-bold text-2xl tracking-tight">
+									{incident.title}
+								</h1>
+								<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+									<span
+										className={cn(
+											"font-medium",
+											isResolved ? "text-emerald-500" : "text-red-500",
+										)}
+									>
+										{isResolved ? "Resolved" : "Ongoing"}
+									</span>
+									<span>·</span>
+									<span>
+										Started{" "}
+										{format(
+											new Date(incident.startedAt),
+											"MMM d, yyyy 'at' h:mm a",
+										)}
+									</span>
+									{incident.statusPages.length > 0 && (
+										<>
+											<span>·</span>
+											<Badge variant="secondary">Public</Badge>
+										</>
 									)}
-								>
-									{isResolved ? "Resolved" : "Ongoing"}
-								</span>
-								<span>·</span>
-								<span>
-									{format(
-										new Date(incident.createdAt),
-										"MMM d, yyyy 'at' h:mm a",
-									)}
-								</span>
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<div className="flex items-center gap-2">
-						{!isResolved && !isAcknowledged && (
-							<Button
-								variant="outline"
-								onClick={() => acknowledge.mutate({ id })}
-								disabled={acknowledge.isPending}
-							>
-								Acknowledge
-							</Button>
-						)}
-						{!isResolved && incident.type !== "automatic" && (
-							<Button
-								variant="outline"
-								onClick={() => resolve.mutate({ id })}
-								disabled={resolve.isPending}
-							>
-								Resolve
-							</Button>
-						)}
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="icon">
-									<MoreHorizontal className="h-4 w-4" />
+						<div className="flex items-center gap-2">
+							{!isResolved && !isAcknowledged && (
+								<Button
+									variant="outline"
+									onClick={() => acknowledge.mutate({ id })}
+									disabled={acknowledge.isPending}
+								>
+									Acknowledge
 								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<DropdownMenuItem
-											className="text-red-500"
-											onSelect={(e) => e.preventDefault()}
+							)}
+							{!isResolved && (
+								<Button
+									variant="outline"
+									onClick={() => resolve.mutate({ id })}
+									disabled={resolve.isPending}
+								>
+									Resolve
+								</Button>
+							)}
+							<Button variant="outline" onClick={() => setEditOpen(true)}>
+								<Pencil className="mr-2 h-4 w-4" />
+								Edit
+							</Button>
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={<Button variant="ghost" size="icon" />}
+								>
+									<MoreHorizontal className="h-4 w-4" />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<AlertDialog>
+										<AlertDialogTrigger
+											render={
+												<DropdownMenuItem
+													className="text-red-500"
+													onSelect={(e) => e.preventDefault()}
+												/>
+											}
 										>
 											<Trash2 className="mr-2 h-4 w-4" />
 											Delete incident
-										</DropdownMenuItem>
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>Delete incident?</AlertDialogTitle>
-											<AlertDialogDescription>
-												This action cannot be undone. This will permanently
-												delete the incident "{incident.title}" and all of its
-												activity history.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel>Cancel</AlertDialogCancel>
-											<AlertDialogAction
-												className="bg-red-500 hover:bg-red-600"
-												onClick={() => deleteIncident.mutate({ id })}
-												disabled={deleteIncident.isPending}
-											>
-												Delete
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
-							</DropdownMenuContent>
-						</DropdownMenu>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>Delete incident?</AlertDialogTitle>
+												<AlertDialogDescription>
+													This action cannot be undone. This will permanently
+													delete the incident "{incident.title}" and all of its
+													activity history.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>Cancel</AlertDialogCancel>
+												<AlertDialogAction
+													className="bg-red-500 hover:bg-red-600"
+													onClick={() => deleteIncident.mutate({ id })}
+													disabled={deleteIncident.isPending}
+												>
+													Delete
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
+					</div>
+				</div>
+
+				<div className="grid gap-6 md:grid-cols-3">
+					<div className="min-w-[600px] space-y-6 md:col-span-2">
+						<Card>
+							<CardHeader>
+								<CardTitle>Description</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
+									{incident.description || "No description provided."}
+								</div>
+								{incident.monitors.length > 0 && (
+									<div className="mt-4">
+										<h4 className="mb-2 font-medium text-sm">
+											Affected Monitors
+										</h4>
+										<div className="flex flex-wrap gap-2">
+											{incident.monitors.map((m) => (
+												<Badge
+													key={m.monitor.id}
+													variant="outline"
+													className="gap-1"
+												>
+													{m.monitor.name}
+												</Badge>
+											))}
+										</div>
+									</div>
+								)}
+							</CardContent>
+						</Card>
+
+						<Card>
+							<CardHeader>
+								<CardTitle>Timeline</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-6">
+								<div className="flex gap-2">
+									<Input
+										placeholder="Add a comment..."
+										value={comment}
+										onChange={(e) => setComment(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && !e.shiftKey) {
+												e.preventDefault();
+												submitComment.mutate({
+													incidentId: id,
+													message: comment,
+												});
+											}
+										}}
+									/>
+									<Button
+										size="icon"
+										variant="outline"
+										onClick={() =>
+											submitComment.mutate({ incidentId: id, message: comment })
+										}
+										disabled={!comment.trim() || submitComment.isPending}
+									>
+										<CornerDownRight className="h-4 w-4" />
+									</Button>
+								</div>
+								<Separator />
+								{incident.activities.map((activity, i) => (
+									<div key={activity.id} className="relative flex gap-4 pl-2">
+										{i !== incident.activities.length - 1 && (
+											<div className="absolute top-8 bottom-[-24px] left-[11px] w-px bg-border" />
+										)}
+										<div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
+										<div className="flex-1 space-y-1">
+											<div className="flex items-center gap-1.5 text-sm leading-none">
+												{activity.user && (
+													<Avatar className="h-4 w-4">
+														<AvatarImage
+															src={activity.user.image ?? undefined}
+															alt={activity.user.name}
+														/>
+														<AvatarFallback className="text-[8px]">
+															{activity.user.name?.slice(0, 2).toUpperCase() ??
+																"??"}
+														</AvatarFallback>
+													</Avatar>
+												)}
+												<span>{activity.message}</span>
+											</div>
+											<p className="text-muted-foreground text-xs">
+												{formatDistanceToNow(new Date(activity.createdAt), {
+													addSuffix: true,
+												})}
+											</p>
+										</div>
+									</div>
+								))}
+							</CardContent>
+						</Card>
+					</div>
+
+					<div className="space-y-6">
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-base">Details</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="grid gap-1">
+									<span className="font-medium text-sm">Started at</span>
+									<span className="text-muted-foreground text-sm">
+										{format(
+											new Date(incident.startedAt),
+											"MMM d, yyyy 'at' h:mm a",
+										)}
+									</span>
+								</div>
+								<Separator />
+								<div className="grid gap-1">
+									<span className="font-medium text-sm">Ended at</span>
+									<span className="text-muted-foreground text-sm">
+										{incident.endedAt
+											? format(
+													new Date(incident.endedAt),
+													"MMM d, yyyy 'at' h:mm a",
+												)
+											: "Ongoing"}
+									</span>
+								</div>
+								<Separator />
+								{isAcknowledged && (
+									<>
+										<div className="grid gap-1">
+											<span className="font-medium text-sm">
+												Acknowledged by
+											</span>
+											<div className="flex items-center gap-2">
+												<Badge
+													variant="secondary"
+													className="w-fit bg-zinc-800 text-zinc-400"
+												>
+													{incident.acknowledgedByUser?.name || "User"}
+												</Badge>
+												<span className="text-muted-foreground text-xs">
+													{incident.acknowledgedAt &&
+														formatDistanceToNow(
+															new Date(incident.acknowledgedAt),
+															{
+																addSuffix: true,
+															},
+														)}
+												</span>
+											</div>
+										</div>
+										<Separator />
+									</>
+								)}
+								<div className="grid gap-1">
+									<span className="font-medium text-sm">Duration</span>
+									<span className="text-muted-foreground text-sm">
+										{incident.endedAt
+											? formatDistance(
+													new Date(incident.startedAt),
+													new Date(incident.endedAt),
+												)
+											: "Ongoing"}
+									</span>
+								</div>
+								<Separator />
+								<div className="grid gap-1">
+									<span className="font-medium text-sm">Severity</span>
+									<Badge variant="outline" className="w-fit">
+										{incident.severity}
+									</Badge>
+								</div>
+								<Separator />
+								<div className="grid gap-1">
+									<span className="font-medium text-sm">Type</span>
+									<span className="text-muted-foreground text-sm capitalize">
+										{incident.type}
+									</span>
+								</div>
+								<Separator />
+								<div className="grid gap-1">
+									<span className="font-medium text-sm">Published on</span>
+									<div className="flex flex-wrap gap-2">
+										{incident.statusPages.length > 0 ? (
+											incident.statusPages.map((item) => (
+												<Badge key={item.statusPageId} variant="secondary">
+													{item.statusPage.name}
+												</Badge>
+											))
+										) : (
+											<span className="text-muted-foreground text-sm">
+												Internal only
+											</span>
+										)}
+									</div>
+								</div>
+							</CardContent>
+						</Card>
 					</div>
 				</div>
 			</div>
 
-			<div className="grid gap-6 md:grid-cols-3">
-				<div className="min-w-[600px] space-y-6 md:col-span-2">
-					{/* Description */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Description</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
-								{incident.description || "No description provided."}
-							</div>
-							{incident.monitors.length > 0 && (
-								<div className="mt-4">
-									<h4 className="mb-2 font-medium text-sm">
-										Affected Monitors
-									</h4>
-									<div className="flex flex-wrap gap-2">
-										{incident.monitors.map((m) => (
-											<Badge
-												key={m.monitor.id}
-												variant="outline"
-												className="gap-1"
+			<EditIncidentDialog
+				incident={incident}
+				open={editOpen}
+				onOpenChange={setEditOpen}
+			/>
+		</>
+	);
+}
+
+function EditIncidentDialog({
+	incident,
+	open,
+	onOpenChange,
+}: {
+	incident: any;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const queryClient = useQueryClient();
+	const form = useForm<EditIncidentValues, any, EditIncidentValues>({
+		resolver: zodResolver(editIncidentSchema),
+		defaultValues: {
+			title: incident.title,
+			description: incident.description ?? "",
+			severity: incident.severity as EditIncidentValues["severity"],
+			startedAt: new Date(incident.startedAt),
+			endedAt: incident.endedAt ? new Date(incident.endedAt) : null,
+			monitorIds: incident.monitors.map((item: any) => item.monitor.id),
+			statusPageIds: incident.statusPages.map((item: any) => item.statusPageId),
+		},
+	});
+
+	useEffect(() => {
+		form.reset({
+			title: incident.title,
+			description: incident.description ?? "",
+			severity: incident.severity as EditIncidentValues["severity"],
+			startedAt: new Date(incident.startedAt),
+			endedAt: incident.endedAt ? new Date(incident.endedAt) : null,
+			monitorIds: incident.monitors.map((item: any) => item.monitor.id),
+			statusPageIds: incident.statusPages.map((item: any) => item.statusPageId),
+		});
+	}, [form, incident]);
+
+	const { data: monitorsData } = useQuery(
+		orpc.monitors.list.queryOptions({ limit: 100 }),
+	);
+	const { data: statusPagesData } = useQuery(
+		orpc.statusPages.list.queryOptions({ limit: 100 }),
+	);
+
+	const updateIncident = useMutation(
+		orpc.incidents.update.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries({
+					queryKey: orpc.incidents.get.key({ input: { id: incident.id } }),
+				});
+				queryClient.invalidateQueries({
+					queryKey: orpc.incidents.list.key(),
+				});
+				toast.success("Incident updated");
+				onOpenChange(false);
+			},
+			onError: (error) => {
+				toast.error(`Failed to update incident: ${error.message}`);
+			},
+		}),
+	);
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
+				<DialogHeader>
+					<DialogTitle>Edit incident</DialogTitle>
+				</DialogHeader>
+				<Form {...form}>
+					<form
+						onSubmit={form.handleSubmit((values) =>
+							updateIncident.mutate({
+								id: incident.id,
+								title: values.title,
+								description: values.description || undefined,
+								severity: values.severity,
+								startedAt: values.startedAt,
+								endedAt: values.endedAt,
+								monitorIds: values.monitorIds,
+								statusPageIds: values.statusPageIds,
+							}),
+						)}
+						className="space-y-6"
+					>
+						<FormField
+							control={form.control}
+							name="title"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Title</FormLabel>
+									<FormControl>
+										<Input {...field} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<FormField
+							control={form.control}
+							name="description"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Description</FormLabel>
+									<FormControl>
+										<Textarea {...field} value={field.value ?? ""} />
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
+						<div className="grid gap-4 md:grid-cols-2">
+							<FormField
+								control={form.control}
+								name="startedAt"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Started at</FormLabel>
+										<FormControl>
+											<DateTimePicker
+												date={field.value}
+												setDate={(date) => field.onChange(date ?? new Date())}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="endedAt"
+								render={({ field }) => (
+									<FormItem className="relative top-5">
+										<FormLabel>Ended at</FormLabel>
+										<div className="space-y-2">
+											<FormControl>
+												<DateTimePicker
+													date={field.value ?? undefined}
+													setDate={(date) => field.onChange(date ?? null)}
+												/>
+											</FormControl>
+											{field.value && (
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													className="px-0"
+													onClick={() => field.onChange(null)}
+												>
+													Clear end time
+												</Button>
+											)}
+										</div>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<FormField
+							control={form.control}
+							name="severity"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Severity</FormLabel>
+									<div className="flex gap-2">
+										{["minor", "major", "critical"].map((value) => (
+											<Button
+												key={value}
+												type="button"
+												variant={field.value === value ? "default" : "outline"}
+												onClick={() => field.onChange(value)}
+												className="capitalize"
 											>
-												{m.monitor.name}
-											</Badge>
+												{value}
+											</Button>
 										))}
 									</div>
-								</div>
+									<FormMessage />
+								</FormItem>
 							)}
-						</CardContent>
-					</Card>
+						/>
 
-					{/* Timeline */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Timeline</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							<div className="flex gap-2">
-								<Input
-									placeholder="Add a comment..."
-									value={comment}
-									onChange={(e) => setComment(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && !e.shiftKey) {
-											e.preventDefault();
-											submitComment.mutate({
-												incidentId: id,
-												message: comment,
-											});
-										}
-									}}
-								/>
-								<Button
-									size="icon"
-									variant="outline"
-									onClick={() =>
-										submitComment.mutate({ incidentId: id, message: comment })
-									}
-									disabled={!comment.trim() || submitComment.isPending}
-								>
-									<CornerDownRight className="h-4 w-4" />
-								</Button>
-							</div>
-							<Separator />
-							{incident.activities.map((activity, i) => (
-								<div key={activity.id} className="relative flex gap-4 pl-2">
-									{i !== incident.activities.length - 1 && (
-										<div className="absolute top-8 bottom-[-24px] left-[11px] w-px bg-border" />
-									)}
-									<div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
-									<div className="flex-1 space-y-1">
-										<div className="flex items-center gap-1.5 text-sm leading-none">
-											{activity.user && (
-												<Avatar className="h-4 w-4">
-													<AvatarImage
-														src={activity.user.image ?? undefined}
-														alt={activity.user.name}
-													/>
-													<AvatarFallback className="text-[8px]">
-														{activity.user.name?.slice(0, 2).toUpperCase() ??
-															"??"}
-													</AvatarFallback>
-												</Avatar>
-											)}
-											<span>{activity.message}</span>
-										</div>
-										<p className="text-muted-foreground text-xs">
-											{formatDistanceToNow(new Date(activity.createdAt), {
-												addSuffix: true,
-											})}
-										</p>
-									</div>
-								</div>
-							))}
-						</CardContent>
-					</Card>
-				</div>
+						<MultiSelectField
+							label="Affected monitors"
+							values={form.watch("monitorIds")}
+							options={
+								monitorsData?.items.map((item) => ({
+									id: item.id,
+									label: item.name,
+								})) ?? []
+							}
+							onChange={(values) => form.setValue("monitorIds", values)}
+							emptyLabel="No monitors selected. The incident will be global."
+							searchPlaceholder="Search monitors..."
+						/>
 
-				<div className="space-y-6">
-					{/* Metadata */}
-					<Card>
-						<CardHeader>
-							<CardTitle className="text-base">Details</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="grid gap-1">
-								<span className="font-medium text-sm">Started at</span>
-								<span className="text-muted-foreground text-sm">
-									{formatDistanceToNow(new Date(incident.createdAt), {
-										addSuffix: true,
-									})}
-								</span>
-							</div>
-							<Separator />
-							{isAcknowledged && (
-								<div className="grid gap-1">
-									<span className="font-medium text-sm">Acknowledged by</span>
-									<div className="flex items-center gap-2">
-										<Badge
-											variant="secondary"
-											className="w-fit bg-zinc-800 text-zinc-400"
-										>
-											{incident.acknowledgedByUser?.name || "User"}
-										</Badge>
-										<span className="text-muted-foreground text-xs">
-											{incident.acknowledgedAt &&
-												formatDistanceToNow(new Date(incident.acknowledgedAt), {
-													addSuffix: true,
-												})}
-										</span>
-									</div>
-									<Separator className="mt-4" />
-								</div>
-							)}
-							<div className="grid gap-1">
-								<span className="font-medium text-sm">Duration</span>
-								<span className="text-muted-foreground text-sm">
-									{isResolved && incident.resolvedAt
-										? formatDistance(
-												new Date(incident.createdAt),
-												new Date(incident.resolvedAt),
+						<MultiSelectField
+							label="Publish to status pages"
+							values={form.watch("statusPageIds")}
+							options={
+								statusPagesData?.items.map((item) => ({
+									id: item.id,
+									label: item.name,
+								})) ?? []
+							}
+							onChange={(values) => form.setValue("statusPageIds", values)}
+							emptyLabel="Internal only"
+							searchPlaceholder="Search status pages..."
+						/>
+
+						<div className="flex justify-end gap-2">
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={() => onOpenChange(false)}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={updateIncident.isPending}>
+								Save changes
+							</Button>
+						</div>
+					</form>
+				</Form>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+function MultiSelectField({
+	label,
+	values,
+	options,
+	onChange,
+	emptyLabel,
+	searchPlaceholder,
+}: {
+	label: string;
+	values: string[];
+	options: { id: string; label: string }[];
+	onChange: (values: string[]) => void;
+	emptyLabel: string;
+	searchPlaceholder: string;
+}) {
+	return (
+		<div className="space-y-3">
+			<FormLabel>{label}</FormLabel>
+			<Popover>
+				<PopoverTrigger
+					render={
+						<Button
+							variant="outline"
+							role="combobox"
+							className="w-full justify-between"
+						/>
+					}
+				>
+					{values.length > 0 ? `${values.length} selected` : emptyLabel}
+					<MoreHorizontal className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+				</PopoverTrigger>
+				<PopoverContent className="w-[400px] p-0">
+					<Command>
+						<CommandInput placeholder={searchPlaceholder} />
+						<CommandList>
+							<CommandEmpty>No matches found.</CommandEmpty>
+							<CommandGroup>
+								{options.map((option) => (
+									<CommandItem
+										key={option.id}
+										value={option.label}
+										onSelect={() =>
+											onChange(
+												values.includes(option.id)
+													? values.filter((value) => value !== option.id)
+													: [...values, option.id],
 											)
-										: "Ongoing"}
-									{/* Simple calculation for display if needed properly */}
-								</span>
-							</div>
-							<Separator />
-							<div className="grid gap-1">
-								<span className="font-medium text-sm">Severity</span>
-								<Badge variant="outline" className="w-fit">
-									{incident.severity}
-								</Badge>
-							</div>
-							<Separator />
-							<div className="grid gap-1">
-								<span className="font-medium text-sm">Type</span>
-								<span className="text-muted-foreground text-sm capitalize">
-									{incident.type}
-								</span>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
+										}
+									>
+										<Check
+											className={cn(
+												"mr-2 h-4 w-4",
+												values.includes(option.id)
+													? "opacity-100"
+													: "opacity-0",
+											)}
+										/>
+										{option.label}
+									</CommandItem>
+								))}
+							</CommandGroup>
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+			<div className="flex flex-wrap gap-2">
+				{values.map((value) => {
+					const option = options.find((item) => item.id === value);
+					if (!option) return null;
+					return (
+						<Badge key={value} variant="secondary" className="gap-1">
+							{option.label}
+							<button
+								type="button"
+								onClick={() =>
+									onChange(values.filter((item) => item !== value))
+								}
+							>
+								<X className="h-3 w-3" />
+							</button>
+						</Badge>
+					);
+				})}
 			</div>
 		</div>
 	);
 }
 
-/**
- * Render a skeleton placeholder matching the IncidentDetails layout.
- *
- * @returns A JSX element containing skeleton blocks used while incident details are loading.
- */
 function IncidentSkeleton() {
 	return (
 		<div className="mx-auto max-w-5xl p-6">

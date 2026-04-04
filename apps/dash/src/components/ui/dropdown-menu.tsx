@@ -1,6 +1,6 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,20 @@ function DropdownMenu({
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
 	return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+}
+
+function renderWithChildren(
+	render: React.ReactElement,
+	children: React.ReactNode,
+) {
+	const renderElement = render as React.ReactElement<{
+		children?: React.ReactNode;
+	}>;
+	return React.cloneElement(
+		renderElement,
+		undefined,
+		children ?? renderElement.props.children,
+	);
 }
 
 function DropdownMenuPortal({
@@ -19,13 +33,23 @@ function DropdownMenuPortal({
 }
 
 function DropdownMenuTrigger({
+	render,
+	children,
 	...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+}: Omit<
+	React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>,
+	"asChild"
+> & {
+	render?: React.ReactElement;
+}) {
 	return (
 		<DropdownMenuPrimitive.Trigger
+			asChild={Boolean(render)}
 			data-slot="dropdown-menu-trigger"
 			{...props}
-		/>
+		>
+			{render ? renderWithChildren(render, children) : children}
+		</DropdownMenuPrimitive.Trigger>
 	);
 }
 
@@ -61,13 +85,17 @@ function DropdownMenuItem({
 	className,
 	inset,
 	variant = "default",
+	render,
+	children,
 	...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
+}: Omit<React.ComponentProps<typeof DropdownMenuPrimitive.Item>, "asChild"> & {
 	inset?: boolean;
 	variant?: "default" | "destructive";
+	render?: React.ReactElement;
 }) {
 	return (
 		<DropdownMenuPrimitive.Item
+			asChild={Boolean(render)}
 			data-slot="dropdown-menu-item"
 			data-inset={inset}
 			data-variant={variant}
@@ -76,7 +104,9 @@ function DropdownMenuItem({
 				className,
 			)}
 			{...props}
-		/>
+		>
+			{render ? renderWithChildren(render, children) : children}
+		</DropdownMenuPrimitive.Item>
 	);
 }
 
@@ -238,18 +268,18 @@ function DropdownMenuSubContent({
 
 export {
 	DropdownMenu,
-	DropdownMenuPortal,
-	DropdownMenuTrigger,
+	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuGroup,
-	DropdownMenuLabel,
 	DropdownMenuItem,
-	DropdownMenuCheckboxItem,
+	DropdownMenuLabel,
+	DropdownMenuPortal,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuSub,
-	DropdownMenuSubTrigger,
 	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
 };

@@ -2,16 +2,19 @@ import {
 	clickhouse,
 	db,
 	incident,
+	incidentActivity,
+	incidentMonitor,
+	incidentStatusPage,
 	maintenance,
 	maintenanceMonitor,
 	maintenanceStatusPage,
 	maintenanceUpdate,
 	statusPage,
 	statusPageMonitor,
-	statusPageReport,
 } from "@uptimekit/db";
 // ... imports
-import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, isNotNull } from "drizzle-orm";
+import { getIncidentHistoryCutoff, type IncidentHistoryPeriod } from "./incident-history";
 
 // ... existing functions
 import { redis } from "./redis";
@@ -80,6 +83,84 @@ async function cached<T>(
 	return data;
 }
 
+async function getPublishedIncidentRecords(
+	statusPageId: string,
+	options?: {
+		activeOnly?: boolean;
+		resolvedOnly?: boolean;
+		limit?: number;
+		cutoff?: Date;
+	},
+) {
+	const filters = [eq(incidentStatusPage.statusPageId, statusPageId)];
+
+	if (options?.activeOnly) {
+		filters.push(isNull(incident.endedAt));
+	}
+
+	if (options?.resolvedOnly) {
+		filters.push(isNotNull(incident.endedAt));
+	}
+
+	if (options?.cutoff) {
+		filters.push(gte(incident.startedAt, options.cutoff));
+	}
+
+	let incidentIdsQuery = db
+		.select({
+			incidentId: incidentStatusPage.incidentId,
+		})
+		.from(incidentStatusPage)
+		.innerJoin(incident, eq(incident.id, incidentStatusPage.incidentId))
+		.where(and(...filters))
+		.orderBy(desc(incident.startedAt))
+		.$dynamic();
+
+	if (options?.limit) {
+		incidentIdsQuery = incidentIdsQuery.limit(options.limit);
+	}
+
+	const incidentIds = (await incidentIdsQuery).map((row) => row.incidentId);
+
+	if (incidentIds.length === 0) {
+		return [];
+	}
+
+	return db.query.incidentStatusPage.findMany({
+		where: and(
+			eq(incidentStatusPage.statusPageId, statusPageId),
+			inArray(incidentStatusPage.incidentId, incidentIds),
+		),
+		with: {
+			incident: {
+				with: {
+					monitors: {
+						with: {
+							monitor: true,
+						},
+					},
+					activities: {
+						orderBy: [desc(incidentActivity.createdAt)],
+					},
+				},
+			},
+		},
+	});
+}
+
+function mapPublishedIncidentRecord(
+	record: Awaited<ReturnType<typeof getPublishedIncidentRecords>>[number],
+) {
+	return {
+		...record.incident,
+		affectedMonitors: record.incident.monitors.map((item) => ({
+			monitorId: item.monitorId,
+			monitor: item.monitor,
+		})),
+		updates: record.incident.activities,
+	};
+}
+
 export const getStatusPageEvents = async (statusPageId: string, days = 90) => {
 	return cached(
 		`status-page:events:${statusPageId}:${days}`,
@@ -89,19 +170,17 @@ export const getStatusPageEvents = async (statusPageId: string, days = 90) => {
 			startDate.setDate(startDate.getDate() - days);
 
 			const [reports, maintenances] = await Promise.all([
-				db.query.statusPageReport.findMany({
-					where: and(
-						eq(statusPageReport.statusPageId, statusPageId),
-						gte(statusPageReport.createdAt, startDate),
-					),
-					with: {
-						affectedMonitors: {
-							with: {
-								monitor: true,
-							},
-						},
-					},
-				}),
+				getPublishedIncidentRecords(statusPageId, {
+					cutoff: startDate,
+				}).then((records) =>
+					records
+						.map(mapPublishedIncidentRecord)
+						.sort(
+							(a, b) =>
+								new Date(b.startedAt).getTime() -
+								new Date(a.startedAt).getTime(),
+						),
+				),
 				db
 					.select({
 						id: maintenance.id,
@@ -419,57 +498,36 @@ export const getActiveStatusPageReports = async (statusPageId: string) => {
 	return cached(
 		`active-status-page-reports:${statusPageId}`,
 		60, // 1 minute
-		async () => {
-			return await db.query.statusPageReport.findMany({
-				where: and(
-					eq(statusPageReport.statusPageId, statusPageId),
-					inArray(statusPageReport.status, [
-						"investigating",
-						"identified",
-						"monitoring",
-					]),
+		async () =>
+			(
+				await getPublishedIncidentRecords(statusPageId, {
+					activeOnly: true,
+				})
+			)
+				.map(mapPublishedIncidentRecord)
+				.sort(
+					(a, b) =>
+						new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 				),
-				with: {
-					affectedMonitors: {
-						with: {
-							monitor: true,
-						},
-					},
-					updates: {
-						orderBy: (updates, { desc }) => [desc(updates.createdAt)],
-						limit: 1,
-					},
-				},
-				orderBy: (reports, { desc }) => [desc(reports.createdAt)],
-			});
-		},
 	);
 };
 
 export const getStatusPageReports = async (statusPageId: string, limit = 5) => {
 	return cached(
-		`status-page-reports:${statusPageId}`,
+		`status-page-reports:${statusPageId}:limit:${limit}`,
 		60, // 1 minute
-		async () => {
-			return await db.query.statusPageReport.findMany({
-				where: and(
-					eq(statusPageReport.statusPageId, statusPageId),
-					eq(statusPageReport.status, "resolved"),
+		async () =>
+			(
+				await getPublishedIncidentRecords(statusPageId, {
+					resolvedOnly: true,
+					limit,
+				})
+			)
+				.map(mapPublishedIncidentRecord)
+				.sort(
+					(a, b) =>
+						new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 				),
-				with: {
-					affectedMonitors: {
-						with: {
-							monitor: true,
-						},
-					},
-					updates: {
-						orderBy: (updates, { desc }) => [desc(updates.createdAt)],
-					},
-				},
-				orderBy: (reports, { desc }) => [desc(reports.createdAt)],
-				limit: limit,
-			});
-		},
 	);
 };
 
@@ -478,7 +536,7 @@ export const getMaintenanceHistory = async (
 	limit = 5,
 ) => {
 	return cached(
-		`maintenance-history:${statusPageId}`,
+		`maintenance-history:${statusPageId}:limit:${limit}`,
 		60, // 1 minute
 		async () => {
 			// Using query builder with join manually because of many-to-many link navigation matching
@@ -508,6 +566,105 @@ export const getMaintenanceHistory = async (
 			// Fetch monitors for each maintenance
 			const jobs = await Promise.all(
 				maintenances.map(async (m) => {
+					const monitors = await db.query.maintenanceMonitor.findMany({
+						where: eq(maintenanceMonitor.maintenanceId, m.id),
+						with: {
+							monitor: true,
+						},
+					});
+
+					const updates = await db.query.maintenanceUpdate.findMany({
+						where: eq(maintenanceUpdate.maintenanceId, m.id),
+						orderBy: [desc(maintenanceUpdate.createdAt)],
+					});
+
+					return { ...m, monitors, updates };
+				}),
+			);
+
+			return jobs;
+		},
+	);
+};
+
+interface HistoryQueryOptions {
+	limit?: number;
+	period?: IncidentHistoryPeriod;
+}
+
+export const getStatusPageReportsForPeriod = async (
+	statusPageId: string,
+	options: HistoryQueryOptions = {},
+) => {
+	const { limit, period = "all" } = options;
+	const cutoff = getIncidentHistoryCutoff(period);
+
+	return cached(
+		`status-page-reports:${statusPageId}:period:${period}:limit:${limit ?? "all"}`,
+		60,
+		async () => {
+			const records = await getPublishedIncidentRecords(statusPageId, {
+				resolvedOnly: true,
+				cutoff: cutoff ?? undefined,
+				limit,
+			});
+
+			return records
+				.map(mapPublishedIncidentRecord)
+				.sort(
+					(a, b) =>
+						new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+				);
+		},
+	);
+};
+
+export const getMaintenanceHistoryForPeriod = async (
+	statusPageId: string,
+	options: HistoryQueryOptions = {},
+) => {
+	const { limit, period = "all" } = options;
+	const cutoff = getIncidentHistoryCutoff(period);
+
+	return cached(
+		`maintenance-history:${statusPageId}:period:${period}:limit:${limit ?? "all"}`,
+		60,
+		async () => {
+			const filters = [
+				eq(maintenanceStatusPage.statusPageId, statusPageId),
+				eq(maintenance.status, "completed"),
+			];
+
+			if (cutoff) {
+				filters.push(gte(maintenance.createdAt, cutoff));
+			}
+
+			let maintenancesQuery = db
+				.select({
+					id: maintenance.id,
+					title: maintenance.title,
+					status: maintenance.status,
+					startAt: maintenance.startAt,
+					endAt: maintenance.endAt,
+					createdAt: maintenance.createdAt,
+				})
+				.from(maintenance)
+				.innerJoin(
+					maintenanceStatusPage,
+					eq(maintenance.id, maintenanceStatusPage.maintenanceId),
+				)
+				.where(and(...filters))
+				.orderBy(desc(maintenance.endAt))
+				.$dynamic();
+
+			if (limit) {
+				maintenancesQuery = maintenancesQuery.limit(limit);
+			}
+
+			const limitedMaintenances = await maintenancesQuery;
+
+			const jobs = await Promise.all(
+				limitedMaintenances.map(async (m) => {
 					const monitors = await db.query.maintenanceMonitor.findMany({
 						where: eq(maintenanceMonitor.maintenanceId, m.id),
 						with: {

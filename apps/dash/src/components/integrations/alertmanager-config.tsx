@@ -226,16 +226,16 @@ route:
 			</div>
 
 			<Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-				<CollapsibleTrigger asChild>
-					<Button variant="ghost" className="w-full justify-between">
-						Advanced Settings
-						<ChevronDown
-							className={cn(
-								"h-4 w-4 transition-transform",
-								advancedOpen && "rotate-180",
-							)}
-						/>
-					</Button>
+				<CollapsibleTrigger
+					render={<Button variant="ghost" className="w-full justify-between" />}
+				>
+					Advanced Settings
+					<ChevronDown
+						className={cn(
+							"h-4 w-4 transition-transform",
+							advancedOpen && "rotate-180",
+						)}
+					/>
 				</CollapsibleTrigger>
 				<CollapsibleContent className="space-y-4 pt-4">
 					<div className="grid gap-2">

@@ -16,8 +16,9 @@ export default function NotFound() {
 					Please check the URL or try navigating back to the home page.
 				</p>
 				<div className="mt-8 flex w-full flex-col gap-4 sm:flex-row sm:justify-center">
-					<Button asChild size="lg" className="rounded-full px-8 font-semibold">
+					<Button size="lg" className="rounded-full px-8 font-semibold" render={
 						<Link href="/">Back to Dashboard</Link>
+					}>
 					</Button>
 				</div>
 			</div>

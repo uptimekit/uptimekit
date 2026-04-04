@@ -22,37 +22,34 @@ export default function UserMenu() {
 
 	if (!session) {
 		return (
-			<Button variant="outline" asChild>
-				<Link href="/login">Sign In</Link>
+			<Button variant="outline" render={<Link href="/login" />}>
+				Sign In
 			</Button>
 		);
 	}
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="outline">{session.user.name}</Button>
+			<DropdownMenuTrigger render={<Button variant="outline" />}>
+				{session.user.name}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuLabel>My Account</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem>{session.user.email}</DropdownMenuItem>
-				<DropdownMenuItem asChild>
-					<Button
-						variant="destructive"
-						className="w-full"
-						onClick={() => {
-							authClient.signOut({
-								fetchOptions: {
-									onSuccess: () => {
-										router.push("/");
-									},
+				<DropdownMenuItem
+					render={<Button variant="destructive" className="w-full" />}
+					onClick={() => {
+						authClient.signOut({
+							fetchOptions: {
+								onSuccess: () => {
+									router.push("/");
 								},
-							});
-						}}
-					>
-						Sign Out
-					</Button>
+							},
+						});
+					}}
+				>
+					Sign Out
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

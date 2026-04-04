@@ -301,6 +301,7 @@ export const monitorsRouter = {
 				locations: z.array(z.string()).min(1), // Require at least one location
 				incidentPendingDuration: z.number().min(0).default(0),
 				incidentRecoveryDuration: z.number().min(0).default(0),
+				publishIncidentToStatusPage: z.boolean().default(false),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -317,6 +318,7 @@ export const monitorsRouter = {
 					active: true,
 					incidentPendingDuration: input.incidentPendingDuration,
 					incidentRecoveryDuration: input.incidentRecoveryDuration,
+					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
 				})
 				.returning();
 
@@ -372,7 +374,7 @@ export const monitorsRouter = {
 				.where(
 					and(
 						eq(incidentMonitor.monitorId, input.id),
-						isNull(incident.resolvedAt),
+						isNull(incident.endedAt),
 					),
 				);
 
@@ -387,6 +389,7 @@ export const monitorsRouter = {
 							.update(incident)
 							.set({
 								status: "resolved",
+								endedAt: now,
 								resolvedAt: now,
 								updatedAt: now,
 							})
@@ -462,6 +465,7 @@ export const monitorsRouter = {
 				locations: z.array(z.string()).min(1),
 				incidentPendingDuration: z.number().min(0).default(0),
 				incidentRecoveryDuration: z.number().min(0).default(0),
+				publishIncidentToStatusPage: z.boolean().default(false),
 				active: z.boolean().default(true),
 			}),
 		)
@@ -488,6 +492,7 @@ export const monitorsRouter = {
 					locations: input.locations,
 					incidentPendingDuration: input.incidentPendingDuration,
 					incidentRecoveryDuration: input.incidentRecoveryDuration,
+					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
 					active: input.active,
 				})
 				.where(eq(monitor.id, input.id));

@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
-import { Montserrat } from "next/font/google";
+import { Montserrat, Inter, Geist_Mono } from "next/font/google";
 import "../index.css";
 import Providers from "@/components/providers";
+import { cn } from "@/lib/utils";
+
+const geistMono = Geist_Mono({subsets:['latin'],variable:'--font-mono'});
+
+const interHeading = Inter({subsets:['latin'],variable:'--font-heading'});
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const montserrat = Montserrat({
 	variable: "--font-montserrat",
@@ -59,7 +66,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="en" suppressHydrationWarning className={cn("font-mono", inter.variable, interHeading.variable, geistMono.variable)}>
 			<head>
 				<script
 					async

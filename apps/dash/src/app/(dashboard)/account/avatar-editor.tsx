@@ -59,7 +59,7 @@ export function AvatarEditor({ value, onChange, name }: AvatarEditorProps) {
 		return (
 			<>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
+					<DropdownMenuTrigger>
 						<button
 							type="button"
 							className="relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border bg-muted transition-all hover:opacity-80"

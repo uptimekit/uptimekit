@@ -581,7 +581,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 							{/* Favicon (Optional) */}
 							<Collapsible open={faviconOpen} onOpenChange={setFaviconOpen}>
-								<CollapsibleTrigger asChild>
+								<CollapsibleTrigger render={
 									<Button
 										variant="ghost"
 										className="flex w-full items-center justify-between p-0 hover:bg-transparent"
@@ -597,6 +597,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											)}
 										/>
 									</Button>
+								}>
 								</CollapsibleTrigger>
 								<CollapsibleContent className="mt-4">
 									<FormField

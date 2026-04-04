@@ -674,17 +674,19 @@ function AddMonitorInput({
 	// This simulates the "Search to add resources" box from screenshot
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
-					role="combobox"
-					aria-expanded={open}
-					className="w-full justify-start border-input/50 bg-muted/30 font-normal text-muted-foreground"
-					onPointerDown={(e) => e.stopPropagation()}
-				>
-					<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-					Search to add resources
-				</Button>
+			<PopoverTrigger
+				render={
+					<Button
+						variant="outline"
+						role="combobox"
+						aria-expanded={open}
+						className="w-full justify-start border-input/50 bg-muted/30 font-normal text-muted-foreground"
+						onPointerDown={(e) => e.stopPropagation()}
+					>
+						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+						Search to add resources
+					</Button>
+				}>
 			</PopoverTrigger>
 			<PopoverContent className="w-[400px] p-0" align="start">
 				<Command>
@@ -969,9 +971,9 @@ function MonitorPreview({
 						</span>
 						{description && (
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<Info className="h-4 w-4 text-muted-foreground/60" />
-								</TooltipTrigger>
+								<TooltipTrigger
+									render={<Info className="h-4 w-4 text-muted-foreground/60" />}
+								/>
 								<TooltipContent>
 									<p className="max-w-xs text-sm">{description}</p>
 								</TooltipContent>
@@ -999,9 +1001,9 @@ function MonitorPreview({
 					<span className="font-semibold text-foreground text-lg">{name}</span>
 					{description && (
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<Info className="h-4 w-4 text-muted-foreground/60" />
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={<Info className="h-4 w-4 text-muted-foreground/60" />}
+							/>
 							<TooltipContent>
 								<p className="max-w-xs text-sm">{description}</p>
 							</TooltipContent>

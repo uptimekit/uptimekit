@@ -1,3 +1,5 @@
+import type { IncidentHistoryPeriod } from "@/lib/incident-history";
+
 // Status Type Definition
 export type StatusType =
 	| "operational"
@@ -70,8 +72,8 @@ export interface Incident {
 	title: string;
 	status: string;
 	severity: string;
-	createdAt: Date;
-	resolvedAt: Date | null;
+	startedAt: Date;
+	endedAt: Date | null;
 	monitors: IncidentMonitor[];
 	activities: IncidentActivity[];
 	detailsLink: string;
@@ -135,6 +137,7 @@ export interface UpdatesPageData {
 	allUpdates: Incident[];
 	incidentsByDate: Record<string, Incident[]>;
 	activeIssues: Incident[];
+	selectedPeriod: IncidentHistoryPeriod;
 }
 
 export interface ThemeIncidentDetailProps {

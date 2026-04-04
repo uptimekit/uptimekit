@@ -158,22 +158,24 @@ export function CreateMaintenanceForm({
 								<FormItem className="flex flex-col">
 									<FormLabel>Affected Monitors</FormLabel>
 									<Popover>
-										<PopoverTrigger asChild>
-											<FormControl>
-												<Button
-													variant="outline"
-													role="combobox"
-													className={cn(
-														"w-full justify-between",
-														!field.value?.length && "text-muted-foreground",
-													)}
-												>
-													{field.value?.length > 0
-														? `${field.value.length} monitors selected`
-														: "Select monitors"}
-													<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-												</Button>
-											</FormControl>
+										<PopoverTrigger
+											render={
+												<FormControl>
+													<Button
+														variant="outline"
+														role="combobox"
+														className={cn(
+															"w-full justify-between",
+															!field.value?.length && "text-muted-foreground",
+														)}
+													/>
+												</FormControl>
+											}
+										>
+											{field.value?.length > 0
+												? `${field.value.length} monitors selected`
+												: "Select monitors"}
+											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 										</PopoverTrigger>
 										<PopoverContent className="w-[400px] p-0">
 											<Command>

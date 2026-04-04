@@ -87,11 +87,9 @@ export function InviteMemberDialog() {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			<DialogTrigger asChild>
-				<Button>
-					<Plus className="mr-2 h-4 w-4" />
-					Add Member
-				</Button>
+			<DialogTrigger render={<Button />}>
+				<Plus className="mr-2 h-4 w-4" />
+				Add Member
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>

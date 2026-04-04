@@ -128,11 +128,9 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 			<div className="flex items-center justify-between">
 				<h3 className="font-semibold text-sm">Tags</h3>
 				<Dialog open={createOpen} onOpenChange={setCreateOpen}>
-					<DialogTrigger asChild>
-						<Button variant="outline" size="sm">
-							<Plus className="mr-2 h-4 w-4" />
-							New Tag
-						</Button>
+					<DialogTrigger render={<Button variant="outline" size="sm" />}>
+						<Plus className="mr-2 h-4 w-4" />
+						New Tag
 					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
@@ -212,14 +210,16 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 						/>
 						<span className="font-medium text-sm">{tag.name}</span>
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-5 w-5 text-muted-foreground hover:text-foreground"
-								>
-									<MoreHorizontal className="h-3 w-3" />
-								</Button>
+							<DropdownMenuTrigger
+								render={
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-5 w-5 text-muted-foreground hover:text-foreground"
+									/>
+								}
+							>
+								<MoreHorizontal className="h-3 w-3" />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem
@@ -234,14 +234,16 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 									Edit
 								</DropdownMenuItem>
 								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<DropdownMenuItem
-											className="text-red-500"
-											onSelect={(e) => e.preventDefault()}
-										>
-											<Trash2 className="mr-2 h-4 w-4" />
-											Delete
-										</DropdownMenuItem>
+									<AlertDialogTrigger
+										render={
+											<DropdownMenuItem
+												className="text-red-500"
+												onSelect={(e) => e.preventDefault()}
+											/>
+										}
+									>
+										<Trash2 className="mr-2 h-4 w-4" />
+										Delete
 									</AlertDialogTrigger>
 									<AlertDialogContent>
 										<AlertDialogHeader>

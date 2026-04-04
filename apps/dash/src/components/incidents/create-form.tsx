@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -49,6 +50,12 @@ const schema = z.object({
 	description: z.string().optional(),
 	severity: z.enum(["minor", "major", "critical"]),
 	monitorIds: z.array(z.string()),
+	statusPageIds: z.array(z.string()),
+	startedAt: z.date(),
+	endedAt: z.date().nullable(),
+}).refine((value) => !value.endedAt || value.endedAt >= value.startedAt, {
+	message: "End time cannot be before start time",
+	path: ["endedAt"],
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -63,13 +70,20 @@ export function CreateIncidentForm() {
 			description: "",
 			severity: "major",
 			monitorIds: [],
+			statusPageIds: [],
+			startedAt: new Date(),
+			endedAt: null,
 		},
 	});
 
 	const { data: monitorsData } = useQuery(
 		orpc.monitors.list.queryOptions({ limit: 100 }),
 	);
+	const { data: statusPagesData } = useQuery(
+		orpc.statusPages.list.queryOptions({ limit: 100 }),
+	);
 	const monitors = monitorsData?.items;
+	const statusPages = statusPagesData?.items;
 
 	const createIncident = useMutation(
 		orpc.incidents.create.mutationOptions({
@@ -162,6 +176,55 @@ export function CreateIncidentForm() {
 									</FormItem>
 								)}
 							/>
+
+							<div className="grid gap-6 md:grid-cols-2">
+								<FormField
+									control={form.control}
+									name="startedAt"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Started at</FormLabel>
+											<FormControl>
+												<DateTimePicker
+													date={field.value}
+													setDate={(date) => field.onChange(date ?? new Date())}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+
+								<FormField
+									control={form.control}
+									name="endedAt"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Ended at</FormLabel>
+											<div className="space-y-2">
+												<FormControl>
+													<DateTimePicker
+														date={field.value ?? undefined}
+														setDate={(date) => field.onChange(date ?? null)}
+													/>
+												</FormControl>
+												{field.value && (
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														className="px-0"
+														onClick={() => field.onChange(null)}
+													>
+														Clear end time
+													</Button>
+												)}
+											</div>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
 						</CardContent>
 					</Card>
 				</div>
@@ -187,7 +250,7 @@ export function CreateIncidentForm() {
 									<FormItem className="flex flex-col">
 										<FormLabel>Affected Monitors</FormLabel>
 										<Popover>
-											<PopoverTrigger asChild>
+											<PopoverTrigger render={
 												<FormControl>
 													<Button
 														variant="outline"
@@ -203,6 +266,7 @@ export function CreateIncidentForm() {
 														<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 													</Button>
 												</FormControl>
+											}>
 											</PopoverTrigger>
 											<PopoverContent className="w-[400px] p-0">
 												<Command>
@@ -263,6 +327,94 @@ export function CreateIncidentForm() {
 															}}
 														>
 															<X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+														</button>
+													</Badge>
+												);
+											})}
+										</div>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="statusPageIds"
+								render={({ field }) => (
+									<FormItem className="flex flex-col">
+										<FormLabel>Publish to Status Pages</FormLabel>
+										<Popover>
+											<PopoverTrigger render={
+												<FormControl>
+													<Button
+														variant="outline"
+														role="combobox"
+														className={cn(
+															"w-full justify-between",
+															!field.value?.length && "text-muted-foreground",
+														)}
+													>
+														{field.value?.length > 0
+															? `${field.value.length} status pages selected`
+															: "Keep internal only"}
+														<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+													</Button>
+												</FormControl>
+											}>
+											</PopoverTrigger>
+											<PopoverContent className="w-[400px] p-0">
+												<Command>
+													<CommandInput placeholder="Search status pages..." />
+													<CommandList>
+														<CommandEmpty>No status pages found.</CommandEmpty>
+														<CommandGroup>
+															{statusPages?.map((page) => (
+																<CommandItem
+																	value={page.name}
+																	key={page.id}
+																	onSelect={() => {
+																		const current = field.value || [];
+																		const isSelected = current.includes(page.id);
+																		field.onChange(
+																			isSelected
+																				? current.filter((id) => id !== page.id)
+																				: [...current, page.id],
+																		);
+																	}}
+																>
+																	<Check
+																		className={cn(
+																			"mr-2 h-4 w-4",
+																			field.value?.includes(page.id)
+																				? "opacity-100"
+																				: "opacity-0",
+																		)}
+																	/>
+																	{page.name}
+																</CommandItem>
+															))}
+														</CommandGroup>
+													</CommandList>
+												</Command>
+											</PopoverContent>
+										</Popover>
+										<div className="mt-2 flex flex-wrap gap-2">
+											{field.value?.map((id) => {
+												const page = statusPages?.find((item) => item.id === id);
+												if (!page) return null;
+												return (
+													<Badge key={id} variant="secondary" className="gap-1">
+														{page.name}
+														<button
+															type="button"
+															className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+															onClick={() => {
+																field.onChange(
+																	field.value.filter((value) => value !== id),
+																);
+															}}
+														>
+															<X className="h-3 w-3" />
 														</button>
 													</Badge>
 												);

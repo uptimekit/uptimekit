@@ -3,12 +3,14 @@ import {
 	incident,
 	incidentActivity,
 	incidentMonitor,
+	incidentStatusPage,
 } from "@uptimekit/db/schema/incidents";
 import {
 	maintenance,
 	maintenanceMonitor,
 } from "@uptimekit/db/schema/maintenance";
 import { monitor } from "@uptimekit/db/schema/monitors";
+import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { and, eq, isNull } from "drizzle-orm";
 import { eventBus } from "../../lib/events";
 import type {
@@ -120,6 +122,8 @@ export async function processMonitorEvents(
 	const changesToInsert: MonitorChangeInsert[] = [];
 	const incidentsToInsert: (typeof incident.$inferInsert)[] = [];
 	const incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[] = [];
+	const incidentStatusPagesToInsert: (typeof incidentStatusPage.$inferInsert)[] =
+		[];
 	const activitiesToInsert: (typeof incidentActivity.$inferInsert)[] = [];
 
 	for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
@@ -130,6 +134,7 @@ export async function processMonitorEvents(
 			changesToInsert,
 			incidentsToInsert,
 			incidentMonitorsToInsert,
+			incidentStatusPagesToInsert,
 			activitiesToInsert,
 		);
 	}
@@ -161,6 +166,10 @@ export async function processMonitorEvents(
 
 	if (incidentMonitorsToInsert.length > 0) {
 		await db.insert(incidentMonitor).values(incidentMonitorsToInsert);
+	}
+
+	if (incidentStatusPagesToInsert.length > 0) {
+		await db.insert(incidentStatusPage).values(incidentStatusPagesToInsert);
 	}
 
 	if (activitiesToInsert.length > 0) {
@@ -213,6 +222,7 @@ async function processMonitorEventGroup(
 	changesToInsert: MonitorChangeInsert[],
 	incidentsToInsert: (typeof incident.$inferInsert)[],
 	incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[],
+	incidentStatusPagesToInsert: (typeof incidentStatusPage.$inferInsert)[],
 	activitiesToInsert: (typeof incidentActivity.$inferInsert)[],
 ) {
 	const monitorConfig = await db.query.monitor.findFirst({
@@ -251,7 +261,7 @@ async function processMonitorEventGroup(
 		.select({
 			id: incident.id,
 			status: incident.status,
-			resolvedAt: incident.resolvedAt,
+			endedAt: incident.endedAt,
 			type: incident.type,
 		})
 		.from(incident)
@@ -260,7 +270,7 @@ async function processMonitorEventGroup(
 			and(
 				eq(incidentMonitor.monitorId, monitorId),
 				eq(incident.type, "automatic"),
-				isNull(incident.resolvedAt),
+				isNull(incident.endedAt),
 			),
 		)
 		.limit(1);
@@ -327,7 +337,7 @@ async function processMonitorEventGroup(
 				activeIncident = {
 					id: newIncidentId,
 					status: "investigating",
-					resolvedAt: null,
+					endedAt: null,
 					type: "automatic",
 				};
 
@@ -339,14 +349,44 @@ async function processMonitorEventGroup(
 					status: "investigating",
 					severity: "major",
 					type: "automatic",
+					startedAt: eventTime,
+					endedAt: null,
 					createdAt: eventTime,
 					updatedAt: eventTime,
+					resolvedAt: null,
 				});
 
 				incidentMonitorsToInsert.push({
 					incidentId: newIncidentId,
 					monitorId: monitorId,
 				});
+
+				if (monitorConfig.publishIncidentToStatusPage) {
+					const statusPages = await db
+						.select({
+							statusPageId: statusPageMonitor.statusPageId,
+						})
+						.from(statusPageMonitor)
+						.where(eq(statusPageMonitor.monitorId, monitorId));
+
+					for (const { statusPageId } of statusPages) {
+						incidentStatusPagesToInsert.push({
+							incidentId: newIncidentId,
+							statusPageId,
+						});
+					}
+
+					if (statusPages.length > 0) {
+						activitiesToInsert.push({
+							id: crypto.randomUUID(),
+							incidentId: newIncidentId,
+							message: `Published to ${statusPages.length} status page${statusPages.length === 1 ? "" : "s"} automatically.`,
+							type: "event",
+							createdAt: eventTime,
+							userId: null,
+						});
+					}
+				}
 
 				activitiesToInsert.push({
 					id: crypto.randomUUID(),
@@ -362,6 +402,7 @@ async function processMonitorEventGroup(
 				.update(incident)
 				.set({
 					status: "resolved",
+					endedAt: eventTime,
 					resolvedAt: eventTime,
 					updatedAt: eventTime,
 				})

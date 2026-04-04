@@ -1,51 +1,52 @@
-import * as AvatarPrimitive from "@radix-ui/react-avatar";
-import type * as React from "react";
+"use client";
 
+import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
+import type React from "react";
 import { cn } from "@/lib/utils";
 
-function Avatar({
-	className,
-	...props
-}: React.ComponentProps<typeof AvatarPrimitive.Root>) {
-	return (
-		<AvatarPrimitive.Root
-			data-slot="avatar"
-			className={cn(
-				"relative flex size-8 shrink-0 overflow-hidden rounded-full",
-				className,
-			)}
-			{...props}
-		/>
-	);
+export function Avatar({
+  className,
+  ...props
+}: AvatarPrimitive.Root.Props): React.ReactElement {
+  return (
+    <AvatarPrimitive.Root
+      className={cn(
+        "inline-flex size-8 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-background align-middle font-medium text-xs",
+        className,
+      )}
+      data-slot="avatar"
+      {...props}
+    />
+  );
 }
 
-function AvatarImage({
-	className,
-	...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
-	return (
-		<AvatarPrimitive.Image
-			data-slot="avatar-image"
-			className={cn("aspect-square size-full", className)}
-			{...props}
-		/>
-	);
+export function AvatarImage({
+  className,
+  ...props
+}: AvatarPrimitive.Image.Props): React.ReactElement {
+  return (
+    <AvatarPrimitive.Image
+      className={cn("size-full object-cover", className)}
+      data-slot="avatar-image"
+      {...props}
+    />
+  );
 }
 
-function AvatarFallback({
-	className,
-	...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
-	return (
-		<AvatarPrimitive.Fallback
-			data-slot="avatar-fallback"
-			className={cn(
-				"flex size-full items-center justify-center rounded-full bg-muted",
-				className,
-			)}
-			{...props}
-		/>
-	);
+export function AvatarFallback({
+  className,
+  ...props
+}: AvatarPrimitive.Fallback.Props): React.ReactElement {
+  return (
+    <AvatarPrimitive.Fallback
+      className={cn(
+        "flex size-full items-center justify-center rounded-full bg-muted",
+        className,
+      )}
+      data-slot="avatar-fallback"
+      {...props}
+    />
+  );
 }
 
-export { Avatar, AvatarImage, AvatarFallback };
+export { AvatarPrimitive };

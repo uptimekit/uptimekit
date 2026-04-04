@@ -1,3 +1,4 @@
+import { IncidentHistoryPeriodSelector } from "@/components/incident-history-period-selector";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { buildPath } from "@/lib/route-utils";
@@ -7,8 +8,9 @@ import { CurrentIssuesBanner } from "./components/current-issues-banner";
 import { UpdatesList } from "./components/updates-list";
 
 export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
-	const { config, incidentsByDate, activeIssues } = data;
+	const { config, incidentsByDate, activeIssues, selectedPeriod } = data;
 	const { design } = config;
+	const updatesPath = buildPath("/updates", config.slug);
 
 	return (
 		<div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
@@ -27,8 +29,15 @@ export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
 						Incident History
 					</h1>
 
+					<IncidentHistoryPeriodSelector
+						basePath={updatesPath}
+						selectedPeriod={selectedPeriod}
+					/>
 					<CurrentIssuesBanner activeIssues={activeIssues} />
-					<UpdatesList incidentsByDate={incidentsByDate} />
+					<UpdatesList
+						incidentsByDate={incidentsByDate}
+						selectedPeriod={selectedPeriod}
+					/>
 				</div>
 			</main>
 

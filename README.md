@@ -1,6 +1,3 @@
-> [!CAUTION]
-> This project is no longer continued, because of lack of time for actively maintaining it. Checkout similar projects like [pongo](https://www.pongo.sh/) or [openstatus](https://www.openstatus.dev/), they did better job than I do, and are actively maintained
-
 <div align="center">
   <a href="https://uptimekit.dev">
     <img src="https://r2.uptimekit.dev/logos/uptimekit.svg" alt="UptimeKit Logo" width="120" height="120">
@@ -55,8 +52,9 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 10+
+- Bun
+- Redis
+- Clickhouse
 - PostgreSQL
 
 ### Installation
@@ -71,7 +69,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 2. **Install dependencies**
 
     ```bash
-    pnpm install
+    bun install
     ```
 
 3. **Environment Setup**
@@ -80,10 +78,10 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 4. **Database Setup**
 
-    Push the schema to your local database:
+    Push the schema to your database:
 
     ```bash
-    pnpm run db:push
+    bun run db:push
     ```
 
 5. **Run Development Server**
@@ -91,7 +89,7 @@ Follow these steps to get UptimeKit running locally on your machine.
     Start all applications (Dashboard, Status Page, Marketing/Docs):
 
     ```bash
-    pnpm run dev
+    bun run dev
     ```
 
     - **Dashboard**: [http://localhost:3000](http://localhost:3000)
@@ -103,6 +101,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application
+│   ├── worker/        # Probe who actually pings the monitors
 │   └── status-page/   # Public Status Page application
 ├── packages/
 │   ├── api/           # Shared API definition & logic
@@ -118,7 +117,7 @@ uptimekit/
 Thank you to all our amazing sponsors who make this project possible!
 
 <p align="center">
-  <a href="https://github.com/sponsors/stripsior">
+  <a href="https://github.com/sponsors/irazvan2745">
     <img src=".github/sponsors/sponsors.svg" alt="Sponsors" />
   </a>
 </p>

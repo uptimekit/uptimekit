@@ -223,16 +223,18 @@ export function EditUpdateForm({
 								Affected Services
 							</h3>
 							<Popover>
-								<PopoverTrigger asChild>
-									<Button
-										variant="outline"
-										size="sm"
-										role="combobox"
-										className="h-8 border-dashed"
-									>
-										<ExternalLink className="mr-2 h-4 w-4" />
-										Modify services
-									</Button>
+								<PopoverTrigger
+									render={
+										<Button
+											variant="outline"
+											size="sm"
+											role="combobox"
+											className="h-8 border-dashed"
+										/>
+									}
+								>
+									<ExternalLink className="mr-2 h-4 w-4" />
+									Modify services
 								</PopoverTrigger>
 								<PopoverContent className="w-[300px] p-0" align="end">
 									<Command>
