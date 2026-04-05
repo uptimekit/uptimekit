@@ -24,15 +24,18 @@ import {
 } from "@/components/ui/command";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Popover,
 	PopoverContent,
@@ -42,16 +45,6 @@ import { ALL_REGIONS, REGIONS_BY_CONTINENT } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-/**
- * Render a dialog that lets the user create a worker and, on success, displays the worker's API key.
- *
- * The component shows a form for entering a worker name and selecting a region grouped by continent,
- * performs the create mutation, displays success/error toasts, invalidates the workers list on success,
- * and exposes the generated API key with copy or reveal controls. Closing the dialog after creation refreshes
- * the router and resets the dialog's local state.
- *
- * @returns The dialog React element for creating a worker and presenting the generated API key.
- */
 export function CreateWorkerDialog() {
 	const [open, setOpen] = useState(false);
 	const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);
@@ -59,10 +52,10 @@ export function CreateWorkerDialog() {
 	const [isCopied, setIsCopied] = useState(false);
 	const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
 	const [selectedLocation, setSelectedLocation] = useState("");
+
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
-	// Check if we're on HTTPS (clipboard API is available)
 	const isSecureContext =
 		typeof window !== "undefined" &&
 		(window.isSecureContext || window.location.protocol === "https:");
@@ -79,8 +72,17 @@ export function CreateWorkerDialog() {
 		},
 	});
 
+	const resetState = () => {
+		setNewWorkerKey(null);
+		setIsRevealed(false);
+		setIsCopied(false);
+		setLocationPopoverOpen(false);
+		setSelectedLocation("");
+	};
+
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+
 		const formData = new FormData(e.currentTarget);
 		const name = formData.get("name") as string;
 		const location = formData.get("location") as string;
@@ -88,33 +90,28 @@ export function CreateWorkerDialog() {
 		mutate({ name, location });
 	};
 
-	const handleCopy = () => {
-		if (newWorkerKey) {
-			navigator.clipboard.writeText(newWorkerKey);
+	const handleCopy = async () => {
+		if (!newWorkerKey) return;
+
+		try {
+			await navigator.clipboard.writeText(newWorkerKey);
 			setIsCopied(true);
-			toast.success("API Key copied to clipboard");
+			toast.success("API key copied to clipboard");
 			setTimeout(() => setIsCopied(false), 2000);
+		} catch {
+			toast.error("Failed to copy API key");
 		}
 	};
 
-	const toggleReveal = () => {
-		setIsRevealed(!isRevealed);
-	};
+	const handleOpenChange = (nextOpen: boolean) => {
+		setOpen(nextOpen);
 
-	const handleOpenChange = (isOpen: boolean) => {
-		setOpen(isOpen);
-		if (!isOpen) {
+		if (!nextOpen) {
 			if (newWorkerKey) {
 				router.refresh();
 			}
-			// Reset state after a short delay to allow animation to finish
-			setTimeout(() => {
-				setNewWorkerKey(null);
-				setIsRevealed(false);
-				setIsCopied(false);
-				setLocationPopoverOpen(false);
-				setSelectedLocation("");
-			}, 300);
+
+			setTimeout(resetState, 300);
 		}
 	};
 
@@ -130,78 +127,104 @@ export function CreateWorkerDialog() {
 					Add Worker
 				</span>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-[425px]">
-				<DialogHeader>
-					<DialogTitle>
-						{newWorkerKey ? "Worker Created" : "Create Worker"}
-					</DialogTitle>
-					<DialogDescription>
-						{newWorkerKey
-							? "Copy the API key below. You won't be able to see it again."
-							: "Add a new worker to your monitoring fleet."}
-					</DialogDescription>
-				</DialogHeader>
 
+			<DialogPopup className="sm:max-w-[425px]">
 				{newWorkerKey ? (
-					<div className="py-4">
-						<div className="flex items-center space-x-2">
-							<div className="grid flex-1 gap-2">
-								<Label htmlFor="link" className="sr-only">
-									API Key
-								</Label>
-								<Input
-									id="link"
-									value={newWorkerKey}
-									readOnly
-									type={isRevealed ? "text" : "password"}
-								/>
+					<>
+						<DialogHeader>
+							<DialogTitle>Worker Created</DialogTitle>
+							<DialogDescription>
+								Copy the API key below. You won&apos;t be able to see it again.
+							</DialogDescription>
+						</DialogHeader>
+
+						<DialogPanel className="py-4">
+							<div className="flex items-center space-x-2">
+								<div className="grid flex-1 gap-2">
+									<label htmlFor="worker-api-key" className="sr-only">
+										API Key
+									</label>
+									<Input
+										id="worker-api-key"
+										value={newWorkerKey}
+										readOnly
+										type={isRevealed ? "text" : "password"}
+									/>
+								</div>
+
+								{isSecureContext ? (
+									<Button
+										type="button"
+										size="sm"
+										className="px-3"
+										onClick={handleCopy}
+									>
+										<span className="sr-only">Copy</span>
+										{isCopied ? (
+											<Check className="h-4 w-4" />
+										) : (
+											<Copy className="h-4 w-4" />
+										)}
+									</Button>
+								) : (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="px-3"
+										onClick={() => setIsRevealed((prev) => !prev)}
+									>
+										<span className="sr-only">
+											{isRevealed ? "Hide" : "Show"} API Key
+										</span>
+										{isRevealed ? (
+											<EyeOff className="h-4 w-4" />
+										) : (
+											<Eye className="h-4 w-4" />
+										)}
+									</Button>
+								)}
 							</div>
-							{isSecureContext ? (
-								<Button size="sm" className="px-3" onClick={handleCopy}>
-									<span className="sr-only">Copy</span>
-									{isCopied ? (
-										<Check className="h-4 w-4" />
-									) : (
-										<Copy className="h-4 w-4" />
-									)}
-								</Button>
-							) : (
-								<Button
-									size="sm"
-									variant="outline"
-									className="px-3"
-									onClick={toggleReveal}
-								>
-									<span className="sr-only">
-										{isRevealed ? "Hide" : "Show"} API Key
-									</span>
-									{isRevealed ? (
-										<EyeOff className="h-4 w-4" />
-									) : (
-										<Eye className="h-4 w-4" />
-									)}
-								</Button>
-							)}
-						</div>
-					</div>
+						</DialogPanel>
+
+						<DialogFooter>
+							<DialogClose render={<Button type="button" />}>Done</DialogClose>
+						</DialogFooter>
+					</>
 				) : (
-					<form onSubmit={handleSubmit}>
-						<div className="grid gap-4 py-4">
-							<div className="grid gap-2">
-								<Label htmlFor="name">Name</Label>
-								<Input id="name" name="name" placeholder="My Worker" required />
-							</div>
-							<div className="grid gap-2">
-								<Label htmlFor="location">Location</Label>
+					<Form className="contents" onSubmit={handleSubmit}>
+						<DialogHeader>
+							<DialogTitle>Create Worker</DialogTitle>
+							<DialogDescription>
+								Add a new worker to your monitoring fleet.
+							</DialogDescription>
+						</DialogHeader>
+
+						<DialogPanel className="grid gap-4 py-4">
+							<Field>
+								<FieldLabel htmlFor="name">Name</FieldLabel>
+								<Input
+									id="name"
+									name="name"
+									placeholder="My Worker"
+									required
+									type="text"
+								/>
+							</Field>
+
+							<Field>
+								<FieldLabel htmlFor="location">Location</FieldLabel>
+
 								<input
 									id="location"
 									name="location"
 									value={selectedLocation}
 									required
 									readOnly
-									className="sr-only"
 									tabIndex={-1}
+									className="sr-only"
 								/>
+
 								<Popover
 									open={locationPopoverOpen}
 									onOpenChange={setLocationPopoverOpen}
@@ -209,6 +232,7 @@ export function CreateWorkerDialog() {
 									<PopoverTrigger
 										render={
 											<Button
+												type="button"
 												variant="outline"
 												role="combobox"
 												aria-expanded={locationPopoverOpen}
@@ -229,15 +253,15 @@ export function CreateWorkerDialog() {
 										)}
 										<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 									</PopoverTrigger>
-									<PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+
+									<PopoverContent className="p-0">
 										<Command>
-											<CommandInput placeholder="Search regions..." />
 											<CommandList className="max-h-[400px]">
-												<CommandEmpty>No region found.</CommandEmpty>
 												{REGIONS_BY_CONTINENT.map((group) => (
 													<CommandGroup
 														key={group.continent}
 														heading={group.continent}
+														defaultCollapsed={true}
 													>
 														{group.regions.map((region) => (
 															<CommandItem
@@ -268,24 +292,21 @@ export function CreateWorkerDialog() {
 										</Command>
 									</PopoverContent>
 								</Popover>
-							</div>
-						</div>
+							</Field>
+						</DialogPanel>
+
 						<DialogFooter>
+							<DialogClose render={<Button type="button" variant="ghost" />}>
+								Cancel
+							</DialogClose>
 							<Button type="submit" disabled={isPending}>
 								{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 								Create Worker
 							</Button>
 						</DialogFooter>
-					</form>
+					</Form>
 				)}
-				{newWorkerKey && (
-					<DialogFooter>
-						<Button type="button" onClick={() => handleOpenChange(false)}>
-							Done
-						</Button>
-					</DialogFooter>
-				)}
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }
