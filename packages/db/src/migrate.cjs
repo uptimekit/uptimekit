@@ -1,4 +1,4 @@
-const path = require("path");
+const path = require("node:path");
 const postgres = require("postgres");
 const { drizzle } = require("drizzle-orm/postgres-js");
 const { migrate } = require("drizzle-orm/postgres-js/migrator");

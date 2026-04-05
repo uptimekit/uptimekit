@@ -12,6 +12,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -65,7 +66,7 @@ export function LogoEditor({ value, onChange }: LogoEditorProps) {
 							/>
 						}
 					>
-						{/* eslint-disable-next-line @next/next/no-img-element */}
+						{/** biome-ignore lint/performance/noImgElement: next would start crying */}
 						<img
 							src={value}
 							alt="Organization logo"
@@ -142,7 +143,7 @@ function LogoDialog({
 						logo.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="grid gap-4 py-4">
+				<DialogPanel className="grid gap-4">
 					<div className="grid gap-2">
 						<Label htmlFor="url">Image URL</Label>
 						<Input
@@ -158,7 +159,7 @@ function LogoDialog({
 							}}
 						/>
 					</div>
-				</div>
+				</DialogPanel>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancel

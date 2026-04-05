@@ -186,6 +186,7 @@ export const statusPagesRouter = {
 						contactUrl: z.string().optional(),
 						theme: z.enum(["light", "dark"]).optional(),
 						headerLayout: z.enum(["vertical", "horizontal"]).optional(),
+						barStyle: z.enum(["normal", "length"]).optional(),
 						faviconUrl: z.string().optional(),
 					})
 					.optional(),

@@ -8,15 +8,7 @@ import {
 } from "@uptimekit/db/schema/incidents";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPage } from "@uptimekit/db/schema/status-pages";
-import {
-	and,
-	desc,
-	eq,
-	ilike,
-	inArray,
-	isNull,
-	sql,
-} from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { eventBus } from "../lib/events";
@@ -49,13 +41,21 @@ function ensureValidTimeline(startedAt: Date, endedAt: Date | null) {
 	}
 }
 
-function formatTimelineChange(label: string, previous: Date | null, next: Date | null) {
+function formatTimelineChange(
+	label: string,
+	previous: Date | null,
+	next: Date | null,
+) {
 	const previousText = previous ? previous.toISOString() : "unset";
 	const nextText = next ? next.toISOString() : "unset";
 	return `${label} changed from ${previousText} to ${nextText}`;
 }
 
-function deriveStatusForEndedAt(existingStatus: string, acknowledgedAt: Date | null, endedAt: Date | null) {
+function deriveStatusForEndedAt(
+	existingStatus: string,
+	acknowledgedAt: Date | null,
+	endedAt: Date | null,
+) {
 	if (endedAt) {
 		return "resolved";
 	}
@@ -105,7 +105,8 @@ async function assertOrganizationResources(
 
 	if (matchingStatusPages.length !== statusPageIds.length) {
 		throw new ORPCError("BAD_REQUEST", {
-			message: "One or more status pages do not belong to the active organization",
+			message:
+				"One or more status pages do not belong to the active organization",
 		});
 	}
 }
@@ -347,7 +348,8 @@ export const incidentsRouter = {
 				path: "/incidents/{id}",
 				tags: ["Incident Management"],
 				summary: "Update incident",
-				description: "Update incident metadata, timeline, monitors, and publishing.",
+				description:
+					"Update incident metadata, timeline, monitors, and publishing.",
 			},
 		})
 		.input(incidentUpdateInputSchema)
@@ -385,7 +387,9 @@ export const incidentsRouter = {
 				existing.acknowledgedAt,
 				endedAt,
 			);
-			const previousMonitorIds = existing.monitors.map((item) => item.monitorId);
+			const previousMonitorIds = existing.monitors.map(
+				(item) => item.monitorId,
+			);
 			const previousStatusPageIds = existing.statusPages.map(
 				(item) => item.statusPageId,
 			);
@@ -405,7 +409,11 @@ export const incidentsRouter = {
 
 			if (existing.startedAt.getTime() !== input.startedAt.getTime()) {
 				activityMessages.push(
-					formatTimelineChange("Incident start time", existing.startedAt, input.startedAt),
+					formatTimelineChange(
+						"Incident start time",
+						existing.startedAt,
+						input.startedAt,
+					),
 				);
 			}
 

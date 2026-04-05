@@ -1,10 +1,10 @@
 import { IncidentHistoryPeriodSelector } from "@/components/incident-history-period-selector";
-import { Footer } from "./components/footer";
-import { Header } from "./components/header";
 import { buildPath } from "@/lib/route-utils";
 import type { ThemeUpdatesProps } from "../types";
 import { BackLink } from "./components/back-link";
 import { CurrentIssuesBanner } from "./components/current-issues-banner";
+import { Footer } from "./components/footer";
+import { Header } from "./components/header";
 import { UpdatesList } from "./components/updates-list";
 
 export default function DefaultUpdates({ data }: ThemeUpdatesProps) {

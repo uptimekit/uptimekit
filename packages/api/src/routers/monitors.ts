@@ -151,7 +151,7 @@ export const monitorsRouter = {
 				if (!tagsByMonitor.has(monitorId)) {
 					tagsByMonitor.set(monitorId, []);
 				}
-				tagsByMonitor.get(monitorId)!.push(tagRecord);
+				tagsByMonitor.get(monitorId)?.push(tagRecord);
 			}
 
 			// Fetch latest events for all monitors in a single query
@@ -192,7 +192,7 @@ export const monitorsRouter = {
 					// ClickHouse returns timestamps without timezone info
 					// Append 'Z' if not present to interpret as UTC
 					if (!ts.endsWith("Z") && !ts.includes("+")) {
-						return new Date(ts.replace(" ", "T") + "Z");
+						return new Date(`${ts.replace(" ", "T")}Z`);
 					}
 					return new Date(ts);
 				};
@@ -569,7 +569,7 @@ export const monitorsRouter = {
 			// Helper to parse ClickHouse timestamps as UTC
 			const parseClickhouseTimestamp = (ts: string) => {
 				if (!ts.endsWith("Z") && !ts.includes("+")) {
-					return new Date(ts.replace(" ", "T") + "Z");
+					return new Date(`${ts.replace(" ", "T")}Z`);
 				}
 				return new Date(ts);
 			};
@@ -736,7 +736,7 @@ export const monitorsRouter = {
 				// ClickHouse returns timestamps without timezone info
 				// Append 'Z' if not present to interpret as UTC
 				if (!ts.endsWith("Z") && !ts.includes("+")) {
-					return new Date(ts.replace(" ", "T") + "Z");
+					return new Date(`${ts.replace(" ", "T")}Z`);
 				}
 				return new Date(ts);
 			};
@@ -750,7 +750,7 @@ export const monitorsRouter = {
 			let nextCursor: number | undefined;
 			if (changesWithDate.length > limit) {
 				const nextItem = changesWithDate.pop();
-				nextCursor = nextItem!.timestamp.getTime();
+				nextCursor = nextItem?.timestamp.getTime();
 			}
 
 			return {
@@ -903,7 +903,7 @@ export const monitorsRouter = {
 					// ClickHouse returns timestamps without timezone info
 					// Append 'Z' if not present to interpret as UTC
 					if (!ts.endsWith("Z") && !ts.includes("+")) {
-						return new Date(ts.replace(" ", "T") + "Z");
+						return new Date(`${ts.replace(" ", "T")}Z`);
 					}
 					return new Date(ts);
 				};
@@ -938,7 +938,7 @@ export const monitorsRouter = {
 					// For "all time", the first change determines start, or default up if empty
 				}
 
-				const NOW = new Date().getTime();
+				const NOW = Date.now();
 				const monitorCreatedAt = mon.createdAt.getTime();
 
 				// Effective start is the LATER of: requested startDate or monitor creation date

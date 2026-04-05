@@ -18,6 +18,7 @@ import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { orpc } from "@/utils/orpc";
@@ -134,12 +135,12 @@ export default function IncidentDetailsPage() {
 								{/* Mask the timeline line for the last item */}
 								{index === report.updates.length - 1 && (
 									<div
-										className="-left-[27px] absolute top-3.5 h-full w-2 bg-background"
+										className="absolute top-3.5 -left-[27px] h-full w-2 bg-background"
 										aria-hidden="true"
 									/>
 								)}
 								<div
-									className={`-left-[31px] absolute top-1.5 h-3 w-3 rounded-full ring-4 ${getStatusColor(update.status)}`}
+									className={`absolute top-1.5 -left-[31px] h-3 w-3 rounded-full ring-4 ${getStatusColor(update.status)}`}
 								/>
 								<div className="mb-2 flex flex-col gap-1">
 									<div className="flex items-center justify-between gap-2">
@@ -186,23 +187,25 @@ export default function IncidentDetailsPage() {
 					<DialogHeader>
 						<DialogTitle>Edit Update</DialogTitle>
 					</DialogHeader>
-					{editingUpdate && (
-						<EditUpdateForm
-							statusPageId={statusPageId}
-							updateId={editingUpdate.id}
-							reportId={reportId}
-							initialValues={{
-								message: editingUpdate.message,
-								status: editingUpdate.status,
-								monitors: report.affectedMonitors.map((m) => ({
-									id: m.monitorId,
-									status: m.status || "degraded",
-								})),
-							}}
-							onSuccess={() => setEditingUpdate(null)}
-							onCancel={() => setEditingUpdate(null)}
-						/>
-					)}
+					<DialogPanel>
+						{editingUpdate && (
+							<EditUpdateForm
+								statusPageId={statusPageId}
+								updateId={editingUpdate.id}
+								reportId={reportId}
+								initialValues={{
+									message: editingUpdate.message,
+									status: editingUpdate.status,
+									monitors: report.affectedMonitors.map((m) => ({
+										id: m.monitorId,
+										status: m.status || "degraded",
+									})),
+								}}
+								onSuccess={() => setEditingUpdate(null)}
+								onCancel={() => setEditingUpdate(null)}
+							/>
+						)}
+					</DialogPanel>
 				</DialogContent>
 			</Dialog>
 		</div>

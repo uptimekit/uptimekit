@@ -1,25 +1,20 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-	Check,
-	ChevronsUpDown,
-	Copy,
-	Eye,
-	EyeOff,
-	Loader2,
-	Plus,
-} from "lucide-react";
+import { Copy, Eye, EyeOff, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-	Command,
-	CommandGroup,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Combobox,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import {
 	Dialog,
 	DialogClose,
@@ -33,13 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import { ALL_REGIONS, REGIONS_BY_CONTINENT } from "@/lib/regions";
-import { cn } from "@/lib/utils";
+import { ALL_REGIONS } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
 
 export function CreateWorkerDialog() {
@@ -47,7 +36,6 @@ export function CreateWorkerDialog() {
 	const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);
 	const [isRevealed, setIsRevealed] = useState(false);
 	const [isCopied, setIsCopied] = useState(false);
-	const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
 	const [selectedLocation, setSelectedLocation] = useState("");
 	const [newWorkerName, setNewWorkerName] = useState("");
 
@@ -74,7 +62,6 @@ export function CreateWorkerDialog() {
 		setNewWorkerKey(null);
 		setIsRevealed(false);
 		setIsCopied(false);
-		setLocationPopoverOpen(false);
 		setSelectedLocation("");
 		setNewWorkerName("");
 	};
@@ -168,7 +155,7 @@ export function CreateWorkerDialog() {
 									>
 										<span className="sr-only">Copy</span>
 										{isCopied ? (
-											<Check className="h-4 w-4" />
+											<span className="text-xs">Copied!</span>
 										) : (
 											<Copy className="h-4 w-4" />
 										)}
@@ -233,72 +220,37 @@ export function CreateWorkerDialog() {
 									className="sr-only"
 								/>
 
-								<Popover
-									open={locationPopoverOpen}
-									onOpenChange={setLocationPopoverOpen}
-								>
-									<PopoverTrigger
-										render={
-											<Button
-												type="button"
-												variant="outline"
-												role="combobox"
-												aria-expanded={locationPopoverOpen}
-												className={cn(
-													"w-full justify-between",
-													!selectedRegion && "text-muted-foreground",
-												)}
-											/>
+								<Combobox
+									items={ALL_REGIONS}
+									value={selectedRegion || null}
+									onValueChange={(value) => {
+										if (value) {
+											setSelectedLocation(value.value);
 										}
-									>
-										{selectedRegion ? (
-											<div className="flex items-center gap-2">
-												<selectedRegion.Flag className="h-4 w-5 rounded-sm object-cover" />
-												<span>{selectedRegion.label}</span>
-											</div>
-										) : (
-											"Select a region"
+									}}
+								>
+									<ComboboxValue>
+										{(_value: (typeof ALL_REGIONS)[number] | null) => (
+											<ComboboxInput
+												placeholder="Select a region"
+												className="w-full"
+											/>
 										)}
-										<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-									</PopoverTrigger>
-
-									<PopoverContent className="p-0">
-										<Command>
-											<CommandList className="max-h-[400px]">
-												{REGIONS_BY_CONTINENT.map((group) => (
-													<CommandGroup
-														key={group.continent}
-														heading={group.continent}
-													>
-														{group.regions.map((region) => (
-															<CommandItem
-																key={region.value}
-																value={`${region.label} ${group.continent}`}
-																onClick={() => {
-																	setSelectedLocation(region.value);
-																	setLocationPopoverOpen(false);
-																}}
-															>
-																<div className="flex items-center gap-2">
-																	<region.Flag className="h-4 w-5 rounded-sm object-cover" />
-																	<span>{region.label}</span>
-																</div>
-																<Check
-																	className={cn(
-																		"ml-auto h-4 w-4",
-																		selectedLocation === region.value
-																			? "opacity-100"
-																			: "opacity-0",
-																	)}
-																/>
-															</CommandItem>
-														))}
-													</CommandGroup>
-												))}
-											</CommandList>
-										</Command>
-									</PopoverContent>
-								</Popover>
+									</ComboboxValue>
+									<ComboboxPopup>
+										<ComboboxEmpty>No regions found.</ComboboxEmpty>
+										<ComboboxList className="max-h-[400px]">
+											{ALL_REGIONS.map((region) => (
+												<ComboboxItem key={region.value} value={region}>
+													<div className="flex items-center gap-2">
+														<region.Flag className="h-4 w-5 rounded-sm object-cover" />
+														<span>{region.label}</span>
+													</div>
+												</ComboboxItem>
+											))}
+										</ComboboxList>
+									</ComboboxPopup>
+								</Combobox>
 							</Field>
 						</DialogPanel>
 

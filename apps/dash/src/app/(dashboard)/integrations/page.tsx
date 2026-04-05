@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: its okay */
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -197,6 +198,7 @@ export default function IntegrationsPage() {
 								if (fullDef.logo) {
 									Icon = (
 										<div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted sm:size-12">
+											{/** biome-ignore lint/performance/noImgElement: external image therefor next would start crying */}
 											<img
 												src={fullDef.logo}
 												alt={fullDef.name}

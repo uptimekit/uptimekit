@@ -15,6 +15,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -103,63 +104,65 @@ export function CreateOrganizationDialog({
 					</DialogDescription>
 				</DialogHeader>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						<FormField
-							control={form.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Name</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="Acme Corp"
-											{...field}
-											onChange={(e) => {
-												field.onChange(e);
-												const slug = e.target.value
-													.toLowerCase()
-													.replace(/[^a-z0-9]+/g, "-")
-													.replace(/^-+|-+$/g, "");
-												form.setValue("slug", slug);
-											}}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="slug"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Slug</FormLabel>
-									<FormControl>
-										<Input placeholder="acme-corp" {...field} />
-									</FormControl>
-									<FormDescription>
-										This will be used in your organization URL.
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="logo"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Logo URL</FormLabel>
-									<FormControl>
-										<Input placeholder="https://..." {...field} />
-									</FormControl>
-									<FormDescription>
-										Optional. A direct link to your organization's logo.
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+						<DialogPanel className="space-y-4">
+							<FormField
+								control={form.control}
+								name="name"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Name</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="Acme Corp"
+												{...field}
+												onChange={(e) => {
+													field.onChange(e);
+													const slug = e.target.value
+														.toLowerCase()
+														.replace(/[^a-z0-9]+/g, "-")
+														.replace(/^-+|-+$/g, "");
+													form.setValue("slug", slug);
+												}}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="slug"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Slug</FormLabel>
+										<FormControl>
+											<Input placeholder="acme-corp" {...field} />
+										</FormControl>
+										<FormDescription>
+											This will be used in your organization URL.
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="logo"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Logo URL</FormLabel>
+										<FormControl>
+											<Input placeholder="https://..." {...field} />
+										</FormControl>
+										<FormDescription>
+											Optional. A direct link to your organization's logo.
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</DialogPanel>
 						<DialogFooter>
 							<Button type="submit" disabled={isLoading}>
 								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

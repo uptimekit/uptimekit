@@ -3,7 +3,6 @@ import {
 	db,
 	incident,
 	incidentActivity,
-	incidentMonitor,
 	incidentStatusPage,
 	maintenance,
 	maintenanceMonitor,
@@ -13,8 +12,20 @@ import {
 	statusPageMonitor,
 } from "@uptimekit/db";
 // ... imports
-import { and, asc, desc, eq, gte, inArray, isNull, isNotNull } from "drizzle-orm";
-import { getIncidentHistoryCutoff, type IncidentHistoryPeriod } from "./incident-history";
+import {
+	and,
+	asc,
+	desc,
+	eq,
+	gte,
+	inArray,
+	isNotNull,
+	isNull,
+} from "drizzle-orm";
+import {
+	getIncidentHistoryCutoff,
+	type IncidentHistoryPeriod,
+} from "./incident-history";
 
 // ... existing functions
 import { redis } from "./redis";

@@ -2,22 +2,25 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Form,
 	FormControl,
@@ -28,11 +31,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -41,24 +39,34 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-const schema = z.object({
-	title: z.string().min(1, "Title is required"),
-	description: z.string().optional(),
-	severity: z.enum(["minor", "major", "critical"]),
-	monitorIds: z.array(z.string()),
-	statusPageIds: z.array(z.string()),
-	startedAt: z.date(),
-	endedAt: z.date().nullable(),
-}).refine((value) => !value.endedAt || value.endedAt >= value.startedAt, {
-	message: "End time cannot be before start time",
-	path: ["endedAt"],
-});
+const schema = z
+	.object({
+		title: z.string().min(1, "Title is required"),
+		description: z.string().optional(),
+		severity: z.enum(["minor", "major", "critical"]),
+		monitorIds: z.array(z.string()),
+		statusPageIds: z.array(z.string()),
+		startedAt: z.date(),
+		endedAt: z.date().nullable(),
+	})
+	.refine((value) => !value.endedAt || value.endedAt >= value.startedAt, {
+		message: "End time cannot be before start time",
+		path: ["endedAt"],
+	});
 
 type FormValues = z.infer<typeof schema>;
+
+interface Monitor {
+	id: string;
+	name: string;
+}
+
+interface StatusPage {
+	id: string;
+	name: string;
+}
 
 export function CreateIncidentForm() {
 	const router = useRouter();
@@ -82,8 +90,8 @@ export function CreateIncidentForm() {
 	const { data: statusPagesData } = useQuery(
 		orpc.statusPages.list.queryOptions({ limit: 100 }),
 	);
-	const monitors = monitorsData?.items;
-	const statusPages = statusPagesData?.items;
+	const monitors = monitorsData?.items ?? [];
+	const statusPages = statusPagesData?.items ?? [];
 
 	const createIncident = useMutation(
 		orpc.incidents.create.mutationOptions({
@@ -92,18 +100,33 @@ export function CreateIncidentForm() {
 				router.push(`/incidents/${data.id}`);
 			},
 			onError: (err) => {
-				toast.error("Failed to create incident: " + err.message);
+				toast.error(`Failed to create incident: ${err.message}`);
 			},
 		}),
 	);
 
-	function onSubmit(values: FormValues) {
+	const submitForm = (values: FormValues) => {
 		createIncident.mutate(values);
-	}
+	};
+
+	const handleSave = () => {
+		void form.handleSubmit(submitForm)();
+	};
+
+	const selectedMonitors = monitors.filter((m) =>
+		form.watch("monitorIds")?.includes(m.id),
+	);
+
+	const selectedStatusPages = statusPages.filter((p) =>
+		form.watch("statusPageIds")?.includes(p.id),
+	);
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 pb-20">
+			<form
+				onSubmit={form.handleSubmit(submitForm)}
+				className="space-y-10 pb-20"
+			>
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="col-span-1">
 						<h2 className="font-semibold text-lg leading-tight tracking-tight">
@@ -249,89 +272,51 @@ export function CreateIncidentForm() {
 								render={({ field }) => (
 									<FormItem className="flex flex-col">
 										<FormLabel>Affected Monitors</FormLabel>
-										<Popover>
-											<PopoverTrigger render={
-												<FormControl>
-													<Button
-														variant="outline"
-														role="combobox"
-														className={cn(
-															"w-full justify-between",
-															!field.value?.length && "text-muted-foreground",
+										<FormControl>
+											<Combobox
+												items={monitors}
+												value={selectedMonitors}
+												onValueChange={(newValue) =>
+													field.onChange(newValue.map((i: Monitor) => i.id))
+												}
+												multiple
+											>
+												<ComboboxChips>
+													<ComboboxValue>
+														{(value: Monitor[]) => (
+															<>
+																{value?.map((item) => (
+																	<ComboboxChip
+																		key={item.id}
+																		aria-label={item.name}
+																	>
+																		{item.name}
+																	</ComboboxChip>
+																))}
+																<ComboboxChipsInput
+																	aria-label="Select monitors"
+																	placeholder={
+																		value?.length > 0
+																			? undefined
+																			: "Select monitors"
+																	}
+																/>
+															</>
 														)}
-													>
-														{field.value?.length > 0
-															? `${field.value.length} monitors selected`
-															: "Select monitors"}
-														<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-													</Button>
-												</FormControl>
-											}>
-											</PopoverTrigger>
-											<PopoverContent className="w-[400px] p-0">
-												<Command>
-													<CommandInput placeholder="Search monitors..." />
-													<CommandList>
-														<CommandEmpty>No monitors found.</CommandEmpty>
-														<CommandGroup>
-															{monitors?.map((monitor) => (
-																<CommandItem
-																	value={monitor.name}
-																	key={monitor.id}
-																	onSelect={() => {
-																		const current = field.value || [];
-																		const isSelected = current.includes(
-																			monitor.id,
-																		);
-																		if (isSelected) {
-																			field.onChange(
-																				current.filter(
-																					(id) => id !== monitor.id,
-																				),
-																			);
-																		} else {
-																			field.onChange([...current, monitor.id]);
-																		}
-																	}}
-																>
-																	<Check
-																		className={cn(
-																			"mr-2 h-4 w-4",
-																			field.value?.includes(monitor.id)
-																				? "opacity-100"
-																				: "opacity-0",
-																		)}
-																	/>
-																	{monitor.name}
-																</CommandItem>
-															))}
-														</CommandGroup>
-													</CommandList>
-												</Command>
-											</PopoverContent>
-										</Popover>
-										<div className="mt-2 flex flex-wrap gap-2">
-											{field.value?.map((id) => {
-												const monitor = monitors?.find((m) => m.id === id);
-												if (!monitor) return null;
-												return (
-													<Badge key={id} variant="secondary" className="gap-1">
-														{monitor.name}
-														<button
-															type="button"
-															className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-															onClick={() => {
-																field.onChange(
-																	field.value.filter((val) => val !== id),
-																);
-															}}
-														>
-															<X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-														</button>
-													</Badge>
-												);
-											})}
-										</div>
+													</ComboboxValue>
+												</ComboboxChips>
+												<ComboboxPopup>
+													<ComboboxEmpty>No monitors found.</ComboboxEmpty>
+													<ComboboxList>
+														{(item: Monitor) => (
+															<ComboboxItem key={item.id} value={item}>
+																{item.name}
+															</ComboboxItem>
+														)}
+													</ComboboxList>
+												</ComboboxPopup>
+											</Combobox>
+										</FormControl>
 										<FormMessage />
 									</FormItem>
 								)}
@@ -343,83 +328,51 @@ export function CreateIncidentForm() {
 								render={({ field }) => (
 									<FormItem className="flex flex-col">
 										<FormLabel>Publish to Status Pages</FormLabel>
-										<Popover>
-											<PopoverTrigger render={
-												<FormControl>
-													<Button
-														variant="outline"
-														role="combobox"
-														className={cn(
-															"w-full justify-between",
-															!field.value?.length && "text-muted-foreground",
+										<FormControl>
+											<Combobox
+												items={statusPages}
+												value={selectedStatusPages}
+												onValueChange={(newValue) =>
+													field.onChange(newValue.map((i: StatusPage) => i.id))
+												}
+												multiple
+											>
+												<ComboboxChips>
+													<ComboboxValue>
+														{(value: StatusPage[]) => (
+															<>
+																{value?.map((item) => (
+																	<ComboboxChip
+																		key={item.id}
+																		aria-label={item.name}
+																	>
+																		{item.name}
+																	</ComboboxChip>
+																))}
+																<ComboboxChipsInput
+																	aria-label="Select status pages"
+																	placeholder={
+																		value?.length > 0
+																			? undefined
+																			: "Keep internal only"
+																	}
+																/>
+															</>
 														)}
-													>
-														{field.value?.length > 0
-															? `${field.value.length} status pages selected`
-															: "Keep internal only"}
-														<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-													</Button>
-												</FormControl>
-											}>
-											</PopoverTrigger>
-											<PopoverContent className="w-[400px] p-0">
-												<Command>
-													<CommandInput placeholder="Search status pages..." />
-													<CommandList>
-														<CommandEmpty>No status pages found.</CommandEmpty>
-														<CommandGroup>
-															{statusPages?.map((page) => (
-																<CommandItem
-																	value={page.name}
-																	key={page.id}
-																	onSelect={() => {
-																		const current = field.value || [];
-																		const isSelected = current.includes(page.id);
-																		field.onChange(
-																			isSelected
-																				? current.filter((id) => id !== page.id)
-																				: [...current, page.id],
-																		);
-																	}}
-																>
-																	<Check
-																		className={cn(
-																			"mr-2 h-4 w-4",
-																			field.value?.includes(page.id)
-																				? "opacity-100"
-																				: "opacity-0",
-																		)}
-																	/>
-																	{page.name}
-																</CommandItem>
-															))}
-														</CommandGroup>
-													</CommandList>
-												</Command>
-											</PopoverContent>
-										</Popover>
-										<div className="mt-2 flex flex-wrap gap-2">
-											{field.value?.map((id) => {
-												const page = statusPages?.find((item) => item.id === id);
-												if (!page) return null;
-												return (
-													<Badge key={id} variant="secondary" className="gap-1">
-														{page.name}
-														<button
-															type="button"
-															className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-															onClick={() => {
-																field.onChange(
-																	field.value.filter((value) => value !== id),
-																);
-															}}
-														>
-															<X className="h-3 w-3" />
-														</button>
-													</Badge>
-												);
-											})}
-										</div>
+													</ComboboxValue>
+												</ComboboxChips>
+												<ComboboxPopup>
+													<ComboboxEmpty>No status pages found.</ComboboxEmpty>
+													<ComboboxList>
+														{(item: StatusPage) => (
+															<ComboboxItem key={item.id} value={item}>
+																{item.name}
+															</ComboboxItem>
+														)}
+													</ComboboxList>
+												</ComboboxPopup>
+											</Combobox>
+										</FormControl>
 										<FormMessage />
 									</FormItem>
 								)}
@@ -437,7 +390,11 @@ export function CreateIncidentForm() {
 					>
 						Cancel
 					</Button>
-					<Button type="submit" disabled={createIncident.isPending}>
+					<Button
+						type="button"
+						onClick={handleSave}
+						disabled={createIncident.isPending}
+					>
 						{createIncident.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}

@@ -130,7 +130,7 @@ export function ResponseTimeChart({
 
 	// Custom tooltip for HTTP monitors
 	const HttpTooltip = ({ active, payload, label }: any) => {
-		if (!active || !payload || !payload.length) return null;
+		if (!active || !payload?.length) return null;
 
 		const data = payload[0]?.payload;
 		if (!data) return null;
@@ -171,7 +171,7 @@ export function ResponseTimeChart({
 
 	// Simple tooltip for non-HTTP monitors
 	const SimpleTooltip = ({ active, payload, label }: any) => {
-		if (!active || !payload || !payload.length) return null;
+		if (!active || !payload?.length) return null;
 
 		const data = payload[0]?.payload;
 		if (!data) return null;

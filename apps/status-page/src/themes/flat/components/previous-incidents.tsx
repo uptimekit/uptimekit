@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { IncidentCard } from "./incident-card";
 import { buildPath } from "@/lib/route-utils";
 import type { Incident } from "../../types";
+import { IncidentCard } from "./incident-card";
 
 interface PreviousIncidentsProps {
 	pastIncidents: Record<string, Incident[]>;

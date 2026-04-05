@@ -39,6 +39,9 @@
 			"correctness": {
 				"useExhaustiveDependencies": "info"
 			},
+			"a11y": {
+				"useSemanticElements": "off"
+			},
 			"nursery": {
 				"useSortedClasses": {
 					"level": "warn",
@@ -59,6 +62,9 @@
 				"useNumberNamespace": "error",
 				"noInferrableTypes": "error",
 				"noUselessElse": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "off"
 			}
 		}
 	},

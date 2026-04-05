@@ -1,4 +1,10 @@
-import type { Monitor, MonitorGroup, StatusPageData, StatusType, UptimeDay } from "@/themes/types";
+import type {
+	Monitor,
+	MonitorGroup,
+	StatusPageData,
+	StatusType,
+	UptimeDay,
+} from "@/themes/types";
 
 import {
 	getActiveMaintenances,
@@ -143,8 +149,8 @@ export async function prepareStatusPageData(
 			severity: r.severity,
 			startedAt: r.startedAt,
 			endedAt: r.endedAt,
-				monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
-				activities: r.updates.map((u: any) => ({
+			monitors: r.affectedMonitors.map((am: any) => ({ monitor: am.monitor })),
+			activities: r.updates.map((u: any) => ({
 				id: u.id,
 				message: u.message,
 				createdAt: u.createdAt,
@@ -159,7 +165,7 @@ export async function prepareStatusPageData(
 			severity: "maintenance",
 			startedAt: m.createdAt,
 			endedAt: m.endAt,
-				monitors: m.monitors.map((mm: any) => ({ monitor: mm.monitor })),
+			monitors: m.monitors.map((mm: any) => ({ monitor: mm.monitor })),
 			activities: [],
 			detailsLink: buildPath(`/maintenance/${m.id}`, slug),
 		})),
@@ -361,7 +367,7 @@ export async function prepareStatusPageData(
 			const avgUptime =
 				knownDays.length > 0
 					? knownDays.reduce((acc, curr) => acc + curr.uptime, 0) /
-					knownDays.length
+						knownDays.length
 					: 100;
 
 			return {
@@ -443,6 +449,8 @@ export async function prepareStatusPageData(
 				faviconUrl: design.faviconUrl,
 				contactUrl: design.contactUrl,
 				customCss: design.customCss,
+				headerLayout: design.headerLayout || "vertical",
+				barStyle: design.barStyle || "normal",
 			},
 		},
 		overallStatus: worstStatus,

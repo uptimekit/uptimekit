@@ -1,9 +1,9 @@
-import { Footer } from "./components/footer";
-import { Header } from "./components/header";
 import { buildPath } from "@/lib/route-utils";
 import type { ThemeIncidentDetailProps } from "../types";
 import { BackLink } from "./components/back-link";
 import { CurrentIssuesBanner } from "./components/current-issues-banner";
+import { Footer } from "./components/footer";
+import { Header } from "./components/header";
 import { IncidentDetailCard } from "./components/incident-detail-card";
 
 export default function DefaultIncidentDetail({

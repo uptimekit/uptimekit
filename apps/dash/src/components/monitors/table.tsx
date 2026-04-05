@@ -16,7 +16,6 @@ import {
 	PlayCircle,
 	Plus,
 	Search,
-	Settings,
 	ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
@@ -609,151 +608,148 @@ export function MonitorsTable() {
 								</TableCell>
 							</TableRow>
 						) : (
-							<>
-								{Object.entries(groupedMonitors).map(([groupId, monitors]) => {
-									const group = groups?.find((g) => g.id === groupId);
-									const groupName = group?.name || "Ungrouped";
-									const isExpanded = expandedGroups[groupId] ?? true;
+							Object.entries(groupedMonitors).map(([groupId, monitors]) => {
+								const group = groups?.find((g) => g.id === groupId);
+								const groupName = group?.name || "Ungrouped";
+								const isExpanded = expandedGroups[groupId] ?? true;
 
-									return (
-										<Fragment key={groupId}>
-											{/* Group Header */}
-											<TableRow
-												className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
-												onClick={() => toggleGroup(groupId)}
-											>
-												<TableCell colSpan={6} className="py-3">
-													<div className="flex items-center gap-2 font-medium text-sm">
-														<ChevronRight
+								return (
+									<Fragment key={groupId}>
+										{/* Group Header */}
+										<TableRow
+											className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
+											onClick={() => toggleGroup(groupId)}
+										>
+											<TableCell colSpan={6} className="py-3">
+												<div className="flex items-center gap-2 font-medium text-sm">
+													<ChevronRight
+														className={cn(
+															"h-4 w-4 transition-transform",
+															isExpanded && "rotate-90",
+														)}
+													/>
+													<Folder className="h-4 w-4 text-muted-foreground" />
+													<span>{groupName}</span>
+													<span className="text-muted-foreground text-xs">
+														({monitors.length})
+													</span>
+												</div>
+											</TableCell>
+										</TableRow>
+
+										{/* Group Monitors */}
+										{isExpanded &&
+											monitors.map((monitor) => (
+												<TableRow
+													key={monitor.id}
+													className={cn(
+														"group h-[72px] hover:bg-muted/40",
+														!monitor.active && "opacity-50 grayscale",
+													)}
+												>
+													<TableCell className="w-[50px] pl-6">
+														<div
 															className={cn(
-																"h-4 w-4 transition-transform",
-																isExpanded && "rotate-90",
+																"h-2.5 w-2.5 rounded-full shadow-sm",
+																monitor.status === "up" &&
+																	"bg-emerald-500 shadow-emerald-500/20",
+																monitor.status === "down" &&
+																	"bg-red-500 shadow-red-500/20",
+																monitor.status === "degraded" &&
+																	"bg-amber-500 shadow-amber-500/20",
+																monitor.status === "maintenance" &&
+																	"bg-blue-500 shadow-blue-500/20",
+																monitor.status === "pending" &&
+																	"bg-zinc-500 shadow-zinc-500/20",
 															)}
 														/>
-														<Folder className="h-4 w-4 text-muted-foreground" />
-														<span>{groupName}</span>
-														<span className="text-muted-foreground text-xs">
-															({monitors.length})
-														</span>
-													</div>
-												</TableCell>
-											</TableRow>
-
-											{/* Group Monitors */}
-											{isExpanded &&
-												monitors.map((monitor) => (
-													<TableRow
-														key={monitor.id}
-														className={cn(
-															"group h-[72px] hover:bg-muted/40",
-															!monitor.active && "opacity-50 grayscale",
-														)}
-													>
-														<TableCell className="w-[50px] pl-6">
-															<div
-																className={cn(
-																	"h-2.5 w-2.5 rounded-full shadow-sm",
-																	monitor.status === "up" &&
-																		"bg-emerald-500 shadow-emerald-500/20",
-																	monitor.status === "down" &&
-																		"bg-red-500 shadow-red-500/20",
-																	monitor.status === "degraded" &&
-																		"bg-amber-500 shadow-amber-500/20",
-																	monitor.status === "maintenance" &&
-																		"bg-blue-500 shadow-blue-500/20",
-																	monitor.status === "pending" &&
-																		"bg-zinc-500 shadow-zinc-500/20",
-																)}
-															/>
-														</TableCell>
-														<TableCell>
-															<Link
-																href={`/monitors/${monitor.id}`}
-																className="block h-full w-full"
-															>
-																<div className="grid gap-1">
-																	<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
-																		{monitor.name}
-																		{!monitor.active && (
-																			<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
-																				PAUSED
-																			</span>
+													</TableCell>
+													<TableCell>
+														<Link
+															href={`/monitors/${monitor.id}`}
+															className="block h-full w-full"
+														>
+															<div className="grid gap-1">
+																<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
+																	{monitor.name}
+																	{!monitor.active && (
+																		<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+																			PAUSED
+																		</span>
+																	)}
+																	{monitor.tags && monitor.tags.length > 0 && (
+																		<div className="flex items-center gap-1">
+																			{monitor.tags.map((tag) => (
+																				<span
+																					key={tag.id}
+																					className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-[10px]"
+																					style={{
+																						backgroundColor: `${tag.color}20`,
+																						color: tag.color,
+																					}}
+																				>
+																					{tag.name}
+																				</span>
+																			))}
+																		</div>
+																	)}
+																</span>
+																<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+																	<span
+																		className={cn(
+																			monitor.status === "up" &&
+																				"text-emerald-500",
+																			monitor.status === "down" &&
+																				"text-red-500",
+																			monitor.status === "degraded" &&
+																				"text-amber-500",
+																			monitor.status === "maintenance" &&
+																				"text-blue-500",
+																			monitor.status === "pending" &&
+																				"text-zinc-500",
 																		)}
-																		{monitor.tags &&
-																			monitor.tags.length > 0 && (
-																				<div className="flex items-center gap-1">
-																					{monitor.tags.map((tag) => (
-																						<span
-																							key={tag.id}
-																							className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-[10px]"
-																							style={{
-																								backgroundColor: `${tag.color}20`,
-																								color: tag.color,
-																							}}
-																						>
-																							{tag.name}
-																						</span>
-																					))}
-																				</div>
-																			)}
+																	>
+																		{monitor.statusText}
 																	</span>
-																	<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
-																		<span
-																			className={cn(
-																				monitor.status === "up" &&
-																					"text-emerald-500",
-																				monitor.status === "down" &&
-																					"text-red-500",
-																				monitor.status === "degraded" &&
-																					"text-amber-500",
-																				monitor.status === "maintenance" &&
-																					"text-blue-500",
-																				monitor.status === "pending" &&
-																					"text-zinc-500",
-																			)}
-																		>
-																			{monitor.statusText}
-																		</span>
-																		<span>·</span>
-																		<span>{monitor.duration}</span>
-																		<span>·</span>
-																		<span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
-																			Used on {monitor.usedOn} status page
-																			{monitor.usedOn !== 1 ? "s" : ""}
-																		</span>
-																	</div>
+																	<span>·</span>
+																	<span>{monitor.duration}</span>
+																	<span>·</span>
+																	<span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
+																		Used on {monitor.usedOn} status page
+																		{monitor.usedOn !== 1 ? "s" : ""}
+																	</span>
 																</div>
-															</Link>
-														</TableCell>
-														<TableCell className="w-[200px]">
-															{monitor.hasIncident && (
-																<div className="inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
-																	<ShieldAlert className="h-3.5 w-3.5" />
-																	Ongoing Incident
-																	<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
-																</div>
-															)}
-														</TableCell>
-														<TableCell className="w-[100px] font-medium text-muted-foreground text-sm">
-															<div className="flex items-center gap-2">
-																<PlayCircle className="h-4 w-4 opacity-50" />
-																{monitor.frequency}
 															</div>
-														</TableCell>
-														<TableCell className="w-[50px]">
-															<MonitorActions monitor={monitor} />
-														</TableCell>
-														<TableCell className="relative hidden w-[140px] p-0 lg:table-cell">
-															<LatencySparkline
-																data={sparklineData?.[monitor.id] ?? []}
-															/>
-														</TableCell>
-													</TableRow>
-												))}
-										</Fragment>
-									);
-								})}
-							</>
+														</Link>
+													</TableCell>
+													<TableCell className="w-[200px]">
+														{monitor.hasIncident && (
+															<div className="inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
+																<ShieldAlert className="h-3.5 w-3.5" />
+																Ongoing Incident
+																<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
+															</div>
+														)}
+													</TableCell>
+													<TableCell className="w-[100px] font-medium text-muted-foreground text-sm">
+														<div className="flex items-center gap-2">
+															<PlayCircle className="h-4 w-4 opacity-50" />
+															{monitor.frequency}
+														</div>
+													</TableCell>
+													<TableCell className="w-[50px]">
+														<MonitorActions monitor={monitor} />
+													</TableCell>
+													<TableCell className="relative hidden w-[140px] p-0 lg:table-cell">
+														<LatencySparkline
+															data={sparklineData?.[monitor.id] ?? []}
+														/>
+													</TableCell>
+												</TableRow>
+											))}
+									</Fragment>
+								);
+							})
 						)}
 					</TableBody>
 				</Table>

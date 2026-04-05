@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
 		"@uptimekit/auth",
 		"@uptimekit/config",
 	],
+	images: {
+		remotePatterns: [
+			{
+				protocol: "https",
+				hostname: "r2.uptimekit.dev",
+			},
+		],
+	},
 };
 
 export default nextConfig;

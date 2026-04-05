@@ -155,7 +155,7 @@ export function IncidentsTable() {
 	].filter(Boolean).length;
 
 	return (
-		<div className="mx-auto w-full max-w-6xl space-y-4">
+		<div className="mx-4 mx-auto w-full max-w-6xl space-y-4">
 			<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
 				<DialogContent className="flex items-center justify-center border-none bg-transparent p-0 shadow-none sm:max-w-[425px]">
 					<DialogTitle className="sr-only">Search</DialogTitle>
@@ -357,8 +357,8 @@ export function IncidentsTable() {
 								<Plus className="h-4 w-4" />
 								<span className="hidden md:inline">Report a new incident</span>
 							</Link>
-						}>
-						</Button>
+						}
+					/>
 				</div>
 			</div>
 

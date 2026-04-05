@@ -57,10 +57,10 @@ export default function MonitorDetailsPage() {
 		return (
 			<div className="flex flex-col items-center justify-center py-10">
 				<h2 className="font-bold text-xl">Monitor not found</h2>
-				<Button className="mt-4" render={
-					<Link href="/monitors">Go back to monitors</Link>
-					}>
-				</Button>
+				<Button
+					className="mt-4"
+					render={<Link href="/monitors">Go back to monitors</Link>}
+				/>
 			</div>
 		);
 	}
@@ -143,15 +143,13 @@ export default function MonitorDetailsPage() {
 
 	// Get display target based on monitor type
 	const getMonitorTarget = () => {
+		// biome-ignore lint/suspicious/noExplicitAny: its okay
 		const config = monitor.config as Record<string, any>;
 		switch (monitor.type) {
 			case "tcp":
 				return `${config.hostname}:${config.port}`;
 			case "ping":
 				return config.hostname;
-			case "keyword":
-			case "http-json":
-			case "http":
 			default:
 				return config.url;
 		}
@@ -161,10 +159,13 @@ export default function MonitorDetailsPage() {
 		<div className="flex flex-col gap-6 p-6">
 			{/* Header */}
 			<div className="flex items-center gap-4">
-				<Button variant="ghost" size="icon" render={
-					<Link href="/monitors">
-						<ArrowLeft className="h-4 w-4" />
-					</Link>
+				<Button
+					variant="ghost"
+					size="icon"
+					render={
+						<Link href="/monitors">
+							<ArrowLeft className="h-4 w-4" />
+						</Link>
 					}
 				/>
 				<div className="flex flex-col gap-1">
@@ -199,10 +200,11 @@ export default function MonitorDetailsPage() {
 					</div>
 				</div>
 				<div className="ml-auto flex items-center gap-2">
-					<Button variant="outline" size="sm" render={
-						<Link href={`/monitors/${id}/edit` as any}>Edit</Link>
-						}>
-					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						render={<Link href={`/monitors/${id}/edit`}>Edit</Link>}
+					/>
 					<Button
 						variant={monitor.active ? "destructive" : "default"}
 						size="sm"

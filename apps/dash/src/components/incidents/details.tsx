@@ -4,14 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance, formatDistanceToNow } from "date-fns";
 import {
-	Check,
 	CheckCircle2,
 	CornerDownRight,
 	MoreHorizontal,
 	Pencil,
 	ShieldAlert,
 	Trash2,
-	X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -33,15 +31,24 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import {
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Dialog,
@@ -66,11 +73,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,7 +113,7 @@ export function IncidentDetails({ id }: { id: string }) {
 				toast.success("Comment added");
 			},
 			onError: (err) => {
-				toast.error("Failed to add comment: " + err.message);
+				toast.error(`Failed to add comment: ${err.message}`);
 			},
 		}),
 	);
@@ -128,7 +131,7 @@ export function IncidentDetails({ id }: { id: string }) {
 				toast.success("Incident acknowledged");
 			},
 			onError: (err) => {
-				toast.error("Failed to acknowledge incident: " + err.message);
+				toast.error(`Failed to acknowledge incident: ${err.message}`);
 			},
 		}),
 	);
@@ -142,7 +145,7 @@ export function IncidentDetails({ id }: { id: string }) {
 				toast.success("Incident resolved");
 			},
 			onError: (err) => {
-				toast.error("Failed to resolve incident: " + err.message);
+				toast.error(`Failed to resolve incident: ${err.message}`);
 			},
 		}),
 	);
@@ -154,7 +157,7 @@ export function IncidentDetails({ id }: { id: string }) {
 				router.push("/incidents");
 			},
 			onError: (err) => {
-				toast.error("Failed to delete incident: " + err.message);
+				toast.error(`Failed to delete incident: ${err.message}`);
 			},
 		}),
 	);
@@ -307,6 +310,9 @@ export function IncidentDetails({ id }: { id: string }) {
 						<Card>
 							<CardHeader>
 								<CardTitle>Description</CardTitle>
+								<CardDescription>
+									Incident details and affected monitors.
+								</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
@@ -337,6 +343,9 @@ export function IncidentDetails({ id }: { id: string }) {
 						<Card>
 							<CardHeader>
 								<CardTitle>Timeline</CardTitle>
+								<CardDescription>
+									Activity history and comments.
+								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-6">
 								<div className="flex gap-2">
@@ -410,6 +419,7 @@ export function IncidentDetails({ id }: { id: string }) {
 						<Card>
 							<CardHeader>
 								<CardTitle className="text-base">Details</CardTitle>
+								<CardDescription>Incident metadata and status.</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<div className="grid gap-1">
@@ -603,7 +613,7 @@ function EditIncidentDialog({
 							}),
 						)}
 					>
-						<DialogPanel>
+						<DialogPanel className="">
 							<div className="space-y-4">
 								<FormField
 									control={form.control}
@@ -750,20 +760,19 @@ function EditIncidentDialog({
 									searchPlaceholder="Search status pages..."
 								/>
 							</div>
+							<DialogFooter className="-mx-6 mt-6 -mb-6">
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => onOpenChange(false)}
+								>
+									Cancel
+								</Button>
+								<Button type="submit" disabled={updateIncident.isPending}>
+									Save changes
+								</Button>
+							</DialogFooter>
 						</DialogPanel>
-
-						<DialogFooter>
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={updateIncident.isPending}>
-								Save changes
-							</Button>
-						</DialogFooter>
 					</form>
 				</Form>
 			</DialogPopup>
@@ -786,79 +795,48 @@ function MultiSelectField({
 	emptyLabel: string;
 	searchPlaceholder: string;
 }) {
+	const selectedItems = options.filter((option) => values.includes(option.id));
+
 	return (
 		<div className="space-y-3">
 			<FormLabel>{label}</FormLabel>
 
-			<Popover>
-				<PopoverTrigger
-					render={
-						<Button
-							variant="outline"
-							role="combobox"
-							className="w-full justify-between"
-						/>
-					}
-				>
-					{values.length > 0 ? `${values.length} selected` : emptyLabel}
-					<MoreHorizontal className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-				</PopoverTrigger>
-
-				<PopoverContent className="w-[400px] p-0">
-					<Command>
-						<CommandInput placeholder={searchPlaceholder} />
-						<CommandList>
-							<CommandEmpty>No matches found.</CommandEmpty>
-							<CommandGroup>
-								{options.map((option) => (
-									<CommandItem
-										key={option.id}
-										value={option.label}
-										onSelect={() =>
-											onChange(
-												values.includes(option.id)
-													? values.filter((value) => value !== option.id)
-													: [...values, option.id],
-											)
-										}
-									>
-										<Check
-											className={cn(
-												"mr-2 h-4 w-4",
-												values.includes(option.id)
-													? "opacity-100"
-													: "opacity-0",
-											)}
-										/>
-										{option.label}
-									</CommandItem>
+			<Combobox
+				items={options}
+				value={selectedItems}
+				onValueChange={(newValue) => {
+					onChange(newValue.map((item) => item.id));
+				}}
+				multiple
+			>
+				<ComboboxChips>
+					<ComboboxValue>
+						{(value: { id: string; label: string }[]) => (
+							<>
+								{value?.map((item) => (
+									<ComboboxChip aria-label={item.label} key={item.id}>
+										{item.label}
+									</ComboboxChip>
 								))}
-							</CommandGroup>
-						</CommandList>
-					</Command>
-				</PopoverContent>
-			</Popover>
-
-			<div className="flex flex-wrap gap-2">
-				{values.map((value) => {
-					const option = options.find((item) => item.id === value);
-					if (!option) return null;
-
-					return (
-						<Badge key={value} variant="secondary" className="gap-1">
-							{option.label}
-							<button
-								type="button"
-								onClick={() =>
-									onChange(values.filter((item) => item !== value))
-								}
-							>
-								<X className="h-3 w-3" />
-							</button>
-						</Badge>
-					);
-				})}
-			</div>
+								<ComboboxChipsInput
+									aria-label={label}
+									placeholder={value.length > 0 ? undefined : emptyLabel}
+								/>
+							</>
+						)}
+					</ComboboxValue>
+				</ComboboxChips>
+				<ComboboxPopup>
+					<ComboboxEmpty>No items found.</ComboboxEmpty>
+					<ComboboxList>
+						{(item) => (
+							<ComboboxItem key={item.id} value={item}>
+								{item.label}
+							</ComboboxItem>
+						)}
+					</ComboboxList>
+				</ComboboxPopup>
+			</Combobox>
 		</div>
 	);
 }

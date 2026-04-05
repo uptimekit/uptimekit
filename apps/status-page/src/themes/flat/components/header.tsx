@@ -22,7 +22,7 @@ export function Header({
 
 	return (
 		<header className={className}>
-			<div className="relative mx-auto max-w-4xl border-b border-border/40 px-4 py-4">
+			<div className="relative mx-auto max-w-4xl border-border/40 border-b px-4 py-4">
 				<div className="flex items-center justify-between gap-8">
 					<div className="flex items-center gap-3">
 						{logoUrl ? (
@@ -35,13 +35,13 @@ export function Header({
 					<nav className="hidden items-center gap-0.5 md:flex">
 						<Link
 							href={buildPath("/", slug) as any}
-							className="rounded-lg px-3 py-1.5 font-medium text-sm text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground dark:hover:bg-neutral-700!"
+							className="rounded-lg px-3 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-neutral-100 hover:text-foreground dark:hover:bg-neutral-700!"
 						>
 							Status
 						</Link>
 						<Link
 							href={buildPath("/updates", slug) as any}
-							className="rounded-lg px-3 py-1.5 font-medium text-sm text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground dark:hover:bg-neutral-700!"
+							className="rounded-lg px-3 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-neutral-100 hover:text-foreground dark:hover:bg-neutral-700!"
 						>
 							Updates
 						</Link>

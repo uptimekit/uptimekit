@@ -22,6 +22,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
@@ -119,22 +120,24 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 								Create a new group to organize your monitors.
 							</DialogDescription>
 						</DialogHeader>
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="group-name">Group Name</Label>
-								<Input
-									id="group-name"
-									placeholder="Production, Staging, etc."
-									value={groupName}
-									onChange={(e) => setGroupName(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && groupName.trim()) {
-											createGroup(groupName.trim());
-										}
-									}}
-								/>
+						<DialogPanel>
+							<div className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor="group-name">Group Name</Label>
+									<Input
+										id="group-name"
+										placeholder="Production, Staging, etc."
+										value={groupName}
+										onChange={(e) => setGroupName(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && groupName.trim()) {
+												createGroup(groupName.trim());
+											}
+										}}
+									/>
+								</div>
 							</div>
-						</div>
+						</DialogPanel>
 						<DialogFooter>
 							<Button
 								variant="outline"
@@ -235,24 +238,26 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 						<DialogTitle>Edit Group</DialogTitle>
 						<DialogDescription>Update the group name.</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="edit-group-name">Group Name</Label>
-							<Input
-								id="edit-group-name"
-								value={groupName}
-								onChange={(e) => setGroupName(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && groupName.trim() && editingGroup) {
-										updateGroup({
-											id: editingGroup.id,
-											name: groupName.trim(),
-										});
-									}
-								}}
-							/>
+					<DialogPanel>
+						<div className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="edit-group-name">Group Name</Label>
+								<Input
+									id="edit-group-name"
+									value={groupName}
+									onChange={(e) => setGroupName(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && groupName.trim() && editingGroup) {
+											updateGroup({
+												id: editingGroup.id,
+												name: groupName.trim(),
+											});
+										}
+									}}
+								/>
+							</div>
 						</div>
-					</div>
+					</DialogPanel>
 					<DialogFooter>
 						<Button
 							variant="outline"

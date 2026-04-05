@@ -1,10 +1,10 @@
-import { Footer } from "./components/footer";
-import { Header } from "./components/header";
-import { OverallStatus } from "./components/overall-status";
 import { ScheduledMaintenanceSection } from "@/components/scheduled-maintenance-section";
 import type { ThemePageProps } from "../types";
 import { ActiveIssuesSection } from "./components/active-issues-section";
+import { Footer } from "./components/footer";
+import { Header } from "./components/header";
 import { MonitorGroups } from "./components/monitor-groups";
+import { OverallStatus } from "./components/overall-status";
 import { PreviousIncidents } from "./components/previous-incidents";
 import "./style.css";
 
@@ -33,7 +33,11 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 						<OverallStatus status={overallStatus} />
 					</section>
 
-					<MonitorGroups monitorGroups={monitorGroups} />
+					<MonitorGroups
+						monitorGroups={monitorGroups}
+						layout={design.headerLayout}
+						barStyle={design.barStyle}
+					/>
 					<ActiveIssuesSection activeIssues={activeIssues} />
 
 					<ScheduledMaintenanceSection

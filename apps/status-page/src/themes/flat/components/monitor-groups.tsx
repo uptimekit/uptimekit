@@ -1,14 +1,16 @@
 "use client";
 
-import { memo, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { memo, useState } from "react";
+import { cn } from "@/lib/utils";
+import type { GroupedMonitors, StatusType } from "../../types";
 import { MonitorListItem } from "./monitor-list-item";
 import { StatusDot } from "./status-indicator";
-import type { StatusType, GroupedMonitors } from "../../types";
-import { cn } from "@/lib/utils";
 
 interface MonitorGroupsProps {
 	monitorGroups: GroupedMonitors[];
+	layout?: "vertical" | "horizontal";
+	barStyle?: "normal" | "length";
 }
 
 import { calculateAggregateStatus } from "@/lib/status-utils";
@@ -37,7 +39,14 @@ const MonitorGroupItem = memo(
 	({
 		group,
 		isDefaultExpanded,
-	}: { group: GroupedMonitors; isDefaultExpanded: boolean }) => {
+		isGrid,
+		barStyle,
+	}: {
+		group: GroupedMonitors;
+		isDefaultExpanded: boolean;
+		isGrid: boolean;
+		barStyle: "normal" | "length";
+	}) => {
 		const isUngrouped = !group.group;
 		const [isExpanded, setIsExpanded] = useState(
 			isUngrouped || isDefaultExpanded,
@@ -73,7 +82,7 @@ const MonitorGroupItem = memo(
 									isExpanded ? "rotate-0" : "-rotate-90",
 								)}
 							/>
-							<h3 className="font-semibold text-foreground text-base">
+							<h3 className="font-semibold text-base text-foreground">
 								{group.group.name}
 							</h3>
 						</div>
@@ -90,11 +99,17 @@ const MonitorGroupItem = memo(
 						"grid transition-all duration-300 ease-in-out",
 						isExpanded
 							? "grid-rows-[1fr] opacity-100"
-							: "grid-rows-[0fr] opacity-0 pointer-events-none",
+							: "pointer-events-none grid-rows-[0fr] opacity-0",
 					)}
 				>
 					<div className="min-h-0">
-						<div className="divide-y divide-border/50 px-6 py-4">
+						<div
+							className={cn(
+								isGrid
+									? "grid grid-cols-1 gap-3 px-6 py-4 md:grid-cols-2 lg:grid-cols-3"
+									: "divide-y divide-border/50 px-6 py-4",
+							)}
+						>
 							{group.monitors.map((monitor) => (
 								<MonitorListItem
 									key={monitor.id}
@@ -104,6 +119,8 @@ const MonitorGroupItem = memo(
 									history={monitor.history}
 									displayStyle={monitor.displayStyle}
 									description={monitor.description}
+									barStyle={barStyle}
+									className={isGrid ? "rounded-lg border p-3" : undefined}
 								/>
 							))}
 						</div>
@@ -116,7 +133,13 @@ const MonitorGroupItem = memo(
 
 MonitorGroupItem.displayName = "MonitorGroupItem";
 
-export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
+export function MonitorGroups({
+	monitorGroups,
+	layout = "vertical",
+	barStyle = "normal",
+}: MonitorGroupsProps) {
+	const isGrid = layout === "horizontal";
+
 	return (
 		<section className="mb-12 space-y-3">
 			{monitorGroups.map((group, index) => (
@@ -124,6 +147,8 @@ export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 					key={group.group?.id || `ungrouped-${index}`}
 					group={group}
 					isDefaultExpanded={index === 0}
+					isGrid={isGrid}
+					barStyle={barStyle}
 				/>
 			))}
 		</section>

@@ -13,6 +13,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
@@ -102,44 +103,46 @@ export function InviteMemberDialog() {
 
 				{!inviteLink ? (
 					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-							<FormField
-								control={form.control}
-								name="email"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Email</FormLabel>
-										<FormControl>
-											<Input placeholder="colleague@example.com" {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="role"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Role</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+						<form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+							<DialogPanel className="space-y-4">
+								<FormField
+									control={form.control}
+									name="email"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Email</FormLabel>
 											<FormControl>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select a role" />
-												</SelectTrigger>
+												<Input placeholder="colleague@example.com" {...field} />
 											</FormControl>
-											<SelectContent>
-												<SelectItem value="member">Member</SelectItem>
-												<SelectItem value="admin">Admin</SelectItem>
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="role"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Role</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Select a role" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value="member">Member</SelectItem>
+													<SelectItem value="admin">Admin</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</DialogPanel>
 							<DialogFooter>
 								<Button type="submit" disabled={form.formState.isSubmitting}>
 									{form.formState.isSubmitting && (
@@ -152,21 +155,23 @@ export function InviteMemberDialog() {
 					</Form>
 				) : (
 					<div className="space-y-4">
-						<div className="rounded-md border bg-muted p-4">
-							<div className="mb-2 font-medium text-sm">Invitation Link</div>
-							<div className="flex items-center gap-2">
-								<code className="flex-1 whitespace-normal break-all rounded bg-background p-2 font-mono text-xs">
-									{inviteLink}
-								</code>
-								<Button size="icon" variant="outline" onClick={copyLink}>
-									{copied ? (
-										<Check className="h-4 w-4" />
-									) : (
-										<Copy className="h-4 w-4" />
-									)}
-								</Button>
+						<DialogPanel>
+							<div className="rounded-md border bg-muted p-4">
+								<div className="mb-2 font-medium text-sm">Invitation Link</div>
+								<div className="flex items-center gap-2">
+									<code className="flex-1 whitespace-normal break-all rounded bg-background p-2 font-mono text-xs">
+										{inviteLink}
+									</code>
+									<Button size="icon" variant="outline" onClick={copyLink}>
+										{copied ? (
+											<Check className="h-4 w-4" />
+										) : (
+											<Copy className="h-4 w-4" />
+										)}
+									</Button>
+								</div>
 							</div>
-						</div>
+						</DialogPanel>
 						<DialogFooter>
 							<Button variant="outline" onClick={() => setInviteLink(null)}>
 								Invite Another

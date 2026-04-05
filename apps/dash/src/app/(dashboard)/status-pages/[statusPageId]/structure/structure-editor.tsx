@@ -38,27 +38,24 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Combobox,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -610,7 +607,7 @@ function GroupCard({
 						</Label>
 						<Input
 							value={group.name}
-							onChange={(e) => onUpdateName && onUpdateName(e.target.value)}
+							onChange={(e) => onUpdateName?.(e.target.value)}
 							placeholder="e.g. Core Services"
 							className="border-input/50 bg-muted/30"
 							onPointerDown={(e) => e.stopPropagation()}
@@ -653,66 +650,67 @@ function GroupCard({
 	);
 }
 
+interface MonitorOption {
+	id: string;
+	name: string;
+}
+
 /**
- * Renders a searchable popover control for adding monitors to a group.
+ * Renders a searchable combobox control for adding monitors to a group.
  *
- * The control lists `availableMonitors` excluding any whose ids appear in `existingMonitorIds`; selecting an item invokes `onAdd` with the chosen monitor and closes the popover.
+ * The control lists `availableMonitors` excluding any whose ids appear in `existingMonitorIds`; selecting an item invokes `onAdd` with the chosen monitor.
  *
  * @param onAdd - Callback invoked with the selected monitor object when a monitor is chosen
  * @param availableMonitors - Array of monitor objects available for addition; each must include an `id` and `name`
  * @param existingMonitorIds - Array of monitor ids that should be excluded from the choices
- * @returns The Add Monitor input popover component
+ * @returns The Add Monitor input combobox component
  */
 function AddMonitorInput({
 	onAdd,
 	availableMonitors,
 	existingMonitorIds,
-}: any) {
-	const [open, setOpen] = useState(false);
+}: {
+	onAdd: (m: MonitorOption) => void;
+	availableMonitors: MonitorOption[];
+	existingMonitorIds: string[];
+}) {
 	const existingSet = new Set(existingMonitorIds);
+	const filteredMonitors = availableMonitors.filter(
+		(m) => !existingSet.has(m.id),
+	);
 
 	// This simulates the "Search to add resources" box from screenshot
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger
-				render={
-					<Button
-						variant="outline"
-						role="combobox"
-						aria-expanded={open}
+		<Combobox
+			items={filteredMonitors}
+			value={null}
+			onValueChange={(value) => {
+				if (value) {
+					onAdd(value);
+				}
+			}}
+		>
+			<ComboboxValue>
+				{(_value: MonitorOption | null) => (
+					<ComboboxInput
+						placeholder="Search to add resources"
+						startAddon={<Search className="h-4 w-4 text-muted-foreground" />}
 						className="w-full justify-start border-input/50 bg-muted/30 font-normal text-muted-foreground"
 						onPointerDown={(e) => e.stopPropagation()}
-					>
-						<Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-						Search to add resources
-					</Button>
-				}>
-			</PopoverTrigger>
-			<PopoverContent className="w-[400px] p-0" align="start">
-				<Command>
-					<CommandInput placeholder="Search monitors..." />
-					<CommandList>
-						<CommandEmpty>No monitor found.</CommandEmpty>
-						<CommandGroup>
-							{availableMonitors
-								.filter((m: any) => !existingSet.has(m.id))
-								.map((monitor: any) => (
-									<CommandItem
-										key={monitor.id}
-										value={monitor.name}
-										onClick={() => {
-											onAdd(monitor);
-											setOpen(false);
-										}}
-									>
-										{monitor.name}
-									</CommandItem>
-								))}
-						</CommandGroup>
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
+					/>
+				)}
+			</ComboboxValue>
+			<ComboboxPopup>
+				<ComboboxEmpty>No monitor found.</ComboboxEmpty>
+				<ComboboxList>
+					{(monitor: MonitorOption) => (
+						<ComboboxItem key={monitor.id} value={monitor}>
+							{monitor.name}
+						</ComboboxItem>
+					)}
+				</ComboboxList>
+			</ComboboxPopup>
+		</Combobox>
 	);
 }
 
@@ -865,7 +863,7 @@ function MonitorConfigModal({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="space-y-6 py-4">
+				<DialogPanel className="space-y-6">
 					{/* Preview */}
 					<div className="space-y-2">
 						<Label className="font-normal text-muted-foreground text-xs">
@@ -918,7 +916,7 @@ function MonitorConfigModal({
 							If provided, an info icon will appear next to the monitor name.
 						</p>
 					</div>
-				</div>
+				</DialogPanel>
 			</DialogContent>
 		</Dialog>
 	);

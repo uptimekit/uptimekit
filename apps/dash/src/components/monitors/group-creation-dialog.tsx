@@ -10,6 +10,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -65,22 +66,24 @@ export function GroupCreationDialog({
 						Create a new group to organize your monitors.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="space-y-4">
-					<div className="space-y-2">
-						<Label htmlFor="group-name">Group Name</Label>
-						<Input
-							id="group-name"
-							placeholder="Production, Staging, etc."
-							value={groupName}
-							onChange={(e) => setGroupName(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && groupName.trim()) {
-									createGroup(groupName.trim());
-								}
-							}}
-						/>
+				<DialogPanel>
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<Label htmlFor="group-name">Group Name</Label>
+							<Input
+								id="group-name"
+								placeholder="Production, Staging, etc."
+								value={groupName}
+								onChange={(e) => setGroupName(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && groupName.trim()) {
+										createGroup(groupName.trim());
+									}
+								}}
+							/>
+						</div>
 					</div>
-				</div>
+				</DialogPanel>
 				<DialogFooter>
 					<Button
 						variant="outline"

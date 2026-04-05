@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -22,6 +22,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
@@ -139,40 +140,42 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 								Create a new tag to categorize your monitors.
 							</DialogDescription>
 						</DialogHeader>
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="tag-name">Tag Name</Label>
-								<Input
-									id="tag-name"
-									placeholder="Critical, API, Frontend, etc."
-									value={tagName}
-									onChange={(e) => setTagName(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && tagName.trim()) {
-											createTag({ name: tagName.trim(), color: tagColor });
-										}
-									}}
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label>Color</Label>
-								<div className="flex gap-2">
-									{PRESET_COLORS.map((color) => (
-										<button
-											key={color}
-											type="button"
-											className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
-											style={{
-												backgroundColor: color,
-												borderColor:
-													tagColor === color ? "#000" : "transparent",
-											}}
-											onClick={() => setTagColor(color)}
-										/>
-									))}
+						<DialogPanel>
+							<div className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor="tag-name">Tag Name</Label>
+									<Input
+										id="tag-name"
+										placeholder="Critical, API, Frontend, etc."
+										value={tagName}
+										onChange={(e) => setTagName(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && tagName.trim()) {
+												createTag({ name: tagName.trim(), color: tagColor });
+											}
+										}}
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label>Color</Label>
+									<div className="flex gap-2">
+										{PRESET_COLORS.map((color) => (
+											<button
+												key={color}
+												type="button"
+												className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
+												style={{
+													backgroundColor: color,
+													borderColor:
+														tagColor === color ? "#000" : "transparent",
+												}}
+												onClick={() => setTagColor(color)}
+											/>
+										))}
+									</div>
 								</div>
 							</div>
-						</div>
+						</DialogPanel>
 						<DialogFooter>
 							<Button
 								variant="outline"
@@ -281,42 +284,45 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 						<DialogTitle>Edit Tag</DialogTitle>
 						<DialogDescription>Update the tag name or color.</DialogDescription>
 					</DialogHeader>
-					<div className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="edit-tag-name">Tag Name</Label>
-							<Input
-								id="edit-tag-name"
-								value={tagName}
-								onChange={(e) => setTagName(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && tagName.trim() && editingTag) {
-										updateTag({
-											id: editingTag.id,
-											name: tagName.trim(),
-											color: tagColor,
-										});
-									}
-								}}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label>Color</Label>
-							<div className="flex gap-2">
-								{PRESET_COLORS.map((color) => (
-									<button
-										key={color}
-										type="button"
-										className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
-										style={{
-											backgroundColor: color,
-											borderColor: tagColor === color ? "#000" : "transparent",
-										}}
-										onClick={() => setTagColor(color)}
-									/>
-								))}
+					<DialogPanel>
+						<div className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="edit-tag-name">Tag Name</Label>
+								<Input
+									id="edit-tag-name"
+									value={tagName}
+									onChange={(e) => setTagName(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && tagName.trim() && editingTag) {
+											updateTag({
+												id: editingTag.id,
+												name: tagName.trim(),
+												color: tagColor,
+											});
+										}
+									}}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label>Color</Label>
+								<div className="flex gap-2">
+									{PRESET_COLORS.map((color) => (
+										<button
+											key={color}
+											type="button"
+											className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
+											style={{
+												backgroundColor: color,
+												borderColor:
+													tagColor === color ? "#000" : "transparent",
+											}}
+											onClick={() => setTagColor(color)}
+										/>
+									))}
+								</div>
 							</div>
 						</div>
-					</div>
+					</DialogPanel>
 					<DialogFooter>
 						<Button
 							variant="outline"

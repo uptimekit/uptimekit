@@ -18,6 +18,7 @@ interface MonitorListItemProps {
 	displayStyle?: "history" | "status";
 	className?: string;
 	description?: string | null;
+	barStyle?: "normal" | "length";
 }
 
 export function MonitorListItem({
@@ -28,6 +29,7 @@ export function MonitorListItem({
 	displayStyle = "history",
 	className,
 	description,
+	barStyle = "normal",
 }: MonitorListItemProps) {
 	// Status-only mode: show only name and current status
 	if (displayStyle === "status") {
@@ -81,7 +83,7 @@ export function MonitorListItem({
 				</div>
 			</div>
 
-			<UptimeBar days={history} />
+			<UptimeBar days={history} style={barStyle} />
 		</div>
 	);
 }

@@ -10,6 +10,7 @@ import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -86,47 +87,49 @@ export function CreateStatusPageForm({
 					<DialogTitle>Create Status Page</DialogTitle>
 				</DialogHeader>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						<FormField
-							control={form.control}
-							name="name"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Name</FormLabel>
-									<FormControl>
-										<Input placeholder="My Status Page" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="slug"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Slug</FormLabel>
-									<FormControl>
-										<div className="flex h-9 items-center rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
-											<span className="shrink-0 select-none pl-3 text-muted-foreground text-sm">
-												{process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
-													"status.uptimekit.com"}
-												/
-											</span>
-											<Input
-												{...field}
-												className="h-full border-0 bg-transparent pl-1 shadow-none focus-visible:border-0 focus-visible:ring-0"
-												placeholder="my-page"
-											/>
-										</div>
-									</FormControl>
-									<FormDescription>
-										Your status page will be accessible at this URL.
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+					<form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+						<DialogPanel className="space-y-4">
+							<FormField
+								control={form.control}
+								name="name"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Name</FormLabel>
+										<FormControl>
+											<Input placeholder="My Status Page" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="slug"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Slug</FormLabel>
+										<FormControl>
+											<div className="flex h-9 items-center rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+												<span className="shrink-0 select-none pl-3 text-muted-foreground text-sm">
+													{process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
+														"status.uptimekit.com"}
+													/
+												</span>
+												<Input
+													{...field}
+													className="h-full border-0 bg-transparent pl-1 shadow-none focus-visible:border-0 focus-visible:ring-0"
+													placeholder="my-page"
+												/>
+											</div>
+										</FormControl>
+										<FormDescription>
+											Your status page will be accessible at this URL.
+										</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</DialogPanel>
 
 						<div className="flex justify-end">
 							<Button type="submit" disabled={isPending}>

@@ -15,6 +15,7 @@ export default function Header() {
 				<nav className="flex gap-4 text-lg">
 					{links.map(({ to, label }) => {
 						return (
+							// biome-ignore lint/suspicious/noExplicitAny: its fine
 							<Link key={to} href={to as any}>
 								{label}
 							</Link>

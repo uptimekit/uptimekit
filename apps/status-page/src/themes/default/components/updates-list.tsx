@@ -1,8 +1,8 @@
+import { IncidentCard } from "@/components/incident-card";
 import {
 	getIncidentHistoryLabel,
 	type IncidentHistoryPeriod,
 } from "@/lib/incident-history";
-import { IncidentCard } from "@/components/incident-card";
 import type { Incident } from "../../types";
 
 interface UpdatesListProps {

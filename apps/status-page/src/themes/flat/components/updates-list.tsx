@@ -2,8 +2,8 @@ import {
 	getIncidentHistoryLabel,
 	type IncidentHistoryPeriod,
 } from "@/lib/incident-history";
-import { IncidentCard } from "./incident-card";
 import type { Incident } from "../../types";
+import { IncidentCard } from "./incident-card";
 
 interface UpdatesListProps {
 	incidentsByDate: Record<string, Incident[]>;

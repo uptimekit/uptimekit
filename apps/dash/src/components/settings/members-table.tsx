@@ -22,6 +22,7 @@ import {
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -272,7 +273,7 @@ export function MembersTable() {
 					<DialogHeader>
 						<DialogTitle>Change Role</DialogTitle>
 					</DialogHeader>
-					<div className="space-y-4 py-4">
+					<DialogPanel className="space-y-4">
 						<div className="space-y-2">
 							<Label>Role</Label>
 							<Select value={newRole} onValueChange={setNewRole}>
@@ -285,7 +286,7 @@ export function MembersTable() {
 								</SelectContent>
 							</Select>
 						</div>
-					</div>
+					</DialogPanel>
 					<DialogFooter>
 						<Button
 							variant="outline"

@@ -56,13 +56,13 @@ export class IntegrationService {
 
 		for (const config of configs) {
 			const integration = integrationRegistry.get(config.type);
-			if (integration && integration.events.includes(event)) {
+			if (integration?.events.includes(event)) {
 				try {
 					// console.log(
 					// 	`[IntegrationService] Executing integration ${integration.name} for config ${config.id}`,
 					// );
 					await integration.handler(config.config, event, payload);
-				} catch (error) {
+				} catch (_error) {
 					// console.error(
 					// 	`[IntegrationService] Error executing integration ${config.id}`,
 					// 	error,

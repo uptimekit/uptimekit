@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: configs arent 100% typed */
 "use client";
 
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
@@ -22,6 +23,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -70,7 +72,7 @@ export function ConfigDialog({
 		} catch (e) {
 			if (e instanceof z.ZodError) {
 				const zodError = e as z.ZodError<any>;
-				toast.error("Validation failed: " + zodError.issues[0].message);
+				toast.error(`Validation failed: ${zodError.issues[0].message}`);
 				return;
 			}
 		}
@@ -131,7 +133,7 @@ export function ConfigDialog({
 						<DialogDescription>{integration.description}</DialogDescription>
 					</DialogHeader>
 
-					<div className="grid gap-4 py-4">
+					<DialogPanel className="grid gap-4">
 						{integration.id === "alertmanager" ? (
 							<AlertManagerConfig
 								config={config}
@@ -163,7 +165,7 @@ export function ConfigDialog({
 								);
 							})
 						)}
-					</div>
+					</DialogPanel>
 
 					<DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
 						<div className="flex gap-2">

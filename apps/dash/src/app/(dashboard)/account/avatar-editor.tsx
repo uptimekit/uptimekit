@@ -13,6 +13,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -141,7 +142,7 @@ function AvatarDialog({
 						Enter the URL of the image you want to use as your profile picture.
 					</DialogDescription>
 				</DialogHeader>
-				<div className="grid gap-4 py-4">
+				<DialogPanel className="grid gap-4">
 					<div className="grid gap-2">
 						<Label htmlFor="url">Image URL</Label>
 						<Input
@@ -157,7 +158,7 @@ function AvatarDialog({
 							}}
 						/>
 					</div>
-				</div>
+				</DialogPanel>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancel

@@ -180,7 +180,7 @@ export const discordIntegration: IntegrationDefinition<
 					components: components,
 				}),
 			});
-		} catch (error) {
+		} catch (_error) {
 			// console.error(
 			// 	`[Discord] Failed to send webhook to ${config.webhookUrl}`,
 			// 	error,

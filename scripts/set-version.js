@@ -62,7 +62,7 @@ function updateVersions() {
 							});
 
 							// Write back with tabs to match biome/prettier
-							fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, "\t") + "\n");
+							fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 						}
 					} catch (e) {
 						console.error(`Failed to update version for ${entry.name}:`, e);

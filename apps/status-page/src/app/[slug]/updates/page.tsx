@@ -24,9 +24,7 @@ export default async function SlugUpdatesPage({
 
 	const period = parseIncidentHistoryPeriod(query.period);
 	const currentPath =
-		period === "all"
-			? `/${slug}/updates`
-			: `/${slug}/updates?period=${period}`;
+		period === "all" ? `/${slug}/updates` : `/${slug}/updates?period=${period}`;
 
 	await checkStatusPageAccess(pageConfig, currentPath);
 
@@ -38,7 +36,7 @@ export default async function SlugUpdatesPage({
 	let data;
 	try {
 		data = await prepareUpdatesPageData(pageConfig, period, slug);
-	} catch (error) {
+	} catch (_error) {
 		notFound();
 	}
 

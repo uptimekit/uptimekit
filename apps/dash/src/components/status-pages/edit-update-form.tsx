@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ExternalLink, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -21,13 +21,16 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import {
 	Form,
 	FormControl,
@@ -37,11 +40,6 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -49,7 +47,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 const formSchema = z.object({
@@ -76,6 +73,11 @@ interface EditUpdateFormProps {
 	};
 	onSuccess?: () => void;
 	onCancel?: () => void;
+}
+
+interface Monitor {
+	id: string;
+	name: string;
 }
 
 const MONITOR_STATUSES = [
@@ -112,7 +114,7 @@ export function EditUpdateForm({
 	const { data: monitorsData } = useQuery(
 		orpc.monitors.list.queryOptions({ limit: 100 }),
 	);
-	const monitors = monitorsData?.items;
+	const monitors = monitorsData?.items ?? [];
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: (data: FormValues) =>
@@ -158,6 +160,22 @@ export function EditUpdateForm({
 	function onSubmit(values: FormValues) {
 		mutate(values);
 	}
+
+	const selectedMonitors = monitors.filter((m) =>
+		form.watch("monitors").some((sm) => sm.id === m.id),
+	);
+
+	const handleMonitorChange = (newValue: Monitor[]) => {
+		const currentMonitors = form.getValues("monitors");
+		const newMonitors = newValue.map((m) => {
+			const existing = currentMonitors.find((cm) => cm.id === m.id);
+			return {
+				id: m.id,
+				status: existing?.status || "degraded",
+			};
+		});
+		form.setValue("monitors", newMonitors);
+	};
 
 	return (
 		<>
@@ -222,68 +240,61 @@ export function EditUpdateForm({
 							<h3 className="font-medium text-foreground text-sm">
 								Affected Services
 							</h3>
-							<Popover>
-								<PopoverTrigger
-									render={
-										<Button
-											variant="outline"
-											size="sm"
-											role="combobox"
-											className="h-8 border-dashed"
-										/>
-									}
-								>
-									<ExternalLink className="mr-2 h-4 w-4" />
-									Modify services
-								</PopoverTrigger>
-								<PopoverContent className="w-[300px] p-0" align="end">
-									<Command>
-										<CommandInput placeholder="Search monitors..." />
-										<CommandList>
-											<CommandEmpty>No monitors found.</CommandEmpty>
-											<CommandGroup>
-												{monitors?.map((monitor) => {
-													const isSelected = form
-														.watch("monitors")
-														.some((m) => m.id === monitor.id);
-													return (
-														<CommandItem
-															value={monitor.name}
-															key={monitor.id}
-															onSelect={() => {
-																const current = form.getValues("monitors");
-																if (isSelected) {
-																	form.setValue(
-																		"monitors",
-																		current.filter((m) => m.id !== monitor.id),
-																	);
-																} else {
-																	form.setValue("monitors", [
-																		...current,
-																		{
-																			id: monitor.id,
-																			status: "degraded",
-																		},
-																	]);
-																}
-															}}
-														>
-															<Check
-																className={cn(
-																	"mr-2 h-4 w-4",
-																	isSelected ? "opacity-100" : "opacity-0",
-																)}
-															/>
-															{monitor.name}
-														</CommandItem>
-													);
-												})}
-											</CommandGroup>
-										</CommandList>
-									</Command>
-								</PopoverContent>
-							</Popover>
 						</div>
+
+						<FormField
+							control={form.control}
+							name="monitors"
+							render={() => (
+								<FormItem>
+									<FormControl>
+										<Combobox
+											items={monitors}
+											value={selectedMonitors}
+											onValueChange={handleMonitorChange}
+											multiple
+										>
+											<ComboboxChips>
+												<ComboboxValue>
+													{(value: Monitor[]) => (
+														<>
+															{value?.map((item) => (
+																<ComboboxChip
+																	key={item.id}
+																	aria-label={item.name}
+																>
+																	{item.name}
+																</ComboboxChip>
+															))}
+															<ComboboxChipsInput
+																aria-label="Select monitors"
+																placeholder={
+																	value?.length > 0
+																		? undefined
+																		: "Modify services..."
+																}
+																className="h-8 border-dashed"
+															/>
+														</>
+													)}
+												</ComboboxValue>
+											</ComboboxChips>
+											<ComboboxPopup>
+												<ComboboxEmpty>No monitors found.</ComboboxEmpty>
+												<ComboboxList>
+													{(item: Monitor) => (
+														<ComboboxItem key={item.id} value={item}>
+															{item.name}
+														</ComboboxItem>
+													)}
+												</ComboboxList>
+											</ComboboxPopup>
+										</Combobox>
+									</FormControl>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
 
 						{form.watch("monitors").length > 0 && (
 							<div className="divide-y rounded-md border">
@@ -305,10 +316,10 @@ export function EditUpdateForm({
 											</div>
 											<div className="flex items-center gap-2">
 												<Select
-													value={selectedMonitor.status}
+													value={selectedMonitor.status || "degraded"}
 													onValueChange={(val) => {
 														const current = form.getValues("monitors");
-														current[index].status = val;
+														current[index].status = val || "degraded";
 														form.setValue("monitors", [...current]);
 													}}
 												>

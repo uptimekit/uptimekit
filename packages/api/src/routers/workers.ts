@@ -121,7 +121,7 @@ export const workersRouter = {
 				// Generate the raw API key
 				const rawKey = generateApiKey();
 				const keyHash = await hashApiKey(rawKey);
-				const keyHint = rawKey.substring(0, 11) + "..."; // e.g., "uk_abc1234..."
+				const keyHint = `${rawKey.substring(0, 11)}...`; // e.g., "uk_abc1234..."
 
 				// Create the worker first
 				const [newWorker] = await db
@@ -189,7 +189,7 @@ export const workersRouter = {
 			// Generate new key
 			const rawKey = generateApiKey();
 			const keyHash = await hashApiKey(rawKey);
-			const keyHint = rawKey.substring(0, 11) + "...";
+			const keyHint = `${rawKey.substring(0, 11)}...`;
 
 			// Delete old keys and create new one in a transaction-like manner
 			await db.delete(workerApiKey).where(eq(workerApiKey.workerId, input.id));

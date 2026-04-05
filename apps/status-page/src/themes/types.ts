@@ -29,6 +29,8 @@ export interface StatusPageDesign {
 	websiteUrl?: string;
 	contactUrl?: string;
 	customCss?: string;
+	headerLayout?: "vertical" | "horizontal";
+	barStyle?: "normal" | "length";
 }
 
 export interface MonitorGroup {

@@ -4,7 +4,7 @@ import type { ThemeManifest } from "./types";
 
 export const themeRegistry: Record<string, ThemeManifest> = {
 	default: defaultManifest,
-	flat: flatManifest
+	flat: flatManifest,
 };
 
 export function getThemeManifest(themeId: string): ThemeManifest | undefined {

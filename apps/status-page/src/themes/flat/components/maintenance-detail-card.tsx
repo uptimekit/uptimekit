@@ -1,5 +1,5 @@
-import { IncidentCard } from "./incident-card";
 import type { Maintenance } from "../../types";
+import { IncidentCard } from "./incident-card";
 
 interface MaintenanceDetailCardProps {
 	maintenance: Maintenance;

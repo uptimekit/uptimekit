@@ -12,6 +12,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -109,32 +110,34 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 							again.
 						</DialogDescription>
 					</DialogHeader>
-					<div className="flex items-center space-x-2">
-						<div className="grid flex-1 gap-2">
-							<Label htmlFor="link" className="sr-only">
-								Link
-							</Label>
-							<Input
-								id="link"
-								value={newKey || ""}
-								readOnly
-								type={isRevealed ? "text" : "password"}
-							/>
+					<DialogPanel>
+						<div className="flex items-center space-x-2">
+							<div className="grid flex-1 gap-2">
+								<Label htmlFor="link" className="sr-only">
+									Link
+								</Label>
+								<Input
+									id="link"
+									value={newKey || ""}
+									readOnly
+									type={isRevealed ? "text" : "password"}
+								/>
+							</div>
+							<Button
+								type="submit"
+								size="sm"
+								className="px-3"
+								onClick={handleCopy}
+							>
+								<span className="sr-only">Copy</span>
+								{isRevealed ? (
+									<Check className="h-4 w-4" />
+								) : (
+									<Copy className="h-4 w-4" />
+								)}
+							</Button>
 						</div>
-						<Button
-							type="submit"
-							size="sm"
-							className="px-3"
-							onClick={handleCopy}
-						>
-							<span className="sr-only">Copy</span>
-							{isRevealed ? (
-								<Check className="h-4 w-4" />
-							) : (
-								<Copy className="h-4 w-4" />
-							)}
-						</Button>
-					</div>
+					</DialogPanel>
 					<DialogFooter>
 						<Button onClick={handleCloseNewKeyDialog}>Done</Button>
 					</DialogFooter>

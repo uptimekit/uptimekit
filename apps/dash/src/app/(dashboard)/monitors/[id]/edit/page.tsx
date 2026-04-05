@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: its okay */
 "use client";
 
 import { useQuery } from "@tanstack/react-query";

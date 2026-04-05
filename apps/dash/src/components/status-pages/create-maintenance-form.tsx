@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -10,19 +10,23 @@ import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -35,11 +39,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -47,7 +46,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
 const formSchema = z.object({
@@ -65,6 +63,11 @@ interface CreateMaintenanceFormProps {
 	statusPageId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+}
+
+interface Monitor {
+	id: string;
+	name: string;
 }
 
 export function CreateMaintenanceForm({
@@ -88,7 +91,7 @@ export function CreateMaintenanceForm({
 	const { data: monitorsData } = useQuery(
 		orpc.monitors.list.queryOptions({ limit: 100 }),
 	);
-	const monitors = monitorsData?.items;
+	const monitors = monitorsData?.items ?? [];
 
 	const { mutate, isPending } = useMutation({
 		mutationFn: (data: FormValues) =>
@@ -113,6 +116,10 @@ export function CreateMaintenanceForm({
 		mutate(values);
 	}
 
+	const selectedMonitors = monitors.filter((m) =>
+		form.watch("monitorIds")?.includes(m.id),
+	);
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[525px]">
@@ -120,188 +127,175 @@ export function CreateMaintenanceForm({
 					<DialogTitle>Schedule Maintenance</DialogTitle>
 				</DialogHeader>
 				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						<FormField
-							control={form.control}
-							name="title"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Title</FormLabel>
-									<FormControl>
-										<Input placeholder="Database Upgrade" {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="description"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Description</FormLabel>
-									<FormControl>
-										<Textarea
-											placeholder="We will be upgrading our database..."
-											className="min-h-[100px]"
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="monitorIds"
-							render={({ field }) => (
-								<FormItem className="flex flex-col">
-									<FormLabel>Affected Monitors</FormLabel>
-									<Popover>
-										<PopoverTrigger
-											render={
-												<FormControl>
-													<Button
-														variant="outline"
-														role="combobox"
-														className={cn(
-															"w-full justify-between",
-															!field.value?.length && "text-muted-foreground",
-														)}
-													/>
-												</FormControl>
-											}
-										>
-											{field.value?.length > 0
-												? `${field.value.length} monitors selected`
-												: "Select monitors"}
-											<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-										</PopoverTrigger>
-										<PopoverContent className="w-[400px] p-0">
-											<Command>
-												<CommandInput placeholder="Search monitors..." />
-												<CommandList>
-													<CommandEmpty>No monitors found.</CommandEmpty>
-													<CommandGroup>
-														{monitors?.map((monitor) => (
-															<CommandItem
-																value={monitor.name}
-																key={monitor.id}
-																onSelect={() => {
-																	const current = field.value || [];
-																	const isSelected = current.includes(
-																		monitor.id,
-																	);
-																	if (isSelected) {
-																		field.onChange(
-																			current.filter((id) => id !== monitor.id),
-																		);
-																	} else {
-																		field.onChange([...current, monitor.id]);
+					<form onSubmit={form.handleSubmit(onSubmit)} className="contents">
+						<DialogPanel className="space-y-4">
+							<FormField
+								control={form.control}
+								name="title"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Title</FormLabel>
+										<FormControl>
+											<Input placeholder="Database Upgrade" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="description"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Description</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder="We will be upgrading our database..."
+												className="min-h-[100px]"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="monitorIds"
+								render={({ field }) => (
+									<FormItem className="flex flex-col">
+										<FormLabel>Affected Monitors</FormLabel>
+										<FormControl>
+											<Combobox
+												items={monitors}
+												value={selectedMonitors}
+												onValueChange={(newValue) =>
+													field.onChange(newValue.map((i: Monitor) => i.id))
+												}
+												multiple
+											>
+												<ComboboxChips>
+													<ComboboxValue>
+														{(value: Monitor[]) => (
+															<>
+																{value?.map((item) => (
+																	<ComboboxChip
+																		key={item.id}
+																		aria-label={item.name}
+																	>
+																		{item.name}
+																	</ComboboxChip>
+																))}
+																<ComboboxChipsInput
+																	aria-label="Select monitors"
+																	placeholder={
+																		value?.length > 0
+																			? undefined
+																			: "Select monitors"
 																	}
-																}}
-															>
-																<Check
-																	className={cn(
-																		"mr-2 h-4 w-4",
-																		field.value?.includes(monitor.id)
-																			? "opacity-100"
-																			: "opacity-0",
-																	)}
 																/>
-																{monitor.name}
-															</CommandItem>
-														))}
-													</CommandGroup>
-												</CommandList>
-											</Command>
-										</PopoverContent>
-									</Popover>
-									<div className="mt-2 flex flex-wrap gap-2">
-										{field.value?.map((id) => {
-											const monitor = monitors?.find((m) => m.id === id);
-											if (!monitor) return null;
-											return (
-												<Badge key={id} variant="secondary" className="gap-1">
-													{monitor.name}
-													<button
-														type="button"
-														className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-														onClick={() => {
-															field.onChange(
-																field.value.filter((val) => val !== id),
-															);
-														}}
-													>
-														<X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-													</button>
-												</Badge>
-											);
-										})}
-									</div>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="status"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Status</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										defaultValue={field.value}
-									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder="Select status" />
-											</SelectTrigger>
+															</>
+														)}
+													</ComboboxValue>
+												</ComboboxChips>
+												<ComboboxPopup>
+													<ComboboxEmpty>No monitors found.</ComboboxEmpty>
+													<ComboboxList>
+														{(item: Monitor) => (
+															<ComboboxItem key={item.id} value={item}>
+																{item.name}
+															</ComboboxItem>
+														)}
+													</ComboboxList>
+												</ComboboxPopup>
+											</Combobox>
 										</FormControl>
-										<SelectContent>
-											<SelectItem value="scheduled">Scheduled</SelectItem>
-											<SelectItem value="in_progress">In Progress</SelectItem>
-											<SelectItem value="completed">Completed</SelectItem>
-										</SelectContent>
-									</Select>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="grid grid-cols-2 gap-4">
-							<FormField
-								control={form.control}
-								name="startAt"
-								render={({ field }) => (
-									<FormItem className="flex flex-col">
-										<FormLabel>Start Time</FormLabel>
-										<FormControl>
-											<DateTimePicker
-												date={field.value}
-												setDate={field.onChange}
-											/>
-										</FormControl>
+										<div className="mt-2 flex flex-wrap gap-2">
+											{field.value?.map((id) => {
+												const monitor = monitors?.find((m) => m.id === id);
+												if (!monitor) return null;
+												return (
+													<Badge key={id} variant="secondary" className="gap-1">
+														{monitor.name}
+														<button
+															type="button"
+															className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+															onClick={() => {
+																field.onChange(
+																	field.value.filter((val) => val !== id),
+																);
+															}}
+														>
+															<X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+														</button>
+													</Badge>
+												);
+											})}
+										</div>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
 							<FormField
 								control={form.control}
-								name="endAt"
+								name="status"
 								render={({ field }) => (
-									<FormItem className="flex flex-col">
-										<FormLabel>End Time</FormLabel>
-										<FormControl>
-											<DateTimePicker
-												date={field.value}
-												setDate={field.onChange}
-											/>
-										</FormControl>
+									<FormItem>
+										<FormLabel>Status</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
+											<FormControl>
+												<SelectTrigger>
+													<SelectValue placeholder="Select status" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												<SelectItem value="scheduled">Scheduled</SelectItem>
+												<SelectItem value="in_progress">In Progress</SelectItem>
+												<SelectItem value="completed">Completed</SelectItem>
+											</SelectContent>
+										</Select>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-						</div>
+							<div className="grid grid-cols-2 gap-4">
+								<FormField
+									control={form.control}
+									name="startAt"
+									render={({ field }) => (
+										<FormItem className="flex flex-col">
+											<FormLabel>Start Time</FormLabel>
+											<FormControl>
+												<DateTimePicker
+													date={field.value}
+													setDate={field.onChange}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="endAt"
+									render={({ field }) => (
+										<FormItem className="flex flex-col">
+											<FormLabel>End Time</FormLabel>
+											<FormControl>
+												<DateTimePicker
+													date={field.value}
+													setDate={field.onChange}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+						</DialogPanel>
 
 						<div className="flex justify-end gap-2">
 							<Button

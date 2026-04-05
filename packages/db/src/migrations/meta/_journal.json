@@ -1,104 +1,104 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1766002898706,
-      "tag": "0000_fluffy_joshua_kane",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1766067168766,
-      "tag": "0001_uneven_skaar",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1766299671496,
-      "tag": "0002_lowly_stardust",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1766441386741,
-      "tag": "0003_funny_ego",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1766708112561,
-      "tag": "0004_spotty_vulture",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1766753285741,
-      "tag": "0005_massive_justin_hammer",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1767278379735,
-      "tag": "0006_loving_phalanx",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1767868309307,
-      "tag": "0007_tricky_whiplash",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1768002978100,
-      "tag": "0008_breezy_lester",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1768280107072,
-      "tag": "0009_organic_cobalt_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1768589176339,
-      "tag": "0010_pale_sasquatch",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1775318400000,
-      "tag": "0011_better_incidents",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1775308856598,
-      "tag": "0012_uneven_lila_cheney",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1775322115942,
-      "tag": "0013_calm_galactus",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1766002898706,
+			"tag": "0000_fluffy_joshua_kane",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1766067168766,
+			"tag": "0001_uneven_skaar",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1766299671496,
+			"tag": "0002_lowly_stardust",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1766441386741,
+			"tag": "0003_funny_ego",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1766708112561,
+			"tag": "0004_spotty_vulture",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1766753285741,
+			"tag": "0005_massive_justin_hammer",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1767278379735,
+			"tag": "0006_loving_phalanx",
+			"breakpoints": true
+		},
+		{
+			"idx": 7,
+			"version": "7",
+			"when": 1767868309307,
+			"tag": "0007_tricky_whiplash",
+			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "7",
+			"when": 1768002978100,
+			"tag": "0008_breezy_lester",
+			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "7",
+			"when": 1768280107072,
+			"tag": "0009_organic_cobalt_man",
+			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "7",
+			"when": 1768589176339,
+			"tag": "0010_pale_sasquatch",
+			"breakpoints": true
+		},
+		{
+			"idx": 11,
+			"version": "7",
+			"when": 1775318400000,
+			"tag": "0011_better_incidents",
+			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "7",
+			"when": 1775308856598,
+			"tag": "0012_uneven_lila_cheney",
+			"breakpoints": true
+		},
+		{
+			"idx": 13,
+			"version": "7",
+			"when": 1775322115942,
+			"tag": "0013_calm_galactus",
+			"breakpoints": true
+		}
+	]
 }

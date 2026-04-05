@@ -2,8 +2,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "@/themes/default/components/status-indicator";
-import type { StatusType } from "@/themes/types";
-import type { Incident } from "@/themes/types";
+import type { Incident, StatusType } from "@/themes/types";
 
 interface IncidentCardProps {
 	incident: Incident;
@@ -72,7 +71,7 @@ export function IncidentCard({
 						href={detailsLink as any}
 						className="rounded-full p-2 transition-colors hover:bg-muted"
 					>
-						<ChevronDown className="-rotate-90 h-5 w-5 text-muted-foreground" />
+						<ChevronDown className="h-5 w-5 -rotate-90 text-muted-foreground" />
 					</Link>
 				) : (
 					<button

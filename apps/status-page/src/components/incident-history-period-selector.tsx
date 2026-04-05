@@ -1,8 +1,8 @@
 import Link from "next/link";
 import {
 	getIncidentHistoryLabel,
-	type IncidentHistoryPeriod,
 	INCIDENT_HISTORY_PERIODS,
+	type IncidentHistoryPeriod,
 } from "@/lib/incident-history";
 
 interface IncidentHistoryPeriodSelectorProps {
@@ -18,7 +18,8 @@ export function IncidentHistoryPeriodSelector({
 		<div className="mb-8 flex flex-wrap gap-2">
 			{INCIDENT_HISTORY_PERIODS.map((period) => {
 				const isActive = period === selectedPeriod;
-				const href = period === "all" ? basePath : `${basePath}?period=${period}`;
+				const href =
+					period === "all" ? basePath : `${basePath}?period=${period}`;
 
 				return (
 					<Link

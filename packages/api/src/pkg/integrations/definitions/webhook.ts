@@ -37,7 +37,7 @@ export const webhookIntegration: IntegrationDefinition<
 					timestamp: new Date().toISOString(),
 				}),
 			});
-		} catch (error) {
+		} catch (_error) {
 			// console.error(`[Webhook] Failed to send webhook to ${config.url}`, error);
 		}
 	},

@@ -66,18 +66,20 @@ export default function SettingsPage() {
 		},
 	});
 
+	const getFormValuesFromActiveOrg = (): z.infer<typeof formSchema> => ({
+		name: activeOrg?.name || "",
+		slug: activeOrg?.slug || "",
+		logo: activeOrg?.logo || "",
+	});
+
 	// Update form when activeOrg loads
 	useEffect(() => {
 		if (activeOrg) {
-			form.reset({
-				name: activeOrg.name,
-				slug: activeOrg.slug,
-				logo: activeOrg.logo || "",
-			});
+			form.reset(getFormValuesFromActiveOrg());
 		}
-	}, [activeOrg, form]);
+	}, [activeOrg, form, getFormValuesFromActiveOrg]);
 
-	async function onSubmit(values: z.infer<typeof formSchema>) {
+	const submitForm = async (values: z.infer<typeof formSchema>) => {
 		if (!activeOrg?.id) return;
 
 		await authClient.organization.update(
@@ -106,7 +108,15 @@ export default function SettingsPage() {
 				},
 			},
 		);
-	}
+	};
+
+	const handleDiscard = () => {
+		form.reset(getFormValuesFromActiveOrg());
+	};
+
+	const handleSave = () => {
+		void form.handleSubmit(submitForm)();
+	};
 
 	if (isPending) {
 		return (
@@ -147,7 +157,7 @@ export default function SettingsPage() {
 					<PageNav.Content value="general">
 						<Form {...form}>
 							<form
-								onSubmit={form.handleSubmit(onSubmit)}
+								onSubmit={form.handleSubmit(submitForm)}
 								className="space-y-10"
 							>
 								{/* General Section */}
@@ -251,11 +261,13 @@ export default function SettingsPage() {
 									<Button
 										type="button"
 										variant="outline"
-										onClick={() => form.reset()}
+										onClick={handleDiscard}
 									>
 										Discard
 									</Button>
-									<Button type="submit">Save Changes</Button>
+									<Button type="button" onClick={handleSave}>
+										Save Changes
+									</Button>
 								</div>
 							</form>
 						</Form>

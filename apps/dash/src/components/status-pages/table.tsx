@@ -15,7 +15,6 @@ import {
 	Plus,
 	Search,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -40,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { client, orpc } from "@/utils/orpc";
 import { DataPagination } from "../ui/data-pagination";
+import { DropdownMenuLabel, MenuGroup } from "../ui/menu";
 import { CreateStatusPageForm } from "./create-form";
 
 export function StatusPagesTable() {
@@ -350,26 +350,31 @@ export function StatusPagesTable() {
 													<span className="sr-only">Open menu</span>
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end">
-													<DropdownMenuItem
-														render={
-															<Link
-																href={`/s/${page.slug}` as any}
-																target="_blank"
-															/>
-														}
-														onClick={(e) => e.stopPropagation()}
-													>
-														View page
-													</DropdownMenuItem>
-													<DropdownMenuItem
-														className="text-red-500 focus:text-red-600"
-														onClick={(e) => {
-															e.stopPropagation();
-															handleDeleteClick(page);
-														}}
-													>
-														Delete
-													</DropdownMenuItem>
+													<MenuGroup>
+														<DropdownMenuLabel>{page.name}</DropdownMenuLabel>
+														<DropdownMenuItem
+															render={
+																// biome-ignore lint/a11y/useAnchorContent: shhhh its okay.. its okay...
+																<a
+																	href={`${process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN}/${page.slug}`}
+																	target="_blank"
+																	rel="noopener"
+																/>
+															}
+															onClick={(e) => e.stopPropagation()}
+														>
+															View page
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															className="text-red-500 focus:text-red-600"
+															onClick={(e) => {
+																e.stopPropagation();
+																handleDeleteClick(page);
+															}}
+														>
+															Delete
+														</DropdownMenuItem>
+													</MenuGroup>
 												</DropdownMenuContent>
 											</DropdownMenu>
 										</TableCell>

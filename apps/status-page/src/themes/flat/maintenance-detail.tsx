@@ -1,9 +1,9 @@
-import { Footer } from "./components/footer";
-import { Header } from "./components/header";
 import { buildPath } from "@/lib/route-utils";
 import type { ThemeMaintenanceDetailProps } from "../types";
 import { BackLink } from "./components/back-link";
 import { CurrentIssuesBanner } from "./components/current-issues-banner";
+import { Footer } from "./components/footer";
+import { Header } from "./components/header";
 import { MaintenanceDetailCard } from "./components/maintenance-detail-card";
 
 export default function DefaultMaintenanceDetail({

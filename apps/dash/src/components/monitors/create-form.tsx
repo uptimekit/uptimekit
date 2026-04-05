@@ -5,22 +5,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	Activity,
 	Braces,
-	Check,
 	ChevronRight,
-	ChevronsUpDown,
 	Folder,
 	Globe,
-	Plus,
 	Search,
 	Server,
-	X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,13 +26,16 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+	Combobox,
+	ComboboxChip,
+	ComboboxChips,
+	ComboboxChipsInput,
+	ComboboxEmpty,
+	ComboboxItem,
+	ComboboxList,
+	ComboboxPopup,
+	ComboboxValue,
+} from "@/components/ui/combobox";
 import {
 	Form,
 	FormControl,
@@ -47,11 +46,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+
 import {
 	Select,
 	SelectContent,
@@ -302,7 +297,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 	},
 ];
 
-const groupedTypes: { group: string; items: MonitorTypeDefinition[] }[] = [
+const _groupedTypes: { group: string; items: MonitorTypeDefinition[] }[] = [
 	{
 		group: "Network & web",
 		items: monitorTypes.filter((t) => t.group === "Network & web"),
@@ -519,18 +514,10 @@ export function CreateMonitorForm({
 	const { data: tags } = useQuery(orpc.monitors.listTags.queryOptions());
 
 	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-	const [groupsOpen, setGroupsOpen] = useState(false);
-	const [tagsOpen, setTagsOpen] = useState(false);
-	const [groupPopoverOpen, setGroupPopoverOpen] = useState(false);
-	const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
 
-	// Cast initialData to any for safe property access during defaultValues initialization
-	// ensuring we handle the discriminated union types gracefully
-	const defaults = (initialData as any) || {};
-
-	const form = useForm<FormValues>({
-		resolver: zodResolver(formSchema) as any,
-		defaultValues: {
+	const getFormValuesFromInitialData = (): FormValues => {
+		const defaults = (initialData as any) || {};
+		return {
 			name: defaults.name || "",
 			type: defaults.type || "http",
 			interval: defaults.interval || 60,
@@ -555,7 +542,12 @@ export function CreateMonitorForm({
 			body: defaults.body || "",
 			headers: defaults.headers || [],
 			acceptedStatusCodes: defaults.acceptedStatusCodes || "",
-		} as any,
+		} as FormValues;
+	};
+
+	const form = useForm<FormValues>({
+		resolver: zodResolver(formSchema) as any,
+		defaultValues: getFormValuesFromInitialData(),
 	});
 
 	const router = useRouter();
@@ -619,9 +611,17 @@ export function CreateMonitorForm({
 		},
 	});
 
-	function onSubmit(values: FormValues) {
+	const submitForm = (values: FormValues) => {
 		mutate(values);
-	}
+	};
+
+	const handleDiscard = () => {
+		form.reset(getFormValuesFromInitialData());
+	};
+
+	const handleSave = () => {
+		void form.handleSubmit(submitForm)();
+	};
 
 	const type = form.watch("type");
 	const selectedType =
@@ -672,7 +672,7 @@ export function CreateMonitorForm({
 		<>
 			<Form {...form}>
 				<form
-					onSubmit={form.handleSubmit(onSubmit)}
+					onSubmit={form.handleSubmit(submitForm)}
 					className="space-y-10 pb-20"
 				>
 					{/* ... (What to monitor Section remains same) ... */}
@@ -694,90 +694,55 @@ export function CreateMonitorForm({
 								<FormField
 									control={form.control}
 									name="type"
-									render={({ field }) => (
-										<FormItem className="flex flex-col">
-											<FormLabel>Monitor Type</FormLabel>
-											<Popover>
-												<PopoverTrigger render={
-													<FormControl>
-														<Button
-															variant="outline"
-															role="combobox"
-															className={cn(
-																"w-full justify-between",
-																!field.value && "text-muted-foreground",
+									render={({ field }) => {
+										const selectedType = monitorTypes.find(
+											(t) => t.id === field.value,
+										);
+										return (
+											<FormItem className="flex flex-col">
+												<FormLabel>Monitor Type</FormLabel>
+												<Combobox
+													items={monitorTypes}
+													value={selectedType}
+													onValueChange={(value) =>
+														form.setValue("type", value.id)
+													}
+												>
+													<ComboboxValue>
+														{(value: (typeof monitorTypes)[number]) => (
+															<ComboboxInput
+																placeholder="Select type"
+																startAddon={
+																	value ? (
+																		<value.icon className="h-4 w-4 text-muted-foreground" />
+																	) : undefined
+																}
+															/>
+														)}
+													</ComboboxValue>
+													<ComboboxPopup>
+														<ComboboxEmpty>No type found.</ComboboxEmpty>
+														<ComboboxList>
+															{(type) => (
+																<ComboboxItem key={type.id} value={type}>
+																	<div className="flex items-center gap-3">
+																		<type.icon className="h-4 w-4 text-muted-foreground" />
+																		<div className="flex flex-col">
+																			<span>{type.label}</span>
+																			<span className="text-muted-foreground text-xs">
+																				{type.description}
+																			</span>
+																		</div>
+																	</div>
+																</ComboboxItem>
 															)}
-														>
-															{field.value ? (
-																<div className="flex items-center gap-2">
-																	{(() => {
-																		const type = monitorTypes.find(
-																			(t) => t.id === field.value,
-																		);
-																		if (!type) return field.value;
-																		const Icon = type.icon;
-																		return (
-																			<>
-																				<Icon className="h-4 w-4 text-muted-foreground" />
-																				<span>{type.label}</span>
-																			</>
-																		);
-																	})()}
-																</div>
-															) : (
-																"Select type"
-															)}
-															<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-														</Button>
-													</FormControl>
-												}>
-												</PopoverTrigger>
-												<PopoverContent className="w-[400px] p-0">
-													<Command>
-														<CommandInput placeholder="Search monitor type..." />
-														<CommandList>
-															<CommandEmpty>No type found.</CommandEmpty>
-															{groupedTypes.map((group) => (
-																<CommandGroup
-																	key={group.group}
-																	heading={group.group}
-																>
-																	{group.items.map((type) => (
-																		<CommandItem
-																			value={type.label}
-																			key={type.id}
-																			onSelect={() => {
-																				form.setValue("type", type.id);
-																			}}
-																		>
-																			<div className="flex items-center gap-3">
-																				<type.icon className="h-4 w-4 text-muted-foreground" />
-																				<div className="flex flex-col">
-																					<span>{type.label}</span>
-																					<span className="text-muted-foreground text-xs">
-																						{type.description}
-																					</span>
-																				</div>
-																			</div>
-																			<Check
-																				className={cn(
-																					"ml-auto h-4 w-4",
-																					field.value === type.id
-																						? "opacity-100"
-																						: "opacity-0",
-																				)}
-																			/>
-																		</CommandItem>
-																	))}
-																</CommandGroup>
-															))}
-														</CommandList>
-													</Command>
-												</PopoverContent>
-											</Popover>
-											<FormMessage />
-										</FormItem>
-									)}
+														</ComboboxList>
+													</ComboboxPopup>
+												</Combobox>
+												<FormMessage />
+											</FormItem>
+										);
+									}}
 								/>
 
 								{/* Dynamic Fields based on Type */}
@@ -819,228 +784,122 @@ export function CreateMonitorForm({
 									<FormField
 										control={form.control}
 										name="groupId"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Group</FormLabel>
-												<Popover
-													open={groupPopoverOpen}
-													onOpenChange={setGroupPopoverOpen}
-												>
-													<PopoverTrigger render={
-														<FormControl>
-															<Button
-																variant="outline"
-																role="combobox"
-																className={cn(
-																	"justify-between",
-																	!field.value && "text-muted-foreground",
+										render={({ field }) => {
+											const selectedGroup = groups?.find(
+												(g) => g.id === field.value,
+											);
+											const groupOptions = groups || [];
+											return (
+												<FormItem>
+													<FormLabel>Group</FormLabel>
+													<Combobox
+														items={groupOptions}
+														value={selectedGroup || null}
+														onValueChange={(value) =>
+															field.onChange(value?.id || null)
+														}
+													>
+														<ComboboxValue>
+															{(
+																value: (typeof groupOptions)[number] | null,
+															) => (
+																<ComboboxInput
+																	placeholder="Select group"
+																	startAddon={
+																		value ? (
+																			<Folder className="h-4 w-4 text-muted-foreground" />
+																		) : undefined
+																	}
+																/>
+															)}
+														</ComboboxValue>
+														<ComboboxPopup>
+															<ComboboxEmpty>No groups found.</ComboboxEmpty>
+															<ComboboxList>
+																{(group) => (
+																	<ComboboxItem key={group.id} value={group}>
+																		<div className="flex items-center gap-2">
+																			<Folder className="h-4 w-4 text-muted-foreground" />
+																			{group.name}
+																		</div>
+																	</ComboboxItem>
 																)}
-															>
-																{field.value
-																	? groups?.find(
-																			(group) => group.id === field.value,
-																		)?.name
-																	: "Select group"}
-																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-															</Button>
-														</FormControl>
-													}>
-													</PopoverTrigger>
-													<PopoverContent className="w-[300px] p-0">
-														<Command>
-															<CommandInput placeholder="Search group..." />
-															<CommandList>
-																<CommandEmpty>No groups found.</CommandEmpty>
-																<CommandGroup>
-																	<CommandItem
-																		value="none"
-																		onSelect={(value) => {
-																			field.onChange(null);
-																			setTimeout(
-																				() => setGroupPopoverOpen(false),
-																				0,
-																			);
-																		}}
-																	>
-																		<Check
-																			className={cn(
-																				"mr-2 h-4 w-4",
-																				!field.value
-																					? "opacity-100"
-																					: "opacity-0",
-																			)}
-																		/>
-																		<span className="text-muted-foreground italic">
-																			None
-																		</span>
-																	</CommandItem>
-																	{groups?.map((group) => (
-																		<CommandItem
-																			value={group.name}
-																			key={group.id}
-																			onSelect={(value) => {
-																				field.onChange(group.id);
-																				setTimeout(
-																					() => setGroupPopoverOpen(false),
-																					0,
-																				);
-																			}}
-																		>
-																			<Check
-																				className={cn(
-																					"mr-2 h-4 w-4",
-																					group.id === field.value
-																						? "opacity-100"
-																						: "opacity-0",
-																				)}
-																			/>
-																			<div className="flex items-center gap-2">
-																				<Folder className="h-4 w-4 text-muted-foreground" />
-																				{group.name}
-																			</div>
-																		</CommandItem>
-																	))}
-																</CommandGroup>
-																<CommandGroup className="border-t">
-																	<CommandItem
-																		onSelect={() => {
-																			setGroupPopoverOpen(false);
-																			setTimeout(
-																				() => setGroupsOpen(true),
-																				100,
-																			);
-																		}}
-																		className="cursor-pointer"
-																	>
-																		<Plus className="mr-2 h-4 w-4" />
-																		Create new group
-																	</CommandItem>
-																</CommandGroup>
-															</CommandList>
-														</Command>
-													</PopoverContent>
-												</Popover>
-												<FormMessage />
-											</FormItem>
-										)}
+															</ComboboxList>
+														</ComboboxPopup>
+													</Combobox>
+													<FormMessage />
+												</FormItem>
+											);
+										}}
 									/>
 
 									<FormField
 										control={form.control}
 										name="tags"
-										render={({ field }) => (
-											<FormItem>
-												<FormLabel>Tags</FormLabel>
-												<Popover
-													open={tagPopoverOpen}
-													onOpenChange={setTagPopoverOpen}
-												>
-													<PopoverTrigger render={
-														<FormControl>
-															<Button
-																variant="outline"
-																role="combobox"
-																className={cn(
-																	"justify-between",
-																	!field.value?.length &&
-																		"text-muted-foreground",
-																)}
-															>
-																{field.value?.length > 0
-																	? `${field.value.length} tags selected`
-																	: "Select tags"}
-																<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-															</Button>
-														</FormControl>
-													}>
-													</PopoverTrigger>
-													<PopoverContent className="w-[300px] p-0">
-														<Command>
-															<CommandInput placeholder="Search tags..." />
-															<CommandList>
-																<CommandEmpty>No tags found.</CommandEmpty>
-																<CommandGroup>
-																	{tags?.map((tag) => (
-																		<CommandItem
-																			value={tag.name}
-																			key={tag.id}
-																			onSelect={() => {
-																				const current = new Set(
-																					field.value || [],
-																				);
-																				if (current.has(tag.id)) {
-																					current.delete(tag.id);
-																				} else {
-																					current.add(tag.id);
-																				}
-																				field.onChange(Array.from(current));
-																			}}
-																		>
-																			<Check
-																				className={cn(
-																					"mr-2 h-4 w-4",
-																					field.value?.includes(tag.id)
-																						? "opacity-100"
-																						: "opacity-0",
-																				)}
-																			/>
-																			<div className="flex items-center gap-2">
-																				<div
-																					className="h-2 w-2 rounded-full"
-																					style={{ backgroundColor: tag.color }}
-																				/>
+										render={({ field }) => {
+											const selectedTags = (tags || []).filter((tag) =>
+												field.value?.includes(tag.id),
+											);
+											return (
+												<FormItem>
+													<FormLabel>Tags</FormLabel>
+													<Combobox
+														items={tags || []}
+														value={selectedTags}
+														onValueChange={(newValue) =>
+															field.onChange(newValue.map((t) => t.id))
+														}
+														multiple
+													>
+														<ComboboxChips>
+															<ComboboxValue>
+																{(value: (typeof tags)[number][]) => (
+																	<>
+																		{value?.map((tag) => (
+																			<ComboboxChip
+																				key={tag.id}
+																				aria-label={tag.name}
+																				style={{
+																					backgroundColor: `${tag.color}20`,
+																					color: tag.color,
+																				}}
+																			>
 																				{tag.name}
-																			</div>
-																		</CommandItem>
-																	))}
-																</CommandGroup>
-																<CommandGroup className="border-t">
-																	<CommandItem
-																		onSelect={() => {
-																			setTagPopoverOpen(false);
-																			setTimeout(() => setTagsOpen(true), 100);
-																		}}
-																		className="cursor-pointer"
-																	>
-																		<Plus className="mr-2 h-4 w-4" />
-																		Create new tag
-																	</CommandItem>
-																</CommandGroup>
-															</CommandList>
-														</Command>
-													</PopoverContent>
-												</Popover>
-												<div className="mt-2 flex flex-wrap gap-1">
-													{field.value?.map((tagId) => {
-														const tag = tags?.find((t) => t.id === tagId);
-														if (!tag) return null;
-														return (
-															<Badge
-																key={tag.id}
-																variant="secondary"
-																className="gap-1 px-1 py-0"
-																style={{
-																	backgroundColor: `${tag.color}20`,
-																	color: tag.color,
-																}}
-															>
-																{tag.name}
-																<X
-																	className="h-3 w-3 cursor-pointer"
-																	onClick={() => {
-																		const current = field.value?.filter(
-																			(id) => id !== tag.id,
-																		);
-																		field.onChange(current);
-																	}}
-																/>
-															</Badge>
-														);
-													})}
-												</div>
-												<FormMessage />
-											</FormItem>
-										)}
+																			</ComboboxChip>
+																		))}
+																		<ComboboxChipsInput
+																			aria-label="Select tags"
+																			placeholder={
+																				value.length > 0
+																					? undefined
+																					: "Select tags"
+																			}
+																		/>
+																	</>
+																)}
+															</ComboboxValue>
+														</ComboboxChips>
+														<ComboboxPopup>
+															<ComboboxEmpty>No tags found.</ComboboxEmpty>
+															<ComboboxList>
+																{(tag) => (
+																	<ComboboxItem key={tag.id} value={tag}>
+																		<div className="flex items-center gap-2">
+																			<div
+																				className="h-2 w-2 rounded-full"
+																				style={{ backgroundColor: tag.color }}
+																			/>
+																			{tag.name}
+																		</div>
+																	</ComboboxItem>
+																)}
+															</ComboboxList>
+														</ComboboxPopup>
+													</Combobox>
+													<FormMessage />
+												</FormItem>
+											);
+										}}
 									/>
 								</div>
 
@@ -1179,21 +1038,22 @@ export function CreateMonitorForm({
 						className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3"
 					>
 						<div className="col-span-1">
-							<CollapsibleTrigger render={
-								<Button
-									variant="ghost"
-									className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
-								>
-									<ChevronRight
-										className={cn(
-											"h-4 w-4 transition-transform",
-											isAdvancedOpen && "rotate-90",
-										)}
-									/>
-									Advanced settings
-								</Button>
-							}>
-							</CollapsibleTrigger>
+							<CollapsibleTrigger
+								render={
+									<Button
+										variant="ghost"
+										className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
+									>
+										<ChevronRight
+											className={cn(
+												"h-4 w-4 transition-transform",
+												isAdvancedOpen && "rotate-90",
+											)}
+										/>
+										Advanced settings
+									</Button>
+								}
+							/>
 							{isAdvancedOpen && (
 								<p className="mt-1 text-muted-foreground text-sm">
 									Detailed configurations for requests, timeouts, and headers.
@@ -1305,13 +1165,13 @@ export function CreateMonitorForm({
 					<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
 						<Button
 							type="button"
-							variant="ghost"
-							onClick={() => router.back()}
+							variant="outline"
+							onClick={handleDiscard}
 							disabled={isPending}
 						>
-							Cancel
+							Discard
 						</Button>
-						<Button type="submit" disabled={isPending}>
+						<Button type="button" onClick={handleSave} disabled={isPending}>
 							{isPending
 								? monitorId
 									? "Updating..."

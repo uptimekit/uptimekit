@@ -1,11 +1,19 @@
-import { MonitorListItem } from "./monitor-list-item";
 import type { GroupedMonitors } from "../../types";
+import { MonitorListItem } from "./monitor-list-item";
 
 interface MonitorGroupsProps {
 	monitorGroups: GroupedMonitors[];
+	layout?: "vertical" | "horizontal";
+	barStyle?: "normal" | "length";
 }
 
-export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
+export function MonitorGroups({
+	monitorGroups,
+	layout = "vertical",
+	barStyle = "normal",
+}: MonitorGroupsProps) {
+	const isGrid = layout === "horizontal";
+
 	return (
 		<section className="mb-16 space-y-8">
 			{monitorGroups.map((group) => (
@@ -18,7 +26,13 @@ export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 							{group.group.name}
 						</h3>
 					)}
-					<div className="divide-y divide-border">
+					<div
+						className={
+							isGrid
+								? "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+								: "divide-y divide-border"
+						}
+					>
 						{group.monitors.map((monitor) => (
 							<MonitorListItem
 								key={monitor.id}
@@ -28,6 +42,8 @@ export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 								history={monitor.history}
 								displayStyle={monitor.displayStyle}
 								description={monitor.description}
+								barStyle={barStyle}
+								className={isGrid ? "rounded-lg border p-4" : undefined}
 							/>
 						))}
 					</div>

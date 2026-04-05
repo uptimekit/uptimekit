@@ -14,6 +14,7 @@ import {
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -553,7 +554,7 @@ function TwoFactorSettings({ session }: { session: any }) {
 										</DialogDescription>
 									</DialogHeader>
 
-									<div className="py-4">
+									<DialogPanel>
 										{step === "password" && (
 											<div className="space-y-2">
 												<Label>Password</Label>
@@ -628,7 +629,7 @@ function TwoFactorSettings({ session }: { session: any }) {
 												</Button>
 											</div>
 										)}
-									</div>
+									</DialogPanel>
 
 									<DialogFooter>
 										{step === "password" && (
@@ -662,16 +663,18 @@ function TwoFactorSettings({ session }: { session: any }) {
 											Enter your password to disable two-factor authentication.
 										</DialogDescription>
 									</DialogHeader>
-									<div className="space-y-4 py-4">
-										<div className="space-y-2">
-											<Label>Password</Label>
-											<Input
-												type="password"
-												value={password}
-												onChange={(e) => setPassword(e.target.value)}
-											/>
+									<DialogPanel>
+										<div className="space-y-4">
+											<div className="space-y-2">
+												<Label>Password</Label>
+												<Input
+													type="password"
+													value={password}
+													onChange={(e) => setPassword(e.target.value)}
+												/>
+											</div>
 										</div>
-									</div>
+									</DialogPanel>
 									<DialogFooter>
 										<Button variant="outline" onClick={() => setIsOpen(false)}>
 											Cancel

@@ -38,6 +38,7 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
+	DialogPanel,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -160,12 +161,12 @@ export default function MaintenanceDetailsPage() {
 										{maintenance.updates &&
 											index === maintenance.updates.length - 1 && (
 												<div
-													className="-left-[27px] absolute top-3.5 h-full w-2 bg-background"
+													className="absolute top-3.5 -left-[27px] h-full w-2 bg-background"
 													aria-hidden="true"
 												/>
 											)}
 										<div
-											className={`-left-[31px] absolute top-1.5 h-3 w-3 rounded-full ring-4 ${getTimelineStatusColor(update.status)}`}
+											className={`absolute top-1.5 -left-[31px] h-3 w-3 rounded-full ring-4 ${getTimelineStatusColor(update.status)}`}
 										/>
 										<div className="mb-2 flex flex-col gap-1">
 											<div className="flex items-center justify-between gap-2">
@@ -388,77 +389,84 @@ function EditUpdateDialog({
 							Update the message for this status update.
 						</DialogDescription>
 					</DialogHeader>
-					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-							<FormField
-								control={form.control}
-								name="message"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Message</FormLabel>
-										<FormControl>
-											<Textarea
-												{...field}
-												rows={5}
-												placeholder="Message..."
-												className="resize-none"
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="status"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Status</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+					<DialogPanel>
+						<Form {...form}>
+							<form
+								onSubmit={form.handleSubmit(onSubmit)}
+								className="space-y-4"
+							>
+								<FormField
+									control={form.control}
+									name="message"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Message</FormLabel>
 											<FormControl>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Status" />
-												</SelectTrigger>
+												<Textarea
+													{...field}
+													rows={5}
+													placeholder="Message..."
+													className="resize-none"
+												/>
 											</FormControl>
-											<SelectContent>
-												<SelectItem value="scheduled">Scheduled</SelectItem>
-												<SelectItem value="in_progress">In Progress</SelectItem>
-												<SelectItem value="completed">Completed</SelectItem>
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="status"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Status</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
+												<FormControl>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Status" />
+													</SelectTrigger>
+												</FormControl>
+												<SelectContent>
+													<SelectItem value="scheduled">Scheduled</SelectItem>
+													<SelectItem value="in_progress">
+														In Progress
+													</SelectItem>
+													<SelectItem value="completed">Completed</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
-							<div className="flex justify-between gap-2 pt-2">
-								<Button
-									type="button"
-									variant="destructive"
-									onClick={() => setShowDeleteDialog(true)}
-									disabled={isPending || isDeleting}
-								>
-									Delete
-								</Button>
-								<div className="flex gap-2">
+								<div className="flex justify-between gap-2 pt-2">
 									<Button
 										type="button"
-										variant="ghost"
-										onClick={() => onOpenChange(false)}
+										variant="destructive"
+										onClick={() => setShowDeleteDialog(true)}
 										disabled={isPending || isDeleting}
 									>
-										Cancel
+										Delete
 									</Button>
-									<Button type="submit" disabled={isPending || isDeleting}>
-										{isPending ? "Saving..." : "Save changes"}
-									</Button>
+									<div className="flex gap-2">
+										<Button
+											type="button"
+											variant="ghost"
+											onClick={() => onOpenChange(false)}
+											disabled={isPending || isDeleting}
+										>
+											Cancel
+										</Button>
+										<Button type="submit" disabled={isPending || isDeleting}>
+											{isPending ? "Saving..." : "Save changes"}
+										</Button>
+									</div>
 								</div>
-							</div>
-						</form>
-					</Form>
+							</form>
+						</Form>
+					</DialogPanel>
 				</DialogContent>
 			</Dialog>
 
@@ -543,54 +551,56 @@ function EditWindowDialog({
 						Update the start and end time for this maintenance.
 					</DialogDescription>
 				</DialogHeader>
-				<Form {...form}>
-					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-						<FormField
-							control={form.control}
-							name="startAt"
-							render={({ field }) => (
-								<FormItem className="flex flex-col">
-									<FormLabel>Start time</FormLabel>
-									<FormControl>
-										<DateTimePicker
-											date={field.value}
-											setDate={field.onChange}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<FormField
-							control={form.control}
-							name="endAt"
-							render={({ field }) => (
-								<FormItem className="flex flex-col">
-									<FormLabel>End time</FormLabel>
-									<FormControl>
-										<DateTimePicker
-											date={field.value}
-											setDate={field.onChange}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-						<div className="flex justify-end gap-2 pt-2">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={isPending}>
-								{isPending ? "Saving..." : "Save changes"}
-							</Button>
-						</div>
-					</form>
-				</Form>
+				<DialogPanel>
+					<Form {...form}>
+						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+							<FormField
+								control={form.control}
+								name="startAt"
+								render={({ field }) => (
+									<FormItem className="flex flex-col">
+										<FormLabel>Start time</FormLabel>
+										<FormControl>
+											<DateTimePicker
+												date={field.value}
+												setDate={field.onChange}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="endAt"
+								render={({ field }) => (
+									<FormItem className="flex flex-col">
+										<FormLabel>End time</FormLabel>
+										<FormControl>
+											<DateTimePicker
+												date={field.value}
+												setDate={field.onChange}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<div className="flex justify-end gap-2 pt-2">
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => onOpenChange(false)}
+								>
+									Cancel
+								</Button>
+								<Button type="submit" disabled={isPending}>
+									{isPending ? "Saving..." : "Save changes"}
+								</Button>
+							</div>
+						</form>
+					</Form>
+				</DialogPanel>
 			</DialogContent>
 		</Dialog>
 	);

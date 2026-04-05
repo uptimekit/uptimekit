@@ -14,7 +14,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -67,6 +66,7 @@ const settingsSchema = z.object({
 	themeId: z.string().optional(),
 	theme: z.enum(["light", "dark"]),
 	headerLayout: z.enum(["vertical", "horizontal"]),
+	barStyle: z.enum(["normal", "length"]),
 	customDomain: z.string().optional().or(z.literal("")),
 	isPrivate: z.boolean(),
 	password: z
@@ -82,7 +82,6 @@ interface SettingsFormProps {
 	statusPageId: string;
 }
 
-// Settings form for status page configuration
 export function SettingsForm({ statusPageId }: SettingsFormProps) {
 	const queryClient = useQueryClient();
 	const { data: statusPage, isLoading } = useQuery(
@@ -119,6 +118,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			themeId: "default",
 			theme: "light",
 			headerLayout: "vertical",
+			barStyle: "normal",
 			customDomain: "",
 			isPrivate: false,
 			password: "",
@@ -127,31 +127,35 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 	const [faviconOpen, setFaviconOpen] = useState(false);
 
+	const getFormValuesFromStatusPage = (): SettingsFormValues => {
+		const design = (statusPage?.design as any) || {};
+
+		return {
+			name: statusPage?.name || "",
+			slug: statusPage?.slug || "",
+			logoUrl: design.logoUrl || "",
+			faviconUrl: design.faviconUrl || "",
+			websiteUrl: design.websiteUrl || "",
+			contactUrl: design.contactUrl || "",
+			themeId: design.themeId || "default",
+			theme: design.theme || "light",
+			headerLayout: design.headerLayout || "vertical",
+			barStyle: design.barStyle || "normal",
+			customDomain: statusPage?.domain || "",
+			isPrivate: statusPage ? !statusPage.public : false,
+			password: "",
+		};
+	};
+
 	useEffect(() => {
 		if (statusPage) {
-			const design = (statusPage.design as any) || {};
-			form.reset(
-				{
-					name: statusPage.name,
-					slug: statusPage.slug,
-					logoUrl: design.logoUrl || "",
-					faviconUrl: design.faviconUrl || "",
-					websiteUrl: design.websiteUrl || "",
-					contactUrl: design.contactUrl || "",
-					themeId: design.themeId || "default",
-					theme: design.theme || "light",
-					headerLayout: design.headerLayout || "vertical",
-					customDomain: statusPage.domain || "",
-					isPrivate: !statusPage.public,
-					password: "",
-				},
-				{ keepDefaultValues: false },
-			);
+			form.reset(getFormValuesFromStatusPage(), {
+				keepDefaultValues: false,
+			});
 		}
-	}, [statusPage]);
+	}, [statusPage, form, getFormValuesFromStatusPage]);
 
-	function onSubmit(data: SettingsFormValues) {
-		// Require password when setting to private without an existing password
+	const submitSettings = async (data: SettingsFormValues) => {
 		if (data.isPrivate && !statusPage?.hasPassword && !data.password) {
 			form.setError("password", {
 				type: "manual",
@@ -160,7 +164,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			return;
 		}
 
-		updateStatusPage.mutate({
+		await updateStatusPage.mutateAsync({
 			id: statusPageId,
 			name: data.name,
 			slug: data.slug,
@@ -175,9 +179,18 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				contactUrl: data.contactUrl,
 				theme: data.theme,
 				headerLayout: data.headerLayout,
+				barStyle: data.barStyle,
 			},
 		});
-	}
+	};
+
+	const handleDiscard = () => {
+		form.reset(getFormValuesFromStatusPage());
+	};
+
+	const handleSaveChanges = () => {
+		void form.handleSubmit(submitSettings)();
+	};
 
 	if (isLoading) {
 		return (
@@ -189,8 +202,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 	return (
 		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10 pb-20">
-				{/* Basic Information */}
+			<form
+				onSubmit={form.handleSubmit(submitSettings)}
+				className="mb-10 space-y-10"
+			>
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
 						<div className="flex items-center gap-2">
@@ -256,7 +271,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 				<Separator />
 
-				{/* Links & URLs */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
 						<h2 className="font-semibold text-lg leading-none tracking-tight">
@@ -320,7 +334,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 				<Separator />
 
-				{/* Personalization */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
 						<h2 className="font-semibold text-lg leading-none tracking-tight">
@@ -360,9 +373,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													<SelectItem value="flat">
 														Flat - Simple and modern design
 													</SelectItem>
-													{/* <SelectItem value="example">
-														Example Theme
-													</SelectItem> */}
 												</SelectContent>
 											</Select>
 											<FormDescription className="pt-2">
@@ -470,7 +480,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 										<FormControl>
 											<RadioGroup
 												onValueChange={field.onChange}
-												defaultValue={field.value}
 												value={field.value}
 												className="grid grid-cols-1 gap-4 md:grid-cols-2"
 											>
@@ -496,7 +505,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 																	</div>
 																</div>
 																<div
-																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${field.value === "vertical" ? "bg-primary" : "opacity-0"}`}
+																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+																		field.value === "vertical"
+																			? "bg-primary"
+																			: "opacity-0"
+																	}`}
 																/>
 															</div>
 														</div>
@@ -508,18 +521,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 															<RadioGroupItem
 																value="horizontal"
 																className="sr-only"
-																disabled
 															/>
 														</FormControl>
-														<div className="relative cursor-not-allowed rounded-lg border-2 border-muted bg-popover p-4 opacity-50">
-															<div className="absolute top-2 right-2 origin-top-right scale-75">
-																<Badge
-																	variant="secondary"
-																	className="pointer-events-none text-[10px]"
-																>
-																	Soon
-																</Badge>
-															</div>
+														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
 																	<LayoutGrid className="h-5 w-5 text-muted-foreground/50" />
@@ -533,7 +537,98 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 																	</div>
 																</div>
 																<div
-																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${field.value === "horizontal" ? "bg-primary" : "opacity-0"}`}
+																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+																		field.value === "horizontal"
+																			? "bg-primary"
+																			: "opacity-0"
+																	}`}
+																/>
+															</div>
+														</div>
+													</FormLabel>
+												</FormItem>
+											</RadioGroup>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="barStyle"
+								render={({ field }) => (
+									<FormItem className="space-y-3">
+										<FormLabel>Uptime bar style</FormLabel>
+										<FormControl>
+											<RadioGroup
+												onValueChange={field.onChange}
+												value={field.value}
+												className="grid grid-cols-1 gap-4 md:grid-cols-2"
+											>
+												<FormItem>
+													<FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
+														<FormControl>
+															<RadioGroupItem
+																value="normal"
+																className="sr-only"
+															/>
+														</FormControl>
+														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
+															<div className="flex items-center gap-4">
+																<div className="flex h-10 w-16 flex-col justify-center gap-0.5 rounded bg-muted/20 px-2">
+																	<div className="h-1.5 w-full rounded-sm bg-green-500/70" />
+																	<div className="h-1.5 w-full rounded-sm bg-green-500/70" />
+																	<div className="h-1.5 w-full rounded-sm bg-green-500/70" />
+																</div>
+																<div className="space-y-1">
+																	<div className="font-medium leading-none">
+																		Normal
+																	</div>
+																	<div className="text-muted-foreground text-xs">
+																		Single color per day
+																	</div>
+																</div>
+																<div
+																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+																		field.value === "normal"
+																			? "bg-primary"
+																			: "opacity-0"
+																	}`}
+																/>
+															</div>
+														</div>
+													</FormLabel>
+												</FormItem>
+												<FormItem>
+													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
+														<FormControl>
+															<RadioGroupItem
+																value="length"
+																className="sr-only"
+															/>
+														</FormControl>
+														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
+															<div className="flex items-center gap-4">
+																<div className="flex h-10 w-16 flex-col justify-center rounded bg-muted/20 px-2">
+																	<div className="h-2 w-full rounded-t-sm bg-green-500/70" />
+																	<div className="h-1 w-full bg-yellow-500/70" />
+																	<div className="h-1 w-full rounded-b-sm bg-red-500/70" />
+																</div>
+																<div className="space-y-1">
+																	<div className="font-medium leading-none">
+																		Length
+																	</div>
+																	<div className="text-muted-foreground text-xs">
+																		Shows downtime breakdown
+																	</div>
+																</div>
+																<div
+																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+																		field.value === "length"
+																			? "bg-primary"
+																			: "opacity-0"
+																	}`}
 																/>
 															</div>
 														</div>
@@ -555,7 +650,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 										<div className="flex items-center gap-4 rounded-lg border bg-card p-4">
 											{field.value ? (
 												<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
-													{/* eslint-disable-next-line @next/next/no-img-element */}
 													<img
 														src={field.value}
 														alt="Logo preview"
@@ -579,26 +673,26 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 								)}
 							/>
 
-							{/* Favicon (Optional) */}
 							<Collapsible open={faviconOpen} onOpenChange={setFaviconOpen}>
-								<CollapsibleTrigger render={
-									<Button
-										variant="ghost"
-										className="flex w-full items-center justify-between p-0 hover:bg-transparent"
-										type="button"
-									>
-										<span className="text-muted-foreground text-sm">
-											Custom Favicon (Optional)
-										</span>
-										<ChevronDown
-											className={cn(
-												"h-4 w-4 text-muted-foreground transition-transform duration-200",
-												faviconOpen && "rotate-180",
-											)}
-										/>
-									</Button>
-								}>
-								</CollapsibleTrigger>
+								<CollapsibleTrigger
+									render={
+										<Button
+											variant="ghost"
+											className="flex w-full items-center justify-between p-0 hover:bg-transparent"
+											type="button"
+										>
+											<span className="text-muted-foreground text-sm">
+												Custom Favicon (Optional)
+											</span>
+											<ChevronDown
+												className={cn(
+													"h-4 w-4 text-muted-foreground transition-transform duration-200",
+													faviconOpen && "rotate-180",
+												)}
+											/>
+										</Button>
+									}
+								/>
 								<CollapsibleContent className="mt-4">
 									<FormField
 										control={form.control}
@@ -609,7 +703,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												<div className="flex items-center gap-4 rounded-lg border bg-card p-4">
 													{field.value ? (
 														<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
-															{/* eslint-disable-next-line @next/next/no-img-element */}
 															<img
 																src={field.value}
 																alt="Favicon preview"
@@ -640,7 +733,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 				<Separator />
 
-				{/* Custom Domain */}
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
 						<h2 className="font-semibold text-lg leading-none tracking-tight">
@@ -650,9 +742,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 							Deploy your status page to a custom subdomain for a branded
 							experience.
 						</p>
-						{/* <Button variant="link" className="px-0 text-primary h-auto">
-							Need help with the setup? Let us know
-						</Button> */}
 					</div>
 					<Card className="md:col-span-2">
 						<CardContent className="grid gap-6 p-6">
@@ -666,65 +755,41 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<FormControl>
 												<Input placeholder="status.example.com" {...field} />
 											</FormControl>
-											{/* {field.value && (
-												<div className="flex items-center gap-1.5 text-sm text-green-500 font-medium px-2 shrink-0">
-													<Check className="h-4 w-4" />
-													The CNAME is configured correctly
-												</div>
-											)} */}
 										</div>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
-
-							{/* <div className="rounded-lg border bg-muted/50 p-4 space-y-4">
-								<h4 className="font-semibold text-sm">DNS Configuration</h4>
-								<p className="text-sm text-muted-foreground">
-									Please point{" "}
-									<span className="font-bold text-foreground">
-										{form.watch("customDomain") || "your domain"}
-									</span>{" "}
-									to UptimeKit by configuring the following CNAME record.
-								</p>
-
-								<div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-									<div>Record Type</div>
-									<div>Host</div>
-									<div>Target</div>
-								</div>
-								<div className="grid grid-cols-3 gap-2 text-sm bg-background p-3 rounded border items-center">
-									<div className="font-mono">CNAME</div>
-									<div
-										className="font-mono truncate"
-										title={form.watch("customDomain") || "status.domain.com"}
-									>
-										{form.watch("customDomain") || "status.domain.com"}
-									</div>
-									<div className="font-mono flex items-center justify-between gap-2">
-										statuspage.uptimekit.com
-										<Button variant="ghost" size="icon" className="h-6 w-6">
-											<Copy className="h-3 w-3" />
-										</Button>
-									</div>
-								</div>
-							</div> */}
 						</CardContent>
 					</Card>
 				</div>
+			</form>
 
-				<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
-					<Button type="button" variant="outline" onClick={() => form.reset()}>
+			<div
+				id="statuspage-settings-footer"
+				className="fixed right-2 bottom-0 left-64 z-50 overflow-hidden rounded-b-lg border bg-popover"
+			>
+				<div className="flex justify-end gap-4 px-6 py-4">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleDiscard}
+						disabled={updateStatusPage.isPending}
+					>
 						Discard
 					</Button>
-					<Button type="submit" disabled={updateStatusPage.isPending}>
+					<Button
+						type="button"
+						onClick={handleSaveChanges}
+						disabled={updateStatusPage.isPending}
+					>
 						{updateStatusPage.isPending && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}
 						Save changes
 					</Button>
 				</div>
-			</form>
+			</div>
 		</Form>
 	);
 }

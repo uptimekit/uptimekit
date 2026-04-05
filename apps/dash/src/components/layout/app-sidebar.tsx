@@ -107,12 +107,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								}
 							>
 								<div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
-									<img
+									<Image
 										src={
 											activeOrg?.logo ||
 											"https://r2.uptimekit.dev/logos/uptimekit.svg"
 										}
 										alt={currentOrgName}
+										width={50}
+										height={50}
 										className="size-full object-cover"
 									/>
 								</div>
@@ -282,6 +284,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 // Let's create a wrapper or modify UserMenu. For now, I'll create a local wrapper that uses the same logic.
 
 import { ChevronsUpDown, LogOut, User } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";

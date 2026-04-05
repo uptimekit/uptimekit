@@ -37,7 +37,7 @@
 	--popover-foreground: var(--color-neutral-100);
 
 	--border: var(--color-neutral-700);
-	
+
 	--foreground: var(--white);
 	--muted-foreground: var(--color-neutral-200);
 	--card-foreground: var(--color-neutral-100);
@@ -58,22 +58,46 @@
 }
 
 /* Explicitly define status utilities to overwrite Tailwind generated utilities */
-[data-theme="flat"] .bg-status-operational { background-color: var(--color-status-operational); }
-[data-theme="flat"] .bg-status-degraded { background-color: var(--color-status-degraded); }
-[data-theme="flat"] .bg-status-partial-outage { background-color: var(--color-status-partial-outage); }
-[data-theme="flat"] .bg-status-major-outage { background-color: var(--color-status-major-outage); }
-[data-theme="flat"] .bg-status-maintenance { background-color: var(--color-status-maintenance); }
-[data-theme="flat"] .bg-status-unknown { background-color: var(--color-status-unknown); }
+[data-theme="flat"] .bg-status-operational {
+	background-color: var(--color-status-operational);
+}
+[data-theme="flat"] .bg-status-degraded {
+	background-color: var(--color-status-degraded);
+}
+[data-theme="flat"] .bg-status-partial-outage {
+	background-color: var(--color-status-partial-outage);
+}
+[data-theme="flat"] .bg-status-major-outage {
+	background-color: var(--color-status-major-outage);
+}
+[data-theme="flat"] .bg-status-maintenance {
+	background-color: var(--color-status-maintenance);
+}
+[data-theme="flat"] .bg-status-unknown {
+	background-color: var(--color-status-unknown);
+}
 
-[data-theme="flat"] .text-status-operational { color: var(--color-status-operational); }
-[data-theme="flat"] .text-status-degraded { color: var(--color-status-degraded); }
-[data-theme="flat"] .text-status-partial-outage { color: var(--color-status-partial-outage); }
-[data-theme="flat"] .text-status-major-outage { color: var(--color-status-major-outage); }
-[data-theme="flat"] .text-status-maintenance { color: var(--color-status-maintenance); }
-[data-theme="flat"] .text-status-unknown { color: var(--color-status-unknown); }
+[data-theme="flat"] .text-status-operational {
+	color: var(--color-status-operational);
+}
+[data-theme="flat"] .text-status-degraded {
+	color: var(--color-status-degraded);
+}
+[data-theme="flat"] .text-status-partial-outage {
+	color: var(--color-status-partial-outage);
+}
+[data-theme="flat"] .text-status-major-outage {
+	color: var(--color-status-major-outage);
+}
+[data-theme="flat"] .text-status-maintenance {
+	color: var(--color-status-maintenance);
+}
+[data-theme="flat"] .text-status-unknown {
+	color: var(--color-status-unknown);
+}
 
 [data-theme="flat"].dark .bg-white {
-	background-color: var(--color-neutral-800) !important;
+	background-color: var(--color-neutral-800);
 }
 
 [data-theme="flat"].dark h1,
@@ -85,7 +109,7 @@
 }
 
 [data-theme="flat"] [class*="shadow"] {
-	box-shadow: none !important;
+	box-shadow: none;
 }
 
 [data-theme="flat"] .border {

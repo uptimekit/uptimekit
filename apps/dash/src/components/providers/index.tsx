@@ -1,11 +1,10 @@
 "use client";
 
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { NuqsAdapter } from "nuqs/adapters/next/pages";
 import { queryClient } from "@/utils/orpc";
 import { Toaster } from "../ui/sonner";
 import { ThemeProvider } from "./theme-provider";
-import { NuqsAdapter } from 'nuqs/adapters/next/pages'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
@@ -18,7 +17,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 			<NuqsAdapter>
 				<QueryClientProvider client={queryClient}>
 					{children}
-					<ReactQueryDevtools />
 				</QueryClientProvider>
 				<Toaster richColors />
 			</NuqsAdapter>

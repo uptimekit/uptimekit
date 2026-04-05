@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { processAlertManagerWebhook } from "@uptimekit/api/pkg/integrations/definitions/alertmanager";
 import {
 	type AlertManagerConfig,
@@ -5,7 +6,6 @@ import {
 } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { db } from "@uptimekit/db";
 import { integrationConfig } from "@uptimekit/db/schema/integrations";
-import { timingSafeEqual } from "crypto";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 

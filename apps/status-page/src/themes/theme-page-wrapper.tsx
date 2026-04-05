@@ -26,6 +26,7 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 	return (
 		<>
 			<script
+				// biome-ignore lint/security/noDangerouslySetInnerHtml: its okay
 				dangerouslySetInnerHTML={{ __html: themeScript }}
 				suppressHydrationWarning
 			/>

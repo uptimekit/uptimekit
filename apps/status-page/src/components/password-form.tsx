@@ -70,7 +70,6 @@ export function PasswordForm({ statusPageId, redirectUrl }: PasswordFormProps) {
 							onChange={(e) => setPassword(e.target.value)}
 							placeholder="Enter password"
 							required
-							autoFocus
 							disabled={isLoading}
 							className="block w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
 						/>

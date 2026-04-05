@@ -43,8 +43,7 @@ export function getIncidentHistoryLabel(period: IncidentHistoryPeriod): string {
 			return "90 days";
 		case "365d":
 			return "365 days";
-	case "all":
-	default:
+		default:
 			return "All time";
 	}
 }

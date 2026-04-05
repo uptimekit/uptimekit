@@ -113,7 +113,7 @@ export async function authenticateWorker(
 		},
 	});
 
-	if (!keyRecord || !keyRecord.worker) {
+	if (!keyRecord?.worker) {
 		// Cache invalid key
 		invalidKeyCache.set(keyHash, now + INVALID_CACHE_TTL_MS);
 		return { error: "Invalid API Key", status: 401 };

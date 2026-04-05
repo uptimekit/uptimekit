@@ -1,8 +1,8 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { StatusDot } from "./status-indicator";
 import type { Incident, StatusType } from "../../types";
+import { StatusDot } from "./status-indicator";
 
 interface IncidentCardProps {
 	incident: Incident;
@@ -60,7 +60,8 @@ export function IncidentCard({
 								year: "numeric",
 								timeZone: "UTC",
 								hour12: false,
-							})} UTC
+							})}{" "}
+							UTC
 							{incident.endedAt && " — Resolved"}
 						</p>
 					</div>
@@ -71,7 +72,7 @@ export function IncidentCard({
 						href={detailsLink as any}
 						className="rounded-full p-2 transition-colors hover:bg-muted"
 					>
-						<ChevronDown className="-rotate-90 h-5 w-5 text-muted-foreground" />
+						<ChevronDown className="h-5 w-5 -rotate-90 text-muted-foreground" />
 					</Link>
 				) : (
 					<button
@@ -156,7 +157,8 @@ export function IncidentCard({
 															timeZone: "UTC",
 															hour12: false,
 														},
-													)} UTC
+													)}{" "}
+													UTC
 												</span>
 											</div>
 											<p className="text-card-foreground text-sm">

@@ -98,4 +98,4 @@ const PageNav = Object.assign(PageNavRoot, {
 	Content: PageNavContent,
 });
 
-export { PageNav, PageNavRoot, PageNavList, PageNavTrigger, PageNavContent };
+export { PageNav, PageNavContent, PageNavList, PageNavRoot, PageNavTrigger };
