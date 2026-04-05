@@ -768,13 +768,14 @@ export const REGION_MAPPING: Record<string, RegionInfo> = {
 };
 
 // List of all regions for worker creation (legacy - kept for backwards compatibility)
-export const WORKER_REGIONS: RegionInfo[] = [
+/* export const WORKER_REGIONS: RegionInfo[] = [
 	{ value: "na-canada", label: "North America", Flag: CA },
 	{ value: "sa-brazil", label: "South America", Flag: BR },
 	{ value: "eu-general", label: "Europe", Flag: EU },
 	{ value: "ap-hongkong", label: "Asia/Pacific", Flag: HK },
 	{ value: "global", label: "Global", Flag: AQ },
 ];
+*/
 
 /**
  * Retrieve RegionInfo for a given region code, returning a fallback entry with the Globe flag when the code is unknown.

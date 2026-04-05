@@ -16,9 +16,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Command,
-	CommandEmpty,
 	CommandGroup,
-	CommandInput,
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
@@ -34,7 +32,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
 	Popover,
@@ -52,6 +49,7 @@ export function CreateWorkerDialog() {
 	const [isCopied, setIsCopied] = useState(false);
 	const [locationPopoverOpen, setLocationPopoverOpen] = useState(false);
 	const [selectedLocation, setSelectedLocation] = useState("");
+	const [newWorkerName, setNewWorkerName] = useState("");
 
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -78,14 +76,24 @@ export function CreateWorkerDialog() {
 		setIsCopied(false);
 		setLocationPopoverOpen(false);
 		setSelectedLocation("");
+		setNewWorkerName("");
 	};
 
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		const formData = new FormData(e.currentTarget);
-		const name = formData.get("name") as string;
-		const location = formData.get("location") as string;
+		const name = newWorkerName.trim();
+		const location = selectedLocation;
+
+		if (!name) {
+			toast.error("Name is required");
+			return;
+		}
+
+		if (!location) {
+			toast.error("Location is required");
+			return;
+		}
 
 		mutate({ name, location });
 	};
@@ -110,7 +118,6 @@ export function CreateWorkerDialog() {
 			if (newWorkerKey) {
 				router.refresh();
 			}
-
 			setTimeout(resetState, 300);
 		}
 	};
@@ -192,7 +199,7 @@ export function CreateWorkerDialog() {
 						</DialogFooter>
 					</>
 				) : (
-					<Form className="contents" onSubmit={handleSubmit}>
+					<form onSubmit={handleSubmit}>
 						<DialogHeader>
 							<DialogTitle>Create Worker</DialogTitle>
 							<DialogDescription>
@@ -206,6 +213,8 @@ export function CreateWorkerDialog() {
 								<Input
 									id="name"
 									name="name"
+									value={newWorkerName}
+									onChange={(e) => setNewWorkerName(e.target.value)}
 									placeholder="My Worker"
 									required
 									type="text"
@@ -219,7 +228,6 @@ export function CreateWorkerDialog() {
 									id="location"
 									name="location"
 									value={selectedLocation}
-									required
 									readOnly
 									tabIndex={-1}
 									className="sr-only"
@@ -261,13 +269,12 @@ export function CreateWorkerDialog() {
 													<CommandGroup
 														key={group.continent}
 														heading={group.continent}
-														defaultCollapsed={true}
 													>
 														{group.regions.map((region) => (
 															<CommandItem
 																key={region.value}
 																value={`${region.label} ${group.continent}`}
-																onSelect={() => {
+																onClick={() => {
 																	setSelectedLocation(region.value);
 																	setLocationPopoverOpen(false);
 																}}
@@ -304,7 +311,7 @@ export function CreateWorkerDialog() {
 								Create Worker
 							</Button>
 						</DialogFooter>
-					</Form>
+					</form>
 				)}
 			</DialogPopup>
 		</Dialog>

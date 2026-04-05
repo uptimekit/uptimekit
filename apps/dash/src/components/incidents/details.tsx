@@ -45,8 +45,10 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Dialog,
-	DialogContent,
+	DialogFooter,
 	DialogHeader,
+	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -194,10 +196,12 @@ export function IncidentDetails({ id }: { id: string }) {
 									<ShieldAlert className="h-6 w-6" />
 								)}
 							</div>
+
 							<div>
 								<h1 className="font-bold text-2xl tracking-tight">
 									{incident.title}
 								</h1>
+
 								<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
 									<span
 										className={cn(
@@ -215,7 +219,7 @@ export function IncidentDetails({ id }: { id: string }) {
 											"MMM d, yyyy 'at' h:mm a",
 										)}
 									</span>
-									{incident.statusPages.length > 0 && (
+									{(incident.statusPages?.length ?? 0) > 0 && (
 										<>
 											<span>·</span>
 											<Badge variant="secondary">Public</Badge>
@@ -248,12 +252,14 @@ export function IncidentDetails({ id }: { id: string }) {
 								<Pencil className="mr-2 h-4 w-4" />
 								Edit
 							</Button>
+
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									render={<Button variant="ghost" size="icon" />}
 								>
 									<MoreHorizontal className="h-4 w-4" />
 								</DropdownMenuTrigger>
+
 								<DropdownMenuContent align="end">
 									<AlertDialog>
 										<AlertDialogTrigger
@@ -267,6 +273,7 @@ export function IncidentDetails({ id }: { id: string }) {
 											<Trash2 className="mr-2 h-4 w-4" />
 											Delete incident
 										</AlertDialogTrigger>
+
 										<AlertDialogContent>
 											<AlertDialogHeader>
 												<AlertDialogTitle>Delete incident?</AlertDialogTitle>
@@ -276,6 +283,7 @@ export function IncidentDetails({ id }: { id: string }) {
 													activity history.
 												</AlertDialogDescription>
 											</AlertDialogHeader>
+
 											<AlertDialogFooter>
 												<AlertDialogCancel>Cancel</AlertDialogCancel>
 												<AlertDialogAction
@@ -304,13 +312,14 @@ export function IncidentDetails({ id }: { id: string }) {
 								<div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
 									{incident.description || "No description provided."}
 								</div>
-								{incident.monitors.length > 0 && (
+
+								{(incident.monitors?.length ?? 0) > 0 && (
 									<div className="mt-4">
 										<h4 className="mb-2 font-medium text-sm">
 											Affected Monitors
 										</h4>
 										<div className="flex flex-wrap gap-2">
-											{incident.monitors.map((m) => (
+											{incident.monitors.map((m: any) => (
 												<Badge
 													key={m.monitor.id}
 													variant="outline"
@@ -338,9 +347,11 @@ export function IncidentDetails({ id }: { id: string }) {
 										onKeyDown={(e) => {
 											if (e.key === "Enter" && !e.shiftKey) {
 												e.preventDefault();
+												const message = comment.trim();
+												if (!message) return;
 												submitComment.mutate({
 													incidentId: id,
-													message: comment,
+													message,
 												});
 											}
 										}}
@@ -348,18 +359,22 @@ export function IncidentDetails({ id }: { id: string }) {
 									<Button
 										size="icon"
 										variant="outline"
-										onClick={() =>
-											submitComment.mutate({ incidentId: id, message: comment })
-										}
+										onClick={() => {
+											const message = comment.trim();
+											if (!message) return;
+											submitComment.mutate({ incidentId: id, message });
+										}}
 										disabled={!comment.trim() || submitComment.isPending}
 									>
 										<CornerDownRight className="h-4 w-4" />
 									</Button>
 								</div>
+
 								<Separator />
-								{incident.activities.map((activity, i) => (
+
+								{(incident.activities ?? []).map((activity: any, i: number) => (
 									<div key={activity.id} className="relative flex gap-4 pl-2">
-										{i !== incident.activities.length - 1 && (
+										{i !== (incident.activities?.length ?? 0) - 1 && (
 											<div className="absolute top-8 bottom-[-24px] left-[11px] w-px bg-border" />
 										)}
 										<div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
@@ -436,9 +451,7 @@ export function IncidentDetails({ id }: { id: string }) {
 													{incident.acknowledgedAt &&
 														formatDistanceToNow(
 															new Date(incident.acknowledgedAt),
-															{
-																addSuffix: true,
-															},
+															{ addSuffix: true },
 														)}
 												</span>
 											</div>
@@ -475,8 +488,8 @@ export function IncidentDetails({ id }: { id: string }) {
 								<div className="grid gap-1">
 									<span className="font-medium text-sm">Published on</span>
 									<div className="flex flex-wrap gap-2">
-										{incident.statusPages.length > 0 ? (
-											incident.statusPages.map((item) => (
+										{(incident.statusPages?.length ?? 0) > 0 ? (
+											incident.statusPages.map((item: any) => (
 												<Badge key={item.statusPageId} variant="secondary">
 													{item.statusPage.name}
 												</Badge>
@@ -513,7 +526,8 @@ function EditIncidentDialog({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const queryClient = useQueryClient();
-	const form = useForm<EditIncidentValues, any, EditIncidentValues>({
+
+	const form = useForm<EditIncidentValues>({
 		resolver: zodResolver(editIncidentSchema),
 		defaultValues: {
 			title: incident.title,
@@ -521,8 +535,10 @@ function EditIncidentDialog({
 			severity: incident.severity as EditIncidentValues["severity"],
 			startedAt: new Date(incident.startedAt),
 			endedAt: incident.endedAt ? new Date(incident.endedAt) : null,
-			monitorIds: incident.monitors.map((item: any) => item.monitor.id),
-			statusPageIds: incident.statusPages.map((item: any) => item.statusPageId),
+			monitorIds: (incident.monitors ?? []).map((item: any) => item.monitor.id),
+			statusPageIds: (incident.statusPages ?? []).map(
+				(item: any) => item.statusPageId,
+			),
 		},
 	});
 
@@ -533,8 +549,10 @@ function EditIncidentDialog({
 			severity: incident.severity as EditIncidentValues["severity"],
 			startedAt: new Date(incident.startedAt),
 			endedAt: incident.endedAt ? new Date(incident.endedAt) : null,
-			monitorIds: incident.monitors.map((item: any) => item.monitor.id),
-			statusPageIds: incident.statusPages.map((item: any) => item.statusPageId),
+			monitorIds: (incident.monitors ?? []).map((item: any) => item.monitor.id),
+			statusPageIds: (incident.statusPages ?? []).map(
+				(item: any) => item.statusPageId,
+			),
 		});
 	}, [form, incident]);
 
@@ -565,10 +583,11 @@ function EditIncidentDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
+			<DialogPopup className="sm:max-w-[720px]">
 				<DialogHeader>
 					<DialogTitle>Edit incident</DialogTitle>
 				</DialogHeader>
+
 				<Form {...form}>
 					<form
 						onSubmit={form.handleSubmit((values) =>
@@ -583,137 +602,157 @@ function EditIncidentDialog({
 								statusPageIds: values.statusPageIds,
 							}),
 						)}
-						className="space-y-6"
 					>
-						<FormField
-							control={form.control}
-							name="title"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Title</FormLabel>
-									<FormControl>
-										<Input {...field} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="description"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Description</FormLabel>
-									<FormControl>
-										<Textarea {...field} value={field.value ?? ""} />
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<div className="grid gap-4 md:grid-cols-2">
-							<FormField
-								control={form.control}
-								name="startedAt"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Started at</FormLabel>
-										<FormControl>
-											<DateTimePicker
-												date={field.value}
-												setDate={(date) => field.onChange(date ?? new Date())}
-											/>
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={form.control}
-								name="endedAt"
-								render={({ field }) => (
-									<FormItem className="relative top-5">
-										<FormLabel>Ended at</FormLabel>
-										<div className="space-y-2">
+						<DialogPanel>
+							<div className="space-y-4">
+								<FormField
+									control={form.control}
+									name="title"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Title</FormLabel>
 											<FormControl>
-												<DateTimePicker
-													date={field.value ?? undefined}
-													setDate={(date) => field.onChange(date ?? null)}
-												/>
+												<Input {...field} />
 											</FormControl>
-											{field.value && (
-												<Button
-													type="button"
-													variant="ghost"
-													size="sm"
-													className="px-0"
-													onClick={() => field.onChange(null)}
-												>
-													Clear end time
-												</Button>
-											)}
-										</div>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-						</div>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
-						<FormField
-							control={form.control}
-							name="severity"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Severity</FormLabel>
-									<div className="flex gap-2">
-										{["minor", "major", "critical"].map((value) => (
-											<Button
-												key={value}
-												type="button"
-												variant={field.value === value ? "default" : "outline"}
-												onClick={() => field.onChange(value)}
-												className="capitalize"
-											>
-												{value}
-											</Button>
-										))}
-									</div>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+								<FormField
+									control={form.control}
+									name="description"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Description</FormLabel>
+											<FormControl>
+												<Textarea {...field} value={field.value ?? ""} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
-						<MultiSelectField
-							label="Affected monitors"
-							values={form.watch("monitorIds")}
-							options={
-								monitorsData?.items.map((item) => ({
-									id: item.id,
-									label: item.name,
-								})) ?? []
-							}
-							onChange={(values) => form.setValue("monitorIds", values)}
-							emptyLabel="No monitors selected. The incident will be global."
-							searchPlaceholder="Search monitors..."
-						/>
+								<div className="grid gap-4 md:grid-cols-2">
+									<FormField
+										control={form.control}
+										name="startedAt"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Started at</FormLabel>
+												<FormControl>
+													<DateTimePicker
+														date={field.value}
+														setDate={(date) =>
+															field.onChange(date ?? new Date())
+														}
+													/>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
 
-						<MultiSelectField
-							label="Publish to status pages"
-							values={form.watch("statusPageIds")}
-							options={
-								statusPagesData?.items.map((item) => ({
-									id: item.id,
-									label: item.name,
-								})) ?? []
-							}
-							onChange={(values) => form.setValue("statusPageIds", values)}
-							emptyLabel="Internal only"
-							searchPlaceholder="Search status pages..."
-						/>
+									<FormField
+										control={form.control}
+										name="endedAt"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Ended at</FormLabel>
+												<div className="space-y-2">
+													<FormControl>
+														<DateTimePicker
+															date={field.value ?? undefined}
+															setDate={(date) => field.onChange(date ?? null)}
+														/>
+													</FormControl>
+													{field.value && (
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															className="px-0"
+															onClick={() => field.onChange(null)}
+														>
+															Clear end time
+														</Button>
+													)}
+												</div>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</div>
 
-						<div className="flex justify-end gap-2">
+								<FormField
+									control={form.control}
+									name="severity"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Severity</FormLabel>
+											<div className="flex gap-2">
+												{(["minor", "major", "critical"] as const).map(
+													(value) => (
+														<Button
+															key={value}
+															type="button"
+															variant={
+																field.value === value ? "default" : "outline"
+															}
+															onClick={() => field.onChange(value)}
+															className="capitalize"
+														>
+															{value}
+														</Button>
+													),
+												)}
+											</div>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+
+								<MultiSelectField
+									label="Affected monitors"
+									values={form.watch("monitorIds") ?? []}
+									options={
+										monitorsData?.items.map((item: any) => ({
+											id: item.id,
+											label: item.name,
+										})) ?? []
+									}
+									onChange={(values) =>
+										form.setValue("monitorIds", values, {
+											shouldDirty: true,
+											shouldValidate: true,
+										})
+									}
+									emptyLabel="No monitors selected. The incident will be global."
+									searchPlaceholder="Search monitors..."
+								/>
+
+								<MultiSelectField
+									label="Publish to status pages"
+									values={form.watch("statusPageIds") ?? []}
+									options={
+										statusPagesData?.items.map((item: any) => ({
+											id: item.id,
+											label: item.name,
+										})) ?? []
+									}
+									onChange={(values) =>
+										form.setValue("statusPageIds", values, {
+											shouldDirty: true,
+											shouldValidate: true,
+										})
+									}
+									emptyLabel="Internal only"
+									searchPlaceholder="Search status pages..."
+								/>
+							</div>
+						</DialogPanel>
+
+						<DialogFooter>
 							<Button
 								type="button"
 								variant="ghost"
@@ -724,10 +763,10 @@ function EditIncidentDialog({
 							<Button type="submit" disabled={updateIncident.isPending}>
 								Save changes
 							</Button>
-						</div>
+						</DialogFooter>
 					</form>
 				</Form>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }
@@ -750,6 +789,7 @@ function MultiSelectField({
 	return (
 		<div className="space-y-3">
 			<FormLabel>{label}</FormLabel>
+
 			<Popover>
 				<PopoverTrigger
 					render={
@@ -763,6 +803,7 @@ function MultiSelectField({
 					{values.length > 0 ? `${values.length} selected` : emptyLabel}
 					<MoreHorizontal className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 				</PopoverTrigger>
+
 				<PopoverContent className="w-[400px] p-0">
 					<Command>
 						<CommandInput placeholder={searchPlaceholder} />
@@ -797,10 +838,12 @@ function MultiSelectField({
 					</Command>
 				</PopoverContent>
 			</Popover>
+
 			<div className="flex flex-wrap gap-2">
 				{values.map((value) => {
 					const option = options.find((item) => item.id === value);
 					if (!option) return null;
+
 					return (
 						<Badge key={value} variant="secondary" className="gap-1">
 							{option.label}

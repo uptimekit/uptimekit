@@ -1,9 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { usePathname, useRouter } from "next/navigation";
+import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 import { orpc } from "@/utils/orpc";
 
 type NavItem = {
@@ -51,48 +50,30 @@ export function StatusPageNav({
 	...props
 }: StatusPageNavProps) {
 	const pathname = usePathname();
+	const router = useRouter();
 
 	useQuery(orpc.statusPages.get.queryOptions({ input: { id: statusPageId } }));
 
+	const activeTab =
+		items.find((item) => pathname?.endsWith(`/${item.href}`))?.href ??
+		items[0]?.href;
+
 	return (
-		<nav
-			className={cn(
-				"flex flex-wrap items-center gap-6 border-border/40 border-b px-1 pt-2",
-				className,
-			)}
-			{...props}
-		>
-			{items.map((item) => {
-				const href = `/status-pages/${statusPageId}/${item.href}`;
-				const isActive = pathname?.endsWith(`/${item.href}`);
-				const isDisabled = item.disabled;
-
-				if (isDisabled) {
-					return (
-						<span
-							key={item.href}
-							className="relative cursor-not-allowed px-1 pb-3 font-medium text-muted-foreground/50 text-sm"
-						>
-							{item.title}
-						</span>
-					);
-				}
-
-				return (
-					<Link
+		<Tabs value={activeTab} className={className} {...props}>
+			<TabsList variant="underline">
+				{items.map((item) => (
+					<TabsTab
 						key={item.href}
-						href={href as any}
-						className={cn(
-							"relative px-1 pb-3 font-medium text-sm transition-colors hover:text-foreground",
-							isActive
-								? "text-foreground after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-primary"
-								: "text-muted-foreground",
-						)}
+						value={item.href}
+						disabled={item.disabled}
+						onClick={() =>
+							router.push(`/status-pages/${statusPageId}/${item.href}`)
+						}
 					>
 						{item.title}
-					</Link>
-				);
-			})}
-		</nav>
+					</TabsTab>
+				))}
+			</TabsList>
+		</Tabs>
 	);
 }

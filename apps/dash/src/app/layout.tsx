@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
-import { Montserrat, Inter, Geist_Mono } from "next/font/google";
+import { Montserrat, Inter, Geist_Mono, Nunito, Nunito_Sans } from "next/font/google";
 import "../index.css";
 import Providers from "@/components/providers";
 import { cn } from "@/lib/utils";
 
 const geistMono = Geist_Mono({subsets:['latin'],variable:'--font-mono'});
 
-const interHeading = Inter({subsets:['latin'],variable:'--font-heading'});
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const montserrat = Montserrat({
-	variable: "--font-montserrat",
+const nunito = Nunito({
+	variable: "--font-nunito",
 	subsets: ["latin"],
 });
+
+const nunito_sans = Nunito_Sans({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
 	title: {
@@ -66,16 +64,9 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" suppressHydrationWarning className={cn("font-mono", inter.variable, interHeading.variable, geistMono.variable)}>
-			<head>
-				<script
-					async
-					crossOrigin="anonymous"
-					src="https://tweakcn.com/live-preview.min.js"
-				/>
-			</head>
+		<html lang="en" suppressHydrationWarning className={cn("font-mono", nunito_sans.variable, geistMono.variable)}>
 			<body
-				className={`${montserrat.variable} bg-background text-foreground antialiased`}
+				className={`${nunito.variable} bg-background text-foreground antialiased`}
 			>
 				<Providers>{children}</Providers>
 			</body>

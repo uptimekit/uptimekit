@@ -700,7 +700,7 @@ function AddMonitorInput({
 									<CommandItem
 										key={monitor.id}
 										value={monitor.name}
-										onSelect={() => {
+										onClick={() => {
 											onAdd(monitor);
 											setOpen(false);
 										}}
