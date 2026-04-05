@@ -201,7 +201,7 @@ export function ResponseTimeChart({
 							const selectedRegion = getRegionInfo(location);
 							const SelectedFlag = selectedRegion.Flag;
 							return (
-								<Select value={location} onValueChange={setLocation}>
+								<Select value={location} onValueChange={() => setLocation}>
 									<SelectTrigger className="h-8 w-[160px] text-xs">
 										<div className="flex items-center gap-2">
 											<SelectedFlag className="h-3.5 w-5 shrink-0 rounded-sm object-cover" />

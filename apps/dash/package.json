@@ -49,6 +49,7 @@
 		"@uptimekit/api": "workspace:",
 		"@uptimekit/auth": "workspace:",
 		"@uptimekit/db": "workspace:",
+		"@uptimekit/config": "workspace:",
 		"babel-plugin-react-compiler": "^1.0.0",
 		"better-auth": "catalog:",
 		"bun": "^1.3.11",

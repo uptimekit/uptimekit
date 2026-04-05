@@ -276,7 +276,7 @@ export function MembersTable() {
 					<DialogPanel className="space-y-4">
 						<div className="space-y-2">
 							<Label>Role</Label>
-							<Select value={newRole} onValueChange={setNewRole}>
+							<Select value={newRole} onValueChange={() => setNewRole}>
 								<SelectTrigger className="w-full">
 									<SelectValue />
 								</SelectTrigger>

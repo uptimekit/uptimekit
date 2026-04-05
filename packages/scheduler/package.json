@@ -6,7 +6,7 @@
 	"main": "./dist/index.js",
 	"scripts": {
 		"dev": "bun run --watch src/index.ts",
-		"build": "bun build src/index.ts --outdir ./dist",
+		"build": "bun build src/index.ts --outdir ./dist --target bun --production",
 		"start": "bun dist/index.js"
 	},
 	"dependencies": {

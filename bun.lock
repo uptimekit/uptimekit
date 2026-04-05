@@ -5,9 +5,9 @@
     "": {
       "name": "uptimekit",
       "dependencies": {
-        "dotenv": "^17.4.0",
-        "drizzle-orm": "catalog:",
-        "postgres": "catalog:",
+        "dotenv": "^17.4.1",
+        "drizzle-orm": "^0.45.2",
+        "postgres": "^3.4.9",
         "zod": "^4.3.6",
       },
       "devDependencies": {
@@ -15,7 +15,7 @@
         "@types/node": "^22.19.17",
         "husky": "^9.1.7",
         "lint-staged": "^16.4.0",
-        "turbo": "^2.9.3",
+        "turbo": "^2.9.4",
       },
     },
     "apps/dash": {
@@ -62,6 +62,7 @@
         "@tanstack/react-query": "^5.85.5",
         "@uptimekit/api": "workspace:",
         "@uptimekit/auth": "workspace:",
+        "@uptimekit/config": "workspace:",
         "@uptimekit/db": "workspace:",
         "babel-plugin-react-compiler": "^1.0.0",
         "better-auth": "catalog:",
