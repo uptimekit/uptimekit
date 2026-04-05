@@ -1,6 +1,5 @@
 {
 	"name": "@uptimekit/db",
-	"version": "2.1.0",
 	"private": true,
 	"type": "module",
 	"exports": {
@@ -25,7 +24,7 @@
 	},
 	"dependencies": {
 		"@clickhouse/client": "^1.15.0",
-		"@uptimekit/config": "workspace:2.1.0",
+		"@uptimekit/config": "workspace:*",
 		"dotenv": "catalog:",
 		"drizzle-orm": "^0.45.0",
 		"postgres": "^3.4.7",

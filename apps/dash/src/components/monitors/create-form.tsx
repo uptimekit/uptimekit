@@ -8,12 +8,13 @@ import {
 	ChevronRight,
 	Folder,
 	Globe,
+	Plus,
 	Search,
 	Server,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { type UseFormReturn, useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 
@@ -31,6 +32,7 @@ import {
 	ComboboxChips,
 	ComboboxChipsInput,
 	ComboboxEmpty,
+	ComboboxInput,
 	ComboboxItem,
 	ComboboxList,
 	ComboboxPopup,
@@ -149,11 +151,11 @@ type MonitorTypeDefinition = {
 	icon: React.ElementType;
 	group: "Network & web" | "Infrastructure";
 	// Component to render specific fields
-	Fields: React.ComponentType<{ form: any }>;
+	Fields: React.ComponentType<{ form: UseFormReturn<FormValues> }>;
 };
 
 // Reusable field components
-const UrlField = ({ form }: { form: any }) => (
+const UrlField = ({ form }: { form: UseFormReturn<FormValues> }) => (
 	<FormField
 		control={form.control}
 		name="url"
@@ -170,7 +172,7 @@ const UrlField = ({ form }: { form: any }) => (
 	/>
 );
 
-const HostnameField = ({ form }: { form: any }) => (
+const HostnameField = ({ form }: { form: UseFormReturn<FormValues> }) => (
 	<FormField
 		control={form.control}
 		name="hostname"
@@ -186,7 +188,7 @@ const HostnameField = ({ form }: { form: any }) => (
 	/>
 );
 
-const TcpFields = ({ form }: { form: any }) => (
+const TcpFields = ({ form }: { form: UseFormReturn<FormValues> }) => (
 	<div className="flex gap-4">
 		<div className="flex-1">
 			<HostnameField form={form} />
@@ -209,7 +211,7 @@ const TcpFields = ({ form }: { form: any }) => (
 	</div>
 );
 
-const KeywordFields = ({ form }: { form: any }) => (
+const KeywordFields = ({ form }: { form: UseFormReturn<FormValues> }) => (
 	<>
 		<UrlField form={form} />
 		<FormField
@@ -231,7 +233,7 @@ const KeywordFields = ({ form }: { form: any }) => (
 	</>
 );
 
-const HttpJsonFields = ({ form }: { form: any }) => (
+const HttpJsonFields = ({ form }: { form: UseFormReturn<FormValues> }) => (
 	<>
 		<UrlField form={form} />
 		<FormField
@@ -309,7 +311,7 @@ const _groupedTypes: { group: string; items: MonitorTypeDefinition[] }[] = [
 ];
 
 // Add new Advanced Fields Components
-const HttpAdvancedFields = ({ form }: { form: any }) => {
+const HttpAdvancedFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
 	const { fields, append, remove } = useFieldArray({
 		control: form.control,
 		name: "headers",
@@ -455,7 +457,7 @@ const HttpAdvancedFields = ({ form }: { form: any }) => {
 						<div className="flex items-center justify-between">
 							<FormLabel>Request Body</FormLabel>
 							<Select
-								onValueChange={(val) => form.setValue("method", val)}
+								onValueChange={(val) => val && form.setValue("method", val)}
 								defaultValue={form.getValues("method") || "GET"}
 							>
 								<SelectTrigger className="h-8 w-[100px]">
@@ -514,6 +516,8 @@ export function CreateMonitorForm({
 	const { data: tags } = useQuery(orpc.monitors.listTags.queryOptions());
 
 	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+	const [groupsOpen, setGroupsOpen] = useState(false);
+	const [tagsOpen, setTagsOpen] = useState(false);
 
 	const getFormValuesFromInitialData = (): FormValues => {
 		const defaults = (initialData as any) || {};
@@ -705,7 +709,7 @@ export function CreateMonitorForm({
 													items={monitorTypes}
 													value={selectedType}
 													onValueChange={(value) =>
-														form.setValue("type", value.id)
+														value && form.setValue("type", value.id)
 													}
 												>
 													<ComboboxValue>
@@ -853,7 +857,7 @@ export function CreateMonitorForm({
 													>
 														<ComboboxChips>
 															<ComboboxValue>
-																{(value: (typeof tags)[number][]) => (
+																{(value: typeof tags) => (
 																	<>
 																		{value?.map((tag) => (
 																			<ComboboxChip
@@ -870,7 +874,7 @@ export function CreateMonitorForm({
 																		<ComboboxChipsInput
 																			aria-label="Select tags"
 																			placeholder={
-																				value.length > 0
+																				value && value.length > 0
 																					? undefined
 																					: "Select tags"
 																			}

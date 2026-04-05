@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/api",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"private": true,
 	"exports": {
 		".": {
@@ -34,7 +34,7 @@
 	"type": "module",
 	"scripts": {},
 	"devDependencies": {
-		"@uptimekit/config": "workspace:2.1.0"
+		"@uptimekit/config": "workspace:*"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
@@ -46,8 +46,8 @@
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
 		"@orpc/zod": "catalog:",
-		"@uptimekit/auth": "workspace:2.1.0",
-		"@uptimekit/db": "workspace:2.1.0",
+		"@uptimekit/auth": "workspace:*",
+		"@uptimekit/db": "workspace:*",
 		"dotenv": "catalog:",
 		"drizzle-orm": "catalog:",
 		"ioredis": "^5.8.2",

@@ -13,13 +13,13 @@
 	"type": "module",
 	"scripts": {},
 	"devDependencies": {
-		"@uptimekit/config": "workspace:2.1.0"
+		"@uptimekit/config": "workspace:*"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@uptimekit/db": "workspace:2.1.0",
+		"@uptimekit/db": "workspace:*",
 		"better-auth": "catalog:",
 		"drizzle-orm": "catalog:",
 		"dotenv": "catalog:",

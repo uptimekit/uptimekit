@@ -242,7 +242,7 @@ route:
 						<Label>Default Severity</Label>
 						<Select
 							value={config.defaultSeverity || "major"}
-							onValueChange={(value: "minor" | "major" | "critical") =>
+							onValueChange={(value: "minor" | "major" | "critical" | null) =>
 								onChange({ ...config, defaultSeverity: value })
 							}
 						>

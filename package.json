@@ -34,9 +34,9 @@
 		"ruler:apply": "bunx @intellectronica/ruler@latest apply --local-only"
 	},
 	"dependencies": {
-		"dotenv": "^17.4.0",
-		"drizzle-orm": "catalog:",
-		"postgres": "catalog:",
+		"dotenv": "^17.4.1",
+		"drizzle-orm": "^0.45.2",
+		"postgres": "^3.4.9",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
@@ -44,7 +44,7 @@
 		"@types/node": "^22.19.17",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
-		"turbo": "^2.9.3"
+		"turbo": "^2.9.4"
 	},
 	"lint-staged": {
 		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [

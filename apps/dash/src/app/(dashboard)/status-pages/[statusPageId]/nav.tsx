@@ -67,7 +67,7 @@ export function StatusPageNav({
 						value={item.href}
 						disabled={item.disabled}
 						onClick={() =>
-							router.push(`/status-pages/${statusPageId}/${item.href}`)
+							router.push(`/status-pages/${statusPageId}/${item.href}` as any)
 						}
 					>
 						{item.title}

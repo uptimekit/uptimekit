@@ -1,6 +1,6 @@
 {
 	"name": "@uptimekit/dash",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port=3000",
@@ -83,7 +83,7 @@
 		"@types/node": "^20",
 		"@types/react": "19.2.2",
 		"@types/react-dom": "19.2.2",
-		"@uptimekit/config": "workspace:2.1.0",
+		"@uptimekit/config": "workspace:*",
 		"tailwindcss": "^4.1.10",
 		"typescript": "^5"
 	}
