@@ -18,6 +18,7 @@ jobs:
     outputs:
       packages: ${{ steps.detect.outputs.packages }}
       has_releases: ${{ steps.detect.outputs.has_releases }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -32,7 +33,11 @@ jobs:
 
       - name: Extract Version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+        run: |
+          # Read version from root package.json
+          ROOT_VERSION=$(jq -r '.version' package.json)
+          echo "VERSION=$ROOT_VERSION" >> $GITHUB_ENV
+          echo "version=$ROOT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set Versions
         run: bun scripts/set-version.js ${{ env.VERSION }}
@@ -151,9 +156,9 @@ jobs:
             ${{ steps.prep.outputs.image_name }}
             uptimekit/${{ steps.prep.outputs.app_name_clean }}
           tags: |
-            type=semver,pattern={{version}},value=${{ matrix.package.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.package.version }}
-            type=semver,pattern={{major}},value=${{ matrix.package.version }}
+            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.prepare.outputs.version }}
             type=raw,value=latest
 
       - name: Set up QEMU

@@ -2,6 +2,7 @@
 	"name": "uptimekit",
 	"private": true,
 	"type": "module",
+	"version": "2.1.1",
 	"workspaces": {
 		"packages": [
 			"apps/*",
