@@ -5,6 +5,22 @@ const { drizzle } = require("drizzle-orm/postgres-js");
 const { migrate } = require("drizzle-orm/postgres-js/migrator");
 const { createClient } = require("@clickhouse/client");
 
+const isColumnAlreadyExistsError = (error) => {
+	// Check the error directly
+	if (error && error.code === "42701") return true;
+
+	// Check nested error (drizzle wraps it)
+	if (error && error.cause && error.cause.code === "42701") return true;
+
+	// Check error message for the pattern
+	const errorStr = error?.toString?.() || error?.message || "";
+	return (
+		errorStr.includes("42701") &&
+		errorStr.includes("already exists") &&
+		errorStr.includes("column")
+	);
+};
+
 const runPostgresMigrations = async () => {
 	console.log("⏳ Running PostgreSQL migrations...");
 
@@ -31,9 +47,19 @@ const runPostgresMigrations = async () => {
 		const end = Date.now();
 		console.log(`✅ PostgreSQL migrations completed in ${end - start}ms`);
 	} catch (err) {
-		console.error("❌ PostgreSQL migration failed");
-		console.error(err);
-		process.exit(1);
+		// Handle case where columns already exist (schema drift)
+		if (isColumnAlreadyExistsError(err)) {
+			console.log(
+				"⚠️ Some columns already exist, this may indicate schema drift",
+			);
+			console.log("   Continuing with startup...");
+			// Log the error but don't exit
+			console.log(`   Error details: ${err.message}`);
+		} else {
+			console.error("❌ PostgreSQL migration failed");
+			console.error(err);
+			process.exit(1);
+		}
 	} finally {
 		await client.end();
 	}
