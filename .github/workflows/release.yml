@@ -151,7 +151,6 @@ jobs:
         with:
           images: |
             ${{ steps.prep.outputs.image_name }}
-            uptimekit/${{ steps.prep.outputs.app_name_clean }}
           tags: |
             type=semver,pattern={{version}},value=${{ needs.prepare.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.version }}

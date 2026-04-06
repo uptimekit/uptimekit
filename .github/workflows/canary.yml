@@ -170,7 +170,6 @@ jobs:
         with:
           images: |
             ${{ steps.prep.outputs.image_name }}
-            uptimekit/${{ steps.prep.outputs.app_name_clean }}
           tags: |
             type=raw,value=${{ needs.canary-release.outputs.root_version }}
             type=raw,value=${{ needs.canary-release.outputs.canary_version }}
