@@ -67,9 +67,6 @@ jobs:
           NEW_VERSION="$NEXT_VERSION-canary.$NEXT_NUM"
           echo "Next canary version: $NEW_VERSION"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set Versions
-        run: bun scripts/set-version.js ${{ steps.calc_version.outputs.version }}
       
       - name: Update Lockfile
         run: bun install --lockfile-only
