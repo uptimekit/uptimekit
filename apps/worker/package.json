@@ -1,0 +1,10 @@
+{
+	"name": "@uptimekit/worker",
+	"version": "0.0.1",
+	"private": true,
+	"description": "UptimeKit monitoring worker (Go)",
+	"scripts": {
+		"build": "echo 'Go worker - built via Dockerfile'",
+		"dev": "echo 'Run worker via: go run ./cmd/worker'"
+	}
+}

@@ -247,7 +247,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset">
 												<div className="flex select-none items-center rounded-l-md border-r bg-muted/50 px-3 text-muted-foreground text-sm">
 													{process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
-														"status.uptimekit.com"}
+														"status.uptimekit.dev"}
 													/
 												</div>
 												<Input

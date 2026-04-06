@@ -83,7 +83,8 @@ jobs:
               NAME=$(jq -r '.name // empty' "$PKG_FILE" 2>/dev/null || echo "")
               VERSION=$(jq -r '.version // empty' "$PKG_FILE" 2>/dev/null || echo "")
               
-              if [ -n "$NAME" ] && [ -n "$VERSION" ]; then
+              # Include if it has a name (version is optional - Go apps may not have it)
+              if [ -n "$NAME" ]; then
                 ITEM=$(jq -n \
                   --arg name "$NAME" \
                   --arg version "$VERSION" \
@@ -91,7 +92,11 @@ jobs:
                   '{name: $name, version: $version, dir: $dir}')
                 
                 PACKAGES=$(echo "$PACKAGES" | jq -c --argjson item "$ITEM" '. + [$item]')
-                echo "Found: $NAME@$VERSION (dir: $DIR)"
+                if [ -n "$VERSION" ]; then
+                  echo "Found: $NAME@$VERSION (dir: $DIR)"
+                else
+                  echo "Found: $NAME (dir: $DIR)"
+                fi
               fi
             fi
           done

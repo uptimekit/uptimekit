@@ -79,38 +79,36 @@ export function TagCreationDialog({
 						Create a new tag to categorize your monitors.
 					</DialogDescription>
 				</DialogHeader>
-				<DialogPanel>
-					<div className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="tag-name">Tag Name</Label>
-							<Input
-								id="tag-name"
-								placeholder="Critical, API, Frontend, etc."
-								value={tagName}
-								onChange={(e) => setTagName(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && tagName.trim()) {
-										createTag({ name: tagName.trim(), color: tagColor });
-									}
-								}}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label>Color</Label>
-							<div className="flex gap-2">
-								{PRESET_COLORS.map((color) => (
-									<button
-										key={color}
-										type="button"
-										className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
-										style={{
-											backgroundColor: color,
-											borderColor: tagColor === color ? "#000" : "transparent",
-										}}
-										onClick={() => setTagColor(color)}
-									/>
-								))}
-							</div>
+				<DialogPanel className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="tag-name">Tag Name</Label>
+						<Input
+							id="tag-name"
+							placeholder="Critical, API, Frontend, etc."
+							value={tagName}
+							onChange={(e) => setTagName(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && tagName.trim()) {
+									createTag({ name: tagName.trim(), color: tagColor });
+								}
+							}}
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label>Color</Label>
+						<div className="flex gap-2">
+							{PRESET_COLORS.map((color) => (
+								<button
+									key={color}
+									type="button"
+									className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
+									style={{
+										backgroundColor: color,
+										borderColor: tagColor === color ? "#000" : "transparent",
+									}}
+									onClick={() => setTagColor(color)}
+								/>
+							))}
 						</div>
 					</div>
 				</DialogPanel>

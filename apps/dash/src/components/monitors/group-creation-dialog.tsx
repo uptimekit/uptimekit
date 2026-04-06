@@ -66,22 +66,20 @@ export function GroupCreationDialog({
 						Create a new group to organize your monitors.
 					</DialogDescription>
 				</DialogHeader>
-				<DialogPanel>
-					<div className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="group-name">Group Name</Label>
-							<Input
-								id="group-name"
-								placeholder="Production, Staging, etc."
-								value={groupName}
-								onChange={(e) => setGroupName(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && groupName.trim()) {
-										createGroup(groupName.trim());
-									}
-								}}
-							/>
-						</div>
+				<DialogPanel className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="group-name">Group Name</Label>
+						<Input
+							id="group-name"
+							placeholder="Production, Staging, etc."
+							value={groupName}
+							onChange={(e) => setGroupName(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && groupName.trim()) {
+									createGroup(groupName.trim());
+								}
+							}}
+						/>
 					</div>
 				</DialogPanel>
 				<DialogFooter>

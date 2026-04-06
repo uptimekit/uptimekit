@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { checkStatusPageAccess } from "@/lib/access-check";
 import { prepareStatusPageData } from "@/lib/data-preparer";
 import { getStatusPageByDomain } from "@/lib/db-queries";
@@ -7,6 +7,7 @@ import { loadThemeComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 const STATUS_PAGE_DOMAIN = process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN;
+const DEFAULT_STATUS_PAGE_SLUG = process.env.DEFAULT_STATUS_PAGE_SLUG;
 
 function isStatusPageDomain(host: string): boolean {
 	if (!STATUS_PAGE_DOMAIN) return false;
@@ -107,6 +108,10 @@ export default async function StatusPage() {
 	}
 
 	if (isStatusPageDomain(host)) {
+		if (DEFAULT_STATUS_PAGE_SLUG) {
+			redirect(`/${DEFAULT_STATUS_PAGE_SLUG}`);
+		}
+
 		return <LandingPage />;
 	}
 

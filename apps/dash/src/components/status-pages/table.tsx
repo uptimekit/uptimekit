@@ -310,7 +310,7 @@ export function StatusPagesTable() {
 												<div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
 													<span className="flex items-center gap-1">
 														{page.domain ||
-															`${process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN || "status.uptimekit.com"}/${page.slug}`}
+															`${process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN || "status.uptimekit.dev"}/${page.slug}`}
 														<ExternalLink className="h-3 w-3 opacity-50" />
 													</span>
 												</div>
