@@ -5,12 +5,9 @@ RUN apk add --no-cache libc6-compat
 RUN bun add -g turbo@^2.5.4
 
 FROM base AS builder
-# Set working directory
 WORKDIR /app
 COPY . .
-# Debug: check if package.json is correct
-RUN cat package.json
-RUN turbo prune --scope=@uptimekit/status-page --docker
+RUN turbo prune @uptimekit/status-page --docker
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
@@ -20,7 +17,7 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/bun.lock ./bun.lock
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Build the project
 COPY --from=builder /app/out/full/ .
@@ -35,10 +32,20 @@ USER nextjs
 
 COPY --from=installer /app/apps/status-page/next.config.ts ./
 
+# Copy packages from installer to ensure all dependencies are available
+COPY --from=installer --chown=nextjs:nodejs /app/packages/db ./packages/db
+COPY --from=installer --chown=nextjs:nodejs /app/packages/config ./packages/config
+COPY --from=installer --chown=nextjs:nodejs /app/packages/api ./packages/api
+COPY --from=installer --chown=nextjs:nodejs /app/packages/auth ./packages/auth
 
 # Automatically leverage output traces to reduce image size
 COPY --from=installer --chown=nextjs:nodejs /app/apps/status-page/.next/standalone ./
 COPY --from=installer --chown=nextjs:nodejs /app/apps/status-page/.next/static ./apps/status-page/.next/static
+
+COPY --from=installer --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Add turbo.json to suppress "Could not find monorepo root" warnings
+COPY --from=builder --chown=nextjs:nodejs /app/turbo.json ./turbo.json
 
 ENV NODE_ENV=production
 ENV PORT=3001

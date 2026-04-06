@@ -6,12 +6,12 @@ RUN bun add -g turbo@^2.5.4
 
 FROM base AS builder
 COPY . .
-RUN turbo prune --scope=@uptimekit/scheduler --docker
+RUN turbo prune @uptimekit/scheduler --docker
 
 FROM base AS installer
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/out/bun.lock ./bun.lock
-RUN bun install --frozen-lockfile
+RUN bun install
 COPY --from=builder /app/out/full/ .
 
 FROM base AS runner
@@ -25,6 +25,9 @@ COPY --from=installer --chown=scheduler:nodejs /app/packages/scheduler ./package
 COPY --from=installer --chown=scheduler:nodejs /app/packages/db ./packages/db
 COPY --from=installer --chown=scheduler:nodejs /app/packages/config ./packages/config
 COPY --from=installer --chown=scheduler:nodejs /app/node_modules ./node_modules
+
+# Add turbo.json to suppress "Could not find monorepo root" warnings
+COPY --from=builder --chown=scheduler:nodejs /app/turbo.json ./turbo.json
 
 ENV NODE_ENV=production
 

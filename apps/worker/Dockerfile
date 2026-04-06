@@ -3,12 +3,12 @@ FROM golang:alpine AS builder
 
 WORKDIR /app
 
-# Copy go.mod and go.sum first for better caching
-COPY go.mod go.sum* ./
+# Copy go.mod and go.sum first for better caching from apps/worker
+COPY apps/worker/go.mod apps/worker/go.sum* ./
 RUN go mod download
 
-# Copy source code
-COPY . .
+# Copy source code from apps/worker
+COPY apps/worker/ .
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o worker ./cmd/worker

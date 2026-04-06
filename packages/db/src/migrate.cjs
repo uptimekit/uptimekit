@@ -1,5 +1,6 @@
 const path = require("node:path");
-const postgres = require("postgres");
+const postgresModule = require("postgres");
+const postgres = postgresModule.default || postgresModule;
 const { drizzle } = require("drizzle-orm/postgres-js");
 const { migrate } = require("drizzle-orm/postgres-js/migrator");
 const { createClient } = require("@clickhouse/client");
