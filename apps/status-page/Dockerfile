@@ -7,7 +7,7 @@ RUN bun add -g turbo@^2.5.4
 FROM base AS builder
 WORKDIR /app
 COPY . .
-#RUN turbo prune @uptimekit/status-page --docker
+RUN turbo prune @uptimekit/status-page --docker
 
 # Add lockfile and package.json's of isolated subworkspace
 FROM base AS installer
