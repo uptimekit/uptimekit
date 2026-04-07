@@ -803,9 +803,7 @@ export function CreateMonitorForm({
 													>
 														<FormControl>
 															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Select group">
-																	{selectedGroup?.label}
-																</SelectValue>
+																<SelectValue placeholder="Select group" />
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>

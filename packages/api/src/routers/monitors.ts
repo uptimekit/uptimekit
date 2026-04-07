@@ -778,7 +778,7 @@ export const monitorsRouter = {
 			z.object({
 				monitorId: z.string(),
 				range: z.enum(["24h", "7d", "30d"]),
-				location: z.string().optional(),
+				locations: z.array(z.string()).optional().default([]),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -802,25 +802,28 @@ export const monitorsRouter = {
 			if (input.range === "7d") startDate.setDate(now.getDate() - 7);
 			if (input.range === "30d") startDate.setDate(now.getDate() - 30);
 
-			// Fetch raw events for chart with detailed timings
-			const query = `
-				SELECT timestamp, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
-				FROM uptimekit.monitor_events
-				WHERE monitorId = {monitorId:String} 
-				AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
-				${input.location && input.location !== "all" ? "AND location = {location:String}" : ""}
-				ORDER BY timestamp ASC
-				LIMIT 2000
-			`;
-
+			// Build location filter
+			let locationFilter = "";
 			const queryParams: Record<string, unknown> = {
 				monitorId: input.monitorId,
 				startDate: startDate.getTime(),
 			};
 
-			if (input.location && input.location !== "all") {
-				queryParams.location = input.location;
+			if (input.locations.length > 0 && !input.locations.includes("all")) {
+				locationFilter = "AND location IN {locations:Array(String)}";
+				queryParams.locations = input.locations;
 			}
+
+			// Fetch raw events for chart with detailed timings
+			const query = `
+				SELECT timestamp, location, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String} 
+				AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
+				${locationFilter}
+				ORDER BY timestamp ASC
+				LIMIT 2000
+			`;
 
 			const eventsQuery = await clickhouse.query({
 				query,
@@ -830,6 +833,7 @@ export const monitorsRouter = {
 			const eventsJson = await eventsQuery.json<any>();
 			const events = eventsJson.data as {
 				timestamp: string;
+				location: string;
 				latency: number;
 				dnsLookup: number | null;
 				tcpConnect: number | null;
@@ -840,6 +844,7 @@ export const monitorsRouter = {
 
 			return events.map((e) => ({
 				timestamp: new Date(e.timestamp).toISOString(),
+				location: e.location,
 				latency: Number(e.latency) || 0,
 				dnsLookup: e.dnsLookup != null ? Number(e.dnsLookup) : undefined,
 				tcpConnect: e.tcpConnect != null ? Number(e.tcpConnect) : undefined,
