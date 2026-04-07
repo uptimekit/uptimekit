@@ -9,11 +9,12 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
@@ -92,7 +93,7 @@ export function InviteMemberDialog() {
 				<Plus className="mr-2 h-4 w-4" />
 				Add Member
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-md">
+			<DialogPopup className="sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle>Invite Team Member</DialogTitle>
 					<DialogDescription>
@@ -144,6 +145,9 @@ export function InviteMemberDialog() {
 								/>
 							</DialogPanel>
 							<DialogFooter>
+								<DialogClose render={<Button variant="ghost" />}>
+									Cancel
+								</DialogClose>
 								<Button type="submit" disabled={form.formState.isSubmitting}>
 									{form.formState.isSubmitting && (
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -180,7 +184,7 @@ export function InviteMemberDialog() {
 						</DialogFooter>
 					</div>
 				)}
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }

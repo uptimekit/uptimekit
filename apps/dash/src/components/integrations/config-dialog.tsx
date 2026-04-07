@@ -19,11 +19,12 @@ import {
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -127,7 +128,7 @@ export function ConfigDialog({
 	return (
 		<>
 			<Dialog open={open} onOpenChange={onOpenChange}>
-				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+				<DialogPopup className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
 					<DialogHeader>
 						<DialogTitle>Configure {integration.name}</DialogTitle>
 						<DialogDescription>{integration.description}</DialogDescription>
@@ -189,6 +190,9 @@ export function ConfigDialog({
 									{testing ? "Testing..." : "Test"}
 								</Button>
 							)}
+							<DialogClose render={<Button variant="ghost" />}>
+								Cancel
+							</DialogClose>
 							<Button
 								onClick={handleSave}
 								disabled={saving || testing || deleting}
@@ -197,7 +201,7 @@ export function ConfigDialog({
 							</Button>
 						</div>
 					</DialogFooter>
-				</DialogContent>
+				</DialogPopup>
 			</Dialog>
 
 			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -6,11 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -59,7 +60,7 @@ export function GroupCreationDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogPopup className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Create Group</DialogTitle>
 					<DialogDescription>
@@ -83,15 +84,7 @@ export function GroupCreationDialog({
 					</div>
 				</DialogPanel>
 				<DialogFooter>
-					<Button
-						variant="outline"
-						onClick={() => {
-							onOpenChange(false);
-							setGroupName("");
-						}}
-					>
-						Cancel
-					</Button>
+					<DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
 					<Button
 						onClick={() => groupName.trim() && createGroup(groupName.trim())}
 						disabled={!groupName.trim() || isCreating}
@@ -99,7 +92,7 @@ export function GroupCreationDialog({
 						Create
 					</Button>
 				</DialogFooter>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }

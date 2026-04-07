@@ -18,11 +18,12 @@ import {
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
@@ -113,7 +114,7 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 						<Plus className="mr-2 h-4 w-4" />
 						New Group
 					</DialogTrigger>
-					<DialogContent>
+					<DialogPopup className="sm:max-w-[425px]">
 						<DialogHeader>
 							<DialogTitle>Create Group</DialogTitle>
 							<DialogDescription>
@@ -139,15 +140,9 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 							</div>
 						</DialogPanel>
 						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => {
-									setCreateOpen(false);
-									setGroupName("");
-								}}
-							>
+							<DialogClose render={<Button variant="ghost" />}>
 								Cancel
-							</Button>
+							</DialogClose>
 							<Button
 								onClick={() =>
 									groupName.trim() && createGroup(groupName.trim())
@@ -157,7 +152,7 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 								Create
 							</Button>
 						</DialogFooter>
-					</DialogContent>
+					</DialogPopup>
 				</Dialog>
 			</div>
 
@@ -233,7 +228,7 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 			</div>
 
 			<Dialog open={editOpen} onOpenChange={setEditOpen}>
-				<DialogContent>
+				<DialogPopup className="sm:max-w-[425px]">
 					<DialogHeader>
 						<DialogTitle>Edit Group</DialogTitle>
 						<DialogDescription>Update the group name.</DialogDescription>
@@ -259,16 +254,9 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 						</div>
 					</DialogPanel>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => {
-								setEditOpen(false);
-								setEditingGroup(null);
-								setGroupName("");
-							}}
-						>
+						<DialogClose render={<Button variant="ghost" />}>
 							Cancel
-						</Button>
+						</DialogClose>
 						<Button
 							onClick={() =>
 								editingGroup &&
@@ -280,7 +268,7 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 							Update
 						</Button>
 					</DialogFooter>
-				</DialogContent>
+				</DialogPopup>
 			</Dialog>
 		</div>
 	);

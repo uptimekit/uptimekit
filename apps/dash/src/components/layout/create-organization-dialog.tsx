@@ -11,11 +11,12 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -96,7 +97,7 @@ export function CreateOrganizationDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogPopup className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Create Organization</DialogTitle>
 					<DialogDescription>
@@ -164,6 +165,9 @@ export function CreateOrganizationDialog({
 							/>
 						</DialogPanel>
 						<DialogFooter>
+							<DialogClose render={<Button variant="ghost" />}>
+								Cancel
+							</DialogClose>
 							<Button type="submit" disabled={isLoading}>
 								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 								Create Organization
@@ -171,7 +175,7 @@ export function CreateOrganizationDialog({
 						</DialogFooter>
 					</form>
 				</Form>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }

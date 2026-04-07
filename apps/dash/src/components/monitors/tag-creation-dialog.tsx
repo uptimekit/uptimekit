@@ -6,11 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,7 @@ export function TagCreationDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogPopup className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Create Tag</DialogTitle>
 					<DialogDescription>
@@ -113,16 +114,7 @@ export function TagCreationDialog({
 					</div>
 				</DialogPanel>
 				<DialogFooter>
-					<Button
-						variant="outline"
-						onClick={() => {
-							onOpenChange(false);
-							setTagName("");
-							setTagColor(PRESET_COLORS[0]);
-						}}
-					>
-						Cancel
-					</Button>
+					<DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
 					<Button
 						onClick={() =>
 							tagName.trim() &&
@@ -133,7 +125,7 @@ export function TagCreationDialog({
 						Create
 					</Button>
 				</DialogFooter>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }

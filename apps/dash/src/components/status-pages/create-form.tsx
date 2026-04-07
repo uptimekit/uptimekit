@@ -8,9 +8,12 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
+	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -82,9 +85,12 @@ export function CreateStatusPageForm({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogPopup className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Create Status Page</DialogTitle>
+					<DialogDescription>
+						Create a new status page to display your service status to users.
+					</DialogDescription>
 				</DialogHeader>
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="contents">
@@ -131,14 +137,17 @@ export function CreateStatusPageForm({
 							/>
 						</DialogPanel>
 
-						<div className="flex justify-end">
+						<DialogFooter>
+							<DialogClose render={<Button variant="ghost" />}>
+								Cancel
+							</DialogClose>
 							<Button type="submit" disabled={isPending}>
 								{isPending ? "Creating..." : "Create Status Page"}
 							</Button>
-						</div>
+						</DialogFooter>
 					</form>
 				</Form>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }

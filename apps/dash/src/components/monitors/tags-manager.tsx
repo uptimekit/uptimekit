@@ -18,11 +18,12 @@ import {
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
@@ -133,7 +134,7 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 						<Plus className="mr-2 h-4 w-4" />
 						New Tag
 					</DialogTrigger>
-					<DialogContent>
+					<DialogPopup className="sm:max-w-[425px]">
 						<DialogHeader>
 							<DialogTitle>Create Tag</DialogTitle>
 							<DialogDescription>
@@ -177,16 +178,9 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 							</div>
 						</DialogPanel>
 						<DialogFooter>
-							<Button
-								variant="outline"
-								onClick={() => {
-									setCreateOpen(false);
-									setTagName("");
-									setTagColor(PRESET_COLORS[0]);
-								}}
-							>
+							<DialogClose render={<Button variant="ghost" />}>
 								Cancel
-							</Button>
+							</DialogClose>
 							<Button
 								onClick={() =>
 									tagName.trim() &&
@@ -197,7 +191,7 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 								Create
 							</Button>
 						</DialogFooter>
-					</DialogContent>
+					</DialogPopup>
 				</Dialog>
 			</div>
 
@@ -279,7 +273,7 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 			</div>
 
 			<Dialog open={editOpen} onOpenChange={setEditOpen}>
-				<DialogContent>
+				<DialogPopup className="sm:max-w-[425px]">
 					<DialogHeader>
 						<DialogTitle>Edit Tag</DialogTitle>
 						<DialogDescription>Update the tag name or color.</DialogDescription>
@@ -324,17 +318,9 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 						</div>
 					</DialogPanel>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => {
-								setEditOpen(false);
-								setEditingTag(null);
-								setTagName("");
-								setTagColor(PRESET_COLORS[0]);
-							}}
-						>
+						<DialogClose render={<Button variant="ghost" />}>
 							Cancel
-						</Button>
+						</DialogClose>
 						<Button
 							onClick={() =>
 								editingTag &&
@@ -350,7 +336,7 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 							Update
 						</Button>
 					</DialogFooter>
-				</DialogContent>
+				</DialogPopup>
 			</Dialog>
 		</div>
 	);

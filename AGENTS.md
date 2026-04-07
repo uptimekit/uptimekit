@@ -93,3 +93,42 @@ Authentication is enabled in this project:
 - **Avoid Clutter**: Do not comment obvious logic (e.g., `// Update count` above `count++`). Unnecessary comments add noise and maintenance burden.
 - **Function headers**: Use JSDoc/TSDoc for public-facing utilities to document params and return values, but only when the signature isn't self-evident.
 - **TODOs**: Use `// TODO:` to mark areas for improvement, but address them sooner rather than later.
+
+## UI Components
+
+### Select Component
+
+Use the Select component with the following pattern:
+
+```tsx
+import {
+  Select,
+  SelectItem,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const items = [
+  { label: "Next.js", value: "next" },
+  { label: "Vite", value: "vite" },
+  { label: "Astro", value: "astro" },
+];
+
+export default function Particle() {
+  return (
+    <Select aria-label="Select framework" defaultValue="next">
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map(({ label, value }) => (
+          <SelectItem key={value} value={value}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```

@@ -19,10 +19,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -269,7 +270,7 @@ export function MembersTable() {
 			</AlertDialog>
 
 			<Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
-				<DialogContent>
+				<DialogPopup className="sm:max-w-[425px]">
 					<DialogHeader>
 						<DialogTitle>Change Role</DialogTitle>
 					</DialogHeader>
@@ -288,15 +289,12 @@ export function MembersTable() {
 						</div>
 					</DialogPanel>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setIsRoleDialogOpen(false)}
-						>
+						<DialogClose render={<Button variant="ghost" />}>
 							Cancel
-						</Button>
+						</DialogClose>
 						<Button onClick={handleUpdateRole}>Update Role</Button>
 					</DialogFooter>
-				</DialogContent>
+				</DialogPopup>
 			</Dialog>
 		</>
 	);

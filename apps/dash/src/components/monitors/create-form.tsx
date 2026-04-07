@@ -6,7 +6,6 @@ import {
 	Activity,
 	Braces,
 	ChevronRight,
-	Folder,
 	Globe,
 	Plus,
 	Search,
@@ -789,48 +788,34 @@ export function CreateMonitorForm({
 										control={form.control}
 										name="groupId"
 										render={({ field }) => {
-											const selectedGroup = groups?.find(
-												(g) => g.id === field.value,
+											const groupOptions =
+												groups?.map((g) => ({ label: g.name, value: g.id })) ||
+												[];
+											const selectedGroup = groupOptions.find(
+												(g) => g.value === field.value,
 											);
-											const groupOptions = groups || [];
 											return (
 												<FormItem>
 													<FormLabel>Group</FormLabel>
-													<Combobox
-														items={groupOptions}
-														value={selectedGroup || null}
-														onValueChange={(value) =>
-															field.onChange(value?.id || null)
-														}
+													<Select
+														onValueChange={(val) => field.onChange(val || null)}
+														value={field.value || ""}
 													>
-														<ComboboxValue>
-															{(
-																value: (typeof groupOptions)[number] | null,
-															) => (
-																<ComboboxInput
-																	placeholder="Select group"
-																	startAddon={
-																		value ? (
-																			<Folder className="h-4 w-4 text-muted-foreground" />
-																		) : undefined
-																	}
-																/>
-															)}
-														</ComboboxValue>
-														<ComboboxPopup>
-															<ComboboxEmpty>No groups found.</ComboboxEmpty>
-															<ComboboxList>
-																{(group) => (
-																	<ComboboxItem key={group.id} value={group}>
-																		<div className="flex items-center gap-2">
-																			<Folder className="h-4 w-4 text-muted-foreground" />
-																			{group.name}
-																		</div>
-																	</ComboboxItem>
-																)}
-															</ComboboxList>
-														</ComboboxPopup>
-													</Combobox>
+														<FormControl>
+															<SelectTrigger className="w-full">
+																<SelectValue placeholder="Select group">
+																	{selectedGroup?.label}
+																</SelectValue>
+															</SelectTrigger>
+														</FormControl>
+														<SelectContent>
+															{groupOptions.map(({ label, value }) => (
+																<SelectItem key={value} value={value}>
+																	{label}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
 													<FormMessage />
 												</FormItem>
 											);

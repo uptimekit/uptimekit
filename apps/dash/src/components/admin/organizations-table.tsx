@@ -106,7 +106,7 @@ export function OrganizationsTable() {
 					<Select
 						value={planFilter}
 						onValueChange={(val) => {
-							setPlanFilter(val!!);
+							setPlanFilter(val!);
 							setPage(1);
 						}}
 					>

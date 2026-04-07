@@ -8,11 +8,12 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
-	DialogContent,
+	DialogClose,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -135,7 +136,7 @@ function LogoDialog({
 }) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogPopup className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Update Organization Logo</DialogTitle>
 					<DialogDescription>
@@ -161,12 +162,10 @@ function LogoDialog({
 					</div>
 				</DialogPanel>
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
-					</Button>
+					<DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
 					<Button onClick={onSave}>Save changes</Button>
 				</DialogFooter>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }
