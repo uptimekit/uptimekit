@@ -16,13 +16,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { client, orpc } from "@/utils/orpc";
 
 interface ConfigFormData {
 	instanceName: string;
 	dataRetentionDays: string;
-	registrationEnabled: boolean;
 }
 
 /**
@@ -45,7 +43,6 @@ export function ConfigurationSettingsForm() {
 		defaultValues: {
 			instanceName: "",
 			dataRetentionDays: "30",
-			registrationEnabled: false,
 		},
 	});
 
@@ -61,10 +58,7 @@ export function ConfigurationSettingsForm() {
 				data.items.find((i) => i.key === "instance_name")?.value || "";
 			const dataRetentionDays =
 				data.items.find((i) => i.key === "data_retention_days")?.value || "30";
-			const registrationEnabled =
-				data.items.find((i) => i.key === "registration_enabled")?.value ===
-				"true";
-			reset({ instanceName, dataRetentionDays, registrationEnabled });
+			reset({ instanceName, dataRetentionDays });
 		}
 	}, [data, reset]);
 
@@ -79,10 +73,6 @@ export function ConfigurationSettingsForm() {
 				client.configuration.set({
 					key: "data_retention_days",
 					value: values.dataRetentionDays,
-				}),
-				client.configuration.set({
-					key: "registration_enabled",
-					value: values.registrationEnabled ? "true" : "false",
 				}),
 			]);
 		},
@@ -147,19 +137,6 @@ export function ConfigurationSettingsForm() {
 						<p className="text-muted-foreground text-sm">
 							How long to keep monitoring data before automatic cleanup.
 						</p>
-					</div>
-					<div className="flex items-center justify-between space-y-0 rounded-lg border p-4">
-						<div className="space-y-0.5">
-							<Label htmlFor="registration-enabled">Registration</Label>
-							<p className="text-muted-foreground text-sm">
-								Allow new users to register. When disabled, only admins can
-								create users.
-							</p>
-						</div>
-						<Switch
-							id="registration-enabled"
-							{...register("registrationEnabled")}
-						/>
 					</div>
 					<div className="flex items-center justify-start pt-2">
 						<Button type="submit" disabled={saveMutation.isPending || !isDirty}>

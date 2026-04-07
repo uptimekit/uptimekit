@@ -1,6 +1,5 @@
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
-import { configuration } from "@uptimekit/db/schema/configuration";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -68,13 +67,8 @@ export const auth = betterAuth({
 						return;
 					}
 
-					const [config] = await db
-						.select()
-						.from(configuration)
-						.where(eq(configuration.key, "registration_enabled"))
-						.limit(1);
-
-					const isRegistrationEnabled = config?.value === "true";
+					const isRegistrationEnabled =
+						process.env.ENABLE_REGISTRATION === "true";
 
 					if (!isRegistrationEnabled) {
 						throw new Error("Registration is disabled on this instance.");
