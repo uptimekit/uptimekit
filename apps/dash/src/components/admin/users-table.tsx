@@ -8,6 +8,7 @@ import {
 	ChevronLeftIcon,
 	ChevronRightIcon,
 	MoreHorizontal,
+	Plus,
 	Search,
 	Shield,
 	ShieldCheck,
@@ -19,6 +20,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+	Dialog,
+	DialogClose,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogPopup,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -26,6 +37,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Pagination,
 	PaginationContent,
@@ -70,6 +82,10 @@ export function UsersTable() {
 		"all",
 	);
 	const [page, setPage] = useState(1);
+	const [createOpen, setCreateOpen] = useState(false);
+	const [createName, setCreateName] = useState("");
+	const [createEmail, setCreateEmail] = useState("");
+	const [createPassword, setCreatePassword] = useState("");
 	const pageSize = 10;
 
 	useEffect(() => {
@@ -137,6 +153,27 @@ export function UsersTable() {
 		},
 	});
 
+	const createMutation = useMutation({
+		mutationFn: async () => {
+			await client.users.create({
+				name: createName,
+				email: createEmail,
+				password: createPassword,
+			});
+		},
+		onSuccess: () => {
+			toast.success("User created successfully");
+			setCreateOpen(false);
+			setCreateName("");
+			setCreateEmail("");
+			setCreatePassword("");
+			queryClient.invalidateQueries({ queryKey: orpc.users.list.key() });
+		},
+		onError: (error: Error) => {
+			toast.error(error.message);
+		},
+	});
+
 	const users = (data?.items || []) as User[];
 	const total = data?.total || 0;
 	const totalPages = Math.ceil(total / pageSize);
@@ -146,6 +183,67 @@ export function UsersTable() {
 			<div className="flex items-center justify-between gap-4">
 				<h1 className="font-bold text-2xl tracking-tight">Users</h1>
 				<div className="flex items-center gap-2">
+					<Dialog open={createOpen} onOpenChange={setCreateOpen}>
+						<DialogTrigger render={<Button />}>
+							<Plus className="mr-2 h-4 w-4" />
+							Create User
+						</DialogTrigger>
+						<DialogPopup className="sm:max-w-sm">
+							<DialogHeader>
+								<DialogTitle>Create User</DialogTitle>
+								<DialogDescription>
+									Create a new user account with email and password.
+								</DialogDescription>
+							</DialogHeader>
+							<div className="grid gap-4 py-4">
+								<div className="space-y-2">
+									<Label htmlFor="name">Name</Label>
+									<Input
+										id="name"
+										value={createName}
+										onChange={(e) => setCreateName(e.target.value)}
+										placeholder="John Doe"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="email">Email</Label>
+									<Input
+										id="email"
+										type="email"
+										value={createEmail}
+										onChange={(e) => setCreateEmail(e.target.value)}
+										placeholder="john@example.com"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="password">Password</Label>
+									<Input
+										id="password"
+										type="password"
+										value={createPassword}
+										onChange={(e) => setCreatePassword(e.target.value)}
+										placeholder="Min. 8 characters"
+									/>
+								</div>
+							</div>
+							<DialogFooter>
+								<DialogClose render={<Button variant="ghost" />}>
+									Cancel
+								</DialogClose>
+								<Button
+									onClick={() => createMutation.mutate()}
+									disabled={
+										!createName ||
+										!createEmail ||
+										createPassword.length < 8 ||
+										createMutation.isPending
+									}
+								>
+									{createMutation.isPending ? "Creating..." : "Create User"}
+								</Button>
+							</DialogFooter>
+						</DialogPopup>
+					</Dialog>
 					<div className="relative w-64">
 						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
 						<Input

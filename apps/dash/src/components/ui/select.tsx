@@ -90,8 +90,9 @@ export function SelectTrigger({
 
 export function SelectValue({
 	className,
+	placeholder,
 	...props
-}: SelectPrimitive.Value.Props): React.ReactElement {
+}: Omit<SelectPrimitive.Value.Props, "children">): React.ReactElement {
 	return (
 		<SelectPrimitive.Value
 			className={cn(
@@ -99,6 +100,7 @@ export function SelectValue({
 				className,
 			)}
 			data-slot="select-value"
+			placeholder={placeholder}
 			{...props}
 		/>
 	);

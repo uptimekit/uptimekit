@@ -1,3 +1,4 @@
+import { auth } from "@uptimekit/auth";
 import { db } from "@uptimekit/db";
 import { user } from "@uptimekit/db/schema/auth";
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
@@ -75,6 +76,34 @@ export const usersRouter = {
 			]);
 
 			return { items, total: totalResult?.count || 0 };
+		}),
+
+	create: adminProcedure
+		.meta({
+			openapi: {
+				method: "POST",
+				path: "/admin/users",
+				tags: ["Admin - Users"],
+				summary: "Create a user",
+				description: "Create a new user with email and password. Admin only.",
+			},
+		})
+		.input(
+			z.object({
+				name: z.string().min(1),
+				email: z.string().email(),
+				password: z.string().min(8),
+			}),
+		)
+		.handler(async ({ input }) => {
+			const created = await auth.api.createUser({
+				body: {
+					email: input.email,
+					password: input.password,
+					name: input.name,
+				},
+			});
+			return created;
 		}),
 
 	ban: adminProcedure

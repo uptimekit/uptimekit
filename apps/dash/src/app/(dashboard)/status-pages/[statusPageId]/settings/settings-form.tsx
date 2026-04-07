@@ -10,7 +10,7 @@ import {
 	LayoutList,
 	Loader2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -36,6 +36,7 @@ import {
 	Select,
 	SelectContent,
 	SelectItem,
+	SelectPopup,
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
@@ -127,7 +128,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 	const [faviconOpen, setFaviconOpen] = useState(false);
 
-	const getFormValuesFromStatusPage = (): SettingsFormValues => {
+	const getFormValuesFromStatusPage = useCallback((): SettingsFormValues => {
 		const design = (statusPage?.design as any) || {};
 
 		return {
@@ -145,7 +146,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			isPrivate: statusPage ? !statusPage.public : false,
 			password: "",
 		};
-	};
+	}, [statusPage]);
 
 	useEffect(() => {
 		if (statusPage) {
@@ -199,6 +200,27 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			</div>
 		);
 	}
+
+	const themes = [
+		{
+			value: "default",
+			label: "Default - Classic design with uptime history",
+		},
+		{
+			value: "flat",
+			label: "Flat - Simple and modern design",
+		},
+	];
+
+	const colorThemes = [
+		{ value: "dark", label: "Dark version" },
+		{ value: "light", label: "Light version" },
+	];
+
+	const visibilityOptions = [
+		{ value: "public", label: "Public" },
+		{ value: "private", label: "Private" },
+	];
 
 	return (
 		<Form {...form}>
@@ -362,18 +384,20 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<Select
 												onValueChange={field.onChange}
 												value={field.value}
+												aria-label="Select theme"
+												defaultValue="default"
+												items={themes}
 											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select page theme" />
+												<SelectTrigger>
+													<SelectValue />
 												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="default">
-														Default - Classic design with uptime history
-													</SelectItem>
-													<SelectItem value="flat">
-														Flat - Simple and modern design
-													</SelectItem>
-												</SelectContent>
+												<SelectPopup>
+													{themes.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
+												</SelectPopup>
 											</Select>
 											<FormDescription className="pt-2">
 												Choose the layout and style for your status page
@@ -394,14 +418,18 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<Select
 												onValueChange={field.onChange}
 												value={field.value}
+												items={colorThemes}
 											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select theme" />
+												<SelectTrigger>
+													<SelectValue />
 												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="dark">Dark version</SelectItem>
-													<SelectItem value="light">Light version</SelectItem>
-												</SelectContent>
+												<SelectPopup>
+													{colorThemes.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
+												</SelectPopup>
 											</Select>
 											<FormMessage />
 										</FormItem>
@@ -423,14 +451,18 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													field.onChange(val === "private")
 												}
 												value={field.value ? "private" : "public"}
+												items={visibilityOptions}
 											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select visibility" />
+												<SelectTrigger>
+													<SelectValue />
 												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="public">Public</SelectItem>
-													<SelectItem value="private">Private</SelectItem>
-												</SelectContent>
+												<SelectPopup>
+													{visibilityOptions.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
+												</SelectPopup>
 											</Select>
 											<FormMessage />
 										</FormItem>
@@ -767,9 +799,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 			<div
 				id="statuspage-settings-footer"
-				className="fixed right-2 bottom-0 left-64 z-50 overflow-hidden rounded-b-lg border bg-popover"
+				className="pointer-events-none fixed right-2 bottom-0 left-64 overflow-hidden rounded-b-lg border bg-popover"
 			>
-				<div className="flex justify-end gap-4 px-6 py-4">
+				<div className="pointer-events-auto flex justify-end gap-4 px-6 py-4">
 					<Button
 						type="button"
 						variant="outline"

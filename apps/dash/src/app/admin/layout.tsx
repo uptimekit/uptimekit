@@ -29,14 +29,16 @@ export default async function AdminLayout({
 		<SidebarProvider>
 			<AdminSidebar />
 			<SidebarInset>
-				<header className="flex h-16 shrink-0 items-center gap-2 border-b bg-sidebar px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-					<div className="flex items-center gap-2">
-						<SidebarTrigger className="-ml-1" />
-						<Separator orientation="vertical" className="mr-2 h-4" />
-						<span className="font-semibold text-sm">Admin Dashboard</span>
-					</div>
-				</header>
-				<main className="flex flex-1 flex-col gap-4 p-4">{children}</main>
+				<main className="flex flex-1 flex-col gap-6 rounded-lg border px-4">
+					<header className="-mx-4 flex h-16 shrink-0 items-center gap-2 border-b bg-accent/10 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+						<div className="flex items-center gap-2 px-4">
+							<SidebarTrigger className="-ml-1" />
+							<Separator orientation="vertical" className="mr-2 h-4" />
+							<span className="font-semibold text-sm">Admin Dashboard</span>
+						</div>
+					</header>
+					{children}
+				</main>
 			</SidebarInset>
 		</SidebarProvider>
 	);

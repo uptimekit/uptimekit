@@ -11,7 +11,7 @@ import {
 	ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import { CreateOrganizationDialog } from "@/components/layout/create-organization-dialog";
 import {
@@ -285,7 +285,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 import { ChevronsUpDown, LogOut, User } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
