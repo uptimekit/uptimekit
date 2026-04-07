@@ -1,10 +1,9 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { Copy, Eye, EyeOff, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,89 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-	ALL_REGIONS,
-	REGIONS_BY_CONTINENT,
-	type RegionInfo,
-} from "@/lib/regions";
+import { ALL_REGIONS, REGIONS_BY_CONTINENT } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
-
-// Flatten regions with group info for virtualization
-interface FlattenedRegion {
-	region: RegionInfo;
-	continent: string;
-	isFirstInGroup: boolean;
-}
-
-const FLATTENED_REGIONS: FlattenedRegion[] = REGIONS_BY_CONTINENT.flatMap(
-	(group) =>
-		group.regions.map((region, index) => ({
-			region,
-			continent: group.continent,
-			isFirstInGroup: index === 0,
-		})),
-);
-
-// Estimate height for virtualization
-const ITEM_HEIGHT = 32; // px
-const GROUP_LABEL_HEIGHT = 24; // px
-
-function VirtualizedRegionList({
-	parentRef,
-}: {
-	parentRef: React.RefObject<HTMLDivElement | null>;
-}) {
-	const virtualizer = useVirtualizer({
-		count: FLATTENED_REGIONS.length,
-		getScrollElement: () => parentRef.current,
-		estimateSize: (index) => {
-			return FLATTENED_REGIONS[index]?.isFirstInGroup
-				? ITEM_HEIGHT + GROUP_LABEL_HEIGHT
-				: ITEM_HEIGHT;
-		},
-		overscan: 5,
-	});
-
-	const virtualItems = virtualizer.getVirtualItems();
-
-	return (
-		<div
-			style={{
-				height: `${virtualizer.getTotalSize()}px`,
-				width: "100%",
-				position: "relative",
-			}}
-		>
-			{virtualItems.map((virtualItem) => {
-				const item = FLATTENED_REGIONS[virtualItem.index];
-				if (!item) return null;
-
-				return (
-					<div
-						key={item.region.value}
-						style={{
-							position: "absolute",
-							top: 0,
-							left: 0,
-							width: "100%",
-							transform: `translateY(${virtualItem.start}px)`,
-						}}
-					>
-						{item.isFirstInGroup && (
-							<ComboboxGroupLabel>{item.continent}</ComboboxGroupLabel>
-						)}
-						<ComboboxItem value={item.region}>
-							<div className="flex items-center gap-2">
-								<item.region.Flag className="h-4 w-5 rounded-sm object-cover" />
-								<span>{item.region.label}</span>
-							</div>
-						</ComboboxItem>
-					</div>
-				);
-			})}
-		</div>
-	);
-}
 
 export function CreateWorkerDialog() {
 	const [open, setOpen] = useState(false);
@@ -122,7 +40,6 @@ export function CreateWorkerDialog() {
 	const [isCopied, setIsCopied] = useState(false);
 	const [selectedLocation, setSelectedLocation] = useState("");
 	const [newWorkerName, setNewWorkerName] = useState("");
-	const comboboxListRef = useRef<HTMLDivElement>(null);
 
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -324,11 +241,22 @@ export function CreateWorkerDialog() {
 									</ComboboxValue>
 									<ComboboxPopup>
 										<ComboboxEmpty>No regions found.</ComboboxEmpty>
-										<ComboboxList
-											ref={comboboxListRef}
-											className="max-h-[400px]"
-										>
-											<VirtualizedRegionList parentRef={comboboxListRef} />
+										<ComboboxList className="max-h-[400px]">
+											{REGIONS_BY_CONTINENT.map((group) => (
+												<ComboboxGroup key={group.continent}>
+													<ComboboxGroupLabel>
+														{group.continent}
+													</ComboboxGroupLabel>
+													{group.regions.map((region) => (
+														<ComboboxItem key={region.value} value={region}>
+															<div className="flex items-center gap-2">
+																<region.Flag className="h-4 w-5 rounded-sm object-cover" />
+																<span>{region.label}</span>
+															</div>
+														</ComboboxItem>
+													))}
+												</ComboboxGroup>
+											))}
 										</ComboboxList>
 									</ComboboxPopup>
 								</Combobox>
