@@ -6,7 +6,6 @@ import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
 	getMonitorStatus,
-	getStatusPageByDomain,
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
 
@@ -54,21 +53,14 @@ function getSlugFromOgPath(pathname: string): string | undefined {
 	return undefined;
 }
 
-export async function GET(request: Request) {
-	const slug = getSlugFromOgPath(new URL(request.url).pathname);
-	const host =
-		request.headers.get("x-forwarded-host") ||
-		request.headers.get("x-original-host") ||
-		request.headers.get("host");
+export async function GET(
+	request: Request,
+	{ params }: { params: Promise<{ slug: string }> },
+) {
+	const { slug: routeSlug } = await params;
+	const slug = routeSlug || getSlugFromOgPath(new URL(request.url).pathname);
 
-	let pageConfig = slug ? await getStatusPageBySlug(slug) : undefined;
-
-	if (!pageConfig && host) {
-		const domain = host.split(":")[0];
-		pageConfig = await getStatusPageByDomain(domain);
-	}
-
-	if (!pageConfig && !host) {
+	if (!slug) {
 		return new ImageResponse(
 			<div
 				style={{
@@ -90,6 +82,8 @@ export async function GET(request: Request) {
 			},
 		);
 	}
+
+	const pageConfig = await getStatusPageBySlug(slug);
 
 	if (!pageConfig) {
 		return new ImageResponse(

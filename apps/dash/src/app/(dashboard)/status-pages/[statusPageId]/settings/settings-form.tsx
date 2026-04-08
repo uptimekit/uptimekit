@@ -221,6 +221,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 		{ value: "private", label: "Private" },
 	];
 
+	const optionCardClassName =
+		"flex h-full min-h-18 cursor-pointer items-center rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground";
+
 	return (
 		<Form {...form}>
 			<form
@@ -522,7 +525,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
+														<div className={optionCardClassName}>
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
 																	<LayoutList className="h-5 w-5 text-muted-foreground/50" />
@@ -554,7 +557,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
+														<div className={optionCardClassName}>
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
 																	<LayoutGrid className="h-5 w-5 text-muted-foreground/50" />
@@ -605,7 +608,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
+														<div className={optionCardClassName}>
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 flex-col justify-center gap-0.5 rounded bg-muted/20 px-2">
 																	<div className="h-1.5 w-full rounded-sm bg-green-500/70" />
@@ -639,7 +642,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className="cursor-pointer rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground">
+														<div className={optionCardClassName}>
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 flex-col justify-center rounded bg-muted/20 px-2">
 																	<div className="h-2 w-full rounded-t-sm bg-green-500/70" />
@@ -798,7 +801,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 			<div
 				id="statuspage-settings-footer"
-				className="pointer-events-none fixed right-2 bottom-0 left-64 overflow-hidden rounded-b-lg border bg-popover"
+				className="pointer-events-none fixed right-2 bottom-0 left-64 overflow-hidden rounded-b-lg border bg-popover/80 backdrop-blur-md"
 			>
 				<div className="pointer-events-auto flex justify-end gap-4 px-6 py-4">
 					<Button
