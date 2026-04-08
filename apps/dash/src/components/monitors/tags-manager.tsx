@@ -205,7 +205,7 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 							style={{ backgroundColor: tag.color }}
 						/>
 						<span className="font-medium text-sm">{tag.name}</span>
-						<DropdownMenu>
+						<DropdownMenu modal={false}>
 							<DropdownMenuTrigger
 								render={
 									<Button
@@ -219,7 +219,8 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem
-									onClick={() => {
+									onSelect={(e) => {
+										e.preventDefault();
 										setEditingTag(tag);
 										setTagName(tag.name);
 										setTagColor(tag.color);

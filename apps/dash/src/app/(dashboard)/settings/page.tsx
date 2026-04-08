@@ -256,8 +256,7 @@ export default function SettingsPage() {
 									</Card>
 								</div>
 
-								{/* Fixed Footer */}
-								<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
+								<div className="sticky bottom-0 z-10 flex justify-end gap-4 border-t bg-background/80 p-4 backdrop-blur-sm">
 									<Button
 										type="button"
 										variant="outline"

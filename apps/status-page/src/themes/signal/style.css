@@ -1,0 +1,147 @@
+[data-theme="signal"] {
+	--background: #fcfcfb;
+	--card: #ffffff;
+	--popover: #ffffff;
+	--foreground: #14111d;
+	--card-foreground: #14111d;
+	--muted: #f4f3f1;
+	--muted-foreground: #6f6b78;
+	--border: rgba(20, 17, 29, 0.1);
+	--input: rgba(20, 17, 29, 0.08);
+	--accent: #f3f2ef;
+	--accent-foreground: #14111d;
+	--secondary: #f4f3f1;
+	--secondary-foreground: #14111d;
+	--ring: rgba(20, 17, 29, 0.25);
+	--radius: 0.95rem;
+	--font-sans:
+		Montserrat, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+	--shadow-sm:
+		0 0 0 0.5px rgba(20, 17, 29, 0.12),
+		0 -1px 2px -1px rgba(20, 17, 29, 0.06),
+		0 2px 5px -3px rgba(20, 17, 29, 0.08);
+	--shadow-md:
+		0 0 0 0.5px rgba(20, 17, 29, 0.12),
+		0 -1px 2px -1px rgba(20, 17, 29, 0.07),
+		0 4px 10px -6px rgba(20, 17, 29, 0.08);
+	--shadow-lg:
+		0 0 0 0.5px rgba(20, 17, 29, 0.12),
+		0 8px 24px -18px rgba(20, 17, 29, 0.14);
+	--status-operational: #06c652;
+	--status-degraded: #f3b61f;
+	--status-partial-outage: #ff8a1f;
+	--status-major-outage: #ff2b3c;
+	--status-maintenance: #5f6fff;
+	--status-unknown: #8b8793;
+}
+
+[data-theme="signal"].dark {
+	--background: #111018;
+	--card: #191821;
+	--popover: #191821;
+	--foreground: #f5f3fa;
+	--card-foreground: #f5f3fa;
+	--muted: #14131c;
+	--muted-foreground: #aaa5b4;
+	--border: rgba(245, 243, 250, 0.1);
+	--input: rgba(245, 243, 250, 0.08);
+	--accent: #21202b;
+	--accent-foreground: #f5f3fa;
+	--secondary: #21202b;
+	--secondary-foreground: #f5f3fa;
+	--ring: rgba(245, 243, 250, 0.25);
+	--shadow-sm:
+		0 0 0 0.5px rgba(245, 243, 250, 0.08),
+		0 10px 24px -20px rgba(0, 0, 0, 0.5);
+	--shadow-md:
+		0 0 0 0.5px rgba(245, 243, 250, 0.08),
+		0 14px 30px -24px rgba(0, 0, 0, 0.55);
+	--shadow-lg:
+		0 0 0 0.5px rgba(245, 243, 250, 0.08),
+		0 24px 40px -30px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="signal"] .signal-surface {
+	background: var(--card);
+	box-shadow: var(--shadow-sm);
+}
+
+[data-theme="signal"] .signal-panel {
+	background: var(--card);
+	box-shadow: var(--shadow-md);
+}
+
+[data-theme="signal"] .signal-button {
+	background-image:
+		radial-gradient(
+			ellipse at center top,
+			rgba(255, 255, 255, 0.45) 0%,
+			rgba(244, 243, 241, 1) 100%
+		);
+	box-shadow: var(--shadow-sm);
+}
+
+[data-theme="signal"].dark .signal-button {
+	background-image:
+		radial-gradient(
+			ellipse at center top,
+			rgba(255, 255, 255, 0.08) 0%,
+			rgba(33, 32, 43, 1) 100%
+		);
+}
+
+[data-theme="signal"] .signal-divider {
+	background: rgba(20, 17, 29, 0.08);
+}
+
+[data-theme="signal"].dark .signal-divider {
+	background: rgba(245, 243, 250, 0.1);
+}
+
+[data-theme="signal"] .text-status-operational {
+	color: var(--status-operational);
+}
+
+[data-theme="signal"] .text-status-degraded {
+	color: var(--status-degraded);
+}
+
+[data-theme="signal"] .text-status-partial-outage {
+	color: var(--status-partial-outage);
+}
+
+[data-theme="signal"] .text-status-major-outage {
+	color: var(--status-major-outage);
+}
+
+[data-theme="signal"] .text-status-maintenance {
+	color: var(--status-maintenance);
+}
+
+[data-theme="signal"] .text-status-unknown {
+	color: var(--status-unknown);
+}
+
+[data-theme="signal"] .bg-status-operational {
+	background-color: var(--status-operational);
+}
+
+[data-theme="signal"] .bg-status-degraded {
+	background-color: var(--status-degraded);
+}
+
+[data-theme="signal"] .bg-status-partial-outage {
+	background-color: var(--status-partial-outage);
+}
+
+[data-theme="signal"] .bg-status-major-outage {
+	background-color: var(--status-major-outage);
+}
+
+[data-theme="signal"] .bg-status-maintenance {
+	background-color: var(--status-maintenance);
+}
+
+[data-theme="signal"] .bg-status-unknown {
+	background-color: var(--status-unknown);
+}

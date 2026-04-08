@@ -305,63 +305,71 @@ export function ResponseTimeChart({
 		const timestamp = new Date(data.timestamp);
 		const timeDisplay = format(timestamp, "MMM d, HH:mm");
 
+		const tooltipRows = dataLocations
+			.map((loc) => {
+				const latency = data[`${loc}_latency`] as number | null;
+				if (latency === null || latency === undefined) return null;
+				const regionInfo = getRegionInfo(loc);
+				return {
+					color: regionColors[loc],
+					label: regionInfo.label,
+					value: `${Math.round(latency)} ms`,
+				};
+			})
+			.filter((row) => row !== null);
+
+		const breakdownRows =
+			hasDetailedTimings && viewMode === "breakdown"
+				? TIMING_KEYS.filter((key) => visibleTimings[key]).map((key) => ({
+						color: TIMING_COLORS[key],
+						label: TIMING_LABELS[key],
+						value: `${Math.round(
+							data[
+								`avg${key.charAt(0).toUpperCase() + key.slice(1)}` as keyof ChartDataPoint
+							] as number,
+						)} ms`,
+					}))
+				: [];
+
 		return (
-			<div className="rounded-lg border border-border/50 bg-background/95 p-3 shadow-lg backdrop-blur-sm">
-				<p className="mb-2 text-muted-foreground text-xs">{timeDisplay}</p>
-
-				{/* Per-region latencies — only rendered when value is non-null */}
-				{dataLocations.length > 0 && (
-					<div className="space-y-1">
-						{dataLocations.map((loc) => {
-							const latency = data[`${loc}_latency`] as number | null;
-							if (latency === null || latency === undefined) return null;
-							const regionInfo = getRegionInfo(loc);
-							return (
-								<div
-									key={loc}
-									className="flex items-center justify-between gap-4"
-								>
-									<div className="flex items-center gap-2">
-										<div
-											className="h-2 w-2 rounded-full"
-											style={{ backgroundColor: regionColors[loc] }}
-										/>
-										<span className="text-xs">{regionInfo.label}</span>
-									</div>
-									<span className="font-mono text-xs">
-										{Math.round(latency)}ms
-									</span>
-								</div>
-							);
-						})}
-					</div>
-				)}
-
-				{/* Timing breakdown section */}
-				{hasDetailedTimings && viewMode === "breakdown" && (
-					<div className="mt-2 space-y-1 border-border/50 border-t pt-2">
-						{TIMING_KEYS.filter((key) => visibleTimings[key]).map((key) => (
-							<div
-								key={key}
-								className="flex items-center justify-between gap-4"
-							>
-								<div className="flex items-center gap-2">
-									<div
-										className="h-2 w-2 rounded-full"
-										style={{ backgroundColor: TIMING_COLORS[key] }}
+			<div className="w-56 rounded-lg border border-border bg-background text-sm text-muted-foreground shadow-lg">
+				<div className="border-border border-b px-3 py-2">
+					<p className="font-medium text-foreground">{timeDisplay}</p>
+				</div>
+				<div className="space-y-2 px-3 py-2">
+					{tooltipRows.map((row) => (
+						<div key={row.label} className="flex space-x-2.5">
+							<span
+								className="w-1 shrink-0 rounded"
+								style={{ backgroundColor: row.color }}
+								aria-hidden={true}
+							/>
+							<p className="flex w-full items-center justify-between space-x-8 truncate">
+								<span className="truncate">{row.label}</span>
+								<span className="font-medium text-foreground">{row.value}</span>
+							</p>
+						</div>
+					))}
+				</div>
+				{breakdownRows.length > 0 && (
+					<div className="border-border border-t px-3 py-2">
+						<div className="space-y-2">
+							{breakdownRows.map((row) => (
+								<div key={row.label} className="flex space-x-2.5">
+									<span
+										className="w-1 shrink-0 rounded"
+										style={{ backgroundColor: row.color }}
+										aria-hidden={true}
 									/>
-									<span className="text-xs">{TIMING_LABELS[key]}</span>
+									<p className="flex w-full items-center justify-between space-x-8 truncate">
+										<span className="truncate">{row.label}</span>
+										<span className="font-medium text-foreground">
+											{row.value}
+										</span>
+									</p>
 								</div>
-								<span className="font-mono text-xs">
-									{Math.round(
-										data[
-											`avg${key.charAt(0).toUpperCase() + key.slice(1)}` as keyof ChartDataPoint
-										] as number,
-									)}
-									ms
-								</span>
-							</div>
-						))}
+							))}
+						</div>
 					</div>
 				)}
 			</div>

@@ -484,7 +484,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 				</div>
 			</div>
 
-			<div className="fixed right-0 bottom-0 left-0 z-0 flex justify-end border-t bg-background/80 p-4 backdrop-blur-sm">
+			<div className="sticky bottom-0 z-10 flex justify-end border-t bg-background/80 p-4 backdrop-blur-sm">
 				<Button
 					onClick={handleSave}
 					disabled={updateStructureMutation.isPending}

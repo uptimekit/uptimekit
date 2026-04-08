@@ -286,7 +286,7 @@ export function MonitorsTable() {
 							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
 					</Button>
-					<DropdownMenu>
+					<DropdownMenu modal={false}>
 						<DropdownMenuTrigger
 							render={
 								<Button variant="outline" size="icon" className="relative" />
@@ -498,7 +498,13 @@ export function MonitorsTable() {
 							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
 								Page Size
 							</div>
-							<div className="px-2">
+							{/** biome-ignore lint/a11y/noStaticElementInteractions: its okay */}
+							{/** biome-ignore lint/a11y/useKeyWithClickEvents: ITS OKAY! */}
+							<div
+								className="px-2"
+								onClick={(e) => e.stopPropagation()}
+								onPointerDown={(e) => e.stopPropagation()}
+							>
 								<Select
 									value={String(pageSize)}
 									onValueChange={(value) => {
@@ -506,7 +512,10 @@ export function MonitorsTable() {
 										setPage(1);
 									}}
 								>
-									<SelectTrigger className="h-8 w-full">
+									<SelectTrigger
+										className="h-8 w-full"
+										onPointerDown={(e) => e.stopPropagation()}
+									>
 										<SelectValue placeholder="Page size" />
 									</SelectTrigger>
 									<SelectContent>

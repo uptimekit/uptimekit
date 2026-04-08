@@ -1,10 +1,12 @@
 import { manifest as defaultManifest } from "./default/manifest";
 import { manifest as flatManifest } from "./flat/manifest";
+import { manifest as signalManifest } from "./signal/manifest";
 import type { ThemeManifest } from "./types";
 
 export const themeRegistry: Record<string, ThemeManifest> = {
 	default: defaultManifest,
 	flat: flatManifest,
+	signal: signalManifest,
 };
 
 export function getThemeManifest(themeId: string): ThemeManifest | undefined {

@@ -209,6 +209,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			value: "flat",
 			label: "Flat - Simple and modern design",
 		},
+		{
+			value: "signal",
+			label: "Signal - Compact operational status layout",
+		},
 	];
 
 	const colorThemes = [
@@ -801,9 +805,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
 			<div
 				id="statuspage-settings-footer"
-				className="pointer-events-none fixed right-2 bottom-0 left-64 overflow-hidden rounded-b-lg border bg-popover/80 backdrop-blur-md"
+				className="sticky bottom-0 z-10 overflow-hidden rounded-b-lg border bg-popover/80 backdrop-blur-md"
 			>
-				<div className="pointer-events-auto flex justify-end gap-4 px-6 py-4">
+				<div className="flex justify-end gap-4 px-6 py-4">
 					<Button
 						type="button"
 						variant="outline"
