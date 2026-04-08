@@ -47,12 +47,21 @@ import {
 	PaginationEllipsis,
 	PaginationItem,
 } from "@/components/ui/pagination";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 import { GroupCreationDialog } from "./group-creation-dialog";
 import { LatencySparkline } from "./latency-sparkline";
 import { TagCreationDialog } from "./tag-creation-dialog";
+
+const PAGE_SIZE_OPTIONS = ["10", "25", "50", "100"] as const;
 
 export type MonitorStatus =
 	| "up"
@@ -98,7 +107,7 @@ export function MonitorsTable() {
 	const [groupFilter, setGroupFilter] = useState<string | undefined>(undefined);
 	const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
 	const [page, setPage] = useState(1);
-	const pageSize = 10;
+	const [pageSize, setPageSize] = useState<number>(25);
 	const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
 		{},
 	);
@@ -484,6 +493,32 @@ export function MonitorsTable() {
 									{groupFilter === group.id && <Check className="h-4 w-4" />}
 								</DropdownMenuItem>
 							))}
+
+							<div className="my-2 h-px bg-muted" />
+
+							<div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+								Page Size
+							</div>
+							<div className="px-2">
+								<Select
+									value={String(pageSize)}
+									onValueChange={(value) => {
+										setPageSize(Number(value));
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className="h-8 w-full">
+										<SelectValue placeholder="Page size" />
+									</SelectTrigger>
+									<SelectContent>
+										{PAGE_SIZE_OPTIONS.map((size) => (
+											<SelectItem key={size} value={size}>
+												{size} per page
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 
 							<div className="my-2 h-px bg-muted" />
 

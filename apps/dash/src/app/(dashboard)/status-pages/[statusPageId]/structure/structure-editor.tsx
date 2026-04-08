@@ -40,6 +40,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
 	Combobox,
 	ComboboxEmpty,
+	ComboboxGroup,
+	ComboboxGroupLabel,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxList,
@@ -653,6 +655,10 @@ function GroupCard({
 interface MonitorOption {
 	id: string;
 	name: string;
+	group?: {
+		id: string;
+		name: string;
+	} | null;
 }
 
 /**
@@ -678,8 +684,25 @@ function AddMonitorInput({
 	const filteredMonitors = availableMonitors.filter(
 		(m) => !existingSet.has(m.id),
 	);
+	const groupedMonitors = filteredMonitors.reduce(
+		(acc, monitor) => {
+			const groupName = monitor.group?.name || "Ungrouped";
+			if (!acc[groupName]) {
+				acc[groupName] = [];
+			}
+			acc[groupName].push(monitor);
+			return acc;
+		},
+		{} as Record<string, MonitorOption[]>,
+	);
+	const groupedMonitorEntries = Object.entries(groupedMonitors).sort(
+		([groupNameA], [groupNameB]) => {
+			if (groupNameA === "Ungrouped") return 1;
+			if (groupNameB === "Ungrouped") return -1;
+			return groupNameA.localeCompare(groupNameB);
+		},
+	);
 
-	// This simulates the "Search to add resources" box from screenshot
 	return (
 		<Combobox
 			items={filteredMonitors}
@@ -703,11 +726,16 @@ function AddMonitorInput({
 			<ComboboxPopup>
 				<ComboboxEmpty>No monitor found.</ComboboxEmpty>
 				<ComboboxList>
-					{(monitor: MonitorOption) => (
-						<ComboboxItem key={monitor.id} value={monitor}>
-							{monitor.name}
-						</ComboboxItem>
-					)}
+					{groupedMonitorEntries.map(([groupName, monitors]) => (
+						<ComboboxGroup key={groupName}>
+							<ComboboxGroupLabel>{groupName}</ComboboxGroupLabel>
+							{monitors.map((monitor) => (
+								<ComboboxItem key={monitor.id} value={monitor}>
+									{monitor.name}
+								</ComboboxItem>
+							))}
+						</ComboboxGroup>
+					))}
 				</ComboboxList>
 			</ComboboxPopup>
 		</Combobox>

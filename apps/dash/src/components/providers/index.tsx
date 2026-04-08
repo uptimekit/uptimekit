@@ -1,8 +1,8 @@
 "use client";
 
-import { Toaster } from "sileo";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { NuqsAdapter } from "nuqs/adapters/next/pages";
+import { Toaster } from "sileo";
 import { queryClient } from "@/utils/orpc";
 import { ThemeProvider } from "./theme-provider";
 

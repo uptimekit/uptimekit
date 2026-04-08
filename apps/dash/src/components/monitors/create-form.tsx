@@ -38,6 +38,13 @@ import {
 	ComboboxValue,
 } from "@/components/ui/combobox";
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
 	Form,
 	FormControl,
 	FormDescription,
@@ -63,6 +70,7 @@ import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 import { GroupCreationDialog } from "./group-creation-dialog";
 import { TagCreationDialog } from "./tag-creation-dialog";
+import { TagsManager } from "./tags-manager";
 
 // --- Configuration Registry ---
 
@@ -517,6 +525,7 @@ export function CreateMonitorForm({
 	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 	const [groupsOpen, setGroupsOpen] = useState(false);
 	const [tagsOpen, setTagsOpen] = useState(false);
+	const [manageTagsOpen, setManageTagsOpen] = useState(false);
 
 	const getFormValuesFromInitialData = (): FormValues => {
 		const defaults = (initialData as any) || {};
@@ -806,7 +815,9 @@ export function CreateMonitorForm({
 													>
 														<FormControl>
 															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Select group" />
+																<SelectValue placeholder="Select group">
+																	{selectedGroup?.label}
+																</SelectValue>
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
@@ -886,6 +897,24 @@ export function CreateMonitorForm({
 															</ComboboxList>
 														</ComboboxPopup>
 													</Combobox>
+													<div className="flex items-center gap-2">
+														<Button
+															type="button"
+															variant="outline"
+															size="sm"
+															onClick={() => setTagsOpen(true)}
+														>
+															New tag
+														</Button>
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															onClick={() => setManageTagsOpen(true)}
+														>
+															Edit tags
+														</Button>
+													</div>
 													<FormMessage />
 												</FormItem>
 											);
@@ -1175,6 +1204,18 @@ export function CreateMonitorForm({
 			</Form>
 			<GroupCreationDialog open={groupsOpen} onOpenChange={setGroupsOpen} />
 			<TagCreationDialog open={tagsOpen} onOpenChange={setTagsOpen} />
+			<Dialog open={manageTagsOpen} onOpenChange={setManageTagsOpen}>
+				<DialogContent className="sm:max-w-2xl">
+					<DialogHeader>
+						<DialogTitle>Manage Tags</DialogTitle>
+						<DialogDescription>
+							Create, edit, and delete monitor tags without leaving this
+							form.
+						</DialogDescription>
+					</DialogHeader>
+					<TagsManager />
+				</DialogContent>
+			</Dialog>
 		</>
 	);
 }

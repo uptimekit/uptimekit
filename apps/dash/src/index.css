@@ -299,11 +299,10 @@ body {
 	}
 }
 
-
 [data-sileo-pill] {
-  fill: var(--sidebar) !important;
+	fill: var(--sidebar) !important;
 }
 
 [data-sileo-body] {
-  fill: var(--sidebar) !important;
+	fill: var(--sidebar) !important;
 }
