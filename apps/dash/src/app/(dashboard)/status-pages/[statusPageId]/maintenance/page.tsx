@@ -9,7 +9,6 @@ import { sileo } from "sileo";
 import { CreateMaintenanceForm } from "@/components/status-pages/create-maintenance-form";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -257,7 +256,8 @@ export default function MaintenancePage() {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={() => {
 								if (deleteMaintenanceId) {
 									deleteMaintenance(deleteMaintenanceId);
@@ -266,7 +266,7 @@ export default function MaintenancePage() {
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Delete
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

@@ -23,7 +23,6 @@ import { Fragment, useEffect, useState } from "react";
 import { sileo } from "sileo";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -927,7 +926,8 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 						</AlertDialogHeader>
 						<AlertDialogFooter>
 							<AlertDialogCancel>Cancel</AlertDialogCancel>
-							<AlertDialogAction
+							<Button
+								type="button"
 								className="bg-red-500 hover:bg-red-600"
 								onClick={(e) => {
 									e.stopPropagation();
@@ -935,7 +935,7 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 								}}
 							>
 								Delete
-							</AlertDialogAction>
+							</Button>
 						</AlertDialogFooter>
 					</AlertDialogContent>
 				</AlertDialog>

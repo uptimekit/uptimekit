@@ -22,14 +22,12 @@ import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +74,20 @@ export function IncidentsTable() {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [debouncedSearch, setDebouncedSearch] = useState("");
 	const [page, setPage] = useState(1);
+	const [incidentToDelete, setIncidentToDelete] = useState<{
+		id: string;
+		title: string;
+		status: string;
+		severity: string;
+		type: string;
+		startedAt: Date;
+		endedAt: Date | null;
+		monitors: { monitor: { id: string; name: string } }[];
+		statusPages: {
+			statusPageId: string;
+			statusPage: { id: string; name: string };
+		}[];
+	} | null>(null);
 	const pageSize = 10;
 
 	useEffect(() => {
@@ -110,8 +122,12 @@ export function IncidentsTable() {
 		onSuccess: () => {
 			sileo.success({ title: "Incident deleted" });
 			queryClient.invalidateQueries({ queryKey: orpc.incidents.list.key() });
+			setIncidentToDelete(null);
 		},
-		onError: () => sileo.error({ title: "Failed to delete incident" }),
+		onError: (err) => {
+			sileo.error({ title: `Failed to delete incident: ${err.message}` });
+			setIncidentToDelete(null);
+		},
 	});
 
 	const getStatusIcon = (status: string) => {
@@ -520,53 +536,12 @@ export function IncidentsTable() {
 												>
 													View details
 												</DropdownMenuItem>
-												<AlertDialog>
-													<AlertDialogTrigger
-														render={
-															<DropdownMenuItem
-																className="text-red-500"
-																onSelect={(e) => e.preventDefault()}
-															/>
-														}
-													>
-														Delete
-													</AlertDialogTrigger>
-													<AlertDialogContent>
-														<AlertDialogHeader>
-															<AlertDialogTitle>
-																Are you absolutely sure?
-															</AlertDialogTitle>
-															<AlertDialogDescription>
-																This action cannot be undone. This will
-																permanently delete the incident "
-																{incident.title}" and all of its activity
-																history.
-															</AlertDialogDescription>
-														</AlertDialogHeader>
-														<AlertDialogFooter>
-															<AlertDialogCancel disabled={isDeleting}>
-																Cancel
-															</AlertDialogCancel>
-															<AlertDialogAction
-																className="bg-red-500 hover:bg-red-600"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	deleteIncident(incident.id);
-																}}
-																disabled={isDeleting}
-															>
-																{isDeleting ? (
-																	<>
-																		<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-																		Deleting...
-																	</>
-																) : (
-																	"Delete"
-																)}
-															</AlertDialogAction>
-														</AlertDialogFooter>
-													</AlertDialogContent>
-												</AlertDialog>
+												<DropdownMenuItem
+													className="text-red-500"
+													onSelect={() => setIncidentToDelete(incident)}
+												>
+													Delete
+												</DropdownMenuItem>
 											</DropdownMenuContent>
 										</DropdownMenu>
 									</TableCell>
@@ -639,6 +614,42 @@ export function IncidentsTable() {
 					</div>
 				)}
 			</div>
+
+			<AlertDialog
+				open={!!incidentToDelete}
+				onOpenChange={(open) => !open && setIncidentToDelete(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the
+							incident &quot;
+							{incidentToDelete?.title}&quot; and all of its activity history.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+						<Button
+							type="button"
+							className="bg-red-500 hover:bg-red-600"
+							onClick={() =>
+								incidentToDelete && deleteIncident(incidentToDelete.id)
+							}
+							disabled={isDeleting}
+						>
+							{isDeleting ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Deleting...
+								</>
+							) : (
+								"Delete"
+							)}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

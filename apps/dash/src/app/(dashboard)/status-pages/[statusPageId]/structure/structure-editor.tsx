@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { sileo } from "sileo";
+import { groupMonitorOptions } from "@/components/monitors/grouped-monitor-combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -684,24 +685,7 @@ function AddMonitorInput({
 	const filteredMonitors = availableMonitors.filter(
 		(m) => !existingSet.has(m.id),
 	);
-	const groupedMonitors = filteredMonitors.reduce(
-		(acc, monitor) => {
-			const groupName = monitor.group?.name || "Ungrouped";
-			if (!acc[groupName]) {
-				acc[groupName] = [];
-			}
-			acc[groupName].push(monitor);
-			return acc;
-		},
-		{} as Record<string, MonitorOption[]>,
-	);
-	const groupedMonitorEntries = Object.entries(groupedMonitors).sort(
-		([groupNameA], [groupNameB]) => {
-			if (groupNameA === "Ungrouped") return 1;
-			if (groupNameB === "Ungrouped") return -1;
-			return groupNameA.localeCompare(groupNameB);
-		},
-	);
+	const groupedMonitorEntries = groupMonitorOptions(filteredMonitors);
 
 	return (
 		<Combobox

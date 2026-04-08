@@ -7,19 +7,9 @@ import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
 
+import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Combobox,
-	ComboboxChip,
-	ComboboxChips,
-	ComboboxChipsInput,
-	ComboboxEmpty,
-	ComboboxItem,
-	ComboboxList,
-	ComboboxPopup,
-	ComboboxValue,
-} from "@/components/ui/combobox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 import {
@@ -168,49 +158,15 @@ export function CreateMaintenanceForm({
 									<FormItem className="flex flex-col">
 										<FormLabel>Affected Monitors</FormLabel>
 										<FormControl>
-											<Combobox
-												items={monitors}
+											<GroupedMonitorCombobox
+												ariaLabel="Select monitors"
+												monitors={monitors}
 												value={selectedMonitors}
 												onValueChange={(newValue) =>
-													field.onChange(newValue.map((i: Monitor) => i.id))
+													field.onChange(newValue.map((item) => item.id))
 												}
-												multiple
-											>
-												<ComboboxChips>
-													<ComboboxValue>
-														{(value: Monitor[]) => (
-															<>
-																{value?.map((item) => (
-																	<ComboboxChip
-																		key={item.id}
-																		aria-label={item.name}
-																	>
-																		{item.name}
-																	</ComboboxChip>
-																))}
-																<ComboboxChipsInput
-																	aria-label="Select monitors"
-																	placeholder={
-																		value?.length > 0
-																			? undefined
-																			: "Select monitors"
-																	}
-																/>
-															</>
-														)}
-													</ComboboxValue>
-												</ComboboxChips>
-												<ComboboxPopup>
-													<ComboboxEmpty>No monitors found.</ComboboxEmpty>
-													<ComboboxList>
-														{(item: Monitor) => (
-															<ComboboxItem key={item.id} value={item}>
-																{item.name}
-															</ComboboxItem>
-														)}
-													</ComboboxList>
-												</ComboboxPopup>
-											</Combobox>
+												placeholder="Select monitors"
+											/>
 										</FormControl>
 										<div className="mt-2 flex flex-wrap gap-2">
 											{field.value?.map((id) => {

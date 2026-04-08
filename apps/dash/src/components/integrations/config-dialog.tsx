@@ -8,7 +8,6 @@ import { z } from "zod";
 import { AlertManagerConfig } from "@/components/integrations/alertmanager-config";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -217,13 +216,14 @@ export function ConfigDialog({
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={handleDelete}
 							disabled={deleting}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							{deleting ? "Removing..." : "Remove"}
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

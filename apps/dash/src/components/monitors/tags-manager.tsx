@@ -6,7 +6,6 @@ import { useState } from "react";
 import { sileo } from "sileo";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -252,12 +251,13 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 										</AlertDialogHeader>
 										<AlertDialogFooter>
 											<AlertDialogCancel>Cancel</AlertDialogCancel>
-											<AlertDialogAction
+											<Button
+												type="button"
 												className="bg-red-500 hover:bg-red-600"
 												onClick={() => deleteTag(tag.id)}
 											>
 												Delete
-											</AlertDialogAction>
+											</Button>
 										</AlertDialogFooter>
 									</AlertDialogContent>
 								</AlertDialog>

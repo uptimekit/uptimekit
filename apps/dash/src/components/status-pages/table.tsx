@@ -19,7 +19,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -403,7 +402,8 @@ export function StatusPagesTable() {
 						<AlertDialogCancel disabled={deleteMutation.isPending}>
 							Cancel
 						</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={(e) => {
 								e.preventDefault();
 								handleDeleteConfirm();
@@ -419,7 +419,7 @@ export function StatusPagesTable() {
 							) : (
 								"Delete"
 							)}
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

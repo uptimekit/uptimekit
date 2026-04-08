@@ -18,7 +18,6 @@ import { sileo } from "sileo";
 import { CreateStatusUpdateForm } from "@/components/status-pages/create-update-form";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -265,7 +264,8 @@ export default function StatusUpdatesPage() {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={() => {
 								if (deleteReportId) {
 									deleteReport(deleteReportId);
@@ -275,7 +275,7 @@ export default function StatusUpdatesPage() {
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Delete
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

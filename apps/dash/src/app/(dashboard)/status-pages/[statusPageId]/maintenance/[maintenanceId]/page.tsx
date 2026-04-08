@@ -21,7 +21,6 @@ import { sileo } from "sileo";
 import { AddMaintenanceUpdateForm } from "@/components/status-pages/add-maintenance-update-form";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -481,7 +480,8 @@ function EditUpdateDialog({
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={() => {
 								deleteUpdate();
 								setShowDeleteDialog(false);
@@ -489,7 +489,7 @@ function EditUpdateDialog({
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Delete
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

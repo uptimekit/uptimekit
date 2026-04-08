@@ -7,18 +7,8 @@ import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import * as z from "zod";
 
+import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Button } from "@/components/ui/button";
-import {
-	Combobox,
-	ComboboxChip,
-	ComboboxChips,
-	ComboboxChipsInput,
-	ComboboxEmpty,
-	ComboboxItem,
-	ComboboxList,
-	ComboboxPopup,
-	ComboboxValue,
-} from "@/components/ui/combobox";
 import {
 	Form,
 	FormControl,
@@ -216,48 +206,14 @@ export function AddUpdateForm({
 						render={() => (
 							<FormItem>
 								<FormControl>
-									<Combobox
-										items={monitors}
+									<GroupedMonitorCombobox
+										ariaLabel="Select monitors"
+										inputClassName="h-8 border-dashed"
+										monitors={monitors}
 										value={selectedMonitors}
 										onValueChange={handleMonitorChange}
-										multiple
-									>
-										<ComboboxChips>
-											<ComboboxValue>
-												{(value: Monitor[]) => (
-													<>
-														{value?.map((item) => (
-															<ComboboxChip
-																key={item.id}
-																aria-label={item.name}
-															>
-																{item.name}
-															</ComboboxChip>
-														))}
-														<ComboboxChipsInput
-															aria-label="Select monitors"
-															placeholder={
-																value?.length > 0
-																	? undefined
-																	: "Modify services..."
-															}
-															className="h-8 border-dashed"
-														/>
-													</>
-												)}
-											</ComboboxValue>
-										</ComboboxChips>
-										<ComboboxPopup>
-											<ComboboxEmpty>No monitors found.</ComboboxEmpty>
-											<ComboboxList>
-												{(item: Monitor) => (
-													<ComboboxItem key={item.id} value={item}>
-														{item.name}
-													</ComboboxItem>
-												)}
-											</ComboboxList>
-										</ComboboxPopup>
-									</Combobox>
+										placeholder="Modify services..."
+									/>
 								</FormControl>
 								<FormMessage />
 							</FormItem>

@@ -15,7 +15,6 @@ import { sileo } from "sileo";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -384,12 +383,13 @@ export function WorkersTable() {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={confirmDelete}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Delete Worker
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

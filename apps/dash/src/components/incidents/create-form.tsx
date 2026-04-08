@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
 	Combobox,
 	ComboboxChip,
@@ -20,6 +18,9 @@ import {
 	ComboboxPopup,
 	ComboboxValue,
 } from "@/components/ui/combobox";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Form,
@@ -273,49 +274,15 @@ export function CreateIncidentForm() {
 									<FormItem className="flex flex-col">
 										<FormLabel>Affected Monitors</FormLabel>
 										<FormControl>
-											<Combobox
-												items={monitors}
+											<GroupedMonitorCombobox
+												ariaLabel="Select monitors"
+												monitors={monitors}
 												value={selectedMonitors}
 												onValueChange={(newValue) =>
-													field.onChange(newValue.map((i: Monitor) => i.id))
+													field.onChange(newValue.map((item) => item.id))
 												}
-												multiple
-											>
-												<ComboboxChips>
-													<ComboboxValue>
-														{(value: Monitor[]) => (
-															<>
-																{value?.map((item) => (
-																	<ComboboxChip
-																		key={item.id}
-																		aria-label={item.name}
-																	>
-																		{item.name}
-																	</ComboboxChip>
-																))}
-																<ComboboxChipsInput
-																	aria-label="Select monitors"
-																	placeholder={
-																		value?.length > 0
-																			? undefined
-																			: "Select monitors"
-																	}
-																/>
-															</>
-														)}
-													</ComboboxValue>
-												</ComboboxChips>
-												<ComboboxPopup>
-													<ComboboxEmpty>No monitors found.</ComboboxEmpty>
-													<ComboboxList>
-														{(item: Monitor) => (
-															<ComboboxItem key={item.id} value={item}>
-																{item.name}
-															</ComboboxItem>
-														)}
-													</ComboboxList>
-												</ComboboxPopup>
-											</Combobox>
+												placeholder="Select monitors"
+											/>
 										</FormControl>
 										<FormMessage />
 									</FormItem>

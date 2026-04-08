@@ -19,15 +19,14 @@ import { sileo } from "sileo";
 import { z } from "zod";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -102,6 +101,7 @@ export function IncidentDetails({ id }: { id: string }) {
 	const queryClient = useQueryClient();
 	const [comment, setComment] = useState("");
 	const [editOpen, setEditOpen] = useState(false);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
 	const submitComment = useMutation(
 		orpc.incidents.addComment.mutationOptions({
@@ -156,10 +156,12 @@ export function IncidentDetails({ id }: { id: string }) {
 		orpc.incidents.delete.mutationOptions({
 			onSuccess: () => {
 				sileo.success({ title: "Incident deleted" });
+				setShowDeleteDialog(false);
 				router.push("/incidents");
 			},
 			onError: (err) => {
 				sileo.error({ title: `Failed to delete incident: ${err.message}` });
+				setShowDeleteDialog(false);
 			},
 		}),
 	);
@@ -266,41 +268,13 @@ export function IncidentDetails({ id }: { id: string }) {
 								</DropdownMenuTrigger>
 
 								<DropdownMenuContent align="end">
-									<AlertDialog>
-										<AlertDialogTrigger
-											render={
-												<DropdownMenuItem
-													className="text-red-500"
-													onSelect={(e) => e.preventDefault()}
-												/>
-											}
-										>
-											<Trash2 className="mr-2 h-4 w-4" />
-											Delete incident
-										</AlertDialogTrigger>
-
-										<AlertDialogContent>
-											<AlertDialogHeader>
-												<AlertDialogTitle>Delete incident?</AlertDialogTitle>
-												<AlertDialogDescription>
-													This action cannot be undone. This will permanently
-													delete the incident "{incident.title}" and all of its
-													activity history.
-												</AlertDialogDescription>
-											</AlertDialogHeader>
-
-											<AlertDialogFooter>
-												<AlertDialogCancel>Cancel</AlertDialogCancel>
-												<AlertDialogAction
-													className="bg-red-500 hover:bg-red-600"
-													onClick={() => deleteIncident.mutate({ id })}
-													disabled={deleteIncident.isPending}
-												>
-													Delete
-												</AlertDialogAction>
-											</AlertDialogFooter>
-										</AlertDialogContent>
-									</AlertDialog>
+									<DropdownMenuItem
+										className="text-red-500"
+										onSelect={() => setShowDeleteDialog(true)}
+									>
+										<Trash2 className="mr-2 h-4 w-4" />
+										Delete incident
+									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</div>
@@ -524,6 +498,32 @@ export function IncidentDetails({ id }: { id: string }) {
 				open={editOpen}
 				onOpenChange={setEditOpen}
 			/>
+
+			<AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete incident?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the
+							incident &quot;
+							{incident.title}&quot; and all of its activity history.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={deleteIncident.isPending}>
+							Cancel
+						</AlertDialogCancel>
+						<Button
+							type="button"
+							className="bg-red-500 hover:bg-red-600"
+							onClick={() => deleteIncident.mutate({ id })}
+							disabled={deleteIncident.isPending}
+						>
+							{deleteIncident.isPending ? "Deleting..." : "Delete"}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 }
@@ -574,6 +574,10 @@ function EditIncidentDialog({
 	const { data: statusPagesData } = useQuery(
 		orpc.statusPages.list.queryOptions({ limit: 100 }),
 	);
+	const selectedMonitors =
+		monitorsData?.items.filter((item: any) =>
+			(form.watch("monitorIds") ?? []).includes(item.id),
+		) ?? [];
 
 	const updateIncident = useMutation(
 		orpc.incidents.update.mutationOptions({
@@ -724,24 +728,25 @@ function EditIncidentDialog({
 									)}
 								/>
 
-								<MultiSelectField
-									label="Affected monitors"
-									values={form.watch("monitorIds") ?? []}
-									options={
-										monitorsData?.items.map((item: any) => ({
-											id: item.id,
-											label: item.name,
-										})) ?? []
-									}
-									onChange={(values) =>
-										form.setValue("monitorIds", values, {
-											shouldDirty: true,
-											shouldValidate: true,
-										})
-									}
-									emptyLabel="No monitors selected. The incident will be global."
-									searchPlaceholder="Search monitors..."
-								/>
+								<div className="space-y-3">
+									<FormLabel>Affected monitors</FormLabel>
+									<GroupedMonitorCombobox
+										ariaLabel="Affected monitors"
+										monitors={monitorsData?.items ?? []}
+										value={selectedMonitors}
+										onValueChange={(values) =>
+											form.setValue(
+												"monitorIds",
+												values.map((item) => item.id),
+												{
+													shouldDirty: true,
+													shouldValidate: true,
+												},
+											)
+										}
+										placeholder="No monitors selected. The incident will be global."
+									/>
+								</div>
 
 								<MultiSelectField
 									label="Publish to status pages"

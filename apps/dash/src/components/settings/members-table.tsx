@@ -6,7 +6,6 @@ import { useState } from "react";
 import { sileo } from "sileo";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -259,12 +258,13 @@ export function MembersTable() {
 						<AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
 							Cancel
 						</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
+							type="button"
 							onClick={handleRemoveMember}
 							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 						>
 							Remove
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
