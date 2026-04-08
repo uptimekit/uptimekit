@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ export function CreateStatusUpdateForm({
 				statusPageId,
 			}),
 		onSuccess: () => {
-			toast.success("Status update posted successfully");
+			sileo.success({ title: "Status update posted successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.list.key(),
 			});
@@ -115,7 +115,7 @@ export function CreateStatusUpdateForm({
 			form.reset();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to post status update: ${error.message}`);
+			sileo.error({ title: `Failed to post status update: ${error.message}` });
 		},
 	});
 

@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -77,19 +77,21 @@ export function CreateOrganizationDialog({
 							await authClient.organization.setActive({
 								organizationId: ctx.data.id,
 							});
-							toast.success("Organization created successfully");
+							sileo.success({ title: "Organization created successfully" });
 							setOpen(false);
 							form.reset();
 							await queryClient.invalidateQueries();
 							router.refresh();
 							router.push("/");
 						} catch {
-							toast.error("Organization created but failed to switch");
+							sileo.error({
+								title: "Organization created but failed to switch",
+							});
 						}
 					}
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);

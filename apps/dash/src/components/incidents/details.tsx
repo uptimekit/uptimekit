@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import {
 	AlertDialog,
@@ -110,10 +110,10 @@ export function IncidentDetails({ id }: { id: string }) {
 					queryKey: orpc.incidents.get.key({ input: { id } }),
 				});
 				setComment("");
-				toast.success("Comment added");
+				sileo.success({ title: "Comment added" });
 			},
 			onError: (err) => {
-				toast.error(`Failed to add comment: ${err.message}`);
+				sileo.error({ title: `Failed to add comment: ${err.message}` });
 			},
 		}),
 	);
@@ -128,10 +128,12 @@ export function IncidentDetails({ id }: { id: string }) {
 				queryClient.invalidateQueries({
 					queryKey: orpc.incidents.get.key({ input: { id } }),
 				});
-				toast.success("Incident acknowledged");
+				sileo.success({ title: "Incident acknowledged" });
 			},
 			onError: (err) => {
-				toast.error(`Failed to acknowledge incident: ${err.message}`);
+				sileo.error({
+					title: `Failed to acknowledge incident: ${err.message}`,
+				});
 			},
 		}),
 	);
@@ -142,10 +144,10 @@ export function IncidentDetails({ id }: { id: string }) {
 				queryClient.invalidateQueries({
 					queryKey: orpc.incidents.get.key({ input: { id } }),
 				});
-				toast.success("Incident resolved");
+				sileo.success({ title: "Incident resolved" });
 			},
 			onError: (err) => {
-				toast.error(`Failed to resolve incident: ${err.message}`);
+				sileo.error({ title: `Failed to resolve incident: ${err.message}` });
 			},
 		}),
 	);
@@ -153,11 +155,11 @@ export function IncidentDetails({ id }: { id: string }) {
 	const deleteIncident = useMutation(
 		orpc.incidents.delete.mutationOptions({
 			onSuccess: () => {
-				toast.success("Incident deleted");
+				sileo.success({ title: "Incident deleted" });
 				router.push("/incidents");
 			},
 			onError: (err) => {
-				toast.error(`Failed to delete incident: ${err.message}`);
+				sileo.error({ title: `Failed to delete incident: ${err.message}` });
 			},
 		}),
 	);
@@ -582,11 +584,11 @@ function EditIncidentDialog({
 				queryClient.invalidateQueries({
 					queryKey: orpc.incidents.list.key(),
 				});
-				toast.success("Incident updated");
+				sileo.success({ title: "Incident updated" });
 				onOpenChange(false);
 			},
 			onError: (error) => {
-				toast.error(`Failed to update incident: ${error.message}`);
+				sileo.error({ title: `Failed to update incident: ${error.message}` });
 			},
 		}),
 	);

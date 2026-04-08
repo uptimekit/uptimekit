@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,7 +66,7 @@ export function CreateStatusPageForm({
 	const { mutate, isPending } = useMutation({
 		mutationFn: (data: FormValues) => client.statusPages.create(data),
 		onSuccess: () => {
-			toast.success("Status page created successfully");
+			sileo.success({ title: "Status page created successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusPages.list.key(),
 			});
@@ -75,7 +75,7 @@ export function CreateStatusPageForm({
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
-			toast.error(error.message || "Failed to create status page");
+			sileo.error({ title: error.message || "Failed to create status page" });
 		},
 	});
 

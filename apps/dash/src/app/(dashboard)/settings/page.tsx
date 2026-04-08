@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import { GroupSettings } from "@/components/settings/group-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
@@ -93,10 +93,10 @@ export default function SettingsPage() {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Organization settings updated");
+					sileo.success({ title: "Organization settings updated" });
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 					if (
 						ctx.error.message?.toLowerCase().includes("slug") ||
 						ctx.error.message?.toLowerCase().includes("unique")

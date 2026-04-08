@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
 import {
 	AlertDialog,
@@ -102,13 +102,13 @@ export function WorkersTable() {
 	const deleteMutation = useMutation({
 		...orpc.workers.delete.mutationOptions(),
 		onSuccess: () => {
-			toast.success("Worker deleted successfully");
+			sileo.success({ title: "Worker deleted successfully" });
 			queryClient.invalidateQueries({ queryKey: orpc.workers.list.key() });
 			setDeleteDialogOpen(false);
 			setWorkerToDelete(null);
 		},
 		onError: (error: Error) => {
-			toast.error(error.message || "Failed to delete worker");
+			sileo.error({ title: error.message || "Failed to delete worker" });
 		},
 	});
 

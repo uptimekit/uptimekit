@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -84,13 +84,13 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 		mutationFn: ({ name, color }: { name: string; color: string }) =>
 			client.monitors.createTag({ name, color }),
 		onSuccess: () => {
-			toast.success("Tag created");
+			sileo.success({ title: "Tag created" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.listTags.key() });
 			setCreateOpen(false);
 			setTagName("");
 			setTagColor(PRESET_COLORS[0]);
 		},
-		onError: () => toast.error("Failed to create tag"),
+		onError: () => sileo.error({ title: "Failed to create tag" }),
 	});
 
 	const { mutate: updateTag, isPending: isUpdating } = useMutation({
@@ -104,7 +104,7 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 			color?: string;
 		}) => client.monitors.updateTag({ id, name, color }),
 		onSuccess: () => {
-			toast.success("Tag updated");
+			sileo.success({ title: "Tag updated" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.listTags.key() });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 			setEditOpen(false);
@@ -112,17 +112,17 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 			setTagName("");
 			setTagColor(PRESET_COLORS[0]);
 		},
-		onError: () => toast.error("Failed to update tag"),
+		onError: () => sileo.error({ title: "Failed to update tag" }),
 	});
 
 	const { mutate: deleteTag } = useMutation({
 		mutationFn: (id: string) => client.monitors.deleteTag({ id }),
 		onSuccess: () => {
-			toast.success("Tag deleted");
+			sileo.success({ title: "Tag deleted" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.listTags.key() });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 		},
-		onError: () => toast.error("Failed to delete tag"),
+		onError: () => sileo.error({ title: "Failed to delete tag" }),
 	});
 
 	return (

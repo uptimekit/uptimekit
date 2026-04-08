@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo as toast } from "sileo";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,7 +34,6 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
 	Select,
-	SelectContent,
 	SelectItem,
 	SelectPopup,
 	SelectTrigger,
@@ -100,10 +99,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 					input: { id: statusPageId },
 				}).queryKey,
 			});
-			toast.success("Status page updated successfully");
+			toast.success({ title: "Status page updated successfully" });
 		},
 		onError: (err: Error) => {
-			toast.error(err.message);
+			toast.error({ title: err.message });
 		},
 	});
 

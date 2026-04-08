@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import * as z from "zod";
 
 import {
@@ -124,7 +124,7 @@ export function EditUpdateForm({
 				updateId,
 			}),
 		onSuccess: () => {
-			toast.success("Update edited successfully");
+			sileo.success({ title: "Update edited successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.get.key({
 					input: { statusPageId, reportId },
@@ -133,7 +133,7 @@ export function EditUpdateForm({
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to edit update: ${error.message}`);
+			sileo.error({ title: `Failed to edit update: ${error.message}` });
 		},
 	});
 
@@ -144,7 +144,7 @@ export function EditUpdateForm({
 				updateId,
 			}),
 		onSuccess: () => {
-			toast.success("Update deleted successfully");
+			sileo.success({ title: "Update deleted successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.get.key({
 					input: { statusPageId, reportId },
@@ -153,7 +153,7 @@ export function EditUpdateForm({
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to delete update: ${error.message}`);
+			sileo.error({ title: `Failed to delete update: ${error.message}` });
 		},
 	});
 

@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import z from "zod";
 import Loader from "@/components/common/loader";
 import { Button } from "@/components/ui/button";
@@ -64,10 +64,12 @@ export default function SignUpForm({
 							return;
 						}
 						router.push("/");
-						toast.success("Sign up successful");
+						sileo.success({ title: "Sign up successful" });
 					},
 					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
+						sileo.error({
+							title: error.error.message || error.error.statusText,
+						});
 					},
 				},
 			);

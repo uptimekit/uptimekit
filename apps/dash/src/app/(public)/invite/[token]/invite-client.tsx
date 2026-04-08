@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import SignInForm from "@/components/auth/sign-in-form";
 import SignUpForm from "@/components/auth/sign-up-form";
 import Loader from "@/components/common/loader";
@@ -33,11 +33,11 @@ export default function InviteClient({ token, invitation }: InviteClientProps) {
 			{
 				onSuccess: () => {
 					// better-auth might return organizationId in response
-					toast.success("Joined organization successfully");
+					sileo.success({ title: "Joined organization successfully" });
 					router.push("/");
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);

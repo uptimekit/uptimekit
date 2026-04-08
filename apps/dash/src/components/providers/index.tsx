@@ -1,9 +1,9 @@
 "use client";
 
+import { Toaster } from "sileo";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { NuqsAdapter } from "nuqs/adapters/next/pages";
 import { queryClient } from "@/utils/orpc";
-import { Toaster } from "../ui/sonner";
 import { ThemeProvider } from "./theme-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 				<QueryClientProvider client={queryClient}>
 					{children}
 				</QueryClientProvider>
-				<Toaster richColors />
+				<Toaster position="top-center" theme="light" />
 			</NuqsAdapter>
 		</ThemeProvider>
 	);

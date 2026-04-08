@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -77,11 +77,11 @@ export function ConfigurationSettingsForm() {
 			]);
 		},
 		onSuccess: () => {
-			toast.success("Settings saved successfully");
+			sileo.success({ title: "Settings saved successfully" });
 			queryClient.invalidateQueries({ queryKey: ["configuration"] });
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			sileo.error({ title: error.message });
 		},
 	});
 

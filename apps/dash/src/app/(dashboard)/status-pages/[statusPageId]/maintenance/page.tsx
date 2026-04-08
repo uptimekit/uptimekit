@@ -5,7 +5,7 @@ import { ChevronDown, Clock, MoreHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { CreateMaintenanceForm } from "@/components/status-pages/create-maintenance-form";
 import {
 	AlertDialog,
@@ -49,14 +49,14 @@ export default function MaintenancePage() {
 				maintenanceId,
 			}),
 		onSuccess: () => {
-			toast.success("Maintenance deleted successfully");
+			sileo.success({ title: "Maintenance deleted successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.maintenance.list.key(),
 			});
 			setDeleteMaintenanceId(null);
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to delete maintenance: ${error.message}`);
+			sileo.error({ title: `Failed to delete maintenance: ${error.message}` });
 		},
 	});
 

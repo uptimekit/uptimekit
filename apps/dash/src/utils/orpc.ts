@@ -3,14 +3,15 @@ import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import type { AppRouterClient } from "@uptimekit/api/routers/index";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 
 export const queryClient = new QueryClient({
 	queryCache: new QueryCache({
 		onError: (error) => {
-			toast.error(`Error: ${error.message}`, {
-				action: {
-					label: "retry",
+			sileo.action({
+				title: `Error: ${error.message}`,
+				button: {
+					title: "Retry",
 					onClick: () => {
 						queryClient.invalidateQueries();
 					},

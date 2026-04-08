@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -47,7 +47,7 @@ export function GroupCreationDialog({
 	const { mutate: createGroup, isPending: isCreating } = useMutation({
 		mutationFn: (name: string) => client.monitors.createGroup({ name }),
 		onSuccess: () => {
-			toast.success("Group created");
+			sileo.success({ title: "Group created" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.monitors.listGroups.key(),
 			});
@@ -55,7 +55,7 @@ export function GroupCreationDialog({
 			setGroupName("");
 			onCreated?.();
 		},
-		onError: () => toast.error("Failed to create group"),
+		onError: () => sileo.error({ title: "Failed to create group" }),
 	});
 
 	return (

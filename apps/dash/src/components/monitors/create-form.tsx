@@ -14,7 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { type UseFormReturn, useFieldArray, useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -596,7 +596,9 @@ export function CreateMonitorForm({
 			return client.monitors.create(payload as any);
 		},
 		onSuccess: () => {
-			toast.success(monitorId ? "Monitor updated" : "Monitor created");
+			sileo.success({
+				title: monitorId ? "Monitor updated" : "Monitor created",
+			});
 			utils.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 			if (monitorId) {
 				utils.invalidateQueries({
@@ -606,10 +608,11 @@ export function CreateMonitorForm({
 			router.push("/monitors");
 		},
 		onError: (error) => {
-			toast.error(
-				error.message ||
+			sileo.error({
+				title:
+					error.message ||
 					(monitorId ? "Failed to update monitor" : "Failed to create monitor"),
-			);
+			});
 			console.error(error);
 		},
 	});

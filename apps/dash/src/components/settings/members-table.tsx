@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -73,12 +73,12 @@ export function MembersTable() {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Member removed");
+					sileo.success({ title: "Member removed" });
 					setIsDeleteDialogOpen(false);
 					refetch();
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);
@@ -93,12 +93,12 @@ export function MembersTable() {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Role updated");
+					sileo.success({ title: "Role updated" });
 					setIsRoleDialogOpen(false);
 					refetch();
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);
@@ -228,7 +228,7 @@ export function MembersTable() {
 													await authClient.organization.cancelInvitation({
 														invitationId: invitation.id,
 													});
-													toast.success("Invitation revoked");
+													sileo.success({ title: "Invitation revoked" });
 													refetch();
 												}}
 											>

@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 
 import { AddMaintenanceUpdateForm } from "@/components/status-pages/add-maintenance-update-form";
 import {
@@ -343,14 +343,14 @@ function EditUpdateDialog({
 			});
 		},
 		onSuccess: () => {
-			toast.success("Update saved");
+			sileo.success({ title: "Update saved" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.maintenance.get.key(),
 			});
 			onOpenChange(false);
 		},
 		onError: () => {
-			toast.error("Failed to save update");
+			sileo.error({ title: "Failed to save update" });
 		},
 	});
 
@@ -362,14 +362,14 @@ function EditUpdateDialog({
 			});
 		},
 		onSuccess: () => {
-			toast.success("Update deleted");
+			sileo.success({ title: "Update deleted" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.maintenance.get.key(),
 			});
 			onOpenChange(false);
 		},
 		onError: () => {
-			toast.error("Failed to delete update");
+			sileo.error({ title: "Failed to delete update" });
 		},
 	});
 
@@ -527,14 +527,14 @@ function EditWindowDialog({
 			});
 		},
 		onSuccess: () => {
-			toast.success("Maintenance window updated");
+			sileo.success({ title: "Maintenance window updated" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.maintenance.get.key(),
 			});
 			onOpenChange(false);
 		},
 		onError: () => {
-			toast.error("Failed to update maintenance window");
+			sileo.error({ title: "Failed to update maintenance window" });
 		},
 	});
 

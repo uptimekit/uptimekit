@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -43,14 +43,16 @@ export default function TwoFactorPage() {
 					{
 						onSuccess: () => {
 							router.push("/");
-							toast.success("Two-factor authentication verified");
+							sileo.success({ title: "Two-factor authentication verified" });
 						},
 						onError: (ctx) => {
 							if (ctx.error.message === "Invalid 2FA token") {
 								router.push("/login");
-								toast.error("Invalid 2FA session, please login again");
+								sileo.error({
+									title: "Invalid 2FA session, please login again",
+								});
 							} else {
-								toast.error(ctx.error.message);
+								sileo.error({ title: ctx.error.message });
 							}
 						},
 					},
@@ -63,21 +65,23 @@ export default function TwoFactorPage() {
 					{
 						onSuccess: () => {
 							router.push("/");
-							toast.success("Two-factor authentication verified");
+							sileo.success({ title: "Two-factor authentication verified" });
 						},
 						onError: (ctx) => {
 							if (ctx.error.message === "Invalid 2FA token") {
 								router.push("/login");
-								toast.error("Invalid 2FA session, please login again");
+								sileo.error({
+									title: "Invalid 2FA session, please login again",
+								});
 							} else {
-								toast.error(ctx.error.message);
+								sileo.error({ title: ctx.error.message });
 							}
 						},
 					},
 				);
 			}
 		} catch (_) {
-			toast.error("Failed to verify code");
+			sileo.error({ title: "Failed to verify code" });
 		} finally {
 			setIsVerifying(false);
 		}

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -829,20 +829,20 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 	const { mutate: deleteMonitor } = useMutation({
 		mutationFn: (id: string) => client.monitors.delete({ id }),
 		onSuccess: () => {
-			toast.success("Monitor deleted");
+			sileo.success({ title: "Monitor deleted" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 		},
-		onError: () => toast.error("Failed to delete monitor"),
+		onError: () => sileo.error({ title: "Failed to delete monitor" }),
 	});
 
 	const { mutate: toggleMonitor } = useMutation({
 		mutationFn: ({ id, active }: { id: string; active: boolean }) =>
 			client.monitors.toggle({ id, active }),
 		onSuccess: () => {
-			toast.success("Monitor updated");
+			sileo.success({ title: "Monitor updated" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 		},
-		onError: () => toast.error("Failed to update monitor"),
+		onError: () => sileo.error({ title: "Failed to update monitor" }),
 	});
 
 	return (

@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -61,14 +61,14 @@ export function TagCreationDialog({
 		mutationFn: ({ name, color }: { name: string; color: string }) =>
 			client.monitors.createTag({ name, color }),
 		onSuccess: () => {
-			toast.success("Tag created");
+			sileo.success({ title: "Tag created" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.listTags.key() });
 			onOpenChange(false);
 			setTagName("");
 			setTagColor(PRESET_COLORS[0]);
 			onCreated?.();
 		},
-		onError: () => toast.error("Failed to create tag"),
+		onError: () => sileo.error({ title: "Failed to create tag" }),
 	});
 
 	return (

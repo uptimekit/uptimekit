@@ -15,7 +15,7 @@ import {
 	UserX,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,11 +113,11 @@ export function UsersTable() {
 			await client.users.ban({ id: userId });
 		},
 		onSuccess: () => {
-			toast.success("User banned successfully");
+			sileo.success({ title: "User banned successfully" });
 			queryClient.invalidateQueries({ queryKey: orpc.users.list.key() });
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			sileo.error({ title: error.message });
 		},
 	});
 
@@ -126,11 +126,11 @@ export function UsersTable() {
 			await client.users.unban({ id: userId });
 		},
 		onSuccess: () => {
-			toast.success("User unbanned successfully");
+			sileo.success({ title: "User unbanned successfully" });
 			queryClient.invalidateQueries({ queryKey: orpc.users.list.key() });
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			sileo.error({ title: error.message });
 		},
 	});
 
@@ -145,11 +145,11 @@ export function UsersTable() {
 			await client.users.setRole({ id, role });
 		},
 		onSuccess: () => {
-			toast.success("User role updated successfully");
+			sileo.success({ title: "User role updated successfully" });
 			queryClient.invalidateQueries({ queryKey: orpc.users.list.key() });
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			sileo.error({ title: error.message });
 		},
 	});
 
@@ -162,7 +162,7 @@ export function UsersTable() {
 			});
 		},
 		onSuccess: () => {
-			toast.success("User created successfully");
+			sileo.success({ title: "User created successfully" });
 			setCreateOpen(false);
 			setCreateName("");
 			setCreateEmail("");
@@ -170,7 +170,7 @@ export function UsersTable() {
 			queryClient.invalidateQueries({ queryKey: orpc.users.list.key() });
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			sileo.error({ title: error.message });
 		},
 	});
 

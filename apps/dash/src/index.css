@@ -298,3 +298,12 @@ body {
 		@apply font-sans font-mono;
 	}
 }
+
+
+[data-sileo-pill] {
+  fill: var(--sidebar) !important;
+}
+
+[data-sileo-body] {
+  fill: var(--sidebar) !important;
+}

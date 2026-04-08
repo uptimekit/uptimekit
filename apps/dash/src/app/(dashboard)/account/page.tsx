@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -153,10 +153,10 @@ function ProfileSettings({ session }: { session: any }) {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Profile updated");
+					sileo.success({ title: "Profile updated" });
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);
@@ -307,11 +307,11 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
 		if (!hasPassword) {
 			const res = await setUserPassword(values.newPassword);
 			if (res.success) {
-				toast.success("Password set successfully");
+				sileo.success({ title: "Password set successfully" });
 				passwordForm.reset();
 				window.location.reload();
 			} else {
-				toast.error(res.error || "Failed to set password");
+				sileo.error({ title: res.error || "Failed to set password" });
 			}
 			return;
 		}
@@ -324,11 +324,11 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Password updated");
+					sileo.success({ title: "Password updated" });
 					passwordForm.reset();
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);
@@ -427,7 +427,7 @@ function TwoFactorSettings({ session }: { session: any }) {
 				},
 				{
 					onError: (ctx) => {
-						toast.error(ctx.error.message);
+						sileo.error({ title: ctx.error.message });
 					},
 				},
 			);
@@ -454,11 +454,11 @@ function TwoFactorSettings({ session }: { session: any }) {
 				},
 				{
 					onSuccess: () => {
-						toast.success("Two-factor authentication enabled");
+						sileo.success({ title: "Two-factor authentication enabled" });
 						setStep("backup");
 					},
 					onError: (ctx) => {
-						toast.error(ctx.error.message);
+						sileo.error({ title: ctx.error.message });
 					},
 				},
 			);
@@ -470,18 +470,18 @@ function TwoFactorSettings({ session }: { session: any }) {
 	};
 
 	const handleDisableTwoFactor = async () => {
-		toast.info("Disabling 2FA...");
+		sileo.info({ title: "Disabling 2FA..." });
 		await authClient.twoFactor.disable(
 			{
 				password: password,
 			},
 			{
 				onSuccess: () => {
-					toast.success("Two-factor authentication disabled");
+					sileo.success({ title: "Two-factor authentication disabled" });
 					setIsOpen(false);
 				},
 				onError: (ctx) => {
-					toast.error(ctx.error.message);
+					sileo.error({ title: ctx.error.message });
 				},
 			},
 		);
@@ -622,7 +622,7 @@ function TwoFactorSettings({ session }: { session: any }) {
 														navigator.clipboard.writeText(
 															backupCodes.join("\n"),
 														);
-														toast.success("Copied to clipboard");
+														sileo.success({ title: "Copied to clipboard" });
 													}}
 												>
 													<Copy className="mr-2 h-4 w-4" /> Copy Codes

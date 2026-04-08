@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Check, Copy, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -33,11 +33,11 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 		...orpc.workers.rotateKey.mutationOptions(),
 		onSuccess: (data: { key: string }) => {
 			setNewKey(data.key);
-			toast.success("API Key rotated successfully");
+			sileo.success({ title: "API Key rotated successfully" });
 		},
 		onError: (error: Error) => {
 			console.error(error);
-			toast.error("Failed to rotate API Key");
+			sileo.error({ title: "Failed to rotate API Key" });
 		},
 	});
 
@@ -50,7 +50,7 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 		if (newKey) {
 			navigator.clipboard.writeText(newKey);
 			setIsRevealed(true);
-			toast.success("Copied to clipboard");
+			sileo.success({ title: "Copied to clipboard" });
 		}
 	};
 

@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy, Eye, EyeOff, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
 	Combobox,
@@ -51,12 +51,12 @@ export function CreateWorkerDialog() {
 	const { mutate, isPending } = useMutation({
 		...orpc.workers.create.mutationOptions(),
 		onSuccess: (data) => {
-			toast.success("Worker created successfully");
+			sileo.success({ title: "Worker created successfully" });
 			setNewWorkerKey(data.key);
 			queryClient.invalidateQueries({ queryKey: orpc.workers.list.key() });
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			sileo.error({ title: error.message });
 		},
 	});
 
@@ -75,12 +75,12 @@ export function CreateWorkerDialog() {
 		const location = selectedLocation;
 
 		if (!name) {
-			toast.error("Name is required");
+			sileo.error({ title: "Name is required" });
 			return;
 		}
 
 		if (!location) {
-			toast.error("Location is required");
+			sileo.error({ title: "Location is required" });
 			return;
 		}
 
@@ -93,10 +93,10 @@ export function CreateWorkerDialog() {
 		try {
 			await navigator.clipboard.writeText(newWorkerKey);
 			setIsCopied(true);
-			toast.success("API key copied to clipboard");
+			sileo.success({ title: "API key copied to clipboard" });
 			setTimeout(() => setIsCopied(false), 2000);
 		} catch {
-			toast.error("Failed to copy API key");
+			sileo.error({ title: "Failed to copy API key" });
 		}
 	};
 

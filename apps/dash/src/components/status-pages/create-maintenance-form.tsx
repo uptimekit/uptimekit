@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 
 import { Badge } from "@/components/ui/badge";
@@ -102,13 +102,15 @@ export function CreateMaintenanceForm({
 				endAt: data.endAt.toISOString(),
 			}),
 		onSuccess: () => {
-			toast.success("Maintenance scheduled successfully");
+			sileo.success({ title: "Maintenance scheduled successfully" });
 			queryClient.invalidateQueries({ queryKey: orpc.maintenance.list.key() });
 			onOpenChange(false);
 			form.reset();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to schedule maintenance: ${error.message}`);
+			sileo.error({
+				title: `Failed to schedule maintenance: ${error.message}`,
+			});
 		},
 	});
 

@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import z from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,11 +66,13 @@ export default function SignInForm({
 							router.push("/two-factor");
 						} else {
 							router.push("/");
-							toast.success("Sign in successful");
+							sileo.success({ title: "Sign in successful" });
 						}
 					},
 					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
+						sileo.error({
+							title: error.error.message || error.error.statusText,
+						});
 					},
 				},
 			);

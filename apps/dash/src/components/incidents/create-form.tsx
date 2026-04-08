@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,11 +96,11 @@ export function CreateIncidentForm() {
 	const createIncident = useMutation(
 		orpc.incidents.create.mutationOptions({
 			onSuccess: (data) => {
-				toast.success("Incident created successfully");
+				sileo.success({ title: "Incident created successfully" });
 				router.push(`/incidents/${data.id}`);
 			},
 			onError: (err) => {
-				toast.error(`Failed to create incident: ${err.message}`);
+				sileo.error({ title: `Failed to create incident: ${err.message}` });
 			},
 		}),
 	);

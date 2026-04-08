@@ -13,7 +13,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 
 import { CreateStatusUpdateForm } from "@/components/status-pages/create-update-form";
 import {
@@ -75,13 +75,15 @@ export default function StatusUpdatesPage() {
 				reportId,
 			}),
 		onSuccess: () => {
-			toast.success("Status update deleted successfully");
+			sileo.success({ title: "Status update deleted successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.statusUpdates.list.key(),
 			});
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to delete status update: ${error.message}`);
+			sileo.error({
+				title: `Failed to delete status update: ${error.message}`,
+			});
 		},
 	});
 

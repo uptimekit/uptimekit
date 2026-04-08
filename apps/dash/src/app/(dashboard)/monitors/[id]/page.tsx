@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { AvailabilityTable } from "@/components/monitors/availability-table";
 import { MonitorCards } from "@/components/monitors/monitor-cards";
 import { ResponseTimeChart } from "@/components/monitors/response-time-chart";
@@ -40,13 +40,13 @@ export default function MonitorDetailsPage() {
 		mutationFn: ({ id, active }: { id: string; active: boolean }) =>
 			client.monitors.toggle({ id, active }),
 		onSuccess: () => {
-			toast.success("Monitor updated");
+			sileo.success({ title: "Monitor updated" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.monitors.get.key({ input: { id } }),
 			});
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 		},
-		onError: () => toast.error("Failed to update monitor"),
+		onError: () => sileo.error({ title: "Failed to update monitor" }),
 	});
 
 	if (loadingMonitor) {

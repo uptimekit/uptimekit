@@ -34,7 +34,7 @@ import {
 	Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -120,14 +120,14 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	const updateStructureMutation = useMutation(
 		orpc.statusPages.updateStructure.mutationOptions({
 			onSuccess: () => {
-				toast.success("Structure saved successfully");
+				sileo.success({ title: "Structure saved successfully" });
 				queryClient.invalidateQueries({
 					queryKey: orpc.statusPages.getStructure.key({
 						input: { id: statusPageId },
 					}),
 				});
 			},
-			onError: (err) => toast.error(err.message),
+			onError: (err) => sileo.error({ title: err.message }),
 		}),
 	);
 

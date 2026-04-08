@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -108,10 +108,10 @@ export function IncidentsTable() {
 	const { mutate: deleteIncident, isPending: isDeleting } = useMutation({
 		mutationFn: (id: string) => client.incidents.delete({ id }),
 		onSuccess: () => {
-			toast.success("Incident deleted");
+			sileo.success({ title: "Incident deleted" });
 			queryClient.invalidateQueries({ queryKey: orpc.incidents.list.key() });
 		},
-		onError: () => toast.error("Failed to delete incident"),
+		onError: () => sileo.error({ title: "Failed to delete incident" }),
 	});
 
 	const getStatusIcon = (status: string) => {

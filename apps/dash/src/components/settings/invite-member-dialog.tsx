@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Copy, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,14 +61,14 @@ export function InviteMemberDialog() {
 		});
 
 		if (error) {
-			toast.error(error.message || error.statusText);
+			sileo.error({ title: error.message || error.statusText });
 			return;
 		}
 
 		if (data) {
 			const link = `${window.location.origin}/invite/${data.id}`;
 			setInviteLink(link);
-			toast.success("Invitation created");
+			sileo.success({ title: "Invitation created" });
 		}
 	};
 
@@ -77,7 +77,7 @@ export function InviteMemberDialog() {
 			navigator.clipboard.writeText(inviteLink);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
-			toast.success("Link copied to clipboard");
+			sileo.success({ title: "Link copied to clipboard" });
 		}
 	};
 

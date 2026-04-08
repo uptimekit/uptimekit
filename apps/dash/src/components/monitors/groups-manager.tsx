@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Folder, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -67,21 +67,21 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 	const { mutate: createGroup, isPending: isCreating } = useMutation({
 		mutationFn: (name: string) => client.monitors.createGroup({ name }),
 		onSuccess: () => {
-			toast.success("Group created");
+			sileo.success({ title: "Group created" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.monitors.listGroups.key(),
 			});
 			setCreateOpen(false);
 			setGroupName("");
 		},
-		onError: () => toast.error("Failed to create group"),
+		onError: () => sileo.error({ title: "Failed to create group" }),
 	});
 
 	const { mutate: updateGroup, isPending: isUpdating } = useMutation({
 		mutationFn: ({ id, name }: { id: string; name: string }) =>
 			client.monitors.updateGroup({ id, name }),
 		onSuccess: () => {
-			toast.success("Group updated");
+			sileo.success({ title: "Group updated" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.monitors.listGroups.key(),
 			});
@@ -90,19 +90,19 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 			setEditingGroup(null);
 			setGroupName("");
 		},
-		onError: () => toast.error("Failed to update group"),
+		onError: () => sileo.error({ title: "Failed to update group" }),
 	});
 
 	const { mutate: deleteGroup } = useMutation({
 		mutationFn: (id: string) => client.monitors.deleteGroup({ id }),
 		onSuccess: () => {
-			toast.success("Group deleted");
+			sileo.success({ title: "Group deleted" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.monitors.listGroups.key(),
 			});
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 		},
-		onError: () => toast.error("Failed to delete group"),
+		onError: () => sileo.error({ title: "Failed to delete group" }),
 	});
 
 	return (

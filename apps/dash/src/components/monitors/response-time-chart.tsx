@@ -8,7 +8,6 @@ import {
 	Area,
 	AreaChart,
 	CartesianGrid,
-	Line,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -80,15 +79,15 @@ interface RawDataPoint {
 interface ChartDataPoint {
 	timestamp: string;
 	timeDisplay: string;
-	// Averages across selected regions
+	// Averages across selected regions (used in breakdown view)
 	avgLatency: number;
 	avgDnsLookup: number;
 	avgTcpConnect: number;
 	avgTlsHandshake: number;
 	avgTtfb: number;
 	avgTransfer: number;
-	// Per-region data (dynamic keys like "us-east-1_latency")
-	[key: string]: number | string;
+	// Per-region data — value is number | null so recharts can gap properly
+	[key: string]: number | string | null;
 }
 
 /**
@@ -96,8 +95,8 @@ interface ChartDataPoint {
  *
  * Features:
  * - Multi-region selection with persistence
- * - Average line across all selected regions (bold)
- * - Individual region lines (toggleable via legend)
+ * - Individual region areas (toggleable via legend), connected across sparse timestamps
+ * - Tooltip shows all regions that have data at the hovered point
  * - HTTP monitors: Toggle between "Total Latency" and "Timing Breakdown" views
  * - Dynamic colors for regions
  */
@@ -115,7 +114,6 @@ export function ResponseTimeChart({
 		const saved = localStorage.getItem(`monitor-chart-locations-${monitorId}`);
 		if (saved) {
 			const parsed = JSON.parse(saved);
-			// Validate that saved locations still exist
 			const valid = parsed.filter(
 				(loc: string) => loc === "all" || locations.includes(loc),
 			);
@@ -169,21 +167,28 @@ export function ResponseTimeChart({
 
 	// Fetch data from API
 	const { data: rawData, isLoading } = useQuery({
-		queryKey: ["monitor-response-times", monitorId, range, selectedLocations],
-		queryFn: async () => {
-			const result = await orpc.monitors.getResponseTimes.query({
-				input: {
-					monitorId,
-					range,
-					locations: selectedLocations.includes("all") ? [] : selectedLocations,
-				},
-			});
-			return result as RawDataPoint[];
-		},
+		...orpc.monitors.getResponseTimes.queryOptions({
+			input: {
+				monitorId,
+				range,
+				locations: selectedLocations.includes("all") ? [] : selectedLocations,
+			},
+		}),
 		enabled: selectedLocations.length > 0,
 	});
 
-	// Process and aggregate data for chart
+	// Get unique locations from data — derived before chartData so it can be used inside it
+	const dataLocations = useMemo(() => {
+		if (!rawData) return [];
+		return Array.from(new Set(rawData.map((d) => d.location)));
+	}, [rawData]);
+
+	// Process and aggregate data for chart.
+	//
+	// Key fix: timestamps are sorted chronologically and every slot gets an
+	// explicit `null` for regions that have no reading at that point.
+	// `connectNulls` on each <Area> then bridges those gaps with a continuous
+	// line instead of dropping to zero or leaving a hole.
 	const chartData = useMemo((): ChartDataPoint[] => {
 		if (!rawData || rawData.length === 0) return [];
 
@@ -191,10 +196,7 @@ export function ResponseTimeChart({
 		const grouped = rawData.reduce(
 			(acc, item) => {
 				if (!acc[item.timestamp]) {
-					acc[item.timestamp] = {
-						items: [],
-						timestamp: item.timestamp,
-					};
+					acc[item.timestamp] = { items: [], timestamp: item.timestamp };
 				}
 				acc[item.timestamp].items.push(item);
 				return acc;
@@ -202,12 +204,20 @@ export function ResponseTimeChart({
 			{} as Record<string, { items: RawDataPoint[]; timestamp: string }>,
 		);
 
-		// Process each timestamp group
-		return Object.values(grouped).map((group: any) => {
-			const items: RawDataPoint[] = group.items;
-			const timestamp = new Date(group.timestamp);
+		// Sort timestamps chronologically
+		const sortedTimestamps = Object.keys(grouped).sort(
+			(a, b) => new Date(a).getTime() - new Date(b).getTime(),
+		);
 
-			// Calculate averages across all regions at this timestamp
+		return sortedTimestamps.map((ts) => {
+			const items: RawDataPoint[] = grouped[ts].items;
+			const timestamp = new Date(ts);
+
+			// Build a location → item map for O(1) lookup
+			const byLocation = new Map<string, RawDataPoint>();
+			items.forEach((item) => byLocation.set(item.location, item));
+
+			// Averages across regions present at this timestamp (used by breakdown view)
 			const avgLatency =
 				items.reduce((sum, i) => sum + i.latency, 0) / items.length;
 			const avgDnsLookup =
@@ -221,22 +231,20 @@ export function ResponseTimeChart({
 			const avgTransfer =
 				items.reduce((sum, i) => sum + (i.transfer || 0), 0) / items.length;
 
-			// Create per-region data points
-			const perRegionData: Record<string, number> = {};
-			items.forEach((item) => {
-				perRegionData[`${item.location}_latency`] = item.latency;
-				if (item.dnsLookup !== undefined) {
-					perRegionData[`${item.location}_dnsLookup`] = item.dnsLookup;
-					perRegionData[`${item.location}_tcpConnect`] = item.tcpConnect || 0;
-					perRegionData[`${item.location}_tlsHandshake`] =
-						item.tlsHandshake || 0;
-					perRegionData[`${item.location}_ttfb`] = item.ttfb || 0;
-					perRegionData[`${item.location}_transfer`] = item.transfer || 0;
-				}
+			// Per-region slots: null for any region absent at this timestamp
+			const perRegionData: Record<string, number | null> = {};
+			dataLocations.forEach((loc) => {
+				const item = byLocation.get(loc);
+				perRegionData[`${loc}_latency`] = item?.latency ?? null;
+				perRegionData[`${loc}_dnsLookup`] = item?.dnsLookup ?? null;
+				perRegionData[`${loc}_tcpConnect`] = item?.tcpConnect ?? null;
+				perRegionData[`${loc}_tlsHandshake`] = item?.tlsHandshake ?? null;
+				perRegionData[`${loc}_ttfb`] = item?.ttfb ?? null;
+				perRegionData[`${loc}_transfer`] = item?.transfer ?? null;
 			});
 
 			return {
-				timestamp: group.timestamp,
+				timestamp: ts,
 				timeDisplay:
 					range === "24h"
 						? format(timestamp, "HH:mm")
@@ -250,13 +258,7 @@ export function ResponseTimeChart({
 				...perRegionData,
 			};
 		});
-	}, [rawData, range]);
-
-	// Get unique locations from data
-	const dataLocations = useMemo(() => {
-		if (!rawData) return [];
-		return Array.from(new Set(rawData.map((d) => d.location)));
-	}, [rawData]);
+	}, [rawData, range, dataLocations]);
 
 	// Generate colors for each region
 	const regionColors = useMemo(() => {
@@ -293,56 +295,49 @@ export function ResponseTimeChart({
 		setSelectedLocations([]);
 	};
 
-	// Custom tooltip
-	const CustomTooltip = ({ active, payload, label }: any) => {
+	// Custom tooltip — shows every region that has a non-null reading at this point
+	const CustomTooltip = ({ active, payload }: any) => {
 		if (!active || !payload?.length) return null;
 
 		const data = payload[0]?.payload as ChartDataPoint;
 		if (!data) return null;
 
+		const timestamp = new Date(data.timestamp);
+		const timeDisplay = format(timestamp, "MMM d, HH:mm");
+
 		return (
 			<div className="rounded-lg border border-border/50 bg-background/95 p-3 shadow-lg backdrop-blur-sm">
-				<p className="mb-2 text-muted-foreground text-xs">{label}</p>
+				<p className="mb-2 text-muted-foreground text-xs">{timeDisplay}</p>
 
-				{/* Show average */}
-				<div className="mb-2 flex items-center justify-between gap-4 font-medium">
-					<span className="text-xs">Average</span>
-					<span className="font-mono text-xs">
-						{Math.round(data.avgLatency)}ms
-					</span>
-				</div>
-
-				{/* Show individual regions if multiple selected */}
-				{dataLocations.length > 1 && (
-					<div className="space-y-1 border-border/50 border-t pt-2">
-						{dataLocations
-							.filter((loc) => visibleRegions[loc])
-							.map((loc) => {
-								const latency = data[`${loc}_latency`];
-								if (latency === undefined) return null;
-								const regionInfo = getRegionInfo(loc);
-								return (
-									<div
-										key={loc}
-										className="flex items-center justify-between gap-4"
-									>
-										<div className="flex items-center gap-2">
-											<div
-												className="h-2 w-2 rounded-full"
-												style={{ backgroundColor: regionColors[loc] }}
-											/>
-											<span className="text-xs">{regionInfo.label}</span>
-										</div>
-										<span className="font-mono text-xs">
-											{Math.round(latency)}ms
-										</span>
+				{/* Per-region latencies — only rendered when value is non-null */}
+				{dataLocations.length > 0 && (
+					<div className="space-y-1">
+						{dataLocations.map((loc) => {
+							const latency = data[`${loc}_latency`] as number | null;
+							if (latency === null || latency === undefined) return null;
+							const regionInfo = getRegionInfo(loc);
+							return (
+								<div
+									key={loc}
+									className="flex items-center justify-between gap-4"
+								>
+									<div className="flex items-center gap-2">
+										<div
+											className="h-2 w-2 rounded-full"
+											style={{ backgroundColor: regionColors[loc] }}
+										/>
+										<span className="text-xs">{regionInfo.label}</span>
 									</div>
-								);
-							})}
+									<span className="font-mono text-xs">
+										{Math.round(latency)}ms
+									</span>
+								</div>
+							);
+						})}
 					</div>
 				)}
 
-				{/* Show timing breakdown if in breakdown mode */}
+				{/* Timing breakdown section */}
 				{hasDetailedTimings && viewMode === "breakdown" && (
 					<div className="mt-2 space-y-1 border-border/50 border-t pt-2">
 						{TIMING_KEYS.filter((key) => visibleTimings[key]).map((key) => (
@@ -392,24 +387,26 @@ export function ResponseTimeChart({
 					{/* Region selector */}
 					{locations.length > 0 && (
 						<Popover>
-							<PopoverTrigger asChild>
-								<button
-									type="button"
-									className="flex h-8 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs hover:bg-accent"
-								>
-									<Globe className="h-3.5 w-3.5" />
-									<span>
-										{isAllSelected
-											? "All Regions"
-											: selectedLocations.length === 0
-												? "Select Regions"
-												: selectedLocations.length === 1
-													? getRegionInfo(selectedLocations[0]).label
-													: `${selectedLocations.length} regions`}
-									</span>
-									<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-								</button>
-							</PopoverTrigger>
+							<PopoverTrigger
+								render={
+									<button
+										type="button"
+										className="flex h-8 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs hover:bg-accent"
+									>
+										<Globe className="h-3.5 w-3.5" />
+										<span>
+											{isAllSelected
+												? "All Regions"
+												: selectedLocations.length === 0
+													? "Select Regions"
+													: selectedLocations.length === 1
+														? getRegionInfo(selectedLocations[0]).label
+														: `${selectedLocations.length} regions`}
+										</span>
+										<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+									</button>
+								}
+							/>
 							<PopoverContent className="w-56 p-2" align="end">
 								<div className="space-y-2">
 									<div className="flex items-center justify-between px-2">
@@ -515,16 +512,6 @@ export function ResponseTimeChart({
 				{/* Legend for regions */}
 				{dataLocations.length > 1 && (
 					<div className="mb-4 flex flex-wrap items-center justify-center gap-2 px-6">
-						{/* Average line toggle (always visible) */}
-						<button
-							type="button"
-							className="flex items-center gap-2 rounded-md px-2 py-1 font-medium text-xs"
-						>
-							<div className="h-3 w-3 rounded-sm bg-foreground" />
-							<span>Average</span>
-						</button>
-
-						{/* Individual region toggles */}
 						{dataLocations.map((loc) => {
 							const regionInfo = getRegionInfo(loc);
 							const isVisible = visibleRegions[loc] !== false;
@@ -613,19 +600,6 @@ export function ResponseTimeChart({
 								/>
 								<Tooltip content={<CustomTooltip />} />
 
-								{/* Stacked timing areas (average across regions) */}
-								{visibleTimings.dnsLookup && (
-									<Area
-										type="monotone"
-										dataKey="avgDnsLookup"
-										stackId="timing"
-										stroke={TIMING_COLORS.dnsLookup}
-										strokeWidth={1}
-										fillOpacity={0.7}
-										fill={TIMING_COLORS.dnsLookup}
-										isAnimationActive={false}
-									/>
-								)}
 								{visibleTimings.tcpConnect && (
 									<Area
 										type="monotone"
@@ -636,6 +610,7 @@ export function ResponseTimeChart({
 										fillOpacity={0.7}
 										fill={TIMING_COLORS.tcpConnect}
 										isAnimationActive={false}
+										connectNulls
 									/>
 								)}
 								{visibleTimings.tlsHandshake && (
@@ -648,6 +623,7 @@ export function ResponseTimeChart({
 										fillOpacity={0.7}
 										fill={TIMING_COLORS.tlsHandshake}
 										isAnimationActive={false}
+										connectNulls
 									/>
 								)}
 								{visibleTimings.ttfb && (
@@ -660,6 +636,7 @@ export function ResponseTimeChart({
 										fillOpacity={0.7}
 										fill={TIMING_COLORS.ttfb}
 										isAnimationActive={false}
+										connectNulls
 									/>
 								)}
 								{visibleTimings.transfer && (
@@ -672,12 +649,13 @@ export function ResponseTimeChart({
 										fillOpacity={0.7}
 										fill={TIMING_COLORS.transfer}
 										isAnimationActive={false}
+										connectNulls
 									/>
 								)}
 							</AreaChart>
 						</ResponsiveContainer>
 					) : (
-						// Total latency view (line chart with average + individual regions)
+						// Total latency view — one area per region, connected across gaps
 						<ResponsiveContainer width="100%" height="100%">
 							<AreaChart data={chartData}>
 								<CartesianGrid
@@ -703,34 +681,23 @@ export function ResponseTimeChart({
 								/>
 								<Tooltip content={<CustomTooltip />} />
 
-								{/* Individual region lines */}
-								{dataLocations.length > 1 &&
-									dataLocations.map(
-										(loc) =>
-											visibleRegions[loc] && (
-												<Line
-													key={loc}
-													type="monotone"
-													dataKey={`${loc}_latency`}
-													stroke={regionColors[loc]}
-													strokeWidth={1}
-													strokeDasharray="4 4"
-													dot={false}
-													isAnimationActive={false}
-												/>
-											),
-									)}
-
-								{/* Average line (bold, on top) */}
-								<Area
-									type="monotone"
-									dataKey="avgLatency"
-									stroke="#fff"
-									strokeWidth={2}
-									fillOpacity={0.1}
-									fill="#fff"
-									isAnimationActive={false}
-								/>
+								{dataLocations.map(
+									(loc) =>
+										visibleRegions[loc] !== false && (
+											<Area
+												key={loc}
+												type="monotone"
+												dataKey={`${loc}_latency`}
+												stroke={regionColors[loc]}
+												strokeWidth={1.5}
+												fillOpacity={0.1}
+												fill={regionColors[loc]}
+												dot={false}
+												isAnimationActive={false}
+												connectNulls
+											/>
+										),
+								)}
 							</AreaChart>
 						</ResponsiveContainer>
 					)}

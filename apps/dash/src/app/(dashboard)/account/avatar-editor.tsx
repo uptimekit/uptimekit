@@ -2,7 +2,7 @@
 
 import { Pencil, Trash, User } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -48,7 +48,7 @@ export function AvatarEditor({ value, onChange, name }: AvatarEditorProps) {
 			onChange(tempUrl);
 			setDialogOpen(false);
 		} catch {
-			toast.error("Please enter a valid URL");
+			sileo.error({ title: "Please enter a valid URL" });
 		}
 	};
 

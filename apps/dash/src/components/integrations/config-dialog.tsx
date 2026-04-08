@@ -3,7 +3,7 @@
 
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 import { AlertManagerConfig } from "@/components/integrations/alertmanager-config";
 import {
@@ -73,7 +73,9 @@ export function ConfigDialog({
 		} catch (e) {
 			if (e instanceof z.ZodError) {
 				const zodError = e as z.ZodError<any>;
-				toast.error(`Validation failed: ${zodError.issues[0].message}`);
+				sileo.error({
+					title: `Validation failed: ${zodError.issues[0].message}`,
+				});
 				return;
 			}
 		}
@@ -82,9 +84,9 @@ export function ConfigDialog({
 		try {
 			await onSave(config);
 			onOpenChange(false);
-			toast.success("Integration saved");
+			sileo.success({ title: "Integration saved" });
 		} catch (error: any) {
-			toast.error(error.message || "Failed to save integration");
+			sileo.error({ title: error.message || "Failed to save integration" });
 			console.error(error);
 		} finally {
 			setSaving(false);
@@ -97,11 +99,11 @@ export function ConfigDialog({
 		setTesting(true);
 		try {
 			await onTest();
-			toast.success(
-				"Test event sent successfully! Check your integration endpoint.",
-			);
+			sileo.success({
+				title: "Test event sent successfully! Check your integration endpoint.",
+			});
 		} catch (error: any) {
-			toast.error(error.message || "Failed to send test event");
+			sileo.error({ title: error.message || "Failed to send test event" });
 			console.error(error);
 		} finally {
 			setTesting(false);
@@ -116,9 +118,9 @@ export function ConfigDialog({
 			await onDelete();
 			setDeleteDialogOpen(false);
 			onOpenChange(false);
-			toast.success("Integration removed");
+			sileo.success({ title: "Integration removed" });
 		} catch (error: any) {
-			toast.error(error.message || "Failed to remove integration");
+			sileo.error({ title: error.message || "Failed to remove integration" });
 			console.error(error);
 		} finally {
 			setDeleting(false);

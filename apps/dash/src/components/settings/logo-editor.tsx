@@ -2,7 +2,7 @@
 
 import { ImageIcon, Pencil, Trash } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ export function LogoEditor({ value, onChange }: LogoEditorProps) {
 			onChange(tempUrl);
 			setDialogOpen(false);
 		} catch {
-			toast.error("Please enter a valid URL");
+			sileo.error({ title: "Please enter a valid URL" });
 		}
 	};
 

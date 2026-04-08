@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { sileo } from "sileo";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ export function AddMaintenanceUpdateForm({
 				...data,
 			}),
 		onSuccess: () => {
-			toast.success("Update posted successfully");
+			sileo.success({ title: "Update posted successfully" });
 			queryClient.invalidateQueries({
 				queryKey: orpc.maintenance.get.key({
 					input: { maintenanceId },
@@ -83,7 +83,7 @@ export function AddMaintenanceUpdateForm({
 			onSuccess?.();
 		},
 		onError: (error: Error) => {
-			toast.error(`Failed to post update: ${error.message}`);
+			sileo.error({ title: `Failed to post update: ${error.message}` });
 		},
 	});
 
