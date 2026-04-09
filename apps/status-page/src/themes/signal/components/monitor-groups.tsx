@@ -1,12 +1,15 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
-import { memo, useState } from "react";
-import { calculateAggregateStatus } from "@/lib/status-utils";
+import { ChevronDown, Info } from "lucide-react";
+import { useState } from "react";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { GroupedMonitors, StatusType } from "../../types";
-import { MonitorListItem } from "./monitor-list-item";
-import { StatusDot } from "./status-indicator";
+import type { GroupedMonitors, Monitor } from "../../types";
+import { UptimeBar } from "./uptime-bar";
 
 interface MonitorGroupsProps {
 	monitorGroups: GroupedMonitors[];
@@ -14,148 +17,114 @@ interface MonitorGroupsProps {
 	barStyle?: "normal" | "length";
 }
 
-function getGroupStatusText(
-	status: StatusType,
-	totalMonitors: number,
-	operationalCount: number,
-): string {
-	if (status === "operational") {
-		return "Operational";
-	}
-	if (status === "major_outage") {
-		return "Outage";
-	}
-	if (status === "maintenance_scheduled") {
-		return "Scheduled maintenance";
-	}
-	if (status === "unknown") {
-		return totalMonitors === 0 ? "No monitors" : "Unknown";
-	}
-	return `${operationalCount}/${totalMonitors} operational`;
-}
+function MonitorCard({
+	monitor,
+	defaultExpanded,
+}: {
+	monitor: Monitor;
+	defaultExpanded: boolean;
+}) {
+	const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-const MonitorGroupItem = memo(
-	({
-		group,
-		isDefaultExpanded,
-		isGrid,
-	}: {
-		group: GroupedMonitors;
-		isDefaultExpanded: boolean;
-		isGrid: boolean;
-	}) => {
-		const isUngrouped = !group.group;
-		const [isExpanded, setIsExpanded] = useState(isUngrouped || isDefaultExpanded);
-		const groupStatus = calculateAggregateStatus(
-			group.monitors.map((monitor) => monitor.currentStatus),
-		);
-		const operationalCount = group.monitors.filter(
-			(monitor) => monitor.currentStatus === "operational",
-		).length;
-
-		return (
-			<div className="signal-panel rounded-2xl border border-border">
-				{group.group ? (
-					<button
-						type="button"
-						onClick={() => setIsExpanded((current) => !current)}
-						className={cn(
-							"flex w-full items-center gap-3 px-4 py-4 text-left sm:px-5",
-							isExpanded && "border-border/80 border-b",
-						)}
-					>
-						<ChevronDown
-							className={cn(
-								"h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-								!isExpanded && "-rotate-90",
-							)}
-						/>
-						<div className="min-w-0 flex-1">
-							<div className="flex items-center justify-between gap-3">
-								<span className="truncate font-medium text-[15px] text-foreground">
-									{group.group.name}
-								</span>
-								<div className="flex items-center gap-2">
-									<span className="hidden text-[12px] text-muted-foreground sm:inline">
-										{getGroupStatusText(
-											groupStatus,
-											group.monitors.length,
-											operationalCount,
-										)}
-									</span>
-									<StatusDot status={groupStatus} />
-								</div>
-							</div>
-						</div>
-					</button>
-				) : null}
-
-				<div
+	return (
+		<div className="signal-panel rounded-2xl border border-border">
+			<button
+				type="button"
+				onClick={() => setIsExpanded((current) => !current)}
+				className={cn(
+					"flex w-full items-center gap-3 px-4 py-4 text-left sm:px-5",
+					isExpanded && "border-border/80 border-b",
+				)}
+			>
+				<ChevronDown
 					className={cn(
-						"grid transition-all duration-200 ease-out",
-						isExpanded
-							? "grid-rows-[1fr] opacity-100"
-							: "pointer-events-none grid-rows-[0fr] opacity-0",
+						"h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+						!isExpanded && "-rotate-90",
 					)}
-				>
-					<div
-						className={cn(
-							"min-h-0",
-							isExpanded ? "overflow-visible" : "overflow-hidden",
-						)}
-					>
-						<div
-							className={cn(
-								"px-4 py-4 sm:px-5 sm:py-5",
-								isGrid ? "grid gap-4 md:grid-cols-2" : "space-y-4",
-							)}
-						>
-							{group.monitors.map((monitor, index) => (
-								<div
-									key={monitor.id}
-									className={cn(
-										"pb-4 last:pb-0",
-										!isGrid &&
-											index !== group.monitors.length - 1 &&
-											"border-border/70 border-b",
-										isGrid && "rounded-xl border border-border/70 p-4 pb-4",
-									)}
-								>
-									<MonitorListItem
-										name={monitor.name}
-										status={monitor.currentStatus}
-										uptimePercentage={monitor.avgUptime}
-										history={monitor.history}
-										displayStyle={monitor.displayStyle}
-										description={monitor.description}
-									/>
-								</div>
-							))}
+				/>
+				<div className="min-w-0 flex-1">
+					<div className="flex items-center justify-between gap-3">
+						<div className="flex min-w-0 items-center gap-2">
+							<span className="truncate font-medium text-[15px] text-foreground">
+								{monitor.name}
+							</span>
+							{monitor.description ? (
+								<Tooltip>
+									<TooltipTrigger
+										render={
+											<button
+												type="button"
+												className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												aria-label="More information"
+											/>
+										}
+									>
+										<Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+									</TooltipTrigger>
+									<TooltipContent>
+										<p className="max-w-xs text-sm">{monitor.description}</p>
+									</TooltipContent>
+								</Tooltip>
+							) : null}
+						</div>
+						<div className="shrink-0 font-medium text-[13px] text-muted-foreground">
+							{monitor.avgUptime.toFixed(2)}% uptime
 						</div>
 					</div>
 				</div>
+			</button>
+
+			<div
+				className={cn(
+					"grid transition-all duration-200 ease-out",
+					isExpanded
+						? "grid-rows-[1fr] opacity-100"
+						: "pointer-events-none grid-rows-[0fr] opacity-0",
+				)}
+			>
+				<div
+					className={cn(
+						"min-h-0",
+						isExpanded ? "overflow-visible" : "overflow-hidden",
+					)}
+				>
+					<div className="px-4 py-4 sm:px-5 sm:py-5">
+						<UptimeBar days={monitor.history} />
+						{monitor.displayStyle === "status" ? (
+							<div className="mt-4 text-[13px] text-muted-foreground">
+								Current state: {monitor.currentStatus.replaceAll("_", " ")}
+							</div>
+						) : null}
+					</div>
+				</div>
 			</div>
-		);
-	},
-);
+		</div>
+	);
+}
 
-MonitorGroupItem.displayName = "MonitorGroupItem";
-
-export function MonitorGroups({
-	monitorGroups,
-	layout = "vertical",
-}: MonitorGroupsProps) {
-	const isGrid = layout === "horizontal";
-
+export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 	return (
-		<section className="space-y-3">
-			{monitorGroups.map((group, index) => (
-				<MonitorGroupItem
-					key={group.group?.id || `ungrouped-${index}`}
-					group={group}
-					isDefaultExpanded={index === 0}
-					isGrid={isGrid}
-				/>
+		<section className="space-y-8">
+			{monitorGroups.map((group, groupIndex) => (
+				<div
+					key={group.group?.id || `ungrouped-${groupIndex}`}
+					className="space-y-4"
+				>
+					{group.group ? (
+						<div className="px-1 font-medium text-[13px] text-muted-foreground uppercase tracking-[0.12em]">
+							{group.group.name}
+						</div>
+					) : null}
+					<div className="space-y-4">
+						{group.monitors.map((monitor, monitorIndex) => (
+							<MonitorCard
+								key={monitor.id}
+								monitor={monitor}
+								defaultExpanded={groupIndex === 0 && monitorIndex === 0}
+							/>
+						))}
+					</div>
+				</div>
 			))}
 		</section>
 	);
