@@ -1,5 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
+import { monitor } from "@uptimekit/db/schema/monitors";
 import { worker, workerApiKey } from "@uptimekit/db/schema/workers";
 import {
 	and,
@@ -10,6 +11,7 @@ import {
 	isNotNull,
 	isNull,
 	or,
+	sql,
 } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure } from "../index";
@@ -85,7 +87,25 @@ export const workersRouter = {
 
 			const [items, total] = await Promise.all([
 				db
-					.select()
+					.select({
+						id: worker.id,
+						name: worker.name,
+						location: worker.location,
+						active: worker.active,
+						lastHeartbeat: worker.lastHeartbeat,
+						version: worker.version,
+						createdAt: worker.createdAt,
+						updatedAt: worker.updatedAt,
+						monitorCount:
+							sql<number>`(
+								SELECT COUNT(DISTINCT "monitor"."id")
+								FROM ${monitor}
+								CROSS JOIN LATERAL json_array_elements_text("monitor"."locations") AS location(location)
+								WHERE location.location = ${worker.location}
+							)`
+								.mapWith(Number)
+								.as("monitor_count"),
+					})
 					.from(worker)
 					.where(and(...filters))
 					.orderBy(desc(worker.createdAt))

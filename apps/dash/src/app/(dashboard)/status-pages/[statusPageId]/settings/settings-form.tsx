@@ -409,8 +409,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											>
 												<SelectTrigger>
 													<SelectValue>
-														{themes.find((option) => option.value === field.value)
-															?.label}
+														{
+															themes.find(
+																(option) => option.value === field.value,
+															)?.label
+														}
 													</SelectValue>
 												</SelectTrigger>
 												<SelectPopup>
@@ -444,9 +447,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											>
 												<SelectTrigger>
 													<SelectValue>
-														{colorThemes.find(
-															(option) => option.value === field.value,
-														)?.label}
+														{
+															colorThemes.find(
+																(option) => option.value === field.value,
+															)?.label
+														}
 													</SelectValue>
 												</SelectTrigger>
 												<SelectPopup>
@@ -498,6 +503,48 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													))}
 												</SelectPopup>
 											</Select>
+											<FormDescription className="pt-2">
+												Choose wether everyone should be able to access the
+												status page
+											</FormDescription>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="barDays"
+									render={({ field }) => (
+										<FormItem className="flex h-full flex-col">
+											<FormLabel className="flex h-6 items-end pb-1">
+												Uptime bar range
+											</FormLabel>
+											<Select
+												onValueChange={field.onChange}
+												value={field.value}
+												items={barDayOptions}
+											>
+												<SelectTrigger>
+													<SelectValue>
+														{
+															barDayOptions.find(
+																(option) => option.value === field.value,
+															)?.label
+														}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectPopup>
+													{barDayOptions.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
+												</SelectPopup>
+											</Select>
+											<FormDescription className="pt-2">
+												Choose how many days of uptime history to show in the
+												status bars
+											</FormDescription>
 											<FormMessage />
 										</FormItem>
 									)}
@@ -624,24 +671,26 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 								control={form.control}
 								name="barStyle"
 								render={({ field }) => (
-									<FormItem className="space-y-3">
+									<FormItem className="h-full w-full space-y-3">
 										<FormLabel>Uptime bar style</FormLabel>
 										<FormControl>
 											<RadioGroup
 												onValueChange={field.onChange}
 												value={field.value}
-												className="grid grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2"
+												className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2"
 											>
-												<FormItem className="h-full">
-													<FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
+												<FormItem className="h-full w-full">
+													<FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
 																value="normal"
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className={optionCardClassName}>
-															<div className="flex items-center gap-4">
+														<div
+															className={`${optionCardClassName} flex h-full w-full items-center`}
+														>
+															<div className="flex w-full items-center gap-4">
 																<div className="flex h-10 w-16 flex-col justify-center gap-0.5 rounded bg-muted/20 px-2">
 																	<div className="h-1.5 w-full rounded-sm bg-green-500/70" />
 																	<div className="h-1.5 w-full rounded-sm bg-green-500/70" />
@@ -666,16 +715,19 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														</div>
 													</FormLabel>
 												</FormItem>
-												<FormItem className="h-full">
-													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
+
+												<FormItem className="h-full w-full">
+													<FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
 																value="length"
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className={optionCardClassName}>
-															<div className="flex items-center gap-4">
+														<div
+															className={`${optionCardClassName} flex h-full w-full items-center`}
+														>
+															<div className="flex w-full items-center gap-4">
 																<div className="flex h-10 w-16 flex-col justify-center rounded bg-muted/20 px-2">
 																	<div className="h-2 w-full rounded-t-sm bg-green-500/70" />
 																	<div className="h-1 w-full bg-yellow-500/70" />
@@ -700,16 +752,19 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														</div>
 													</FormLabel>
 												</FormItem>
-												<FormItem className="h-full">
-													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
+
+												<FormItem className="h-full w-full">
+													<FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
 																value="signal"
 																className="sr-only"
 															/>
 														</FormControl>
-														<div className={optionCardClassName}>
-															<div className="flex items-center gap-4">
+														<div
+															className={`${optionCardClassName} flex h-full w-full items-center`}
+														>
+															<div className="flex w-full items-center gap-4">
 																<div className="flex h-10 w-16 items-center rounded bg-muted/20 px-2">
 																	<div className="flex h-1.5 w-full items-center gap-px">
 																		<div className="h-1.5 flex-[8] rounded-full bg-green-500/80" />
@@ -740,45 +795,6 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												</FormItem>
 											</RadioGroup>
 										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-
-							<FormField
-								control={form.control}
-								name="barDays"
-								render={({ field }) => (
-									<FormItem className="flex h-full flex-col">
-										<FormLabel className="flex h-6 items-end pb-1">
-											Uptime bar range
-										</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-											items={barDayOptions}
-										>
-											<SelectTrigger>
-												<SelectValue>
-													{
-														barDayOptions.find(
-															(option) => option.value === field.value,
-														)?.label
-													}
-												</SelectValue>
-											</SelectTrigger>
-											<SelectPopup>
-												{barDayOptions.map(({ label, value }) => (
-													<SelectItem key={value} value={value}>
-														{label}
-													</SelectItem>
-												))}
-											</SelectPopup>
-										</Select>
-										<FormDescription className="pt-2">
-											Choose how many days of uptime history to show in the
-											status bars
-										</FormDescription>
 										<FormMessage />
 									</FormItem>
 								)}
@@ -907,11 +923,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 					</Card>
 				</div>
 			</form>
-
-			<div
-				id="statuspage-settings-footer"
-				className="sticky bottom-0 z-10 overflow-hidden rounded-b-lg border bg-popover/80 backdrop-blur-md"
-			>
+			<div id="statuspage-settings-footer" className="">
 				<div className="flex justify-end gap-4 px-6 py-4">
 					<Button
 						type="button"

@@ -10,6 +10,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import WorkersMap from "@/components/admin/workers-map";
 
 // Disable prerendering - this page needs database access at runtime
 export const dynamic = "force-dynamic";
@@ -89,17 +90,28 @@ export default async function AdminPage() {
 				</Card>
 			</div>
 
-			<div className="mt-8">
-				<Card className="col-span-4">
+			{/* Changed to grid-cols-12 for better control */}
+			<div className="mt-8 grid grid-cols-12 gap-4">
+				{/* This card takes up 8 of 12 columns (2/3 width) */}
+				<Card className="col-span-8">
 					<CardHeader>
-						<CardTitle>Recent Overview</CardTitle>
-						<CardDescription>
-							A summary of system usage and growth. (Placeholder)
-						</CardDescription>
+						<CardTitle>Workers Overview</CardTitle>
 					</CardHeader>
 					<CardContent className="pl-2">
-						<div className="flex h-[200px] items-center justify-center text-muted-foreground">
-							Chart placeholder
+						<div className="flex h-[800px] w-full items-center justify-center text-muted-foreground">
+							<WorkersMap />
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* This card takes up 4 of 12 columns (1/3 width) */}
+				<Card className="col-span-4">
+					<CardHeader>
+						<CardTitle>Workers</CardTitle>
+					</CardHeader>
+					<CardContent className="pl-2">
+						<div className="flex h-full w-full items-center justify-center text-muted-foreground">
+							Workers blah blah
 						</div>
 					</CardContent>
 				</Card>

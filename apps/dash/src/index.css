@@ -297,6 +297,12 @@ body {
 	html {
 		@apply font-sans font-mono;
 	}
+  .maplibregl-popup-content {
+    @apply bg-transparent! shadow-none! p-0! rounded-none!;
+	}
+  .maplibregl-popup-tip {
+    @apply hidden!;
+	}
 }
 
 [data-sileo-pill] {
