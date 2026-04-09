@@ -2,7 +2,7 @@ import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StatusType, UptimeDay } from "../../types";
 import { StatusDot } from "./status-indicator";
-import { generateMockUptimeData, UptimeBar } from "./uptime-bar";
+import { UptimeBar } from "./uptime-bar";
 
 interface MonitorCardProps {
 	name: string;
@@ -23,7 +23,8 @@ export function MonitorCard({
 	className,
 	uptimeHistory,
 }: MonitorCardProps) {
-	const uptimeData = uptimeHistory || generateMockUptimeData(90);
+	const uptimeData = uptimeHistory ?? [];
+	const hasUptimeHistory = uptimeData.length > 0;
 
 	return (
 		<div
@@ -71,7 +72,13 @@ export function MonitorCard({
 				</div>
 			</div>
 
-			<UptimeBar days={uptimeData} />
+			{hasUptimeHistory ? (
+				<UptimeBar days={uptimeData} />
+			) : (
+				<div className="rounded-lg border border-border/80 border-dashed bg-muted/30 px-3 py-4 text-center text-muted-foreground text-sm">
+					Uptime history unavailable
+				</div>
+			)}
 		</div>
 	);
 }

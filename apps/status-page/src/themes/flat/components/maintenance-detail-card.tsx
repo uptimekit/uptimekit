@@ -22,7 +22,7 @@ export function MaintenanceDetailCard({
 
 	return (
 		<div className="opacity-80">
-			<div className="mb-2 font-medium text-muted-foreground text-sm uppercase tracking-wider">
+			<div className="mb-2 font-medium text-muted-foreground text-sm tracking-wider">
 				Maintenance Details
 			</div>
 			<IncidentCard

@@ -8,7 +8,7 @@ import {
 import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { monitorTag, tag } from "@uptimekit/db/schema/tags";
-import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import type {
@@ -880,10 +880,10 @@ export const monitorsRouter = {
 			const calculateStats = async (startDate: Date | null) => {
 				const now = Date.now();
 				const monitorCreatedAt = mon.createdAt.getTime();
-				const effectiveStart = startDate
-					? Math.max(startDate.getTime(), monitorCreatedAt)
-					: monitorCreatedAt;
-				const totalTime = Math.max(1, now - effectiveStart);
+				const periodStart = startDate ? startDate.getTime() : monitorCreatedAt;
+				const nowDate = new Date(now);
+				const periodStartDate = new Date(periodStart);
+				const totalTime = Math.max(1, now - periodStart);
 
 				const incidents = await db
 					.select({
@@ -896,17 +896,17 @@ export const monitorsRouter = {
 						and(
 							eq(incidentMonitor.monitorId, input.monitorId),
 							eq(incident.organizationId, session.activeOrganizationId!),
-							sql`${incident.startedAt} <= ${new Date(now)}`,
-							sql`coalesce(${incident.endedAt}, ${new Date(now)}) >= ${new Date(effectiveStart)}`,
+							lte(incident.startedAt, nowDate),
+							or(
+								isNull(incident.endedAt),
+								gte(incident.endedAt, periodStartDate),
+							),
 						),
 					)
 					.orderBy(incident.startedAt);
 
 				const overlappingDurations = incidents.map((item) => {
-					const overlapStart = Math.max(
-						item.startedAt.getTime(),
-						effectiveStart,
-					);
+					const overlapStart = Math.max(item.startedAt.getTime(), periodStart);
 					const overlapEnd = Math.min(
 						(item.endedAt ?? new Date(now)).getTime(),
 						now,

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
 import { betterAuth } from "better-auth";
@@ -8,7 +9,26 @@ import { eq } from "drizzle-orm";
 
 function createSlugFromEmail(email: string): string {
 	const prefix = email.split("@")[0] || "user";
-	return prefix.replace(/[^a-z0-9]/gi, "").toLowerCase();
+	return prefix.replace(/[^a-z0-9]/gi, "").toLowerCase() || "user";
+}
+
+async function createUniqueOrganizationSlug(email: string): Promise<string> {
+	const baseSlug = createSlugFromEmail(email);
+
+	for (let index = 0; index < 10; index++) {
+		const candidate = index === 0 ? baseSlug : `${baseSlug}-${index + 1}`;
+		const [existingOrganization] = await db
+			.select({ id: schema.organization.id })
+			.from(schema.organization)
+			.where(eq(schema.organization.slug, candidate))
+			.limit(1);
+
+		if (!existingOrganization) {
+			return candidate;
+		}
+	}
+
+	return `${baseSlug}-${randomUUID().slice(0, 8)}`;
 }
 
 export const auth = betterAuth({
@@ -98,7 +118,7 @@ export const auth = betterAuth({
 						return;
 					}
 
-					const slug = createSlugFromEmail(user.email);
+					const slug = await createUniqueOrganizationSlug(user.email);
 
 					await auth.api.createOrganization({
 						body: {

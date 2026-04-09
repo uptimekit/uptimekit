@@ -358,7 +358,8 @@ export function UptimeBar({
 												) : (
 													day.status !== "unknown" && (
 														<div className="mt-1 text-muted-foreground text-xs">
-															{day.downtimeMs !== undefined && day.downtimeMs > 0
+															{day.downtimeMs !== undefined &&
+															day.downtimeMs > 0
 																? formatDowntime(day.downtimeMs)
 																: "No downtime"}
 														</div>
@@ -377,65 +378,65 @@ export function UptimeBar({
 				<>
 					{/* Flex container for the bar segments */}
 					<div className="flex h-8 w-full gap-[3px]">
-				{days.map((day, index) => (
-					// biome-ignore lint/a11y/noStaticElementInteractions
-					<div
-						key={day.date}
-						className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
-						onMouseEnter={() => setHoveredIndex(index)}
-						onMouseLeave={() => setHoveredIndex(null)}
-					>
-						{/* The visible bar segment */}
-						{style === "length" ? (
-							<div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
-								<StackedBar segments={calculateSegments(day)} />
-							</div>
-						) : (
+						{days.map((day, index) => (
+							// biome-ignore lint/a11y/noStaticElementInteractions
 							<div
-								className={cn(
-									"h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
-									statusColors[day.status],
+								key={day.date}
+								className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
+								onMouseEnter={() => setHoveredIndex(index)}
+								onMouseLeave={() => setHoveredIndex(null)}
+							>
+								{/* The visible bar segment */}
+								{style === "length" ? (
+									<div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
+										<StackedBar segments={calculateSegments(day)} />
+									</div>
+								) : (
+									<div
+										className={cn(
+											"h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
+											statusColors[day.status],
+										)}
+									/>
 								)}
-							/>
-						)}
 
-						{/* Tooltip */}
-						{hoveredIndex === index && (
-							<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
-								<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
-									<div className="font-semibold text-popover-foreground text-sm">
-										{day.annotation || statusConfig[day.status].label}
-									</div>
-									<div className="mt-1 text-muted-foreground text-xs">
-										{new Date(day.date).toLocaleDateString("en-US", {
-											weekday: "long",
-											month: "short",
-											day: "numeric",
-											year: "numeric",
-										})}
-									</div>
-									{style === "length" && <SegmentTooltip day={day} />}
-									{day.duration ? (
-										<div className="mt-1 text-muted-foreground text-xs">
-											Duration: {day.duration}
-										</div>
-									) : (
-										day.status !== "unknown" && (
-											<div className="mt-1 text-muted-foreground text-xs">
-												{day.downtimeMs !== undefined && day.downtimeMs > 0
-													? formatDowntime(day.downtimeMs)
-													: "No downtime"}
+								{/* Tooltip */}
+								{hoveredIndex === index && (
+									<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
+										<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+											<div className="font-semibold text-popover-foreground text-sm">
+												{day.annotation || statusConfig[day.status].label}
 											</div>
-										)
-									)}
+											<div className="mt-1 text-muted-foreground text-xs">
+												{new Date(day.date).toLocaleDateString("en-US", {
+													weekday: "long",
+													month: "short",
+													day: "numeric",
+													year: "numeric",
+												})}
+											</div>
+											{style === "length" && <SegmentTooltip day={day} />}
+											{day.duration ? (
+												<div className="mt-1 text-muted-foreground text-xs">
+													Duration: {day.duration}
+												</div>
+											) : (
+												day.status !== "unknown" && (
+													<div className="mt-1 text-muted-foreground text-xs">
+														{day.downtimeMs !== undefined && day.downtimeMs > 0
+															? formatDowntime(day.downtimeMs)
+															: "No downtime"}
+													</div>
+												)
+											)}
 
-									{/* Arrow */}
-									<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-								</div>
+											{/* Arrow */}
+											<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+										</div>
+									</div>
+								)}
 							</div>
-						)}
-					</div>
-					))}
+						))}
 					</div>
 				</>
 			)}
@@ -450,40 +451,4 @@ export function UptimeBar({
 			) : null}
 		</div>
 	);
-}
-
-export function generateMockUptimeData(days = 90): UptimeDay[] {
-	const data: UptimeDay[] = [];
-	const now = new Date();
-
-	for (let i = days - 1; i >= 0; i--) {
-		const date = new Date(now);
-		date.setDate(date.getDate() - i);
-		const random = Math.random();
-		let status: StatusType;
-		let uptime: number;
-
-		if (random > 0.98) {
-			status = "major_outage";
-			uptime = 85 + Math.random() * 10;
-		} else if (random > 0.95) {
-			status = "partial_outage";
-			uptime = 95 + Math.random() * 3;
-		} else if (random > 0.92) {
-			status = "degraded";
-			uptime = 98 + Math.random() * 1.5;
-		} else if (random > 0.9) {
-			status = "maintenance";
-			uptime = 99 + Math.random() * 0.8;
-		} else {
-			status = "operational";
-			uptime = 100;
-		}
-		data.push({
-			date: date.toISOString().split("T")[0],
-			status,
-			uptime,
-		});
-	}
-	return data;
 }

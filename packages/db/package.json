@@ -11,13 +11,15 @@
 		}
 	},
 	"scripts": {
+		"check-types": "tsc --noEmit -p tsconfig.json",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate"
 	},
 	"devDependencies": {
-		"drizzle-kit": "^0.31.8"
+		"drizzle-kit": "^0.31.8",
+		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
 		"typescript": "^5"

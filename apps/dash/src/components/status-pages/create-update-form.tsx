@@ -153,7 +153,7 @@ export function CreateStatusUpdateForm({
 						<DialogPanel className="space-y-8">
 							{/* Basic Information Section */}
 							<div className="space-y-4">
-								<h3 className="font-medium text-muted-foreground text-sm uppercase tracking-wider">
+								<h3 className="font-medium text-muted-foreground text-sm tracking-wider">
 									Basic information
 								</h3>
 								<div className="grid gap-4 rounded-lg border bg-card/50 p-4">
@@ -185,9 +185,11 @@ export function CreateStatusUpdateForm({
 														<FormControl>
 															<SelectTrigger>
 																<SelectValue placeholder="Select status">
-																	{updateStatusOptions.find(
-																		(option) => option.value === field.value,
-																	)?.label}
+																	{
+																		updateStatusOptions.find(
+																			(option) => option.value === field.value,
+																		)?.label
+																	}
 																</SelectValue>
 															</SelectTrigger>
 														</FormControl>
@@ -216,9 +218,11 @@ export function CreateStatusUpdateForm({
 														<FormControl>
 															<SelectTrigger>
 																<SelectValue placeholder="Select severity">
-																	{severityOptions.find(
-																		(option) => option.value === field.value,
-																	)?.label}
+																	{
+																		severityOptions.find(
+																			(option) => option.value === field.value,
+																		)?.label
+																	}
 																</SelectValue>
 															</SelectTrigger>
 														</FormControl>
@@ -259,7 +263,7 @@ export function CreateStatusUpdateForm({
 							{/* Affected Services Section */}
 							<div className="space-y-4">
 								<div className="flex items-center justify-between">
-									<h3 className="font-medium text-muted-foreground text-sm uppercase tracking-wider">
+									<h3 className="font-medium text-muted-foreground text-sm tracking-wider">
 										Affected services
 									</h3>
 								</div>

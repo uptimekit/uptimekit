@@ -93,7 +93,7 @@ export function IncidentCard({
 					{/* Affected services */}
 					{incident.monitors && incident.monitors.length > 0 && (
 						<div className="mb-4">
-							<h4 className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
+							<h4 className="mb-2 font-medium text-muted-foreground text-xs tracking-wider">
 								Affected Services
 							</h4>
 							<div className="flex flex-wrap gap-2">
@@ -112,7 +112,7 @@ export function IncidentCard({
 					{/* Updates timeline */}
 					{incident.activities && incident.activities.length > 0 && (
 						<div>
-							<h4 className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
+							<h4 className="mb-3 font-medium text-muted-foreground text-xs tracking-wider">
 								Updates
 							</h4>
 							<div className="">

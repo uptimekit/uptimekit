@@ -2,26 +2,60 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ChevronDown, Globe } from "lucide-react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	ChevronsLeft,
+	ChevronsRight,
+	ChevronsUpDown,
+	Globe,
+	MoreHorizontal,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	Area,
 	AreaChart,
 	CartesianGrid,
+	Line,
+	LineChart,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
 	YAxis,
 } from "recharts";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { getRegionInfo } from "@/lib/regions";
+import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
 interface ResponseTimeChartProps {
@@ -30,18 +64,7 @@ interface ResponseTimeChartProps {
 	monitorType?: string;
 }
 
-// HTTP monitor types that have detailed timings
 const HTTP_MONITOR_TYPES = ["http", "http-json", "keyword"];
-
-// Timing component colors for breakdown view
-const TIMING_COLORS = {
-	dnsLookup: "#6366f1", // indigo
-	tcpConnect: "#8b5cf6", // violet
-	tlsHandshake: "#a855f7", // purple
-	ttfb: "#22d3ee", // cyan
-	transfer: "#34d399", // emerald
-} as const;
-
 const TIMING_KEYS = [
 	"dnsLookup",
 	"tcpConnect",
@@ -50,19 +73,65 @@ const TIMING_KEYS = [
 	"transfer",
 ] as const;
 type TimingKey = (typeof TIMING_KEYS)[number];
+type QuantileKey = "p50" | "p90" | "p99";
+type RangeKey = "24h" | "7d" | "30d";
+type RegionView = "table" | "chart";
+type ChartStateUpdate = Partial<{
+	latencyRange: RangeKey;
+	latencyQuantile: QuantileKey;
+	latencyResolutionMinutes: "5" | "15" | "30" | "60";
+	regionRange: RangeKey;
+	regionQuantile: QuantileKey;
+	regionView: RegionView;
+	rowsPerPage: "10" | "20" | "50";
+	page: number;
+	sortBy: QuantileKey;
+}>;
+
+const TIMING_COLORS: Record<TimingKey, string> = {
+	dnsLookup: "#2563eb",
+	tcpConnect: "#10b981",
+	tlsHandshake: "#f59e0b",
+	ttfb: "#a855f7",
+	transfer: "#ff2f92",
+};
 
 const TIMING_LABELS: Record<TimingKey, string> = {
 	dnsLookup: "DNS",
-	tcpConnect: "TCP",
+	tcpConnect: "Connect",
 	tlsHandshake: "TLS",
 	ttfb: "TTFB",
 	transfer: "Transfer",
 };
 
-// Generate distinct colors for regions using HSL
-const generateRegionColor = (index: number, total: number): string => {
+const QUANTILE_OPTIONS = [
+	{ label: "P50", value: "p50" },
+	{ label: "P90", value: "p90" },
+	{ label: "P99", value: "p99" },
+] as const;
+
+const RANGE_OPTIONS = [
+	{ label: "Last day", value: "24h" },
+	{ label: "Last week", value: "7d" },
+	{ label: "Last month", value: "30d" },
+] as const;
+
+const RESOLUTION_OPTIONS = [
+	{ label: "5 minutes", value: "5" },
+	{ label: "15 minutes", value: "15" },
+	{ label: "30 minutes", value: "30" },
+	{ label: "1 hour", value: "60" },
+] as const;
+
+const ROWS_PER_PAGE_OPTIONS = [
+	{ label: "10", value: "10" },
+	{ label: "20", value: "20" },
+	{ label: "50", value: "50" },
+] as const;
+
+const generateRegionColor = (index: number, total: number) => {
 	const hue = (index * 360) / Math.max(total, 1);
-	return `hsl(${hue}, 70%, 55%)`;
+	return `hsl(${hue}, 75%, 58%)`;
 };
 
 interface RawDataPoint {
@@ -76,715 +145,1051 @@ interface RawDataPoint {
 	transfer?: number;
 }
 
-interface ChartDataPoint {
+interface LatencyBucketPoint {
 	timestamp: string;
-	timeDisplay: string;
-	// Averages across selected regions (used in breakdown view)
-	avgLatency: number;
-	avgDnsLookup: number;
-	avgTcpConnect: number;
-	avgTlsHandshake: number;
-	avgTtfb: number;
-	avgTransfer: number;
-	// Per-region data — value is number | null so recharts can gap properly
-	[key: string]: number | string | null;
+	label: string;
+	latency: number;
+	dnsLookup: number;
+	tcpConnect: number;
+	tlsHandshake: number;
+	ttfb: number;
+	transfer: number;
+}
+
+interface RegionTrendPoint {
+	label: string;
+	value: number;
+}
+
+interface RegionMetricRow {
+	location: string;
+	trend: RegionTrendPoint[];
+	current: number | null;
+	min: number | null;
+	max: number | null;
+	p50: number | null;
+	p90: number | null;
+	p99: number | null;
 }
 
 const ONE_MINUTE_MS = 60_000;
 
-const getMinuteBucketStart = (timestamp: string) => {
-	const time = new Date(timestamp).getTime();
-	return new Date(Math.floor(time / ONE_MINUTE_MS) * ONE_MINUTE_MS);
+const quantileToRatio = (quantile: QuantileKey) => {
+	switch (quantile) {
+		case "p90":
+			return 0.9;
+		case "p99":
+			return 0.99;
+		default:
+			return 0.5;
+	}
 };
 
-/**
- * Renders a response time chart for a monitor with multi-region support.
- *
- * Features:
- * - Multi-region selection with persistence
- * - Individual region areas (toggleable via legend), connected across sparse timestamps
- * - Tooltip keeps all visible regions in the hovered point list
- * - HTTP monitors: Toggle between "Total Latency" and "Timing Breakdown" views
- * - Dynamic colors for regions
- */
+const getBucketStart = (timestamp: string, resolutionMinutes: number) => {
+	const time = new Date(timestamp).getTime();
+	const bucketSize = resolutionMinutes * ONE_MINUTE_MS;
+	return new Date(Math.floor(time / bucketSize) * bucketSize).toISOString();
+};
+
+const formatChartTimestamp = (timestamp: string, range: RangeKey) => {
+	const date = new Date(timestamp);
+	if (range === "24h") {
+		return format(date, "MMM d 'at' h:mm a");
+	}
+	if (range === "7d") {
+		return format(date, "MMM d 'at' h:mm a");
+	}
+	return format(date, "MMM d");
+};
+
+const calculateQuantile = (
+	values: Array<number | undefined>,
+	quantile: QuantileKey,
+) => {
+	const definedValues = values
+		.filter((value): value is number => typeof value === "number")
+		.sort((a, b) => a - b);
+
+	if (definedValues.length === 0) {
+		return 0;
+	}
+
+	if (definedValues.length === 1) {
+		return definedValues[0];
+	}
+
+	const index = (definedValues.length - 1) * quantileToRatio(quantile);
+	const lowerIndex = Math.floor(index);
+	const upperIndex = Math.ceil(index);
+
+	if (lowerIndex === upperIndex) {
+		return definedValues[lowerIndex];
+	}
+
+	const weight = index - lowerIndex;
+	return (
+		definedValues[lowerIndex] +
+		(definedValues[upperIndex] - definedValues[lowerIndex]) * weight
+	);
+};
+
+const formatMetric = (value: number | null) =>
+	value == null ? "--" : `${Math.round(value)} ms`;
+
+function RegionTrendSparkline({
+	data,
+}: {
+	data: RegionTrendPoint[];
+}): React.ReactElement | null {
+	if (data.length === 0) {
+		return null;
+	}
+
+	return (
+		<div className="h-12 w-full min-w-[170px]">
+			<ResponsiveContainer width="100%" height="100%">
+				<LineChart
+					data={data}
+					margin={{ top: 3, right: 0, bottom: 3, left: 0 }}
+				>
+					<Line
+						type="monotone"
+						dataKey="value"
+						stroke="#1dd67d"
+						strokeWidth={2}
+						dot={false}
+						isAnimationActive={false}
+					/>
+				</LineChart>
+			</ResponsiveContainer>
+		</div>
+	);
+}
+
 export function ResponseTimeChart({
 	monitorId,
 	locations,
 	monitorType = "http",
 }: ResponseTimeChartProps) {
-	const [range, setRange] = useState<"24h" | "7d" | "30d">("24h");
-
-	// Multi-region selection with localStorage persistence
-	const [selectedLocations, setSelectedLocations] = useState<string[]>(() => {
-		if (typeof window === "undefined")
-			return locations.length > 0 ? [locations[0]] : [];
-		const saved = localStorage.getItem(`monitor-chart-locations-${monitorId}`);
-		if (saved) {
-			const parsed = JSON.parse(saved);
-			const valid = parsed.filter(
-				(loc: string) => loc === "all" || locations.includes(loc),
-			);
-			if (valid.length > 0) return valid;
-		}
-		return locations.length > 0 ? [locations[0]] : [];
-	});
-
-	// HTTP monitor view mode toggle
-	const [viewMode, setViewMode] = useState<"total" | "breakdown">("breakdown");
-
-	// Track visibility of individual regions in legend
-	const [visibleRegions, setVisibleRegions] = useState<Record<string, boolean>>(
-		{},
+	const [latencyRange, setLatencyRange] = useState<RangeKey>("24h");
+	const [latencyQuantile, setLatencyQuantile] = useState<QuantileKey>("p50");
+	const [latencyResolutionMinutes, setLatencyResolutionMinutes] = useState<
+		"5" | "15" | "30" | "60"
+	>("30");
+	const [regionRange, setRegionRange] = useState<RangeKey>("24h");
+	const [regionQuantile, setRegionQuantile] = useState<QuantileKey>("p50");
+	const [regionView, setRegionView] = useState<RegionView>("table");
+	const [rowsPerPage, setRowsPerPage] = useState<"10" | "20" | "50">("20");
+	const [page, setPage] = useState(1);
+	const [sortBy, setSortBy] = useState<QuantileKey>("p50");
+	const [selectedLocations, setSelectedLocations] = useState<string[]>(() =>
+		locations.length > 0 ? [...locations] : [],
 	);
+	const updateChartState = (nextState: ChartStateUpdate) => {
+		if (nextState.latencyRange !== undefined) {
+			setLatencyRange(nextState.latencyRange);
+		}
+		if (nextState.latencyQuantile !== undefined) {
+			setLatencyQuantile(nextState.latencyQuantile);
+		}
+		if (nextState.latencyResolutionMinutes !== undefined) {
+			setLatencyResolutionMinutes(nextState.latencyResolutionMinutes);
+		}
+		if (nextState.regionRange !== undefined) {
+			setRegionRange(nextState.regionRange);
+		}
+		if (nextState.regionQuantile !== undefined) {
+			setRegionQuantile(nextState.regionQuantile);
+		}
+		if (nextState.regionView !== undefined) {
+			setRegionView(nextState.regionView);
+		}
+		if (nextState.rowsPerPage !== undefined) {
+			setRowsPerPage(nextState.rowsPerPage);
+		}
+		if (nextState.page !== undefined) {
+			setPage(nextState.page);
+		}
+		if (nextState.sortBy !== undefined) {
+			setSortBy(nextState.sortBy);
+		}
+	};
 
-	// Track visibility of timing components in breakdown view
-	const [visibleTimings, setVisibleTimings] = useState<
-		Record<TimingKey, boolean>
-	>({
-		dnsLookup: true,
-		tcpConnect: true,
-		tlsHandshake: true,
-		ttfb: true,
-		transfer: true,
-	});
+	useEffect(() => {
+		if (locations.length === 0) {
+			setSelectedLocations([]);
+			return;
+		}
 
-	// Check if this is an HTTP-based monitor with detailed timings
+		setSelectedLocations((prev) => {
+			const next = prev.filter((location) => locations.includes(location));
+			return next.length > 0 ? next : [...locations];
+		});
+	}, [locations]);
+
 	const hasDetailedTimings = HTTP_MONITOR_TYPES.includes(monitorType);
 
-	// Persist location selection
-	useEffect(() => {
-		if (typeof window !== "undefined") {
-			localStorage.setItem(
-				`monitor-chart-locations-${monitorId}`,
-				JSON.stringify(selectedLocations),
-			);
-		}
-	}, [selectedLocations, monitorId]);
-
-	// Initialize visible regions when locations change
-	useEffect(() => {
-		const initialVisibility: Record<string, boolean> = {};
-		selectedLocations.forEach((loc) => {
-			if (loc !== "all") {
-				initialVisibility[loc] = true;
-			}
-		});
-		setVisibleRegions(initialVisibility);
-	}, [selectedLocations]);
-
-	// Fetch data from API
-	const { data: rawData, isLoading } = useQuery({
+	const { data: latencyRawData = [], isLoading: isLatencyLoading } = useQuery({
 		...orpc.monitors.getResponseTimes.queryOptions({
 			input: {
 				monitorId,
-				range,
-				locations: selectedLocations.includes("all") ? [] : selectedLocations,
+				range: latencyRange,
+				locations: selectedLocations,
 			},
 		}),
 		enabled: selectedLocations.length > 0,
 	});
 
-	// Get unique locations from data — derived before chartData so it can be used inside it
-	const dataLocations = useMemo(() => {
-		if (!rawData) return [];
-		return Array.from(new Set(rawData.map((d) => d.location)));
-	}, [rawData]);
+	const { data: regionRawData = [], isLoading: isRegionLoading } = useQuery({
+		...orpc.monitors.getResponseTimes.queryOptions({
+			input: {
+				monitorId,
+				range: regionRange,
+				locations: selectedLocations,
+			},
+		}),
+		enabled: selectedLocations.length > 0,
+	});
 
-	// Process and aggregate data for chart.
-	//
-	// Key fix: timestamps are sorted chronologically and every slot gets an
-	// explicit `null` for regions that have no reading at that point.
-	// `connectNulls` on each <Area> then bridges those gaps with a continuous
-	// line instead of dropping to zero or leaving a hole.
-	const chartData = useMemo((): ChartDataPoint[] => {
-		if (!rawData || rawData.length === 0) return [];
+	const activeLocations = useMemo(
+		() => selectedLocations.filter((location) => locations.includes(location)),
+		[selectedLocations, locations],
+	);
 
-		// Merge all readings that land in the same minute bucket.
-		const grouped = rawData.reduce(
-			(acc, item) => {
-				const bucketTimestamp = getMinuteBucketStart(
-					item.timestamp,
-				).toISOString();
-				if (!acc[bucketTimestamp]) {
-					acc[bucketTimestamp] = { items: [], timestamp: bucketTimestamp };
+	const chartData = useMemo((): LatencyBucketPoint[] => {
+		if (latencyRawData.length === 0) {
+			return [];
+		}
+
+		const grouped = latencyRawData.reduce(
+			(acc, point) => {
+				const bucketStart = getBucketStart(
+					point.timestamp,
+					Number(latencyResolutionMinutes),
+				);
+				if (!acc[bucketStart]) {
+					acc[bucketStart] = [];
 				}
-				acc[bucketTimestamp].items.push(item);
+				acc[bucketStart].push(point);
 				return acc;
 			},
-			{} as Record<string, { items: RawDataPoint[]; timestamp: string }>,
+			{} as Record<string, RawDataPoint[]>,
 		);
 
-		// Sort timestamps chronologically
-		const sortedTimestamps = Object.keys(grouped).sort(
-			(a, b) => new Date(a).getTime() - new Date(b).getTime(),
-		);
+		return Object.entries(grouped)
+			.sort(([left], [right]) => left.localeCompare(right))
+			.map(([timestamp, points]) => ({
+				timestamp,
+				label: formatChartTimestamp(timestamp, latencyRange),
+				latency: calculateQuantile(
+					points.map((point) => point.latency),
+					latencyQuantile,
+				),
+				dnsLookup: calculateQuantile(
+					points.map((point) => point.dnsLookup),
+					latencyQuantile,
+				),
+				tcpConnect: calculateQuantile(
+					points.map((point) => point.tcpConnect),
+					latencyQuantile,
+				),
+				tlsHandshake: calculateQuantile(
+					points.map((point) => point.tlsHandshake),
+					latencyQuantile,
+				),
+				ttfb: calculateQuantile(
+					points.map((point) => point.ttfb),
+					latencyQuantile,
+				),
+				transfer: calculateQuantile(
+					points.map((point) => point.transfer),
+					latencyQuantile,
+				),
+			}));
+	}, [latencyRawData, latencyResolutionMinutes, latencyRange, latencyQuantile]);
 
-		return sortedTimestamps.map((ts) => {
-			const items: RawDataPoint[] = grouped[ts].items;
-			const timestamp = new Date(ts);
+	const regionMetrics = useMemo((): RegionMetricRow[] => {
+		if (regionRawData.length === 0) {
+			return [];
+		}
 
-			// If a location reported multiple times within the same minute, average them
-			// so each region contributes a single point to that bucket.
-			const itemsByLocation = items.reduce((acc, item) => {
-				const existing = acc.get(item.location) || [];
-				existing.push(item);
-				acc.set(item.location, existing);
-				return acc;
-			}, new Map<string, RawDataPoint[]>());
+		return activeLocations
+			.map((location) => {
+				const regionPoints = regionRawData.filter(
+					(point) => point.location === location,
+				);
+				const groupedTrend = regionPoints.reduce(
+					(acc, point) => {
+						const bucketStart = getBucketStart(point.timestamp, 15);
+						if (!acc[bucketStart]) {
+							acc[bucketStart] = [];
+						}
+						acc[bucketStart].push(point.latency);
+						return acc;
+					},
+					{} as Record<string, number[]>,
+				);
 
-			const averagedItems = Array.from(itemsByLocation.entries()).map(
-				([location, locationItems]) => {
-					const average = (values: number[]) =>
-						values.reduce((sum, value) => sum + value, 0) / values.length;
-					const averageOptional = (
-						values: Array<number | undefined>,
-					): number | undefined => {
-						const definedValues = values.filter(
-							(value): value is number => value !== undefined,
-						);
-						return definedValues.length > 0
-							? average(definedValues)
-							: undefined;
-					};
+				const trend = Object.entries(groupedTrend)
+					.sort(([left], [right]) => left.localeCompare(right))
+					.map(([timestamp, latencies]) => ({
+						label: formatChartTimestamp(timestamp, regionRange),
+						value: calculateQuantile(latencies, regionQuantile),
+					}));
 
-					return {
-						location,
-						latency: average(locationItems.map((item) => item.latency)),
-						dnsLookup: averageOptional(
-							locationItems.map((item) => item.dnsLookup),
-						),
-						tcpConnect: averageOptional(
-							locationItems.map((item) => item.tcpConnect),
-						),
-						tlsHandshake: averageOptional(
-							locationItems.map((item) => item.tlsHandshake),
-						),
-						ttfb: averageOptional(locationItems.map((item) => item.ttfb)),
-						transfer: averageOptional(
-							locationItems.map((item) => item.transfer),
-						),
-					};
-				},
-			);
-
-			const byLocation = new Map<string, (typeof averagedItems)[number]>();
-			averagedItems.forEach((item) => byLocation.set(item.location, item));
-
-			// Averages across regions present at this timestamp (used by breakdown view)
-			const avgLatency =
-				averagedItems.reduce((sum, i) => sum + i.latency, 0) /
-				averagedItems.length;
-			const avgDnsLookup =
-				averagedItems.reduce((sum, i) => sum + (i.dnsLookup || 0), 0) /
-				averagedItems.length;
-			const avgTcpConnect =
-				averagedItems.reduce((sum, i) => sum + (i.tcpConnect || 0), 0) /
-				averagedItems.length;
-			const avgTlsHandshake =
-				averagedItems.reduce((sum, i) => sum + (i.tlsHandshake || 0), 0) /
-				averagedItems.length;
-			const avgTtfb =
-				averagedItems.reduce((sum, i) => sum + (i.ttfb || 0), 0) /
-				averagedItems.length;
-			const avgTransfer =
-				averagedItems.reduce((sum, i) => sum + (i.transfer || 0), 0) /
-				averagedItems.length;
-
-			// Per-region slots: null for any region absent at this timestamp
-			const perRegionData: Record<string, number | null> = {};
-			dataLocations.forEach((loc) => {
-				const item = byLocation.get(loc);
-				perRegionData[`${loc}_latency`] = item?.latency ?? null;
-				perRegionData[`${loc}_dnsLookup`] = item?.dnsLookup ?? null;
-				perRegionData[`${loc}_tcpConnect`] = item?.tcpConnect ?? null;
-				perRegionData[`${loc}_tlsHandshake`] = item?.tlsHandshake ?? null;
-				perRegionData[`${loc}_ttfb`] = item?.ttfb ?? null;
-				perRegionData[`${loc}_transfer`] = item?.transfer ?? null;
-			});
-
-			return {
-				timestamp: ts,
-				timeDisplay:
-					range === "24h"
-						? format(timestamp, "HH:mm")
-						: format(timestamp, "MMM d"),
-				avgLatency,
-				avgDnsLookup,
-				avgTcpConnect,
-				avgTlsHandshake,
-				avgTtfb,
-				avgTransfer,
-				...perRegionData,
-			};
-		});
-	}, [rawData, range, dataLocations]);
-
-	// Generate colors for each region
-	const regionColors = useMemo(() => {
-		const colors: Record<string, string> = {};
-		dataLocations.forEach((loc, index) => {
-			colors[loc] = generateRegionColor(index, dataLocations.length);
-		});
-		return colors;
-	}, [dataLocations]);
-
-	// Toggle region visibility
-	const toggleRegion = (location: string) => {
-		setVisibleRegions((prev) => ({
-			...prev,
-			[location]: !prev[location],
-		}));
-	};
-
-	// Toggle timing component visibility
-	const toggleTiming = (key: TimingKey) => {
-		setVisibleTimings((prev) => ({
-			...prev,
-			[key]: !prev[key],
-		}));
-	};
-
-	// Handle "Select All" regions
-	const selectAllRegions = () => {
-		setSelectedLocations([...locations]);
-	};
-
-	// Handle "Clear" regions
-	const clearRegions = () => {
-		setSelectedLocations([]);
-	};
-
-	// Custom tooltip — keeps the visible series list stable like Grafana's shared tooltip.
-	const CustomTooltip = ({ active, payload }: any) => {
-		if (!active || !payload?.length) return null;
-
-		const data = payload[0]?.payload as ChartDataPoint;
-		if (!data) return null;
-
-		const timestamp = new Date(data.timestamp);
-		const timeDisplay = format(timestamp, "MMM d, HH:mm");
-
-		const tooltipRows = dataLocations
-			.filter((loc) => visibleRegions[loc] !== false)
-			.map((loc) => {
-				const latency = data[`${loc}_latency`] as number | null;
-				const regionInfo = getRegionInfo(loc);
+				const latencyValues = regionPoints.map((point) => point.latency);
 				return {
-					color: regionColors[loc],
-					label: regionInfo.label,
-					hasValue: latency !== null && latency !== undefined,
-					value:
-						latency === null || latency === undefined
-							? "No data"
-							: `${Math.round(latency)} ms`,
+					location,
+					trend,
+					current: trend.at(-1)?.value ?? null,
+					min:
+						trend.length > 0
+							? Math.min(...trend.map((point) => point.value))
+							: null,
+					max:
+						trend.length > 0
+							? Math.max(...trend.map((point) => point.value))
+							: null,
+					p50: calculateQuantile(latencyValues, "p50"),
+					p90: calculateQuantile(latencyValues, "p90"),
+					p99: calculateQuantile(latencyValues, "p99"),
 				};
 			})
-			.sort((a, b) => {
-				if (a.hasValue === b.hasValue) return a.label.localeCompare(b.label);
-				return a.hasValue ? -1 : 1;
-			});
+			.sort((left, right) => (right[sortBy] ?? 0) - (left[sortBy] ?? 0));
+	}, [activeLocations, regionRawData, regionRange, regionQuantile, sortBy]);
 
-		const breakdownRows =
-			hasDetailedTimings && viewMode === "breakdown"
-				? TIMING_KEYS.filter((key) => visibleTimings[key]).map((key) => ({
-						color: TIMING_COLORS[key],
-						label: TIMING_LABELS[key],
-						value: `${Math.round(
-							data[
-								`avg${key.charAt(0).toUpperCase() + key.slice(1)}` as keyof ChartDataPoint
-							] as number,
-						)} ms`,
-					}))
-				: [];
+	const regionColors = useMemo(() => {
+		const colors: Record<string, string> = {};
+		activeLocations.forEach((location, index) => {
+			colors[location] = generateRegionColor(index, activeLocations.length);
+		});
+		return colors;
+	}, [activeLocations]);
+
+	const regionChartData = useMemo(() => {
+		if (regionRawData.length === 0 || activeLocations.length === 0) {
+			return [];
+		}
+
+		const grouped = regionRawData.reduce(
+			(acc, point) => {
+				const bucketStart = getBucketStart(point.timestamp, 15);
+				if (!acc[bucketStart]) {
+					acc[bucketStart] = [];
+				}
+				acc[bucketStart].push(point);
+				return acc;
+			},
+			{} as Record<string, RawDataPoint[]>,
+		);
+
+		return Object.entries(grouped)
+			.sort(([left], [right]) => left.localeCompare(right))
+			.map(([timestamp, points]) => {
+				const byLocation = activeLocations.reduce(
+					(acc, location) => {
+						const locationLatencies = points
+							.filter((point) => point.location === location)
+							.map((point) => point.latency);
+						acc[location] =
+							locationLatencies.length > 0
+								? calculateQuantile(locationLatencies, regionQuantile)
+								: null;
+						return acc;
+					},
+					{} as Record<string, number | null>,
+				);
+
+				return {
+					timestamp,
+					label: formatChartTimestamp(timestamp, regionRange),
+					...byLocation,
+				};
+			});
+	}, [regionRawData, activeLocations, regionQuantile, regionRange]);
+
+	const totalPages = Math.max(
+		1,
+		Math.ceil(regionMetrics.length / Number(rowsPerPage)),
+	);
+	const paginatedRegionMetrics = regionMetrics.slice(
+		(page - 1) * Number(rowsPerPage),
+		page * Number(rowsPerPage),
+	);
+
+	useEffect(() => {
+		if (page === 1) {
+			return;
+		}
+
+		updateChartState({ page: 1 });
+	}, [
+		page,
+		rowsPerPage,
+		regionMetrics.length,
+		sortBy,
+		regionRange,
+		regionQuantile,
+	]);
+
+	const topChartTooltip = ({ active, payload, label }: any) => {
+		if (!active || !payload?.length) {
+			return null;
+		}
 
 		return (
-			<div className="w-56 rounded-lg border border-border bg-background text-muted-foreground text-sm shadow-lg">
-				<div className="border-border border-b px-3 py-2">
-					<p className="font-medium text-foreground">{timeDisplay}</p>
-				</div>
-				<div className="space-y-2 px-3 py-2">
-					{tooltipRows.map((row) => (
-						<div key={row.label} className="flex space-x-2.5">
+			<div className="rounded-xl border border-border bg-background/96 px-3 py-2 text-xs shadow-xl backdrop-blur">
+				<div className="mb-2 font-medium text-foreground">{label}</div>
+				<div className="space-y-1.5">
+					{payload.map((entry: any) => (
+						<div key={entry.dataKey} className="flex items-center gap-2">
 							<span
-								className="w-1 shrink-0 rounded"
-								style={{ backgroundColor: row.color }}
-								aria-hidden={true}
+								className="h-2.5 w-2.5 rounded-[2px]"
+								style={{ backgroundColor: entry.color }}
 							/>
-							<p className="flex w-full items-center justify-between space-x-8 truncate">
-								<span className="truncate">{row.label}</span>
-								<span
-									className={
-										row.hasValue
-											? "font-medium text-foreground"
-											: "text-muted-foreground"
-									}
-								>
-									{row.value}
-								</span>
-							</p>
+							<span className="text-muted-foreground">{entry.name}</span>
+							<span className="ml-auto font-medium text-foreground">
+								{Math.round(entry.value)} ms
+							</span>
 						</div>
 					))}
 				</div>
-				{breakdownRows.length > 0 && (
-					<div className="border-border border-t px-3 py-2">
-						<div className="space-y-2">
-							{breakdownRows.map((row) => (
-								<div key={row.label} className="flex space-x-2.5">
-									<span
-										className="w-1 shrink-0 rounded"
-										style={{ backgroundColor: row.color }}
-										aria-hidden={true}
-									/>
-									<p className="flex w-full items-center justify-between space-x-8 truncate">
-										<span className="truncate">{row.label}</span>
-										<span className="font-medium text-foreground">
-											{row.value}
-										</span>
-									</p>
-								</div>
-							))}
-						</div>
-					</div>
-				)}
 			</div>
 		);
 	};
 
-	// Check if "all" is selected
-	const isAllSelected = selectedLocations.includes("all");
+	const regionChartTooltip = ({ active, payload, label }: any) => {
+		if (!active || !payload?.length) {
+			return null;
+		}
+
+		return (
+			<div className="rounded-xl border border-border bg-background/96 px-3 py-2 text-xs shadow-xl backdrop-blur">
+				<div className="mb-2 font-medium text-foreground">{label}</div>
+				<div className="space-y-1.5">
+					{payload
+						.filter((entry: any) => entry.value != null)
+						.map((entry: any) => (
+							<div key={entry.dataKey} className="flex items-center gap-2">
+								<span
+									className="h-2.5 w-2.5 rounded-[2px]"
+									style={{ backgroundColor: entry.color }}
+								/>
+								<span className="text-muted-foreground">{entry.name}</span>
+								<span className="ml-auto font-medium text-foreground">
+									{Math.round(entry.value)} ms
+								</span>
+							</div>
+						))}
+				</div>
+			</div>
+		);
+	};
+
+	const summaryText =
+		activeLocations.length === locations.length
+			? "All regions"
+			: `${activeLocations.length} selected`;
 
 	return (
-		<Card className="col-span-4 transition-all hover:shadow-md">
-			<CardHeader className="flex flex-row items-center justify-between pb-4">
-				<div className="space-y-1">
-					<CardTitle className="font-normal text-base">
-						{hasDetailedTimings
-							? viewMode === "breakdown"
-								? "Response Time Breakdown"
-								: "Response Time"
-							: "Response Time"}
-					</CardTitle>
-				</div>
-				<div className="flex items-center gap-2">
-					{/* Region selector */}
-					{locations.length > 0 && (
-						<Popover>
-							<PopoverTrigger
-								render={
-									<button
-										type="button"
-										className="flex h-8 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs hover:bg-accent"
-									>
-										<Globe className="h-3.5 w-3.5" />
-										<span>
-											{isAllSelected
-												? "All Regions"
-												: selectedLocations.length === 0
-													? "Select Regions"
-													: selectedLocations.length === 1
-														? getRegionInfo(selectedLocations[0]).label
-														: `${selectedLocations.length} regions`}
-										</span>
-										<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-									</button>
-								}
-							/>
-							<PopoverContent className="w-56 p-2" align="end">
-								<div className="space-y-2">
-									<div className="flex items-center justify-between px-2">
-										<span className="font-medium text-xs">Regions</span>
-										<div className="flex gap-1">
-											<button
-												type="button"
-												onClick={selectAllRegions}
-												className="text-primary text-xs hover:underline"
-											>
-												All
-											</button>
-											<span className="text-muted-foreground text-xs">|</span>
-											<button
-												type="button"
-												onClick={clearRegions}
-												className="text-primary text-xs hover:underline"
-											>
-												Clear
-											</button>
+		<div className="space-y-6">
+			<Card>
+				<CardHeader className="space-y-5">
+					<div className="flex items-start justify-between gap-4">
+						<div className="space-y-1.5">
+							<CardTitle className="font-semibold text-xl tracking-tight">
+								Latency
+							</CardTitle>
+							<p className="text-muted-foreground text-sm">
+								Response time across all the regions
+							</p>
+						</div>
+						{locations.length > 0 && (
+							<Popover>
+								<PopoverTrigger
+									render={
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="gap-2 border-border/70 bg-background/60"
+										>
+											<Globe className="h-4 w-4" />
+											{summaryText}
+										</Button>
+									}
+								/>
+								<PopoverContent align="end" className="w-60 p-0">
+									<div className="mb-2 flex items-center justify-between px-2">
+										<div className="font-medium text-muted-foreground text-xs">
+											Regions
 										</div>
+										<button
+											type="button"
+											className="text-primary text-xs"
+											onClick={() => setSelectedLocations([...locations])}
+										>
+											All
+										</button>
 									</div>
 									<div className="space-y-1">
-										{locations.map((loc) => {
-											const regionInfo = getRegionInfo(loc);
-											const isSelected = selectedLocations.includes(loc);
+										{locations.map((location) => {
+											const regionInfo = getRegionInfo(location);
+											const checked = selectedLocations.includes(location);
 											return (
-												<div
-													key={loc}
-													className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent"
+												// biome-ignore lint/a11y/noLabelWithoutControl: shhhh its okay
+												<label
+													key={location}
+													className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50"
 												>
 													<Checkbox
-														id={`region-${loc}`}
-														checked={isSelected}
-														onCheckedChange={(checked) => {
-															if (checked) {
-																setSelectedLocations((prev) =>
-																	prev.filter((l) => l !== "all").concat(loc),
+														checked={checked}
+														onCheckedChange={(nextChecked) => {
+															setSelectedLocations((prev) => {
+																if (nextChecked) {
+																	return prev.includes(location)
+																		? prev
+																		: [...prev, location];
+																}
+
+																const next = prev.filter(
+																	(value) => value !== location,
 																);
-															} else {
-																setSelectedLocations((prev) =>
-																	prev.filter((l) => l !== loc),
-																);
-															}
+																return next.length > 0 ? next : prev;
+															});
 														}}
 													/>
-													<label
-														htmlFor={`region-${loc}`}
-														className="flex cursor-pointer items-center gap-2"
-													>
-														<regionInfo.Flag className="h-3.5 w-5 rounded-sm object-cover" />
-														<span className="text-sm">{regionInfo.label}</span>
-													</label>
-												</div>
+													<regionInfo.Flag className="h-3.5 w-5 rounded-[2px]" />
+													<span className="text-sm">{regionInfo.label}</span>
+												</label>
 											);
 										})}
 									</div>
-								</div>
-							</PopoverContent>
-						</Popover>
-					)}
+								</PopoverContent>
+							</Popover>
+						)}
+					</div>
 
-					{/* View mode toggle for HTTP monitors */}
-					{hasDetailedTimings && (
-						<Tabs
-							value={viewMode}
-							onValueChange={(v) => setViewMode(v as "total" | "breakdown")}
-							className="w-auto"
+					<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+						<span>The</span>
+						<Select
+							value={latencyQuantile}
+							onValueChange={(value) =>
+								updateChartState({
+									latencyQuantile: value as QuantileKey,
+								})
+							}
 						>
-							<TabsList className="h-8 w-auto bg-muted/50 p-1">
-								<TabsTrigger value="total" className="h-6 px-2 text-xs">
-									Total
-								</TabsTrigger>
-								<TabsTrigger value="breakdown" className="h-6 px-2 text-xs">
-									Breakdown
-								</TabsTrigger>
-							</TabsList>
-						</Tabs>
-					)}
-
-					{/* Time range selector */}
-					<Tabs
-						value={range}
-						onValueChange={(v) => setRange(v as "24h" | "7d" | "30d")}
-						className="w-auto"
-					>
-						<TabsList className="h-8 w-auto bg-muted/50 p-1">
-							<TabsTrigger value="24h" className="h-6 px-3 text-xs">
-								24h
-							</TabsTrigger>
-							<TabsTrigger value="7d" className="h-6 px-3 text-xs">
-								7d
-							</TabsTrigger>
-							<TabsTrigger value="30d" className="h-6 px-3 text-xs">
-								30d
-							</TabsTrigger>
-						</TabsList>
-					</Tabs>
-				</div>
-			</CardHeader>
-
-			<CardContent className="pl-0">
-				{/* Legend for regions */}
-				{dataLocations.length > 1 && (
-					<div className="mb-4 flex flex-wrap items-center justify-center gap-2 px-6">
-						{dataLocations.map((loc) => {
-							const regionInfo = getRegionInfo(loc);
-							const isVisible = visibleRegions[loc] !== false;
-							return (
-								<button
-									key={loc}
-									type="button"
-									onClick={() => toggleRegion(loc)}
-									className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-all ${
-										isVisible ? "opacity-100" : "line-through opacity-40"
-									} hover:bg-muted/50`}
+							<SelectTrigger className="h-8 w-[86px] bg-background/60 text-foreground">
+								<SelectValue>
+									{
+										QUANTILE_OPTIONS.find(
+											(option) => option.value === latencyQuantile,
+										)?.label
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								{QUANTILE_OPTIONS.map(({ label, value }) => (
+									<SelectItem key={value} value={value}>
+										{label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<span>quantile within a</span>
+						<Select
+							value={latencyResolutionMinutes}
+							onValueChange={(value) => {
+								if (value) {
+									updateChartState({
+										latencyResolutionMinutes: value,
+									});
+								}
+							}}
+						>
+							<SelectTrigger className="h-8 w-[140px] bg-background/60 text-foreground">
+								<SelectValue>
+									{
+										RESOLUTION_OPTIONS.find(
+											(option) => option.value === latencyResolutionMinutes,
+										)?.label
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								{RESOLUTION_OPTIONS.map(({ label, value }) => (
+									<SelectItem key={value} value={value}>
+										{label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<span>resolution</span>
+					</div>
+				</CardHeader>
+				<CardContent className="space-y-5">
+					<div className="h-[260px] w-full rounded-2xl border bg-muted/20 p-3">
+						{isLatencyLoading ? (
+							<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+								Loading latency data...
+							</div>
+						) : chartData.length === 0 ? (
+							<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+								No latency data available for this range
+							</div>
+						) : (
+							<ResponsiveContainer width="100%" height="100%">
+								<AreaChart
+									data={chartData}
+									margin={{ top: 8, right: 6, bottom: 0, left: 0 }}
 								>
-									<div
-										className="h-3 w-3 rounded-sm"
-										style={{ backgroundColor: regionColors[loc] }}
+									<CartesianGrid
+										vertical={false}
+										stroke="rgba(255,255,255,0.08)"
+										strokeDasharray="0"
 									/>
-									<span className="text-muted-foreground">
-										{regionInfo.label}
-									</span>
-								</button>
-							);
-						})}
-					</div>
-				)}
+									<XAxis
+										dataKey="label"
+										axisLine={false}
+										tickLine={false}
+										minTickGap={28}
+										stroke="#8a8a8a"
+										fontSize={11}
+									/>
+									<YAxis
+										orientation="right"
+										axisLine={false}
+										tickLine={false}
+										width={54}
+										stroke="#8a8a8a"
+										fontSize={11}
+										tickFormatter={(value) => `${Math.round(value)}ms`}
+									/>
+									<Tooltip content={topChartTooltip} />
 
-				{/* Legend for timing components (only in breakdown mode) */}
-				{hasDetailedTimings && viewMode === "breakdown" && (
-					<div className="mb-4 flex flex-wrap items-center justify-center gap-3 px-6">
-						{TIMING_KEYS.map((key) => (
-							<button
-								key={key}
-								type="button"
-								onClick={() => toggleTiming(key)}
-								className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-all ${
-									visibleTimings[key]
-										? "opacity-100"
-										: "line-through opacity-40"
-								} hover:bg-muted/50`}
-							>
-								<div
-									className="h-3 w-3 rounded-sm"
-									style={{ backgroundColor: TIMING_COLORS[key] }}
-								/>
-								<span className="text-muted-foreground">
-									{TIMING_LABELS[key]}
-								</span>
-							</button>
-						))}
-					</div>
-				)}
-
-				{/* Chart */}
-				<div className="h-[280px] w-full">
-					{isLoading ? (
-						<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-							Loading chart...
-						</div>
-					) : chartData.length === 0 ? (
-						<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-							No data available for this period
-						</div>
-					) : hasDetailedTimings && viewMode === "breakdown" ? (
-						// HTTP monitors - breakdown view (stacked area)
-						<ResponsiveContainer width="100%" height="100%">
-							<AreaChart data={chartData}>
-								<CartesianGrid
-									strokeDasharray="3 3"
-									vertical={false}
-									stroke="#333"
-									opacity={0.2}
-								/>
-								<XAxis
-									dataKey="timeDisplay"
-									stroke="#666"
-									fontSize={12}
-									tickLine={false}
-									axisLine={false}
-									minTickGap={30}
-								/>
-								<YAxis
-									stroke="#666"
-									fontSize={12}
-									tickLine={false}
-									axisLine={false}
-									tickFormatter={(value) => `${value}ms`}
-								/>
-								<Tooltip content={<CustomTooltip />} />
-
-								{visibleTimings.tcpConnect && (
-									<Area
-										type="monotone"
-										dataKey="avgTcpConnect"
-										stackId="timing"
-										stroke={TIMING_COLORS.tcpConnect}
-										strokeWidth={1}
-										fillOpacity={0.7}
-										fill={TIMING_COLORS.tcpConnect}
-										isAnimationActive={false}
-										connectNulls
-									/>
-								)}
-								{visibleTimings.tlsHandshake && (
-									<Area
-										type="monotone"
-										dataKey="avgTlsHandshake"
-										stackId="timing"
-										stroke={TIMING_COLORS.tlsHandshake}
-										strokeWidth={1}
-										fillOpacity={0.7}
-										fill={TIMING_COLORS.tlsHandshake}
-										isAnimationActive={false}
-										connectNulls
-									/>
-								)}
-								{visibleTimings.ttfb && (
-									<Area
-										type="monotone"
-										dataKey="avgTtfb"
-										stackId="timing"
-										stroke={TIMING_COLORS.ttfb}
-										strokeWidth={1}
-										fillOpacity={0.7}
-										fill={TIMING_COLORS.ttfb}
-										isAnimationActive={false}
-										connectNulls
-									/>
-								)}
-								{visibleTimings.transfer && (
-									<Area
-										type="monotone"
-										dataKey="avgTransfer"
-										stackId="timing"
-										stroke={TIMING_COLORS.transfer}
-										strokeWidth={1}
-										fillOpacity={0.7}
-										fill={TIMING_COLORS.transfer}
-										isAnimationActive={false}
-										connectNulls
-									/>
-								)}
-							</AreaChart>
-						</ResponsiveContainer>
-					) : (
-						// Total latency view — one area per region, connected across gaps
-						<ResponsiveContainer width="100%" height="100%">
-							<AreaChart data={chartData}>
-								<CartesianGrid
-									strokeDasharray="3 3"
-									vertical={false}
-									stroke="#333"
-									opacity={0.2}
-								/>
-								<XAxis
-									dataKey="timeDisplay"
-									stroke="#666"
-									fontSize={12}
-									tickLine={false}
-									axisLine={false}
-									minTickGap={30}
-								/>
-								<YAxis
-									stroke="#666"
-									fontSize={12}
-									tickLine={false}
-									axisLine={false}
-									tickFormatter={(value) => `${value}ms`}
-								/>
-								<Tooltip content={<CustomTooltip />} />
-
-								{dataLocations.map(
-									(loc) =>
-										visibleRegions[loc] !== false && (
+									{hasDetailedTimings ? (
+										TIMING_KEYS.map((key) => (
 											<Area
-												key={loc}
+												key={key}
 												type="monotone"
-												dataKey={`${loc}_latency`}
-												stroke={regionColors[loc]}
-												strokeWidth={1.5}
-												fillOpacity={0.1}
-												fill={regionColors[loc]}
+												dataKey={key}
+												name={TIMING_LABELS[key]}
+												stackId="latency"
+												stroke={TIMING_COLORS[key]}
+												fill={TIMING_COLORS[key]}
+												fillOpacity={key === "transfer" ? 0.25 : 0.18}
+												strokeWidth={1.6}
 												dot={false}
 												isAnimationActive={false}
-												connectNulls
 											/>
-										),
-								)}
-							</AreaChart>
-						</ResponsiveContainer>
+										))
+									) : (
+										<Area
+											type="monotone"
+											dataKey="latency"
+											name={
+												QUANTILE_OPTIONS.find(
+													(option) => option.value === latencyQuantile,
+												)?.label
+											}
+											stroke="#ff2f92"
+											fill="#ff2f92"
+											fillOpacity={0.22}
+											strokeWidth={1.8}
+											dot={false}
+											isAnimationActive={false}
+										/>
+									)}
+								</AreaChart>
+							</ResponsiveContainer>
+						)}
+					</div>
+
+					{hasDetailedTimings && (
+						<div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+							{TIMING_KEYS.map((key) => (
+								<div
+									key={key}
+									className="flex items-center gap-2 text-muted-foreground"
+								>
+									<span
+										className="h-2.5 w-2.5 rounded-[2px]"
+										style={{ backgroundColor: TIMING_COLORS[key] }}
+									/>
+									<span>{TIMING_LABELS[key]}</span>
+								</div>
+							))}
+						</div>
 					)}
-				</div>
-			</CardContent>
-		</Card>
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardHeader className="space-y-5">
+					<div className="space-y-1.5">
+						<CardTitle className="font-semibold text-xl tracking-tight">
+							Regions
+						</CardTitle>
+						<p className="text-muted-foreground text-sm">
+							Every selected region&apos;s latency trend
+						</p>
+					</div>
+
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+							<span>The</span>
+							<Select
+								value={regionQuantile}
+								onValueChange={(value) =>
+									updateChartState({
+										regionQuantile: value as QuantileKey,
+									})
+								}
+							>
+								<SelectTrigger className="h-8 w-[86px] bg-background/60 text-foreground">
+									<SelectValue>
+										{
+											QUANTILE_OPTIONS.find(
+												(option) => option.value === regionQuantile,
+											)?.label
+										}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent>
+									{QUANTILE_OPTIONS.map(({ label, value }) => (
+										<SelectItem key={value} value={value}>
+											{label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<span>quantile trend over the</span>
+							<Select
+								value={regionRange}
+								onValueChange={(value) =>
+									updateChartState({ regionRange: value as RangeKey })
+								}
+							>
+								<SelectTrigger className="h-8 w-[126px] bg-background/60 text-foreground">
+									<SelectValue>
+										{
+											RANGE_OPTIONS.find(
+												(option) => option.value === regionRange,
+											)?.label
+										}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent>
+									{RANGE_OPTIONS.map(({ label, value }) => (
+										<SelectItem key={value} value={value}>
+											{label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="flex items-center gap-2 rounded-lg border bg-background/60 p-1">
+							<button
+								type="button"
+								onClick={() => updateChartState({ regionView: "table" })}
+								className={cn(
+									"rounded-md px-3 py-1.5 text-xs transition-colors",
+									regionView === "table"
+										? "bg-muted text-foreground"
+										: "text-muted-foreground hover:text-foreground",
+								)}
+							>
+								Table
+							</button>
+							<button
+								type="button"
+								onClick={() => updateChartState({ regionView: "chart" })}
+								className={cn(
+									"rounded-md px-3 py-1.5 text-xs transition-colors",
+									regionView === "chart"
+										? "bg-muted text-foreground"
+										: "text-muted-foreground hover:text-foreground",
+								)}
+							>
+								Chart
+							</button>
+						</div>
+					</div>
+				</CardHeader>
+				<CardContent>
+					{regionView === "table" ? (
+						<div className="rounded-2xl border bg-muted/20">
+							<Table>
+								<TableHeader>
+									<TableRow className="border-border/60 hover:bg-transparent">
+										<TableHead className="px-4">Region</TableHead>
+										<TableHead className="min-w-[260px]">Trend</TableHead>
+										{(["p50", "p90", "p99"] as const).map((metric) => (
+											<TableHead key={metric} className="w-[90px] text-right">
+												<button
+													type="button"
+													className="ml-auto inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+													onClick={() =>
+														updateChartState({ sortBy: metric, page: 1 })
+													}
+												>
+													<span className="uppercase">{metric}</span>
+													<ChevronsUpDown className="h-3.5 w-3.5" />
+												</button>
+											</TableHead>
+										))}
+										<TableHead className="w-[48px]" />
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{paginatedRegionMetrics.map((row) => {
+										const regionInfo = getRegionInfo(row.location);
+										return (
+											<TableRow
+												key={row.location}
+												className="border-border/50 hover:bg-white/2"
+											>
+												<TableCell className="px-4">
+													<div className="flex items-center gap-3">
+														<regionInfo.Flag className="h-3.5 w-5 rounded-[2px]" />
+														<span className="font-medium text-sm">
+															{row.location}
+														</span>
+													</div>
+												</TableCell>
+												<TableCell>
+													<div className="flex items-center gap-4">
+														<RegionTrendSparkline data={row.trend} />
+														<div className="w-[52px] text-right text-xs">
+															<div className="font-medium text-foreground">
+																{formatMetric(row.max)}
+															</div>
+															<div className="text-muted-foreground">
+																{formatMetric(row.min)}
+															</div>
+														</div>
+													</div>
+												</TableCell>
+												<TableCell className="text-right font-medium text-foreground">
+													{formatMetric(row.p50)}
+												</TableCell>
+												<TableCell className="text-right font-medium text-foreground">
+													{formatMetric(row.p90)}
+												</TableCell>
+												<TableCell className="text-right font-medium text-foreground">
+													{formatMetric(row.p99)}
+												</TableCell>
+												<TableCell className="pr-4 text-right">
+													<DropdownMenu>
+														<DropdownMenuTrigger
+															render={
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="icon"
+																	className="h-8 w-8 text-muted-foreground"
+																>
+																	<MoreHorizontal className="h-4 w-4" />
+																</Button>
+															}
+														/>
+														<DropdownMenuContent align="end">
+															<DropdownMenuLabel>
+																{regionInfo.label}
+															</DropdownMenuLabel>
+															<DropdownMenuSeparator />
+															<DropdownMenuCheckboxItem checked>
+																Current {regionQuantile.toUpperCase()}:{" "}
+																{formatMetric(row.current)}
+															</DropdownMenuCheckboxItem>
+															<DropdownMenuCheckboxItem checked>
+																Peak: {formatMetric(row.max)}
+															</DropdownMenuCheckboxItem>
+														</DropdownMenuContent>
+													</DropdownMenu>
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+
+							<div className="flex flex-wrap items-center justify-between gap-3 border-border/50 border-t px-4 py-3 text-sm">
+								<div className="text-muted-foreground">
+									{regionMetrics.length} region(s) visible.
+								</div>
+								{totalPages > 1 && (
+									<div className="flex flex-wrap items-center gap-4">
+										<div className="flex items-center gap-2">
+											<span className="text-muted-foreground">
+												Rows per page
+											</span>
+											<Select
+												value={rowsPerPage}
+												onValueChange={(value) => {
+													if (value) {
+														updateChartState({
+															rowsPerPage: value,
+															page: 1,
+														});
+													}
+												}}
+											>
+												<SelectTrigger className="h-8 w-[78px] rounded-xl border-border/70 bg-background/60">
+													<SelectValue>
+														{
+															ROWS_PER_PAGE_OPTIONS.find(
+																(option) => option.value === rowsPerPage,
+															)?.label
+														}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectContent>
+													{ROWS_PER_PAGE_OPTIONS.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+										<div className="text-muted-foreground">
+											Page {page} of {totalPages}
+										</div>
+										<div className="flex items-center gap-1">
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8"
+												disabled={page === 1}
+												onClick={() => updateChartState({ page: 1 })}
+											>
+												<ChevronsLeft className="h-4 w-4" />
+											</Button>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8"
+												disabled={page === 1}
+												onClick={() =>
+													updateChartState({ page: Math.max(1, page - 1) })
+												}
+											>
+												<ChevronLeft className="h-4 w-4" />
+											</Button>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8"
+												disabled={page === totalPages}
+												onClick={() =>
+													updateChartState({
+														page: Math.min(totalPages, page + 1),
+													})
+												}
+											>
+												<ChevronRight className="h-4 w-4" />
+											</Button>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8"
+												disabled={page === totalPages}
+												onClick={() => updateChartState({ page: totalPages })}
+											>
+												<ChevronsRight className="h-4 w-4" />
+											</Button>
+										</div>
+									</div>
+								)}
+							</div>
+						</div>
+					) : (
+						<div className="space-y-4 rounded-2xl border bg-muted/20 p-4">
+							<div className="h-[320px] w-full">
+								{isRegionLoading ? (
+									<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+										Loading regional latency data...
+									</div>
+								) : regionChartData.length === 0 ? (
+									<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+										No regional latency data available for this range
+									</div>
+								) : (
+									<ResponsiveContainer width="100%" height="100%">
+										<LineChart
+											data={regionChartData}
+											margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+										>
+											<CartesianGrid
+												vertical={false}
+												stroke="rgba(255,255,255,0.08)"
+												strokeDasharray="0"
+											/>
+											<XAxis
+												dataKey="label"
+												axisLine={false}
+												tickLine={false}
+												minTickGap={28}
+												stroke="#8a8a8a"
+												fontSize={11}
+											/>
+											<YAxis
+												axisLine={false}
+												tickLine={false}
+												width={54}
+												stroke="#8a8a8a"
+												fontSize={11}
+												tickFormatter={(value) => `${Math.round(value)}ms`}
+											/>
+											<Tooltip content={regionChartTooltip} />
+											{activeLocations.map((location) => {
+												const regionInfo = getRegionInfo(location);
+												return (
+													<Line
+														key={location}
+														type="monotone"
+														dataKey={location}
+														name={regionInfo.label}
+														stroke={regionColors[location]}
+														strokeWidth={2}
+														dot={false}
+														connectNulls
+														isAnimationActive={false}
+													/>
+												);
+											})}
+										</LineChart>
+									</ResponsiveContainer>
+								)}
+							</div>
+							<div className="flex flex-wrap items-center gap-4 text-xs">
+								{activeLocations.map((location) => {
+									const regionInfo = getRegionInfo(location);
+									return (
+										<div
+											key={location}
+											className="flex items-center gap-2 text-muted-foreground"
+										>
+											<span
+												className="h-2.5 w-2.5 rounded-[2px]"
+												style={{ backgroundColor: regionColors[location] }}
+											/>
+											<span>{regionInfo.label}</span>
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					)}
+				</CardContent>
+			</Card>
+		</div>
 	);
 }

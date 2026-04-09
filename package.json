@@ -21,10 +21,12 @@
 		}
 	},
 	"scripts": {
-		"check": "biome check --write .",
+		"check": "bun run lint && bun run check-types && bun run test",
+		"lint": "biome check .",
 		"prepare": "husky || true",
 		"build": "turbo build",
 		"check-types": "turbo check-types",
+		"test": "cd apps/worker && go test ./...",
 		"dev": "turbo dev",
 		"dev:dash": "turbo -F @uptimekit/dash dev",
 		"dev:status-page": "turbo -F @uptimekit/status-page dev",
@@ -45,6 +47,7 @@
 		"@types/node": "^22.19.17",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
+		"typescript": "^5.9.3",
 		"turbo": "^2.9.5"
 	},
 	"lint-staged": {

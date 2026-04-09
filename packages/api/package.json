@@ -32,9 +32,12 @@
 		}
 	},
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"check-types": "tsc --noEmit -p tsconfig.json"
+	},
 	"devDependencies": {
-		"@uptimekit/config": "workspace:*"
+		"@uptimekit/config": "workspace:*",
+		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
