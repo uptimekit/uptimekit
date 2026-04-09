@@ -4,7 +4,7 @@ import { MonitorListItem } from "./monitor-list-item";
 interface MonitorGroupsProps {
 	monitorGroups: GroupedMonitors[];
 	layout?: "vertical" | "horizontal";
-	barStyle?: "normal" | "length";
+	barStyle?: "normal" | "length" | "signal";
 }
 
 export function MonitorGroups({

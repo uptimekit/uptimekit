@@ -121,6 +121,20 @@ Thank you to all our amazing sponsors who make this project possible!
 
 **[Become a sponsor](https://github.com/sponsors/irazvan2745)** and get your logo here!
 
+## 👀 Previews
+
+### Default theme with Lenght bars
+
+![image](https://r2.uptimekit.dev/previews/default-lenght.png)
+
+### Flat theme with Lenght bars
+
+![image](https://r2.uptimekit.dev/previews/flat-lenght.png)
+
+### Signal theme with signal bars
+
+![image](https://r2.uptimekit.dev/previews/signal-signal.png)
+
 ## 🤝 Contributing
 
 We welcome contributions! Please check out our [Contributing Guide](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and request features.

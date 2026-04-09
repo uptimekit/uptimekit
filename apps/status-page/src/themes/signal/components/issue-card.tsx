@@ -74,7 +74,7 @@ export function IssueCard({
 				<div className="border-border/80 border-t px-4 py-4 sm:px-5 sm:py-5">
 					{incident.monitors.length > 0 ? (
 						<div className="mb-5 space-y-3">
-							<div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+							<div className="text-[11px] font-medium uppercase text-muted-foreground">
 								Affected services
 							</div>
 							<div className="flex flex-wrap gap-2">
@@ -92,7 +92,7 @@ export function IssueCard({
 
 					{incident.activities.length > 0 ? (
 						<div className="space-y-4">
-							<div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+							<div className="text-[11px] font-medium uppercase text-muted-foreground">
 								Timeline
 							</div>
 							<div className="space-y-4">

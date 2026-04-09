@@ -18,9 +18,12 @@ const descriptions: Record<StatusType, string> = {
 	degraded: "Some services are responding slower than normal.",
 	partial_outage: "A subset of services is currently impacted.",
 	major_outage: "Multiple services are currently unavailable or unstable.",
-	maintenance: "Planned maintenance is actively affecting one or more services.",
-	maintenance_scheduled: "Upcoming work has been scheduled on one or more services.",
-	maintenance_completed: "Recent maintenance work has been completed successfully.",
+	maintenance:
+		"Planned maintenance is actively affecting one or more services.",
+	maintenance_scheduled:
+		"Upcoming work has been scheduled on one or more services.",
+	maintenance_completed:
+		"Recent maintenance work has been completed successfully.",
 	unknown: "We’re unable to determine the current service state right now.",
 };
 
@@ -44,14 +47,14 @@ export function OverallStatus({
 		>
 			<div className="flex items-start justify-between gap-4 border-border/80 border-b px-4 py-4 sm:px-5">
 				<div className="min-w-0">
-					<h1 className="font-semibold text-[18px] leading-tight text-foreground sm:text-[20px]">
+					<h1 className="font-semibold text-[18px] text-foreground leading-tight sm:text-[20px]">
 						{titles[status]}
 					</h1>
 				</div>
 				<StatusBadge status={status} className="shrink-0" />
 			</div>
 			<div className="flex gap-3 px-4 py-4 sm:px-5 sm:py-5">
-				<div className="mt-0.5 w-0.5 shrink-0 rounded-full bg-[var(--status-operational)] opacity-90" />
+				<div className="mt-0.5 w-0.5 shrink-0 rounded-full bg-status-operational opacity-90" />
 				<div className="space-y-2">
 					<p className="max-w-2xl text-muted-foreground text-sm leading-6 sm:text-[15px]">
 						{descriptions[status]}

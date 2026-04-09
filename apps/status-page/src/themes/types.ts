@@ -30,7 +30,8 @@ export interface StatusPageDesign {
 	contactUrl?: string;
 	customCss?: string;
 	headerLayout?: "vertical" | "horizontal";
-	barStyle?: "normal" | "length";
+	barStyle?: "normal" | "length" | "signal";
+	barDays?: 30 | 60 | 90;
 }
 
 export interface MonitorGroup {

@@ -66,7 +66,8 @@ const settingsSchema = z.object({
 	themeId: z.string().optional(),
 	theme: z.enum(["light", "dark"]),
 	headerLayout: z.enum(["vertical", "horizontal"]),
-	barStyle: z.enum(["normal", "length"]),
+	barStyle: z.enum(["normal", "length", "signal"]),
+	barDays: z.enum(["30", "60", "90"]),
 	customDomain: z.string().optional().or(z.literal("")),
 	isPrivate: z.boolean(),
 	password: z
@@ -119,6 +120,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			theme: "light",
 			headerLayout: "vertical",
 			barStyle: "normal",
+			barDays: "90",
 			customDomain: "",
 			isPrivate: false,
 			password: "",
@@ -140,7 +142,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			themeId: design.themeId || "default",
 			theme: design.theme || "light",
 			headerLayout: design.headerLayout || "vertical",
-			barStyle: design.barStyle || "normal",
+			barStyle:
+				design.barStyle === "length" || design.barStyle === "signal"
+					? design.barStyle
+					: "normal",
+			barDays: String(design.barDays || 90) as "30" | "60" | "90",
 			customDomain: statusPage?.domain || "",
 			isPrivate: statusPage ? !statusPage.public : false,
 			password: "",
@@ -180,6 +186,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				theme: data.theme,
 				headerLayout: data.headerLayout,
 				barStyle: data.barStyle,
+				barDays: Number(data.barDays) as 30 | 60 | 90,
 			},
 		});
 	};
@@ -220,13 +227,19 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 		{ value: "light", label: "Light version" },
 	];
 
+	const barDayOptions = [
+		{ value: "90", label: "90 days" },
+		{ value: "60", label: "60 days" },
+		{ value: "30", label: "30 days" },
+	];
+
 	const visibilityOptions = [
 		{ value: "public", label: "Public" },
 		{ value: "private", label: "Private" },
 	];
 
 	const optionCardClassName =
-		"flex h-full min-h-18 cursor-pointer items-center rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground";
+		"flex h-full min-h-24 w-full cursor-pointer items-center rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground";
 
 	return (
 		<Form {...form}>
@@ -519,9 +532,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<RadioGroup
 												onValueChange={field.onChange}
 												value={field.value}
-												className="grid grid-cols-1 gap-4 md:grid-cols-2"
+												className="grid grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2"
 											>
-												<FormItem>
+												<FormItem className="h-full">
 													<FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
@@ -553,7 +566,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														</div>
 													</FormLabel>
 												</FormItem>
-												<FormItem>
+												<FormItem className="h-full">
 													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
@@ -602,9 +615,9 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<RadioGroup
 												onValueChange={field.onChange}
 												value={field.value}
-												className="grid grid-cols-1 gap-4 md:grid-cols-2"
+												className="grid grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2"
 											>
-												<FormItem>
+												<FormItem className="h-full">
 													<FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
@@ -638,7 +651,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														</div>
 													</FormLabel>
 												</FormItem>
-												<FormItem>
+												<FormItem className="h-full">
 													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
 														<FormControl>
 															<RadioGroupItem
@@ -672,8 +685,79 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														</div>
 													</FormLabel>
 												</FormItem>
+												<FormItem className="h-full">
+													<FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
+														<FormControl>
+															<RadioGroupItem
+																value="signal"
+																className="sr-only"
+															/>
+														</FormControl>
+														<div className={optionCardClassName}>
+															<div className="flex items-center gap-4">
+																<div className="flex h-10 w-16 items-center rounded bg-muted/20 px-2">
+																	<div className="flex h-1.5 w-full items-center gap-px">
+																		<div className="h-1.5 flex-[8] rounded-full bg-green-500/80" />
+																		<div className="h-1.5 flex-[1] rounded-full bg-red-500/80" />
+																		<div className="h-1.5 flex-[4] rounded-full bg-green-500/80" />
+																		<div className="h-1.5 flex-[1] rounded-full bg-yellow-500/80" />
+																		<div className="h-1.5 flex-[2] rounded-full bg-green-500/80" />
+																	</div>
+																</div>
+																<div className="space-y-1">
+																	<div className="font-medium leading-none">
+																		Signal
+																	</div>
+																	<div className="text-muted-foreground text-xs">
+																		Connected segments for matching runs
+																	</div>
+																</div>
+																<div
+																	className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+																		field.value === "signal"
+																			? "bg-primary"
+																			: "opacity-0"
+																	}`}
+																/>
+															</div>
+														</div>
+													</FormLabel>
+												</FormItem>
 											</RadioGroup>
 										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="barDays"
+								render={({ field }) => (
+									<FormItem className="flex h-full flex-col">
+										<FormLabel className="flex h-6 items-end pb-1">
+											Uptime bar range
+										</FormLabel>
+										<Select
+											onValueChange={field.onChange}
+											value={field.value}
+											items={barDayOptions}
+										>
+											<SelectTrigger>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectPopup>
+												{barDayOptions.map(({ label, value }) => (
+													<SelectItem key={value} value={value}>
+														{label}
+													</SelectItem>
+												))}
+											</SelectPopup>
+										</Select>
+										<FormDescription className="pt-2">
+											Choose how many days of uptime history to show in the
+											status bars
+										</FormDescription>
 										<FormMessage />
 									</FormItem>
 								)}

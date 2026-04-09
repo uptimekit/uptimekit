@@ -67,7 +67,13 @@ function parseDuration(durationStr: string | undefined): number {
 interface UptimeBarProps {
 	days: UptimeDay[];
 	className?: string;
-	style?: "normal" | "length";
+	style?: "normal" | "length" | "signal";
+}
+
+interface UptimeSegment {
+	start: number;
+	length: number;
+	status: StatusType;
 }
 
 const statusColors: Record<StatusType, string> = {
@@ -80,6 +86,36 @@ const statusColors: Record<StatusType, string> = {
 	maintenance_completed: "bg-status-operational",
 	unknown: "bg-status-unknown/20",
 };
+
+function buildSegments(days: UptimeDay[]): UptimeSegment[] {
+	if (days.length === 0) {
+		return [];
+	}
+
+	const segments: UptimeSegment[] = [];
+	let currentStatus = days[0].status;
+	let start = 0;
+
+	for (let index = 1; index < days.length; index++) {
+		if (days[index].status !== currentStatus) {
+			segments.push({
+				start,
+				length: index - start,
+				status: currentStatus,
+			});
+			currentStatus = days[index].status;
+			start = index;
+		}
+	}
+
+	segments.push({
+		start,
+		length: days.length - start,
+		status: currentStatus,
+	});
+
+	return segments;
+}
 
 // Get color for stacked bar segments
 const segmentColors = {
@@ -252,11 +288,95 @@ export function UptimeBar({
 	style = "normal",
 }: UptimeBarProps) {
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+	const segments = buildSegments(days);
 
 	return (
 		<div className={cn("relative w-full", className)}>
-			{/* Flex container for the bar segments */}
-			<div className="flex h-8 w-full gap-[3px]">
+			{style === "signal" ? (
+				<>
+					<div className="mb-3 flex select-none justify-between text-muted-foreground/60 text-xs">
+						<span>{days.length} days ago</span>
+						<div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
+						<span>Today</span>
+					</div>
+					<div className="relative">
+						<div
+							className="relative grid gap-x-[2px]"
+							style={{
+								gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+							}}
+						>
+							{segments.map((segment) => (
+								<div
+									key={`${segment.start}-${segment.status}`}
+									className={cn(
+										"relative h-1.5 rounded-full transition-opacity",
+										statusColors[segment.status],
+									)}
+									style={{
+										gridColumn: `${segment.start + 1} / span ${segment.length}`,
+									}}
+								/>
+							))}
+						</div>
+						<div
+							className="absolute inset-x-0 -top-3 grid h-8 gap-x-[2px]"
+							style={{
+								gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+							}}
+						>
+							{days.map((day, index) => (
+								<div
+									key={day.date}
+									className="relative h-full"
+									onMouseEnter={() => setHoveredIndex(index)}
+									onMouseLeave={() => setHoveredIndex(null)}
+								>
+									{hoveredIndex === index ? (
+										<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
+											<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
+										</div>
+									) : null}
+									{hoveredIndex === index ? (
+										<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
+											<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+												<div className="font-semibold text-popover-foreground text-sm">
+													{day.annotation || statusConfig[day.status].label}
+												</div>
+												<div className="mt-1 text-muted-foreground text-xs">
+													{new Date(day.date).toLocaleDateString("en-US", {
+														weekday: "long",
+														month: "short",
+														day: "numeric",
+														year: "numeric",
+													})}
+												</div>
+												{day.duration ? (
+													<div className="mt-1 text-muted-foreground text-xs">
+														Duration: {day.duration}
+													</div>
+												) : (
+													day.status !== "unknown" && (
+														<div className="mt-1 text-muted-foreground text-xs">
+															{day.downtimeMs !== undefined && day.downtimeMs > 0
+																? formatDowntime(day.downtimeMs)
+																: "No downtime"}
+														</div>
+													)
+												)}
+												<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+											</div>
+										</div>
+									) : null}
+								</div>
+							))}
+						</div>
+					</div>
+				</>
+			) : (
+				<>
+					{/* Flex container for the bar segments */}
+					<div className="flex h-8 w-full gap-[3px]">
 				{days.map((day, index) => (
 					// biome-ignore lint/a11y/noStaticElementInteractions
 					<div
@@ -315,15 +435,19 @@ export function UptimeBar({
 							</div>
 						)}
 					</div>
-				))}
-			</div>
+					))}
+					</div>
+				</>
+			)}
 
 			{/* Legend / Labels */}
-			<div className="mt-2 flex select-none justify-between text-muted-foreground/60 text-xs">
-				<span>{days.length} days ago</span>
-				<div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
-				<span>Today</span>
-			</div>
+			{style !== "signal" ? (
+				<div className="mt-2 flex select-none justify-between text-muted-foreground/60 text-xs">
+					<span>{days.length} days ago</span>
+					<div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
+					<span>Today</span>
+				</div>
+			) : null}
 		</div>
 	);
 }

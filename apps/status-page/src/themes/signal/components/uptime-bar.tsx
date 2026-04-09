@@ -70,12 +70,15 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 	return (
 		<div className={cn("relative pt-2", className)}>
 			<div className="mb-3 flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-				<span>90 days ago</span>
+				<span>{days.length} days ago</span>
 				<div className="signal-divider h-px flex-1" />
 				<span>Today</span>
 			</div>
 			<div className="relative">
-				<div className="relative grid grid-cols-90 gap-x-[2px]">
+				<div
+					className="relative grid gap-x-[2px]"
+					style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+				>
 					{segments.map((segment, _index) => (
 						<div
 							key={`${segment.start}-${segment.status}`}
@@ -92,7 +95,8 @@ export function UptimeBar({ days, className }: UptimeBarProps) {
 
 				{/** biome-ignore lint/a11y/noStaticElementInteractions: its okay*/}
 				<div
-					className="absolute inset-x-0 -top-4 grid h-10 grid-cols-90 gap-x-[2px]"
+					className="absolute inset-x-0 -top-4 grid h-10 gap-x-[2px]"
+					style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
 					onMouseLeave={() => setHoveredIndex(null)}
 				>
 					{days.map((day, index) => (

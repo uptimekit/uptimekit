@@ -18,7 +18,7 @@ interface MonitorListItemProps {
 	displayStyle?: "history" | "status";
 	className?: string;
 	description?: string | null;
-	barStyle?: "normal" | "length";
+	barStyle?: "normal" | "length" | "signal";
 }
 
 export function MonitorListItem({

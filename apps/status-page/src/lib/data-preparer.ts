@@ -92,10 +92,20 @@ function formatDuration(ms: number): string {
 	return `${seconds}s`;
 }
 
+function getBarDays(design: any): 30 | 60 | 90 {
+	if (design?.barDays === 30 || design?.barDays === 60 || design?.barDays === 90) {
+		return design.barDays;
+	}
+	return 90;
+}
+
 export async function prepareStatusPageData(
 	pageConfig: any,
 	slug?: string,
 ): Promise<StatusPageData> {
+	const design = (pageConfig.design as any) || {};
+	const barDays = getBarDays(design);
+
 	const [activeReports, activeMaintenances, scheduledMaintenances] =
 		await Promise.all([
 			getActiveStatusPageReports(pageConfig.id),
@@ -106,7 +116,7 @@ export async function prepareStatusPageData(
 	const [reports, maintenances, events] = await Promise.all([
 		getStatusPageReports(pageConfig.id),
 		getMaintenanceHistory(pageConfig.id),
-		getStatusPageEvents(pageConfig.id, 90),
+		getStatusPageEvents(pageConfig.id, barDays),
 	]);
 
 	const combinedActive = [
@@ -175,7 +185,7 @@ export async function prepareStatusPageData(
 
 	const monitorsWithStats = await Promise.all(
 		pageConfig.monitors.map(async (pm: any) => {
-			const hourlyStats = await getMonitorUptime(pm.monitorId);
+			const hourlyStats = await getMonitorUptime(pm.monitorId, barDays);
 			return { pm, hourlyStats };
 		}),
 	);
@@ -253,7 +263,12 @@ export async function prepareStatusPageData(
 			const incidentPendingDuration = pm.monitor.incidentPendingDuration || 0;
 			const incidentThresholdMs = incidentPendingDuration * 1000;
 
-			let history = fillMissingDays(dailyStats, 90, undefined, monitorInterval);
+			let history = fillMissingDays(
+				dailyStats,
+				barDays,
+				undefined,
+				monitorInterval,
+			);
 
 			history = history.map((day) => ({
 				...day,
@@ -435,8 +450,6 @@ export async function prepareStatusPageData(
 		{} as Record<string, typeof pastIncidents>,
 	);
 
-	const design = (pageConfig.design as any) || {};
-
 	return {
 		config: {
 			id: pageConfig.id,
@@ -451,6 +464,7 @@ export async function prepareStatusPageData(
 				customCss: design.customCss,
 				headerLayout: design.headerLayout || "vertical",
 				barStyle: design.barStyle || "normal",
+				barDays,
 			},
 		},
 		overallStatus: worstStatus,

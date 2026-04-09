@@ -15,6 +15,13 @@ import {
 import type { IncidentHistoryPeriod } from "./incident-history";
 import { buildPath } from "./route-utils";
 
+function getBarDays(design: any): 30 | 60 | 90 {
+	if (design?.barDays === 30 || design?.barDays === 60 || design?.barDays === 90) {
+		return design.barDays;
+	}
+	return 90;
+}
+
 function mapIncident(report: any, slug?: string) {
 	return {
 		id: report.id,
@@ -79,6 +86,7 @@ export async function prepareIncidentDetailData(
 	);
 
 	const design = (pageConfig.design as any) || {};
+	const barDays = getBarDays(design);
 
 	return {
 		config: {
@@ -94,6 +102,7 @@ export async function prepareIncidentDetailData(
 				customCss: design.customCss,
 				headerLayout: design.headerLayout || "vertical",
 				barStyle: design.barStyle || "normal",
+				barDays,
 			},
 		},
 		incident: mapIncident(reportItem, slug),
@@ -152,6 +161,7 @@ export async function prepareMaintenanceDetailData(
 	);
 
 	const design = (pageConfig.design as any) || {};
+	const barDays = getBarDays(design);
 
 	return {
 		config: {
@@ -167,6 +177,7 @@ export async function prepareMaintenanceDetailData(
 				customCss: design.customCss,
 				headerLayout: design.headerLayout || "vertical",
 				barStyle: design.barStyle || "normal",
+				barDays,
 			},
 		},
 		maintenance,
@@ -229,6 +240,7 @@ export async function prepareUpdatesPageData(
 	);
 
 	const design = (pageConfig.design as any) || {};
+	const barDays = getBarDays(design);
 
 	return {
 		config: {
@@ -244,6 +256,7 @@ export async function prepareUpdatesPageData(
 				customCss: design.customCss,
 				headerLayout: design.headerLayout || "vertical",
 				barStyle: design.barStyle || "normal",
+				barDays,
 			},
 		},
 		allUpdates,

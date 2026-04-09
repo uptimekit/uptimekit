@@ -14,7 +14,7 @@ import { UptimeBar } from "./uptime-bar";
 interface MonitorGroupsProps {
 	monitorGroups: GroupedMonitors[];
 	layout?: "vertical" | "horizontal";
-	barStyle?: "normal" | "length";
+	barStyle?: "normal" | "length" | "signal";
 }
 
 function MonitorCard({
@@ -111,7 +111,7 @@ export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 					className="space-y-4"
 				>
 					{group.group ? (
-						<div className="px-1 font-medium text-[13px] text-muted-foreground uppercase tracking-[0.12em]">
+						<div className="px-1 font-medium text-sm text-muted-foreground">
 							{group.group.name}
 						</div>
 					) : null}

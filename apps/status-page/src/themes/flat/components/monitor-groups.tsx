@@ -10,7 +10,7 @@ import { StatusDot } from "./status-indicator";
 interface MonitorGroupsProps {
 	monitorGroups: GroupedMonitors[];
 	layout?: "vertical" | "horizontal";
-	barStyle?: "normal" | "length";
+	barStyle?: "normal" | "length" | "signal";
 }
 
 import { calculateAggregateStatus } from "@/lib/status-utils";
@@ -45,7 +45,7 @@ const MonitorGroupItem = memo(
 		group: GroupedMonitors;
 		isDefaultExpanded: boolean;
 		isGrid: boolean;
-		barStyle: "normal" | "length";
+		barStyle: "normal" | "length" | "signal";
 	}) => {
 		const isUngrouped = !group.group;
 		const [isExpanded, setIsExpanded] = useState(
