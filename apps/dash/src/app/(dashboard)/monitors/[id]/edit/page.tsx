@@ -52,7 +52,7 @@ export default function MonitorEditPage() {
 					// but monitor.config is nested object.
 					// We need to spread config into initialData
 					...(monitor.config as any),
-					locations: monitor.locations,
+					workerIds: monitor.workerIds,
 					groupId: monitor.groupId || undefined,
 				}}
 			/>

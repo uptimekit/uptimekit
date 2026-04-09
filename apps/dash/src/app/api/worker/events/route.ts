@@ -39,10 +39,7 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const result = await processMonitorEvents(
-		body.events,
-		authResult.worker.location,
-	);
+	const result = await processMonitorEvents(body.events, authResult.worker.id);
 
 	return NextResponse.json(result);
 }

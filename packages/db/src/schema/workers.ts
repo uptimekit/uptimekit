@@ -6,7 +6,7 @@ export const worker = pgTable(
 	{
 		id: text("id").primaryKey(),
 		name: text("name").notNull(),
-		location: text("location").notNull().unique(), // e.g., 'us-west-1'
+		location: text("location").notNull(), // e.g., 'ro', 'dk'
 		active: boolean("active").default(true).notNull(),
 		lastHeartbeat: timestamp("last_heartbeat"),
 		version: text("version"), // worker version

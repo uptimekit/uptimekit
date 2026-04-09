@@ -11,7 +11,8 @@ import {
 } from "@uptimekit/db/schema/maintenance";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
-import { and, eq, isNull } from "drizzle-orm";
+import { worker } from "@uptimekit/db/schema/workers";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { eventBus } from "../../lib/events";
 import type { LatestEventResult } from "../../types/clickhouse";
 
@@ -55,15 +56,27 @@ interface RegionStatusSnapshot {
  * @param workerLocation - The worker location identifier used to filter monitors whose `locations` include this value
  * @returns An array of monitor configuration objects containing: `id`, `type`, `url` (defaults to `""`), `hostname` (defaults to `""`), `port` (defaults to `0`), `interval`, `timeout`, `method` (defaults to `"GET"`), `headers` (defaults to `{}`), `body`, `acceptedStatusCodes`, `keyword`, `jsonPath`, `expectedValue`, `checkSsl` (defaults to `true`), and `sslCertExpiryNotificationDays` (defaults to `30`)
  */
-export async function getMonitorsForWorker(workerLocation: string) {
+export async function getMonitorsForWorker(workerId: string) {
+	const workerRecord = await db.query.worker.findFirst({
+		where: eq(worker.id, workerId),
+	});
+
+	if (!workerRecord) {
+		return [];
+	}
+
 	const allActiveMonitors = await db.query.monitor.findMany({
 		where: (t, { eq }) => eq(t.active, true),
 	});
 
 	return allActiveMonitors
 		.filter((m) => {
-			const locations = m.locations as string[];
-			return locations.includes(workerLocation);
+			const workerIds = (m.workerIds as string[] | null) ?? [];
+			if (workerIds.length > 0) {
+				return workerIds.includes(workerId);
+			}
+			const locations = (m.locations as string[] | null) ?? [];
+			return locations.includes(workerRecord.location);
 		})
 		.map((m) => {
 			const config = m.config as {
@@ -111,7 +124,7 @@ export async function getMonitorsForWorker(workerLocation: string) {
  */
 export async function processMonitorEvents(
 	events: MonitorEvent[],
-	workerLocation: string,
+	workerId: string,
 ) {
 	// Group events by monitor
 	const eventsByMonitor = new Map<string, MonitorEvent[]>();
@@ -132,7 +145,7 @@ export async function processMonitorEvents(
 		await processMonitorEventGroup(
 			monitorId,
 			monitorEvents,
-			workerLocation,
+			workerId,
 			changesToInsert,
 			incidentsToInsert,
 			incidentMonitorsToInsert,
@@ -147,7 +160,7 @@ export async function processMonitorEvents(
 			table: "uptimekit.monitor_changes",
 			values: changesToInsert.map((c) => ({
 				...c,
-				timestamp: new Date(c.timestamp!).getTime(),
+				timestamp: c.timestamp.getTime(),
 			})),
 			format: "JSONEachRow",
 		});
@@ -190,7 +203,7 @@ export async function processMonitorEvents(
 				timestamp: new Date(e.timestamp).getTime(),
 				statusCode: e.statusCode,
 				error: e.error,
-				location: e.location || workerLocation,
+				location: e.location || workerId,
 				dnsLookup: e.timings?.dnsLookup,
 				tcpConnect: e.timings?.tcpConnect,
 				tlsHandshake: e.timings?.tlsHandshake,
@@ -220,7 +233,7 @@ export async function processMonitorEvents(
 async function processMonitorEventGroup(
 	monitorId: string,
 	monitorEvents: MonitorEvent[],
-	workerLocation: string,
+	workerId: string,
 	changesToInsert: MonitorChangeInsert[],
 	incidentsToInsert: (typeof incident.$inferInsert)[],
 	incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[],
@@ -285,9 +298,41 @@ async function processMonitorEventGroup(
 		(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
 	);
 
-	const configuredLocations = Array.isArray(monitorConfig.locations)
-		? monitorConfig.locations
+	const monitorWorkerIds = Array.isArray(monitorConfig.workerIds)
+		? monitorConfig.workerIds
 		: [];
+	const configuredWorkers =
+		monitorWorkerIds.length > 0
+			? await db
+					.select({
+						id: worker.id,
+						name: worker.name,
+						location: worker.location,
+					})
+					.from(worker)
+					.where(inArray(worker.id, monitorWorkerIds))
+			: Array.isArray(monitorConfig.locations) &&
+					monitorConfig.locations.length > 0
+				? await db
+						.select({
+							id: worker.id,
+							name: worker.name,
+							location: worker.location,
+						})
+						.from(worker)
+						.where(
+							inArray(worker.location, monitorConfig.locations as string[]),
+						)
+				: [];
+	const configuredWorkerIds = configuredWorkers.map(
+		(configuredWorker) => configuredWorker.id,
+	);
+	const workerLabels = new Map(
+		configuredWorkers.map((workerRecord) => [
+			workerRecord.id,
+			`${workerRecord.name} (${workerRecord.location.toUpperCase()})`,
+		]),
+	);
 
 	const latestRegionalStatusQuery = await clickhouse.query({
 		query: `
@@ -334,7 +379,7 @@ async function processMonitorEventGroup(
 
 	for (const event of monitorEvents) {
 		const eventTime = new Date(event.timestamp);
-		const eventLocation = event.location || workerLocation;
+		const eventLocation = event.location || workerId;
 		const isChange =
 			currentStatus !== undefined && currentStatus !== event.status;
 		const isFirstEvent = currentStatus === undefined;
@@ -355,13 +400,13 @@ async function processMonitorEventGroup(
 			timestamp: eventTime,
 		});
 
-		const configuredRegionStates = configuredLocations
+		const configuredRegionStates = configuredWorkerIds
 			.map((location) => regionStatusByLocation.get(location))
 			.filter((state): state is RegionStatusSnapshot => !!state);
 
 		const allRegionsReporting =
-			configuredLocations.length > 0 &&
-			configuredRegionStates.length === configuredLocations.length;
+			configuredWorkerIds.length > 0 &&
+			configuredRegionStates.length === configuredWorkerIds.length;
 		const allRegionsDown =
 			allRegionsReporting &&
 			configuredRegionStates.every((state) => state.status === "down");
@@ -435,7 +480,7 @@ async function processMonitorEventGroup(
 				activitiesToInsert.push({
 					id: crypto.randomUUID(),
 					incidentId: newIncidentId,
-					message: `Incident opened automatically. All configured regions are reporting down. Last failure: ${event.error || "unknown error"}. (Region: ${eventLocation})`,
+					message: `Incident opened automatically. All configured workers are reporting down. Last failure: ${event.error || "unknown error"}. (Worker: ${workerLabels.get(eventLocation) || eventLocation})`,
 					type: "event",
 					createdAt: eventTime,
 					userId: null,

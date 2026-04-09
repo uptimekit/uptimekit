@@ -60,8 +60,13 @@ import { orpc } from "@/utils/orpc";
 
 interface ResponseTimeChartProps {
 	monitorId: string;
-	locations: string[];
+	workerIds: string[];
 	monitorType?: string;
+	workers?: Array<{
+		id: string;
+		name: string;
+		location: string;
+	}>;
 }
 
 const HTTP_MONITOR_TYPES = ["http", "http-json", "keyword"];
@@ -162,7 +167,7 @@ interface RegionTrendPoint {
 }
 
 interface RegionMetricRow {
-	location: string;
+	workerId: string;
 	trend: RegionTrendPoint[];
 	current: number | null;
 	min: number | null;
@@ -268,8 +273,9 @@ function RegionTrendSparkline({
 
 export function ResponseTimeChart({
 	monitorId,
-	locations,
+	workerIds,
 	monitorType = "http",
+	workers = [],
 }: ResponseTimeChartProps) {
 	const [latencyRange, setLatencyRange] = useState<RangeKey>("24h");
 	const [latencyQuantile, setLatencyQuantile] = useState<QuantileKey>("p50");
@@ -282,8 +288,8 @@ export function ResponseTimeChart({
 	const [rowsPerPage, setRowsPerPage] = useState<"10" | "20" | "50">("20");
 	const [page, setPage] = useState(1);
 	const [sortBy, setSortBy] = useState<QuantileKey>("p50");
-	const [selectedLocations, setSelectedLocations] = useState<string[]>(() =>
-		locations.length > 0 ? [...locations] : [],
+	const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>(() =>
+		workerIds.length > 0 ? [...workerIds] : [],
 	);
 	const updateChartState = (nextState: ChartStateUpdate) => {
 		if (nextState.latencyRange !== undefined) {
@@ -316,16 +322,16 @@ export function ResponseTimeChart({
 	};
 
 	useEffect(() => {
-		if (locations.length === 0) {
-			setSelectedLocations([]);
+		if (workerIds.length === 0) {
+			setSelectedWorkerIds([]);
 			return;
 		}
 
-		setSelectedLocations((prev) => {
-			const next = prev.filter((location) => locations.includes(location));
-			return next.length > 0 ? next : [...locations];
+		setSelectedWorkerIds((prev) => {
+			const next = prev.filter((workerId) => workerIds.includes(workerId));
+			return next.length > 0 ? next : [...workerIds];
 		});
-	}, [locations]);
+	}, [workerIds]);
 
 	const hasDetailedTimings = HTTP_MONITOR_TYPES.includes(monitorType);
 
@@ -334,10 +340,10 @@ export function ResponseTimeChart({
 			input: {
 				monitorId,
 				range: latencyRange,
-				locations: selectedLocations,
+				workerIds: selectedWorkerIds,
 			},
 		}),
-		enabled: selectedLocations.length > 0,
+		enabled: selectedWorkerIds.length > 0,
 	});
 
 	const { data: regionRawData = [], isLoading: isRegionLoading } = useQuery({
@@ -345,16 +351,31 @@ export function ResponseTimeChart({
 			input: {
 				monitorId,
 				range: regionRange,
-				locations: selectedLocations,
+				workerIds: selectedWorkerIds,
 			},
 		}),
-		enabled: selectedLocations.length > 0,
+		enabled: selectedWorkerIds.length > 0,
 	});
 
-	const activeLocations = useMemo(
-		() => selectedLocations.filter((location) => locations.includes(location)),
-		[selectedLocations, locations],
+	const activeWorkerIds = useMemo(
+		() => selectedWorkerIds.filter((workerId) => workerIds.includes(workerId)),
+		[selectedWorkerIds, workerIds],
 	);
+	const workersById = useMemo(
+		() => new Map(workers.map((worker) => [worker.id, worker])),
+		[workers],
+	);
+	const locationTitle = workers.length > 0 ? "Workers" : "Regions";
+
+	const getLocationDisplay = (workerId: string) => {
+		const worker = workersById.get(workerId);
+		const regionInfo = getRegionInfo(worker?.location ?? workerId);
+		return {
+			regionInfo,
+			primaryLabel: worker?.name ?? workerId,
+			secondaryLabel: worker ? regionInfo.label : null,
+		};
+	};
 
 	const chartData = useMemo((): LatencyBucketPoint[] => {
 		if (latencyRawData.length === 0) {
@@ -413,10 +434,10 @@ export function ResponseTimeChart({
 			return [];
 		}
 
-		return activeLocations
-			.map((location) => {
+		return activeWorkerIds
+			.map((workerId) => {
 				const regionPoints = regionRawData.filter(
-					(point) => point.location === location,
+					(point) => point.location === workerId,
 				);
 				const groupedTrend = regionPoints.reduce(
 					(acc, point) => {
@@ -439,7 +460,7 @@ export function ResponseTimeChart({
 
 				const latencyValues = regionPoints.map((point) => point.latency);
 				return {
-					location,
+					workerId,
 					trend,
 					current: trend.at(-1)?.value ?? null,
 					min:
@@ -456,18 +477,18 @@ export function ResponseTimeChart({
 				};
 			})
 			.sort((left, right) => (right[sortBy] ?? 0) - (left[sortBy] ?? 0));
-	}, [activeLocations, regionRawData, regionRange, regionQuantile, sortBy]);
+	}, [activeWorkerIds, regionRawData, regionRange, regionQuantile, sortBy]);
 
 	const regionColors = useMemo(() => {
 		const colors: Record<string, string> = {};
-		activeLocations.forEach((location, index) => {
-			colors[location] = generateRegionColor(index, activeLocations.length);
+		activeWorkerIds.forEach((workerId, index) => {
+			colors[workerId] = generateRegionColor(index, activeWorkerIds.length);
 		});
 		return colors;
-	}, [activeLocations]);
+	}, [activeWorkerIds]);
 
 	const regionChartData = useMemo(() => {
-		if (regionRawData.length === 0 || activeLocations.length === 0) {
+		if (regionRawData.length === 0 || activeWorkerIds.length === 0) {
 			return [];
 		}
 
@@ -486,12 +507,12 @@ export function ResponseTimeChart({
 		return Object.entries(grouped)
 			.sort(([left], [right]) => left.localeCompare(right))
 			.map(([timestamp, points]) => {
-				const byLocation = activeLocations.reduce(
-					(acc, location) => {
+				const byLocation = activeWorkerIds.reduce(
+					(acc, workerId) => {
 						const locationLatencies = points
-							.filter((point) => point.location === location)
+							.filter((point) => point.location === workerId)
 							.map((point) => point.latency);
-						acc[location] =
+						acc[workerId] =
 							locationLatencies.length > 0
 								? calculateQuantile(locationLatencies, regionQuantile)
 								: null;
@@ -506,7 +527,7 @@ export function ResponseTimeChart({
 					...byLocation,
 				};
 			});
-	}, [regionRawData, activeLocations, regionQuantile, regionRange]);
+	}, [regionRawData, activeWorkerIds, regionQuantile, regionRange]);
 
 	const totalPages = Math.max(
 		1,
@@ -516,21 +537,11 @@ export function ResponseTimeChart({
 		(page - 1) * Number(rowsPerPage),
 		page * Number(rowsPerPage),
 	);
+	const regionPageResetKey = `${rowsPerPage}:${regionMetrics.length}:${sortBy}:${regionRange}:${regionQuantile}`;
 
 	useEffect(() => {
-		if (page === 1) {
-			return;
-		}
-
-		updateChartState({ page: 1 });
-	}, [
-		page,
-		rowsPerPage,
-		regionMetrics.length,
-		sortBy,
-		regionRange,
-		regionQuantile,
-	]);
+		setPage((currentPage) => (currentPage === 1 ? currentPage : 1));
+	}, [regionPageResetKey]);
 
 	const topChartTooltip = ({ active, payload, label }: any) => {
 		if (!active || !payload?.length) {
@@ -587,9 +598,9 @@ export function ResponseTimeChart({
 	};
 
 	const summaryText =
-		activeLocations.length === locations.length
-			? "All regions"
-			: `${activeLocations.length} selected`;
+		activeWorkerIds.length === workerIds.length
+			? `All ${workers.length > 0 ? "workers" : "regions"}`
+			: `${activeWorkerIds.length} selected`;
 
 	return (
 		<div className="space-y-6">
@@ -601,10 +612,11 @@ export function ResponseTimeChart({
 								Latency
 							</CardTitle>
 							<p className="text-muted-foreground text-sm">
-								Response time across all the regions
+								Response time across all configured{" "}
+								{workers.length > 0 ? "workers" : "regions"}
 							</p>
 						</div>
-						{locations.length > 0 && (
+						{workerIds.length > 0 && (
 							<Popover>
 								<PopoverTrigger
 									render={
@@ -622,45 +634,55 @@ export function ResponseTimeChart({
 								<PopoverContent align="end" className="w-60 p-0">
 									<div className="mb-2 flex items-center justify-between px-2">
 										<div className="font-medium text-muted-foreground text-xs">
-											Regions
+											{locationTitle}
 										</div>
 										<button
 											type="button"
 											className="text-primary text-xs"
-											onClick={() => setSelectedLocations([...locations])}
+											onClick={() => setSelectedWorkerIds([...workerIds])}
 										>
 											All
 										</button>
 									</div>
 									<div className="space-y-1">
-										{locations.map((location) => {
-											const regionInfo = getRegionInfo(location);
-											const checked = selectedLocations.includes(location);
+										{workerIds.map((workerId) => {
+											const { primaryLabel, regionInfo, secondaryLabel } =
+												getLocationDisplay(workerId);
+											const checked = selectedWorkerIds.includes(workerId);
 											return (
 												// biome-ignore lint/a11y/noLabelWithoutControl: shhhh its okay
 												<label
-													key={location}
+													key={workerId}
 													className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted/50"
 												>
 													<Checkbox
 														checked={checked}
 														onCheckedChange={(nextChecked) => {
-															setSelectedLocations((prev) => {
+															setSelectedWorkerIds((prev) => {
 																if (nextChecked) {
-																	return prev.includes(location)
+																	return prev.includes(workerId)
 																		? prev
-																		: [...prev, location];
+																		: [...prev, workerId];
 																}
 
 																const next = prev.filter(
-																	(value) => value !== location,
+																	(value) => value !== workerId,
 																);
 																return next.length > 0 ? next : prev;
 															});
 														}}
 													/>
 													<regionInfo.Flag className="h-3.5 w-5 rounded-[2px]" />
-													<span className="text-sm">{regionInfo.label}</span>
+													<div className="min-w-0">
+														<div className="truncate text-sm">
+															{primaryLabel}
+														</div>
+														{secondaryLabel ? (
+															<div className="truncate text-muted-foreground text-xs">
+																{secondaryLabel}
+															</div>
+														) : null}
+													</div>
 												</label>
 											);
 										})}
@@ -924,7 +946,9 @@ export function ResponseTimeChart({
 							<Table>
 								<TableHeader>
 									<TableRow className="border-border/60 hover:bg-transparent">
-										<TableHead className="px-4">Region</TableHead>
+										<TableHead className="px-4">
+											{locationTitle.slice(0, -1)}
+										</TableHead>
 										<TableHead className="min-w-[260px]">Trend</TableHead>
 										{(["p50", "p90", "p99"] as const).map((metric) => (
 											<TableHead key={metric} className="w-[90px] text-right">
@@ -945,18 +969,26 @@ export function ResponseTimeChart({
 								</TableHeader>
 								<TableBody>
 									{paginatedRegionMetrics.map((row) => {
-										const regionInfo = getRegionInfo(row.location);
+										const { primaryLabel, regionInfo, secondaryLabel } =
+											getLocationDisplay(row.workerId);
 										return (
 											<TableRow
-												key={row.location}
+												key={row.workerId}
 												className="border-border/50 hover:bg-white/2"
 											>
 												<TableCell className="px-4">
 													<div className="flex items-center gap-3">
 														<regionInfo.Flag className="h-3.5 w-5 rounded-[2px]" />
-														<span className="font-medium text-sm">
-															{row.location}
-														</span>
+														<div className="min-w-0">
+															<div className="truncate font-medium text-sm">
+																{primaryLabel}
+															</div>
+															{secondaryLabel ? (
+																<div className="truncate text-muted-foreground text-xs">
+																	{secondaryLabel}
+																</div>
+															) : null}
+														</div>
 													</div>
 												</TableCell>
 												<TableCell>
@@ -997,7 +1029,7 @@ export function ResponseTimeChart({
 														/>
 														<DropdownMenuContent align="end">
 															<DropdownMenuLabel>
-																{regionInfo.label}
+																{primaryLabel}
 															</DropdownMenuLabel>
 															<DropdownMenuSeparator />
 															<DropdownMenuCheckboxItem checked>
@@ -1018,7 +1050,8 @@ export function ResponseTimeChart({
 
 							<div className="flex flex-wrap items-center justify-between gap-3 border-border/50 border-t px-4 py-3 text-sm">
 								<div className="text-muted-foreground">
-									{regionMetrics.length} region(s) visible.
+									{regionMetrics.length}{" "}
+									{workers.length > 0 ? "worker" : "region"}(s) visible.
 								</div>
 								{totalPages > 1 && (
 									<div className="flex flex-wrap items-center gap-4">
@@ -1149,15 +1182,15 @@ export function ResponseTimeChart({
 												tickFormatter={(value) => `${Math.round(value)}ms`}
 											/>
 											<Tooltip content={regionChartTooltip} />
-											{activeLocations.map((location) => {
-												const regionInfo = getRegionInfo(location);
+											{activeWorkerIds.map((workerId) => {
+												const { primaryLabel } = getLocationDisplay(workerId);
 												return (
 													<Line
-														key={location}
+														key={workerId}
 														type="monotone"
-														dataKey={location}
-														name={regionInfo.label}
-														stroke={regionColors[location]}
+														dataKey={workerId}
+														name={primaryLabel}
+														stroke={regionColors[workerId]}
 														strokeWidth={2}
 														dot={false}
 														connectNulls
@@ -1170,18 +1203,18 @@ export function ResponseTimeChart({
 								)}
 							</div>
 							<div className="flex flex-wrap items-center gap-4 text-xs">
-								{activeLocations.map((location) => {
-									const regionInfo = getRegionInfo(location);
+								{activeWorkerIds.map((workerId) => {
+									const { primaryLabel } = getLocationDisplay(workerId);
 									return (
 										<div
-											key={location}
+											key={workerId}
 											className="flex items-center gap-2 text-muted-foreground"
 										>
 											<span
 												className="h-2.5 w-2.5 rounded-[2px]"
-												style={{ backgroundColor: regionColors[location] }}
+												style={{ backgroundColor: regionColors[workerId] }}
 											/>
-											<span>{regionInfo.label}</span>
+											<span>{primaryLabel}</span>
 										</div>
 									);
 								})}

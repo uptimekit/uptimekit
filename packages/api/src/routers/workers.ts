@@ -277,4 +277,26 @@ export const workersRouter = {
 
 			return locations.map((l) => l.location);
 		}),
+
+	listActive: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/workers/active",
+				tags: ["workers"],
+				summary: "List active workers",
+				description: "List active workers available for monitor assignment.",
+			},
+		})
+		.handler(async () => {
+			return db
+				.select({
+					id: worker.id,
+					name: worker.name,
+					location: worker.location,
+				})
+				.from(worker)
+				.where(eq(worker.active, true))
+				.orderBy(desc(worker.createdAt));
+		}),
 };

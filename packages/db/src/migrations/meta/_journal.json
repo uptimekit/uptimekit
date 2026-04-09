@@ -106,6 +106,20 @@
       "when": 1775763585416,
       "tag": "0014_premium_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775820000000,
+      "tag": "0015_worker_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775771576437,
+      "tag": "0016_dry_zombie",
+      "breakpoints": true
     }
   ]
 }

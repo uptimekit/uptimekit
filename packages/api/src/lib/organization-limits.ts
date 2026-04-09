@@ -78,14 +78,14 @@ export async function getOrganizationQuotaState(
 
 export async function enforceMonitorQuotaOrThrow(input: {
 	organizationId: string;
-	nextLocations: string[];
+	nextWorkerIds: string[];
 	nextActive: boolean;
 	excludeMonitorId?: string;
 	database?: QueryableDatabase;
 }) {
 	const {
 		organizationId,
-		nextLocations,
+		nextWorkerIds,
 		nextActive,
 		excludeMonitorId,
 		database = db,
@@ -95,7 +95,7 @@ export async function enforceMonitorQuotaOrThrow(input: {
 
 	if (
 		quotaState.regionsPerMonitorLimit !== null &&
-		nextLocations.length > quotaState.regionsPerMonitorLimit
+		nextWorkerIds.length > quotaState.regionsPerMonitorLimit
 	) {
 		throw new ORPCError("FORBIDDEN", {
 			message: `This organization allows at most ${quotaState.regionsPerMonitorLimit} region(s) per monitor.`,
@@ -151,6 +151,7 @@ export async function applyOrganizationLimitChanges(input: {
 				name: true,
 				createdAt: true,
 				locations: true,
+				workerIds: true,
 			},
 			orderBy: [asc(monitor.createdAt), asc(monitor.id)],
 		});
@@ -160,7 +161,10 @@ export async function applyOrganizationLimitChanges(input: {
 				? []
 				: allActiveMonitors.filter(
 						(record) =>
-							(record.locations as string[]).length > regionsPerMonitorLimit,
+							(
+								(record.workerIds as string[] | null) ??
+								(record.locations as string[])
+							).length > regionsPerMonitorLimit,
 					);
 
 		const regionPauseStats = await pauseMonitorsForQuota({

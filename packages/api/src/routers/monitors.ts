@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: shhhh */
 import { ORPCError } from "@orpc/server";
 import { clickhouse, db } from "@uptimekit/db";
 import {
@@ -8,7 +9,19 @@ import {
 import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { monitorTag, tag } from "@uptimekit/db/schema/tags";
-import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
+import { worker } from "@uptimekit/db/schema/workers";
+import {
+	and,
+	desc,
+	eq,
+	gte,
+	ilike,
+	inArray,
+	isNull,
+	lte,
+	or,
+	sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { enforceMonitorQuotaOrThrow } from "../lib/organization-limits";
@@ -40,6 +53,76 @@ const BATCH_LATEST_CHANGES_QUERY = `
 		WHERE monitorId IN ({ids:Array(String)})
 	) WHERE rn = 1
 `;
+
+async function getWorkersForMonitorAssignments(input: {
+	workerIds?: string[] | null;
+	locations?: string[] | null;
+	options?: { activeOnly?: boolean; requireAll?: boolean };
+}) {
+	const workerIds = input.workerIds ?? [];
+	const locations = input.locations ?? [];
+	if (workerIds.length === 0 && locations.length === 0) {
+		return [];
+	}
+
+	const activeOnly = input.options?.activeOnly ?? false;
+	const requireAll = input.options?.requireAll ?? false;
+
+	if (workerIds.length > 0) {
+		const uniqueWorkerIds = [...new Set(workerIds)];
+		const workers = await db
+			.select({
+				id: worker.id,
+				name: worker.name,
+				location: worker.location,
+			})
+			.from(worker)
+			.where(
+				activeOnly
+					? and(inArray(worker.id, uniqueWorkerIds), eq(worker.active, true))
+					: inArray(worker.id, uniqueWorkerIds),
+			);
+
+		if (requireAll && workers.length !== uniqueWorkerIds.length) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "One or more selected workers are missing or inactive.",
+			});
+		}
+
+		const workersById = new Map(
+			workers.map((workerRecord) => [workerRecord.id, workerRecord]),
+		);
+
+		return uniqueWorkerIds
+			.map((workerId) => workersById.get(workerId))
+			.filter((workerRecord) => workerRecord !== undefined);
+	}
+
+	const uniqueLocations = [...new Set(locations)];
+	const workers = await db
+		.select({
+			id: worker.id,
+			name: worker.name,
+			location: worker.location,
+		})
+		.from(worker)
+		.where(
+			activeOnly
+				? and(
+						inArray(worker.location, uniqueLocations),
+						eq(worker.active, true),
+					)
+				: inArray(worker.location, uniqueLocations),
+		);
+
+	if (requireAll && workers.length !== uniqueLocations.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "One or more selected workers are missing or inactive.",
+		});
+	}
+
+	return workers;
+}
 
 export const monitorsRouter = {
 	list: protectedProcedure
@@ -297,7 +380,7 @@ export const monitorsRouter = {
 				groupId: z.string().nullish(),
 				tags: z.array(z.string()).optional(),
 				config: z.record(z.any(), z.any()),
-				locations: z.array(z.string()).min(1), // Require at least one location
+				workerIds: z.array(z.string()).min(1),
 				incidentPendingDuration: z.number().min(0).default(0),
 				incidentRecoveryDuration: z.number().min(0).default(0),
 				publishIncidentToStatusPage: z.boolean().default(false),
@@ -306,8 +389,16 @@ export const monitorsRouter = {
 		.handler(async ({ input, context }) => {
 			await enforceMonitorQuotaOrThrow({
 				organizationId: context.session.session.activeOrganizationId!,
-				nextLocations: input.locations,
+				nextWorkerIds: input.workerIds,
 				nextActive: true,
+			});
+
+			const selectedWorkers = await getWorkersForMonitorAssignments({
+				workerIds: input.workerIds,
+				options: {
+					activeOnly: true,
+					requireAll: true,
+				},
 			});
 
 			const [newMonitor] = await db
@@ -318,7 +409,10 @@ export const monitorsRouter = {
 					organizationId: context.session.session.activeOrganizationId!,
 					type: input.type,
 					config: input.config,
-					locations: input.locations,
+					locations: selectedWorkers.map(
+						(selectedWorker) => selectedWorker.location,
+					),
+					workerIds: input.workerIds,
 					groupId: input.groupId,
 					active: true,
 					pauseReason: null,
@@ -444,7 +538,9 @@ export const monitorsRouter = {
 			if (input.active) {
 				await enforceMonitorQuotaOrThrow({
 					organizationId: existing.organizationId,
-					nextLocations: existing.locations as string[],
+					nextWorkerIds:
+						(existing.workerIds as string[] | null) ??
+						(existing.locations as string[]),
 					nextActive: true,
 					excludeMonitorId: existing.id,
 				});
@@ -480,7 +576,7 @@ export const monitorsRouter = {
 				groupId: z.string().nullish(),
 				tags: z.array(z.string()).optional(),
 				config: z.record(z.any(), z.any()),
-				locations: z.array(z.string()).min(1),
+				workerIds: z.array(z.string()).min(1),
 				incidentPendingDuration: z.number().min(0).default(0),
 				incidentRecoveryDuration: z.number().min(0).default(0),
 				publishIncidentToStatusPage: z.boolean().default(false),
@@ -501,9 +597,17 @@ export const monitorsRouter = {
 
 			await enforceMonitorQuotaOrThrow({
 				organizationId: existing.organizationId,
-				nextLocations: input.locations,
+				nextWorkerIds: input.workerIds,
 				nextActive: input.active,
 				excludeMonitorId: existing.id,
+			});
+
+			const selectedWorkers = await getWorkersForMonitorAssignments({
+				workerIds: input.workerIds,
+				options: {
+					activeOnly: true,
+					requireAll: true,
+				},
 			});
 
 			await db
@@ -514,7 +618,10 @@ export const monitorsRouter = {
 					interval: input.interval,
 					groupId: input.groupId,
 					config: input.config,
-					locations: input.locations,
+					locations: selectedWorkers.map(
+						(selectedWorker) => selectedWorker.location,
+					),
+					workerIds: input.workerIds,
 					incidentPendingDuration: input.incidentPendingDuration,
 					incidentRecoveryDuration: input.incidentRecoveryDuration,
 					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
@@ -609,10 +716,20 @@ export const monitorsRouter = {
 				.innerJoin(tag, eq(monitorTag.tagId, tag.id))
 				.where(eq(monitorTag.monitorId, found.monitor.id));
 
+			const monitorWorkerIds =
+				(found.monitor.workerIds as string[] | null) ?? [];
+			const monitorLocations =
+				(found.monitor.locations as string[] | null) ?? [];
+			const monitorWorkers = await getWorkersForMonitorAssignments({
+				workerIds: monitorWorkerIds,
+				locations: monitorLocations,
+			});
+
 			return {
 				...found.monitor,
 				group: found.monitor_group || null,
 				tags: monitorTags.map((mt) => mt.tag),
+				workers: monitorWorkers,
 				status: latestEvent?.status || "pending",
 				lastCheck: latestEvent
 					? parseClickhouseTimestamp(latestEvent.timestamp)
@@ -804,7 +921,7 @@ export const monitorsRouter = {
 			z.object({
 				monitorId: z.string(),
 				range: z.enum(["24h", "7d", "30d"]),
-				locations: z.array(z.string()).optional().default([]),
+				workerIds: z.array(z.string()).optional().default([]),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -835,9 +952,9 @@ export const monitorsRouter = {
 				startDate: startDate.getTime(),
 			};
 
-			if (input.locations.length > 0 && !input.locations.includes("all")) {
-				locationFilter = "AND location IN {locations:Array(String)}";
-				queryParams.locations = input.locations;
+			if (input.workerIds.length > 0 && !input.workerIds.includes("all")) {
+				locationFilter = "AND location IN {workerIds:Array(String)}";
+				queryParams.workerIds = input.workerIds;
 			}
 
 			// Fetch raw events for chart with detailed timings

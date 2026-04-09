@@ -54,6 +54,7 @@ export const monitor = pgTable(
 			.default(false)
 			.notNull(),
 		locations: json("locations").$type<string[]>().notNull(), // array of worker locations
+		workerIds: json("worker_ids").$type<string[]>().notNull(),
 		config: json("config").notNull(), // flexible config: url, method, headers, body, etc.
 		successStatuses: json("success_statuses").$type<number[]>(), // e.g. [200, 201]
 		createdAt: timestamp("created_at").defaultNow().notNull(),

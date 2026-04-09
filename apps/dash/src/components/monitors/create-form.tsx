@@ -82,7 +82,7 @@ const baseSchema = z.object({
 	incidentPendingDuration: z.coerce.number().default(0),
 	incidentRecoveryDuration: z.coerce.number().default(0),
 	publishIncidentToStatusPage: z.boolean().default(false),
-	locations: z.array(z.string()).min(1, "At least one region must be selected"),
+	workerIds: z.array(z.string()).min(1, "At least one worker must be selected"),
 });
 
 const httpSchema = z.object({
@@ -149,6 +149,11 @@ const monitorConfigSchema = z.discriminatedUnion("type", [
 const formSchema = z.intersection(baseSchema, monitorConfigSchema);
 
 type FormValues = z.infer<typeof formSchema>;
+type ActiveWorkerOption = {
+	id: string;
+	name: string;
+	location: string;
+};
 
 const heartbeatPeriodOptions = [
 	{ label: "1 minute", value: "60" },
@@ -540,8 +545,7 @@ export function CreateMonitorForm({
 	monitorId,
 	initialData,
 }: CreateMonitorFormProps) {
-	// Fetch regions
-	const { data: regions } = useQuery(orpc.workers.listLocations.queryOptions());
+	const { data: workers } = useQuery(orpc.workers.listActive.queryOptions());
 	const { data: organizationQuota } = useQuery(
 		orpc.organizations.getActiveQuota.queryOptions(),
 	);
@@ -570,7 +574,7 @@ export function CreateMonitorForm({
 			incidentRecoveryDuration: defaults.incidentRecoveryDuration || 0,
 			publishIncidentToStatusPage:
 				defaults.publishIncidentToStatusPage ?? false,
-			locations: defaults.locations || [],
+			workerIds: defaults.workerIds || [],
 			method: defaults.method || "GET",
 			url: defaults.url || "",
 			hostname: defaults.hostname || "",
@@ -600,7 +604,7 @@ export function CreateMonitorForm({
 				interval,
 				groupId,
 				tags,
-				locations,
+				workerIds,
 				incidentPendingDuration,
 				incidentRecoveryDuration,
 				publishIncidentToStatusPage,
@@ -613,7 +617,7 @@ export function CreateMonitorForm({
 				interval,
 				groupId,
 				tags,
-				locations,
+				workerIds,
 				incidentPendingDuration,
 				incidentRecoveryDuration,
 				publishIncidentToStatusPage,
@@ -668,11 +672,11 @@ export function CreateMonitorForm({
 	const selectedType =
 		monitorTypes.find((t) => t.id === type) || monitorTypes[0];
 
-	const locations = form.watch("locations") || [];
-	const hasAnySelection = locations.length > 0;
+	const workerIds = form.watch("workerIds") || [];
+	const hasAnySelection = workerIds.length > 0;
 	const regionLimit = organizationQuota?.regionsPerMonitorLimit ?? null;
 	const activeMonitorLimit = organizationQuota?.activeMonitorLimit ?? null;
-	const selectedRegionCount = locations.length;
+	const selectedRegionCount = workerIds.length;
 	const isOverRegionLimit =
 		regionLimit !== null && selectedRegionCount > regionLimit;
 
@@ -681,18 +685,17 @@ export function CreateMonitorForm({
 		{},
 	);
 
-	// Group regions by continent
-	const regionsByContinent = (regions || []).reduce(
-		(acc, region) => {
-			const regionInfo = getRegionInfo(region);
+	const workersByContinent = ((workers || []) as ActiveWorkerOption[]).reduce(
+		(acc, activeWorker) => {
+			const regionInfo = getRegionInfo(activeWorker.location);
 			const continent = regionInfo.continent || "Other";
 			if (!acc[continent]) {
 				acc[continent] = [];
 			}
-			acc[continent].push(region);
+			acc[continent].push(activeWorker);
 			return acc;
 		},
-		{} as Record<string, string[]>,
+		{} as Record<string, ActiveWorkerOption[]>,
 	);
 
 	const toggleContinent = (continent: string) => {
@@ -702,15 +705,16 @@ export function CreateMonitorForm({
 		}));
 	};
 
-	// Helper to select all regions
-	const handleSelectAllRegions = () => {
-		if (!regions) return;
+	const handleSelectAllWorkers = () => {
+		if (!workers) return;
 
-		// If anything is selected, deselect all. Otherwise, select all.
 		if (hasAnySelection) {
-			form.setValue("locations", []);
+			form.setValue("workerIds", []);
 		} else {
-			form.setValue("locations", regions);
+			form.setValue(
+				"workerIds",
+				workers.map((activeWorker) => activeWorker.id),
+			);
 		}
 	};
 
@@ -989,19 +993,19 @@ export function CreateMonitorForm({
 									}}
 								/>
 
-								{/* New Regions Field */}
+								{/* Workers Field */}
 								<FormField
 									control={form.control}
-									name="locations"
+									name="workerIds"
 									render={() => (
 										<FormItem>
 											<FormLabel className="flex items-center justify-between">
-												Regions
+												Workers
 												<Button
 													type="button"
 													variant="link"
 													className="h-auto p-0 text-xs"
-													onClick={handleSelectAllRegions}
+													onClick={handleSelectAllWorkers}
 												>
 													{hasAnySelection ? "Deselect all" : "Select all"}
 												</Button>
@@ -1016,7 +1020,7 @@ export function CreateMonitorForm({
 															: ` / ${activeMonitorLimit}`}
 													</span>
 													<span className="text-muted-foreground">
-														Selected regions: {selectedRegionCount}
+														Selected workers: {selectedRegionCount}
 														{regionLimit === null
 															? " / unlimited"
 															: ` / ${regionLimit}`}
@@ -1025,14 +1029,14 @@ export function CreateMonitorForm({
 												{isOverRegionLimit && (
 													<p className="mt-2 text-destructive text-xs">
 														This organization allows at most {regionLimit}{" "}
-														region(s) per monitor.
+														worker(s) per monitor.
 													</p>
 												)}
 											</div>
 											<div className="space-y-2">
-												{Object.entries(regionsByContinent)
+												{Object.entries(workersByContinent)
 													.sort(([a], [b]) => a.localeCompare(b))
-													.map(([continent, continentRegions]) => (
+													.map(([continent, continentWorkers]) => (
 														<Collapsible
 															key={continent}
 															open={openContinents[continent]}
@@ -1049,25 +1053,27 @@ export function CreateMonitorForm({
 															</CollapsibleTrigger>
 															<CollapsibleContent>
 																<div className="grid grid-cols-2 gap-2 pt-2">
-																	{continentRegions.map((region) => {
-																		const regionInfo = getRegionInfo(region);
+																	{continentWorkers?.map((activeWorker) => {
+																		const regionInfo = getRegionInfo(
+																			activeWorker.location,
+																		);
 																		const Flag = regionInfo.Flag;
 
 																		return (
 																			<FormField
-																				key={region}
+																				key={activeWorker.id}
 																				control={form.control}
-																				name="locations"
+																				name="workerIds"
 																				render={({ field }) => {
 																					return (
 																						<FormItem
-																							key={region}
+																							key={activeWorker.id}
 																							className="flex flex-row items-start space-x-3 space-y-0 rounded-md bg-muted/50 p-4"
 																						>
 																							<FormControl>
 																								<Checkbox
 																									checked={field.value?.includes(
-																										region,
+																										activeWorker.id,
 																									)}
 																									onCheckedChange={(
 																										checked,
@@ -1075,12 +1081,13 @@ export function CreateMonitorForm({
 																										return checked
 																											? field.onChange([
 																													...field.value,
-																													region,
+																													activeWorker.id,
 																												])
 																											: field.onChange(
 																													field.value?.filter(
 																														(value) =>
-																															value !== region,
+																															value !==
+																															activeWorker.id,
 																													),
 																												);
 																									}}
@@ -1090,9 +1097,14 @@ export function CreateMonitorForm({
 																								<div className="relative h-3.5 w-5 overflow-hidden rounded-[2px] shadow-sm">
 																									<Flag className="h-full w-full object-cover" />
 																								</div>
-																								<FormLabel className="cursor-pointer font-normal">
-																									{regionInfo.label}
-																								</FormLabel>
+																								<div className="min-w-0">
+																									<FormLabel className="cursor-pointer font-normal">
+																										{activeWorker.name}
+																									</FormLabel>
+																									<p className="truncate text-muted-foreground text-xs">
+																										{regionInfo.label}
+																									</p>
+																								</div>
 																							</div>
 																						</FormItem>
 																					);

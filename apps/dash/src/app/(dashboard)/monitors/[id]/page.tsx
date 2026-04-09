@@ -244,8 +244,9 @@ export default function MonitorDetailsPage() {
 			{/* Response Time Chart */}
 			<ResponseTimeChart
 				monitorId={id}
-				locations={(monitor.locations as string[]) || []}
+				workerIds={(monitor.workerIds as string[]) || []}
 				monitorType={monitor.type}
+				workers={monitor.workers || []}
 			/>
 
 			{/* Availability Stats Table */}

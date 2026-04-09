@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const monitors = await getMonitorsForWorker(authResult.worker.location);
+	const monitors = await getMonitorsForWorker(authResult.worker.id);
 
 	return NextResponse.json({ monitors });
 }
