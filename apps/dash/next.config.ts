@@ -22,9 +22,7 @@ const nextConfig: NextConfig = {
 		],
 	},
 	logging: {
-		incomingRequests: {
-			ignore: [/api\/v1\/health/],
-		},
+		incomingRequests: true,
 	},
 };
 

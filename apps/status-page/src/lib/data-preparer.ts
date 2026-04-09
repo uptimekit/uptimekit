@@ -93,7 +93,11 @@ function formatDuration(ms: number): string {
 }
 
 function getBarDays(design: any): 30 | 60 | 90 {
-	if (design?.barDays === 30 || design?.barDays === 60 || design?.barDays === 90) {
+	if (
+		design?.barDays === 30 ||
+		design?.barDays === 60 ||
+		design?.barDays === 90
+	) {
 		return design.barDays;
 	}
 	return 90;
@@ -369,6 +373,14 @@ export async function prepareStatusPageData(
 						status: worstSeverityStatus,
 						uptime: newUptime,
 						duration: formatDuration(totalDurationMs),
+					};
+				}
+
+				if (day.status !== "unknown" && day.status !== "operational") {
+					return {
+						...day,
+						status: "operational",
+						duration: undefined,
 					};
 				}
 

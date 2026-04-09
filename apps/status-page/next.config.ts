@@ -8,9 +8,7 @@ const nextConfig: NextConfig = {
 	reactCompiler: true,
 	output: "standalone",
 	logging: {
-		incomingRequests: {
-			ignore: [/api\/v1\/health/],
-		},
+		incomingRequests: true,
 	},
 };
 

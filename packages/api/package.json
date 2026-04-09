@@ -51,7 +51,7 @@
 		"dotenv": "catalog:",
 		"drizzle-orm": "catalog:",
 		"ioredis": "^5.8.2",
-		"next": "^16.1.5",
+		"next": "^16.2.3",
 		"zod": "catalog:"
 	}
 }

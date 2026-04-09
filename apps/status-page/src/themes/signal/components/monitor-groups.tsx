@@ -20,9 +20,11 @@ interface MonitorGroupsProps {
 function MonitorCard({
 	monitor,
 	defaultExpanded,
+	barStyle,
 }: {
 	monitor: Monitor;
 	defaultExpanded: boolean;
+	barStyle: "normal" | "length" | "signal";
 }) {
 	const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -89,7 +91,7 @@ function MonitorCard({
 					)}
 				>
 					<div className="px-4 py-4 sm:px-5 sm:py-5">
-						<UptimeBar days={monitor.history} />
+						<UptimeBar days={monitor.history} style={barStyle} />
 						{monitor.displayStyle === "status" ? (
 							<div className="mt-4 text-[13px] text-muted-foreground">
 								Current state: {monitor.currentStatus.replaceAll("_", " ")}
@@ -102,7 +104,10 @@ function MonitorCard({
 	);
 }
 
-export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
+export function MonitorGroups({
+	monitorGroups,
+	barStyle = "normal",
+}: MonitorGroupsProps) {
 	return (
 		<section className="space-y-8">
 			{monitorGroups.map((group, groupIndex) => (
@@ -111,7 +116,7 @@ export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 					className="space-y-4"
 				>
 					{group.group ? (
-						<div className="px-1 font-medium text-sm text-muted-foreground">
+						<div className="px-1 font-medium text-muted-foreground text-sm">
 							{group.group.name}
 						</div>
 					) : null}
@@ -121,6 +126,7 @@ export function MonitorGroups({ monitorGroups }: MonitorGroupsProps) {
 								key={monitor.id}
 								monitor={monitor}
 								defaultExpanded={groupIndex === 0 && monitorIndex === 0}
+								barStyle={barStyle}
 							/>
 						))}
 					</div>
