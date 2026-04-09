@@ -408,7 +408,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												items={themes}
 											>
 												<SelectTrigger>
-													<SelectValue />
+													<SelectValue>
+														{themes.find((option) => option.value === field.value)
+															?.label}
+													</SelectValue>
 												</SelectTrigger>
 												<SelectPopup>
 													{themes.map(({ label, value }) => (
@@ -440,7 +443,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												items={colorThemes}
 											>
 												<SelectTrigger>
-													<SelectValue />
+													<SelectValue>
+														{colorThemes.find(
+															(option) => option.value === field.value,
+														)?.label}
+													</SelectValue>
 												</SelectTrigger>
 												<SelectPopup>
 													{colorThemes.map(({ label, value }) => (
@@ -473,7 +480,15 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												items={visibilityOptions}
 											>
 												<SelectTrigger>
-													<SelectValue />
+													<SelectValue>
+														{
+															visibilityOptions.find(
+																(option) =>
+																	option.value ===
+																	(field.value ? "private" : "public"),
+															)?.label
+														}
+													</SelectValue>
 												</SelectTrigger>
 												<SelectPopup>
 													{visibilityOptions.map(({ label, value }) => (
@@ -744,7 +759,13 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											items={barDayOptions}
 										>
 											<SelectTrigger>
-												<SelectValue />
+												<SelectValue>
+													{
+														barDayOptions.find(
+															(option) => option.value === field.value,
+														)?.label
+													}
+												</SelectValue>
 											</SelectTrigger>
 											<SelectPopup>
 												{barDayOptions.map(({ label, value }) => (

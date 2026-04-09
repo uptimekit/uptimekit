@@ -103,7 +103,7 @@ const getMinuteBucketStart = (timestamp: string) => {
  * Features:
  * - Multi-region selection with persistence
  * - Individual region areas (toggleable via legend), connected across sparse timestamps
- * - Tooltip shows all regions that have data at the hovered point
+ * - Tooltip keeps all visible regions in the hovered point list
  * - HTTP monitors: Toggle between "Total Latency" and "Timing Breakdown" views
  * - Dynamic colors for regions
  */
@@ -354,7 +354,7 @@ export function ResponseTimeChart({
 		setSelectedLocations([]);
 	};
 
-	// Custom tooltip — shows every region that has a non-null reading at this point
+	// Custom tooltip — keeps the visible series list stable like Grafana's shared tooltip.
 	const CustomTooltip = ({ active, payload }: any) => {
 		if (!active || !payload?.length) return null;
 
@@ -365,17 +365,24 @@ export function ResponseTimeChart({
 		const timeDisplay = format(timestamp, "MMM d, HH:mm");
 
 		const tooltipRows = dataLocations
+			.filter((loc) => visibleRegions[loc] !== false)
 			.map((loc) => {
 				const latency = data[`${loc}_latency`] as number | null;
-				if (latency === null || latency === undefined) return null;
 				const regionInfo = getRegionInfo(loc);
 				return {
 					color: regionColors[loc],
 					label: regionInfo.label,
-					value: `${Math.round(latency)} ms`,
+					hasValue: latency !== null && latency !== undefined,
+					value:
+						latency === null || latency === undefined
+							? "No data"
+							: `${Math.round(latency)} ms`,
 				};
 			})
-			.filter((row) => row !== null);
+			.sort((a, b) => {
+				if (a.hasValue === b.hasValue) return a.label.localeCompare(b.label);
+				return a.hasValue ? -1 : 1;
+			});
 
 		const breakdownRows =
 			hasDetailedTimings && viewMode === "breakdown"
@@ -405,7 +412,15 @@ export function ResponseTimeChart({
 							/>
 							<p className="flex w-full items-center justify-between space-x-8 truncate">
 								<span className="truncate">{row.label}</span>
-								<span className="font-medium text-foreground">{row.value}</span>
+								<span
+									className={
+										row.hasValue
+											? "font-medium text-foreground"
+											: "text-muted-foreground"
+									}
+								>
+									{row.value}
+								</span>
 							</p>
 						</div>
 					))}

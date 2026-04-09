@@ -59,6 +59,12 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { client, orpc } from "@/utils/orpc";
 
+const maintenanceStatusOptions = [
+	{ label: "Scheduled", value: "scheduled" },
+	{ label: "In Progress", value: "in_progress" },
+	{ label: "Completed", value: "completed" },
+] as const;
+
 export default function MaintenanceDetailsPage() {
 	const params = useParams();
 	const router = useRouter();
@@ -420,19 +426,23 @@ function EditUpdateDialog({
 											<FormLabel>Status</FormLabel>
 											<Select
 												onValueChange={field.onChange}
-												defaultValue={field.value}
+												value={field.value}
 											>
 												<FormControl>
 													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Status" />
+														<SelectValue placeholder="Status">
+															{maintenanceStatusOptions.find(
+																(option) => option.value === field.value,
+															)?.label}
+														</SelectValue>
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													<SelectItem value="scheduled">Scheduled</SelectItem>
-													<SelectItem value="in_progress">
-														In Progress
-													</SelectItem>
-													<SelectItem value="completed">Completed</SelectItem>
+													{maintenanceStatusOptions.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
 												</SelectContent>
 											</Select>
 											<FormMessage />

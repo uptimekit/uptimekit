@@ -17,8 +17,6 @@ import type {
 	LatestEventResult,
 	SingleChangeResult,
 	SingleEventResult,
-	StatsChangeResult,
-	StatusBeforeResult,
 } from "../types/clickhouse";
 
 // SQL queries for batching monitor events and changes
@@ -880,187 +878,56 @@ export const monitorsRouter = {
 
 			// Helper to calculate stats for a given start date
 			const calculateStats = async (startDate: Date | null) => {
-				// Get ALL changes since startDate
-				const queryParams: Record<string, unknown> = {
-					monitorId: input.monitorId,
-				};
-
-				if (startDate) {
-					queryParams.startDate = startDate.getTime();
-				}
-
-				const changesQuery = await clickhouse.query({
-					query: `
-						SELECT status, timestamp 
-						FROM uptimekit.monitor_changes
-						WHERE monitorId = {monitorId:String}
-						${startDate ? "AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)" : ""}
-						ORDER BY timestamp ASC
-					`,
-					query_params: queryParams,
-					format: "JSON",
-				});
-				const changesJson = await changesQuery.json<any>();
-				const changesRaw = changesJson.data as StatsChangeResult[];
-
-				// Helper to parse ClickHouse timestamps as UTC
-				const parseClickhouseTimestamp = (ts: string) => {
-					// ClickHouse returns timestamps without timezone info
-					// Append 'Z' if not present to interpret as UTC
-					if (!ts.endsWith("Z") && !ts.includes("+")) {
-						return new Date(`${ts.replace(" ", "T")}Z`);
-					}
-					return new Date(ts);
-				};
-
-				const changes = changesRaw.map((c) => ({
-					...c,
-					timestamp: parseClickhouseTimestamp(c.timestamp),
-				}));
-
-				// Also get the *state at startDate* (the change just before startDate)
-				// If no changes in range, we need to know if it was UP or DOWN the whole time.
-				let initialStatus = "up";
-				if (startDate) {
-					const lastBeforeQuery = await clickhouse.query({
-						query: `
-							SELECT status, timestamp
-							FROM uptimekit.monitor_changes
-							WHERE monitorId = {monitorId:String} AND timestamp < toDateTime64({startDate:UInt64} / 1000, 3)
-							ORDER BY timestamp DESC
-							LIMIT 1
-						`,
-						query_params: {
-							monitorId: input.monitorId,
-							startDate: startDate.getTime(),
-						},
-						format: "JSON",
-					});
-					const lastBeforeJson = await lastBeforeQuery.json<any>();
-					const lastBefore = (lastBeforeJson.data as StatusBeforeResult[])[0];
-					if (lastBefore) initialStatus = lastBefore.status;
-				} else {
-					// For "all time", the first change determines start, or default up if empty
-				}
-
-				const NOW = Date.now();
+				const now = Date.now();
 				const monitorCreatedAt = mon.createdAt.getTime();
-
-				// Effective start is the LATER of: requested startDate or monitor creation date
-				// This prevents counting time before the monitor even existed
 				const effectiveStart = startDate
 					? Math.max(startDate.getTime(), monitorCreatedAt)
-					: changes[0]?.timestamp.getTime() || monitorCreatedAt;
+					: monitorCreatedAt;
+				const totalTime = Math.max(1, now - effectiveStart);
 
-				const TOTAL_TIME = Math.max(1, NOW - effectiveStart); // avoid div by 0
+				const incidents = await db
+					.select({
+						startedAt: incident.startedAt,
+						endedAt: incident.endedAt,
+					})
+					.from(incidentMonitor)
+					.innerJoin(incident, eq(incidentMonitor.incidentId, incident.id))
+					.where(
+						and(
+							eq(incidentMonitor.monitorId, input.monitorId),
+							eq(incident.organizationId, session.activeOrganizationId!),
+							sql`${incident.startedAt} <= ${new Date(now)}`,
+							sql`coalesce(${incident.endedAt}, ${new Date(now)}) >= ${new Date(effectiveStart)}`,
+						),
+					)
+					.orderBy(incident.startedAt);
 
-				let downtimeMs = 0;
-				let incidentCount = 0;
-				let maxIncidentMs = 0;
-				let incidentSumMs = 0;
+				const overlappingDurations = incidents.map((item) => {
+					const overlapStart = Math.max(
+						item.startedAt.getTime(),
+						effectiveStart,
+					);
+					const overlapEnd = Math.min(
+						(item.endedAt ?? new Date(now)).getTime(),
+						now,
+					);
+					return Math.max(0, overlapEnd - overlapStart);
+				});
 
-				let currentStatus = initialStatus;
-				let lastTime = effectiveStart;
-
-				// Merge initial state into timeline for processing
-				// If the first change is AFTER start, we have a gap from START to first change
-				// occupied by `initialStatus`.
-
-				const timeline = [...changes];
-
-				for (const change of timeline) {
-					const time = change.timestamp.getTime();
-					const duration = time - lastTime;
-
-					if (
-						currentStatus === "down" ||
-						currentStatus === "degraded" ||
-						currentStatus === "pending"
-					) {
-						// only count actual downtime/issues, not maintenance
-						downtimeMs += duration;
-					}
-
-					if (change.status !== "up" && currentStatus === "up") {
-						incidentCount++;
-					}
-
-					// If resolving an incident, track duration
-					if (change.status === "up" && currentStatus !== "up") {
-						// Logic refactor:
-						// Incident duration is from START of down to END of down.
-					}
-
-					currentStatus = change.status;
-					lastTime = time;
-				}
-
-				// Add time from last events until NOW
-				const durationSinceLast = NOW - lastTime;
-				if (
-					currentStatus === "down" ||
-					currentStatus === "degraded" ||
-					currentStatus === "pending"
-				) {
-					downtimeMs += durationSinceLast;
-				}
-
-				// Recalculate incidents properly to get max/avg
-				// Re-scan? Or just simpler logic:
-				// We need distinct "down periods".
-				// Pair (DownTime, UpTime).
-
-				// Let's do a robust pass:
-				const incidents: number[] = [];
-				let incidentStart: number | null = null;
-
-				// Re-simulate with robust tracking
-				let simStatus = initialStatus;
-				const simTime = effectiveStart;
-
-				// If starting in down state, we are in an incident (from before start)
-				if (simStatus !== "up") {
-					incidentStart = simTime;
-				}
-
-				for (const change of timeline) {
-					const time = change.timestamp.getTime();
-
-					if (change.status !== "up" && change.status !== "maintenance") {
-						if (simStatus === "up" || simStatus === "maintenance") {
-							// New incident start
-							incidentStart = time;
-						}
-					} else {
-						// Resolved
-						if (simStatus !== "up" && incidentStart !== null) {
-							const dur = time - incidentStart;
-							incidents.push(dur);
-							incidentStart = null;
-						}
-					}
-					simStatus = change.status;
-				}
-
-				// Ongoing incident?
-				if (
-					simStatus !== "up" &&
-					simStatus !== "maintenance" &&
-					incidentStart !== null
-				) {
-					const dur = NOW - incidentStart;
-					incidents.push(dur);
-				}
-
-				incidentCount = incidents.length;
-				maxIncidentMs = Math.max(0, ...incidents);
-				incidentSumMs = incidents.reduce((a, b) => a + b, 0);
-
-				// Downtime matches sum of incidents?
-				// Yes, roughly.
-
-				const uptimeMs = TOTAL_TIME - downtimeMs;
-				const uptimePercent = (uptimeMs / TOTAL_TIME) * 100;
+				const downtimeMs = overlappingDurations.reduce(
+					(sum, duration) => sum + duration,
+					0,
+				);
+				const incidentCount = overlappingDurations.filter(
+					(duration) => duration > 0,
+				).length;
+				const maxIncidentMs = Math.max(0, ...overlappingDurations);
+				const incidentSumMs = overlappingDurations.reduce(
+					(sum, duration) => sum + duration,
+					0,
+				);
+				const uptimeMs = Math.max(0, totalTime - downtimeMs);
+				const uptimePercent = (uptimeMs / totalTime) * 100;
 
 				return {
 					uptimePercent,

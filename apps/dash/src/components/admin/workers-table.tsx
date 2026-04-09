@@ -57,6 +57,13 @@ interface Worker {
 	version: string | null;
 }
 
+const workerStatusOptions = [
+	{ label: "All Statuses", value: "all" },
+	{ label: "Online", value: "online" },
+	{ label: "Offline", value: "offline" },
+	{ label: "Unknown", value: "unknown" },
+] as const;
+
 /**
  * Render a paginated, searchable table for managing workers with status filtering, creation, and deletion workflows.
  *
@@ -148,13 +155,18 @@ export function WorkersTable() {
 						}}
 					>
 						<SelectTrigger className="w-[150px]">
-							<SelectValue placeholder="Status" />
+							<SelectValue placeholder="Status">
+								{workerStatusOptions.find(
+									(option) => option.value === statusFilter,
+								)?.label}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="all">All Statuses</SelectItem>
-							<SelectItem value="online">Online</SelectItem>
-							<SelectItem value="offline">Offline</SelectItem>
-							<SelectItem value="unknown">Unknown</SelectItem>
+							{workerStatusOptions.map(({ label, value }) => (
+								<SelectItem key={value} value={value}>
+									{label}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 					<CreateWorkerDialog />

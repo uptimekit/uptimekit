@@ -40,6 +40,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const updateStatusOptions = [
+	{ label: "Investigating", value: "investigating" },
+	{ label: "Identified", value: "identified" },
+	{ label: "Monitoring", value: "monitoring" },
+	{ label: "Resolved", value: "resolved" },
+] as const;
+
 interface AddUpdateFormProps {
 	statusPageId: string;
 	reportId: string;
@@ -165,30 +172,35 @@ export function AddUpdateForm({
 						)}
 					/>
 
-					<FormField
-						control={form.control}
-						name="status"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Status</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									defaultValue={field.value}
-								>
-									<FormControl>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select status" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="investigating">Investigating</SelectItem>
-										<SelectItem value="identified">Identified</SelectItem>
-										<SelectItem value="monitoring">Monitoring</SelectItem>
-										<SelectItem value="resolved">Resolved</SelectItem>
-									</SelectContent>
-								</Select>
-								<FormMessage />
-							</FormItem>
+				<FormField
+					control={form.control}
+					name="status"
+					render={({ field }) => (
+						<FormItem>
+							<FormLabel>Status</FormLabel>
+							<Select
+								onValueChange={field.onChange}
+								value={field.value}
+							>
+								<FormControl>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select status">
+											{updateStatusOptions.find(
+												(option) => option.value === field.value,
+											)?.label}
+										</SelectValue>
+									</SelectTrigger>
+								</FormControl>
+								<SelectContent>
+									{updateStatusOptions.map(({ label, value }) => (
+										<SelectItem key={value} value={value}>
+											{label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<FormMessage />
+						</FormItem>
 						)}
 					/>
 				</div>
@@ -246,7 +258,15 @@ export function AddUpdateForm({
 												}}
 											>
 												<SelectTrigger className="h-7 w-[130px] text-xs">
-													<SelectValue />
+													<SelectValue>
+														{
+															MONITOR_STATUSES.find(
+																(status) =>
+																	status.value ===
+																	(selectedMonitor.status || "degraded"),
+															)?.label
+														}
+													</SelectValue>
 												</SelectTrigger>
 												<SelectContent>
 													{MONITOR_STATUSES.map((status) => (

@@ -41,6 +41,11 @@ const formSchema = z.object({
 	role: z.enum(["member", "admin"]),
 });
 
+const roleOptions = [
+	{ label: "Member", value: "member" },
+	{ label: "Admin", value: "admin" },
+] as const;
+
 export function InviteMemberDialog() {
 	const [isOpen, setIsOpen] = useState(false);
 	const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -127,16 +132,23 @@ export function InviteMemberDialog() {
 											<FormLabel>Role</FormLabel>
 											<Select
 												onValueChange={field.onChange}
-												defaultValue={field.value}
+												value={field.value}
 											>
 												<FormControl>
 													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select a role" />
+														<SelectValue placeholder="Select a role">
+															{roleOptions.find(
+																(option) => option.value === field.value,
+															)?.label}
+														</SelectValue>
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													<SelectItem value="member">Member</SelectItem>
-													<SelectItem value="admin">Admin</SelectItem>
+													{roleOptions.map(({ label, value }) => (
+														<SelectItem key={value} value={value}>
+															{label}
+														</SelectItem>
+													))}
 												</SelectContent>
 											</Select>
 											<FormMessage />

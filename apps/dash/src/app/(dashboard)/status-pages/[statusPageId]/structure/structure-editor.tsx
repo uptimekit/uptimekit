@@ -78,6 +78,11 @@ import { orpc } from "@/utils/orpc";
 // Types
 type MonitorStyle = "history" | "status";
 
+const monitorStyleOptions = [
+	{ label: "With History", value: "history" },
+	{ label: "Status Only", value: "status" },
+] as const;
+
 interface MonitorItem {
 	instanceId: string;
 	id: string; // real monitor id
@@ -902,11 +907,18 @@ function MonitorConfigModal({
 							}
 						>
 							<SelectTrigger className="w-full">
-								<SelectValue />
+								<SelectValue>
+									{monitorStyleOptions.find(
+										(option) => option.value === monitor.style,
+									)?.label}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="history">With History</SelectItem>
-								<SelectItem value="status">Status Only</SelectItem>
+								{monitorStyleOptions.map(({ label, value }) => (
+									<SelectItem key={value} value={value}>
+										{label}
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
 					</div>

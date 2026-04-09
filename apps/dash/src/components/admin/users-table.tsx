@@ -66,6 +66,18 @@ interface User {
 	createdAt: Date;
 }
 
+const roleFilterOptions = [
+	{ label: "All Roles", value: "all" },
+	{ label: "Admins", value: "admin" },
+	{ label: "Users", value: "user" },
+] as const;
+
+const statusFilterOptions = [
+	{ label: "All Statuses", value: "all" },
+	{ label: "Active", value: "active" },
+	{ label: "Banned", value: "banned" },
+] as const;
+
 /**
  * Renders a paginated, searchable users table with role and status filters and actions to ban/unban users or change roles.
  *
@@ -261,12 +273,17 @@ export function UsersTable() {
 						}}
 					>
 						<SelectTrigger className="w-[130px]">
-							<SelectValue placeholder="Role" />
+							<SelectValue placeholder="Role">
+								{roleFilterOptions.find((option) => option.value === roleFilter)
+									?.label}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="all">All Roles</SelectItem>
-							<SelectItem value="admin">Admins</SelectItem>
-							<SelectItem value="user">Users</SelectItem>
+							{roleFilterOptions.map(({ label, value }) => (
+								<SelectItem key={value} value={value}>
+									{label}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 					<Select
@@ -277,12 +294,18 @@ export function UsersTable() {
 						}}
 					>
 						<SelectTrigger className="w-[130px]">
-							<SelectValue placeholder="Status" />
+							<SelectValue placeholder="Status">
+								{statusFilterOptions.find(
+									(option) => option.value === statusFilter,
+								)?.label}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="all">All Statuses</SelectItem>
-							<SelectItem value="active">Active</SelectItem>
-							<SelectItem value="banned">Banned</SelectItem>
+							{statusFilterOptions.map(({ label, value }) => (
+								<SelectItem key={value} value={value}>
+									{label}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 				</div>

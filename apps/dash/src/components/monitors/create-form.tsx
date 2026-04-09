@@ -150,6 +150,29 @@ const formSchema = z.intersection(baseSchema, monitorConfigSchema);
 
 type FormValues = z.infer<typeof formSchema>;
 
+const heartbeatPeriodOptions = [
+	{ label: "1 minute", value: "60" },
+	{ label: "2 minutes", value: "120" },
+	{ label: "5 minutes", value: "300" },
+	{ label: "10 minutes", value: "600" },
+] as const;
+
+const confirmationPeriodOptions = [
+	{ label: "Immediate", value: "0" },
+	{ label: "1 minute", value: "60" },
+	{ label: "2 minutes", value: "120" },
+	{ label: "3 minutes", value: "180" },
+	{ label: "5 minutes", value: "300" },
+	{ label: "10 minutes", value: "600" },
+] as const;
+
+const recoveryPeriodOptions = [
+	{ label: "Immediate", value: "0" },
+	{ label: "1 minute", value: "60" },
+	{ label: "2 minutes", value: "120" },
+	{ label: "5 minutes", value: "300" },
+] as const;
+
 // Registry for UI components and metadata
 type MonitorTypeDefinition = {
 	id: FormValues["type"];
@@ -925,28 +948,37 @@ export function CreateMonitorForm({
 								<FormField
 									control={form.control}
 									name="interval"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Heartbeat period</FormLabel>
-											<Select
-												onValueChange={(val) => field.onChange(Number(val))}
-												defaultValue={field.value.toString()}
-											>
-												<FormControl>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Select interval" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													<SelectItem value="60">1 minute</SelectItem>
-													<SelectItem value="120">2 minutes</SelectItem>
-													<SelectItem value="300">5 minutes</SelectItem>
-													<SelectItem value="600">10 minutes</SelectItem>
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
+									render={({ field }) => {
+										const selectedInterval = heartbeatPeriodOptions.find(
+											(option) => option.value === field.value.toString(),
+										);
+
+										return (
+											<FormItem>
+												<FormLabel>Heartbeat period</FormLabel>
+												<Select
+													onValueChange={(val) => field.onChange(Number(val))}
+													value={field.value.toString()}
+												>
+													<FormControl>
+														<SelectTrigger className="w-full">
+															<SelectValue placeholder="Select interval">
+																{selectedInterval?.label}
+															</SelectValue>
+														</SelectTrigger>
+													</FormControl>
+													<SelectContent>
+														{heartbeatPeriodOptions.map(({ label, value }) => (
+															<SelectItem key={value} value={value}>
+																{label}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<FormMessage />
+											</FormItem>
+										);
+									}}
 								/>
 
 								{/* New Regions Field */}
@@ -1087,62 +1119,84 @@ export function CreateMonitorForm({
 										<FormField
 											control={form.control}
 											name="incidentPendingDuration"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Confirmation period (Pending)</FormLabel>
-													<Select
-														onValueChange={(val) => field.onChange(Number(val))}
-														defaultValue={field.value.toString()}
-													>
-														<FormControl>
-															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Select duration" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															<SelectItem value="0">Immediate</SelectItem>
-															<SelectItem value="60">1 minute</SelectItem>
-															<SelectItem value="120">2 minutes</SelectItem>
-															<SelectItem value="180">3 minutes</SelectItem>
-															<SelectItem value="300">5 minutes</SelectItem>
-															<SelectItem value="600">10 minutes</SelectItem>
-														</SelectContent>
-													</Select>
-													<FormDescription>
-														How long to wait before alerting.
-													</FormDescription>
-													<FormMessage />
-												</FormItem>
-											)}
+											render={({ field }) => {
+												const selectedPendingDuration =
+													confirmationPeriodOptions.find(
+														(option) =>
+															option.value === field.value.toString(),
+													);
+
+												return (
+													<FormItem>
+														<FormLabel>Confirmation period (Pending)</FormLabel>
+														<Select
+															onValueChange={(val) => field.onChange(Number(val))}
+															value={field.value.toString()}
+														>
+															<FormControl>
+																<SelectTrigger className="w-full">
+																	<SelectValue placeholder="Select duration">
+																		{selectedPendingDuration?.label}
+																	</SelectValue>
+																</SelectTrigger>
+															</FormControl>
+															<SelectContent>
+																{confirmationPeriodOptions.map(
+																	({ label, value }) => (
+																		<SelectItem key={value} value={value}>
+																			{label}
+																		</SelectItem>
+																	),
+																)}
+															</SelectContent>
+														</Select>
+														<FormDescription>
+															How long to wait before alerting.
+														</FormDescription>
+														<FormMessage />
+													</FormItem>
+												);
+											}}
 										/>
 										<FormField
 											control={form.control}
 											name="incidentRecoveryDuration"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>Recovery period</FormLabel>
-													<Select
-														onValueChange={(val) => field.onChange(Number(val))}
-														defaultValue={field.value.toString()}
-													>
-														<FormControl>
-															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Select duration" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															<SelectItem value="0">Immediate</SelectItem>
-															<SelectItem value="60">1 minute</SelectItem>
-															<SelectItem value="120">2 minutes</SelectItem>
-															<SelectItem value="300">5 minutes</SelectItem>
-														</SelectContent>
-													</Select>
-													<FormDescription>
-														How long it must be up to resolve.
-													</FormDescription>
-													<FormMessage />
-												</FormItem>
-											)}
+											render={({ field }) => {
+												const selectedRecoveryDuration =
+													recoveryPeriodOptions.find(
+														(option) =>
+															option.value === field.value.toString(),
+													);
+
+												return (
+													<FormItem>
+														<FormLabel>Recovery period</FormLabel>
+														<Select
+															onValueChange={(val) => field.onChange(Number(val))}
+															value={field.value.toString()}
+														>
+															<FormControl>
+																<SelectTrigger className="w-full">
+																	<SelectValue placeholder="Select duration">
+																		{selectedRecoveryDuration?.label}
+																	</SelectValue>
+																</SelectTrigger>
+															</FormControl>
+															<SelectContent>
+																{recoveryPeriodOptions.map(({ label, value }) => (
+																	<SelectItem key={value} value={value}>
+																		{label}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+														<FormDescription>
+															How long it must be up to resolve.
+														</FormDescription>
+														<FormMessage />
+													</FormItem>
+												);
+											}}
 										/>
 									</div>
 

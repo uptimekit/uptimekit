@@ -49,6 +49,11 @@ import {
 } from "@/components/ui/table";
 import { authClient } from "@/lib/auth-client";
 
+const memberRoleOptions = [
+	{ label: "Admin", value: "admin" },
+	{ label: "Member", value: "member" },
+] as const;
+
 export function MembersTable() {
 	const {
 		data: activeOrg,
@@ -277,13 +282,26 @@ export function MembersTable() {
 					<DialogPanel className="space-y-4">
 						<div className="space-y-2">
 							<Label>Role</Label>
-							<Select value={newRole} onValueChange={() => setNewRole}>
+							<Select
+								value={newRole}
+								onValueChange={(value) => {
+									if (value) {
+										setNewRole(value);
+									}
+								}}
+							>
 								<SelectTrigger className="w-full">
-									<SelectValue />
+									<SelectValue>
+										{memberRoleOptions.find((option) => option.value === newRole)
+											?.label}
+									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="admin">Admin</SelectItem>
-									<SelectItem value="member">Member</SelectItem>
+									{memberRoleOptions.map(({ label, value }) => (
+										<SelectItem key={value} value={value}>
+											{label}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
 						</div>

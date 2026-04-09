@@ -512,12 +512,14 @@ export function MonitorsTable() {
 										setPage(1);
 									}}
 								>
-									<SelectTrigger
-										className="h-8 w-full"
-										onPointerDown={(e) => e.stopPropagation()}
-									>
-										<SelectValue placeholder="Page size" />
-									</SelectTrigger>
+								<SelectTrigger
+									className="h-8 w-full"
+									onPointerDown={(e) => e.stopPropagation()}
+								>
+									<SelectValue placeholder="Page size">
+										{pageSize} per page
+									</SelectValue>
+								</SelectTrigger>
 									<SelectContent>
 										{PAGE_SIZE_OPTIONS.map((size) => (
 											<SelectItem key={size} value={size}>

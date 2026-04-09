@@ -59,6 +59,12 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
+const severityOptions = [
+	{ label: "Minor", value: "minor" },
+	{ label: "Major", value: "major" },
+	{ label: "Critical", value: "critical" },
+] as const;
+
 interface Monitor {
 	id: string;
 	name: string;
@@ -165,17 +171,23 @@ export function CreateIncidentForm() {
 										<FormLabel>Severity</FormLabel>
 										<Select
 											onValueChange={field.onChange}
-											defaultValue={field.value}
+											value={field.value}
 										>
 											<FormControl>
 												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Select severity" />
+													<SelectValue placeholder="Select severity">
+														{severityOptions.find(
+															(option) => option.value === field.value,
+														)?.label}
+													</SelectValue>
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
-												<SelectItem value="minor">Minor</SelectItem>
-												<SelectItem value="major">Major</SelectItem>
-												<SelectItem value="critical">Critical</SelectItem>
+												{severityOptions.map(({ label, value }) => (
+													<SelectItem key={value} value={value}>
+														{label}
+													</SelectItem>
+												))}
 											</SelectContent>
 										</Select>
 										<FormMessage />

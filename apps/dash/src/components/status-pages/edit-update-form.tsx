@@ -51,6 +51,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const updateStatusOptions = [
+	{ label: "Investigating", value: "investigating" },
+	{ label: "Identified", value: "identified" },
+	{ label: "Monitoring", value: "monitoring" },
+	{ label: "Resolved", value: "resolved" },
+] as const;
+
 interface EditUpdateFormProps {
 	statusPageId: string;
 	updateId: string;
@@ -202,20 +209,23 @@ export function EditUpdateForm({
 									<FormLabel>Status</FormLabel>
 									<Select
 										onValueChange={field.onChange}
-										defaultValue={field.value}
+										value={field.value}
 									>
 										<FormControl>
 											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Select status" />
+												<SelectValue placeholder="Select status">
+													{updateStatusOptions.find(
+														(option) => option.value === field.value,
+													)?.label}
+												</SelectValue>
 											</SelectTrigger>
 										</FormControl>
 										<SelectContent>
-											<SelectItem value="investigating">
-												Investigating
-											</SelectItem>
-											<SelectItem value="identified">Identified</SelectItem>
-											<SelectItem value="monitoring">Monitoring</SelectItem>
-											<SelectItem value="resolved">Resolved</SelectItem>
+											{updateStatusOptions.map(({ label, value }) => (
+												<SelectItem key={value} value={value}>
+													{label}
+												</SelectItem>
+											))}
 										</SelectContent>
 									</Select>
 									<FormMessage />
@@ -279,7 +289,15 @@ export function EditUpdateForm({
 													}}
 												>
 													<SelectTrigger className="h-7 w-[130px] text-xs">
-														<SelectValue />
+														<SelectValue>
+															{
+																MONITOR_STATUSES.find(
+																	(status) =>
+																		status.value ===
+																		(selectedMonitor.status || "degraded"),
+																)?.label
+															}
+														</SelectValue>
 													</SelectTrigger>
 													<SelectContent>
 														{MONITOR_STATUSES.map((status) => (

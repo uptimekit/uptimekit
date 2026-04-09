@@ -32,6 +32,12 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const maintenanceStatusOptions = [
+	{ label: "Scheduled", value: "scheduled" },
+	{ label: "In Progress", value: "in_progress" },
+	{ label: "Completed", value: "completed" },
+] as const;
+
 interface AddMaintenanceUpdateFormProps {
 	maintenanceId: string;
 	currentStatus: string;
@@ -129,17 +135,23 @@ export function AddMaintenanceUpdateForm({
 								<FormLabel>Status</FormLabel>
 								<Select
 									onValueChange={field.onChange}
-									defaultValue={field.value}
+									value={field.value}
 								>
 									<FormControl>
 										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select status" />
+											<SelectValue placeholder="Select status">
+												{maintenanceStatusOptions.find(
+													(option) => option.value === field.value,
+												)?.label}
+											</SelectValue>
 										</SelectTrigger>
 									</FormControl>
 									<SelectContent>
-										<SelectItem value="scheduled">Scheduled</SelectItem>
-										<SelectItem value="in_progress">In Progress</SelectItem>
-										<SelectItem value="completed">Completed</SelectItem>
+										{maintenanceStatusOptions.map(({ label, value }) => (
+											<SelectItem key={value} value={value}>
+												{label}
+											</SelectItem>
+										))}
 									</SelectContent>
 								</Select>
 								<FormMessage />

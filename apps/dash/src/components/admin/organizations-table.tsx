@@ -50,6 +50,13 @@ const planColors: Record<string, string> = {
 		"bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
 };
 
+const planFilterOptions = [
+	{ label: "All Plans", value: "all" },
+	{ label: "Free", value: "free" },
+	{ label: "Pro", value: "pro" },
+	{ label: "Enterprise", value: "enterprise" },
+] as const;
+
 /**
  * Renders a paginated, searchable table of organizations with plan filtering and basic stats.
  *
@@ -111,13 +118,17 @@ export function OrganizationsTable() {
 						}}
 					>
 						<SelectTrigger className="w-[130px]">
-							<SelectValue placeholder="Plan" />
+							<SelectValue placeholder="Plan">
+								{planFilterOptions.find((option) => option.value === planFilter)
+									?.label}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="all">All Plans</SelectItem>
-							<SelectItem value="free">Free</SelectItem>
-							<SelectItem value="pro">Pro</SelectItem>
-							<SelectItem value="enterprise">Enterprise</SelectItem>
+							{planFilterOptions.map(({ label, value }) => (
+								<SelectItem key={value} value={value}>
+									{label}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 				</div>

@@ -50,6 +50,19 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const updateStatusOptions = [
+	{ label: "Investigating", value: "investigating" },
+	{ label: "Identified", value: "identified" },
+	{ label: "Monitoring", value: "monitoring" },
+	{ label: "Resolved", value: "resolved" },
+] as const;
+
+const severityOptions = [
+	{ label: "Minor", value: "minor" },
+	{ label: "Major", value: "major" },
+	{ label: "Critical", value: "critical" },
+] as const;
+
 interface CreateStatusUpdateFormProps {
 	statusPageId: string;
 	open: boolean;
@@ -167,24 +180,23 @@ export function CreateStatusUpdateForm({
 													<FormLabel>Status</FormLabel>
 													<Select
 														onValueChange={field.onChange}
-														defaultValue={field.value}
+														value={field.value}
 													>
 														<FormControl>
 															<SelectTrigger>
-																<SelectValue placeholder="Select status" />
+																<SelectValue placeholder="Select status">
+																	{updateStatusOptions.find(
+																		(option) => option.value === field.value,
+																	)?.label}
+																</SelectValue>
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															<SelectItem value="investigating">
-																Investigating
-															</SelectItem>
-															<SelectItem value="identified">
-																Identified
-															</SelectItem>
-															<SelectItem value="monitoring">
-																Monitoring
-															</SelectItem>
-															<SelectItem value="resolved">Resolved</SelectItem>
+															{updateStatusOptions.map(({ label, value }) => (
+																<SelectItem key={value} value={value}>
+																	{label}
+																</SelectItem>
+															))}
 														</SelectContent>
 													</Select>
 													<FormMessage />
@@ -199,17 +211,23 @@ export function CreateStatusUpdateForm({
 													<FormLabel>Severity</FormLabel>
 													<Select
 														onValueChange={field.onChange}
-														defaultValue={field.value}
+														value={field.value}
 													>
 														<FormControl>
 															<SelectTrigger>
-																<SelectValue placeholder="Select severity" />
+																<SelectValue placeholder="Select severity">
+																	{severityOptions.find(
+																		(option) => option.value === field.value,
+																	)?.label}
+																</SelectValue>
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															<SelectItem value="minor">Minor</SelectItem>
-															<SelectItem value="major">Major</SelectItem>
-															<SelectItem value="critical">Critical</SelectItem>
+															{severityOptions.map(({ label, value }) => (
+																<SelectItem key={value} value={value}>
+																	{label}
+																</SelectItem>
+															))}
 														</SelectContent>
 													</Select>
 													<FormMessage />
@@ -296,7 +314,15 @@ export function CreateStatusUpdateForm({
 															}}
 														>
 															<SelectTrigger className="h-8 w-[140px] text-xs">
-																<SelectValue />
+																<SelectValue>
+																	{
+																		MONITOR_STATUSES.find(
+																			(status) =>
+																				status.value ===
+																				(selectedMonitor.status || "degraded"),
+																		)?.label
+																	}
+																</SelectValue>
 															</SelectTrigger>
 															<SelectContent>
 																{MONITOR_STATUSES.map((status) => (
