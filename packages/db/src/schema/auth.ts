@@ -138,6 +138,8 @@ export const organization = pgTable("organization", {
 	name: text("name").notNull(),
 	slug: text("slug").notNull().unique(),
 	logo: text("logo"),
+	activeMonitorLimit: integer("active_monitor_limit"),
+	regionsPerMonitorLimit: integer("regions_per_monitor_limit"),
 	createdAt: timestamp("created_at").notNull(),
 	metadata: text("metadata"),
 });

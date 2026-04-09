@@ -542,6 +542,9 @@ export function CreateMonitorForm({
 }: CreateMonitorFormProps) {
 	// Fetch regions
 	const { data: regions } = useQuery(orpc.workers.listLocations.queryOptions());
+	const { data: organizationQuota } = useQuery(
+		orpc.organizations.getActiveQuota.queryOptions(),
+	);
 	const { data: groups } = useQuery(orpc.monitors.listGroups.queryOptions());
 	const { data: tags } = useQuery(orpc.monitors.listTags.queryOptions());
 
@@ -667,6 +670,11 @@ export function CreateMonitorForm({
 
 	const locations = form.watch("locations") || [];
 	const hasAnySelection = locations.length > 0;
+	const regionLimit = organizationQuota?.regionsPerMonitorLimit ?? null;
+	const activeMonitorLimit = organizationQuota?.activeMonitorLimit ?? null;
+	const selectedRegionCount = locations.length;
+	const isOverRegionLimit =
+		regionLimit !== null && selectedRegionCount > regionLimit;
 
 	// State for collapsible continents
 	const [openContinents, setOpenContinents] = useState<Record<string, boolean>>(
@@ -985,7 +993,7 @@ export function CreateMonitorForm({
 								<FormField
 									control={form.control}
 									name="locations"
-									render={({ field }) => (
+									render={() => (
 										<FormItem>
 											<FormLabel className="flex items-center justify-between">
 												Regions
@@ -998,6 +1006,29 @@ export function CreateMonitorForm({
 													{hasAnySelection ? "Deselect all" : "Select all"}
 												</Button>
 											</FormLabel>
+											<div className="rounded-lg border bg-muted/20 p-3 text-sm">
+												<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+													<span className="font-medium">
+														Active monitors:{" "}
+														{organizationQuota?.activeMonitorCount ?? 0}
+														{activeMonitorLimit === null
+															? " / unlimited"
+															: ` / ${activeMonitorLimit}`}
+													</span>
+													<span className="text-muted-foreground">
+														Selected regions: {selectedRegionCount}
+														{regionLimit === null
+															? " / unlimited"
+															: ` / ${regionLimit}`}
+													</span>
+												</div>
+												{isOverRegionLimit && (
+													<p className="mt-2 text-destructive text-xs">
+														This organization allows at most {regionLimit}{" "}
+														region(s) per monitor.
+													</p>
+												)}
+											</div>
 											<div className="space-y-2">
 												{Object.entries(regionsByContinent)
 													.sort(([a], [b]) => a.localeCompare(b))
@@ -1122,15 +1153,16 @@ export function CreateMonitorForm({
 											render={({ field }) => {
 												const selectedPendingDuration =
 													confirmationPeriodOptions.find(
-														(option) =>
-															option.value === field.value.toString(),
+														(option) => option.value === field.value.toString(),
 													);
 
 												return (
 													<FormItem>
 														<FormLabel>Confirmation period (Pending)</FormLabel>
 														<Select
-															onValueChange={(val) => field.onChange(Number(val))}
+															onValueChange={(val) =>
+																field.onChange(Number(val))
+															}
 															value={field.value.toString()}
 														>
 															<FormControl>
@@ -1164,15 +1196,16 @@ export function CreateMonitorForm({
 											render={({ field }) => {
 												const selectedRecoveryDuration =
 													recoveryPeriodOptions.find(
-														(option) =>
-															option.value === field.value.toString(),
+														(option) => option.value === field.value.toString(),
 													);
 
 												return (
 													<FormItem>
 														<FormLabel>Recovery period</FormLabel>
 														<Select
-															onValueChange={(val) => field.onChange(Number(val))}
+															onValueChange={(val) =>
+																field.onChange(Number(val))
+															}
 															value={field.value.toString()}
 														>
 															<FormControl>
@@ -1183,11 +1216,13 @@ export function CreateMonitorForm({
 																</SelectTrigger>
 															</FormControl>
 															<SelectContent>
-																{recoveryPeriodOptions.map(({ label, value }) => (
-																	<SelectItem key={value} value={value}>
-																		{label}
-																	</SelectItem>
-																))}
+																{recoveryPeriodOptions.map(
+																	({ label, value }) => (
+																		<SelectItem key={value} value={value}>
+																			{label}
+																		</SelectItem>
+																	),
+																)}
 															</SelectContent>
 														</Select>
 														<FormDescription>
@@ -1263,8 +1298,7 @@ export function CreateMonitorForm({
 					<DialogHeader>
 						<DialogTitle>Manage Tags</DialogTitle>
 						<DialogDescription>
-							Create, edit, and delete monitor tags without leaving this
-							form.
+							Create, edit, and delete monitor tags without leaving this form.
 						</DialogDescription>
 					</DialogHeader>
 					<TagsManager />

@@ -1,0 +1,1 @@
+export const isCloud = process.env.IS_CLOUD || false

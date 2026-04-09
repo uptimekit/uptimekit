@@ -3,7 +3,19 @@ import { organization } from "@uptimekit/db/schema/auth";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { adminProcedure } from "../index";
+import { adminProcedure, protectedProcedure } from "../index";
+import {
+	applyOrganizationLimitChanges,
+	getOrganizationQuotaState,
+} from "../lib/organization-limits";
+
+const organizationLimitSchema = z
+	.number()
+	.int()
+	.min(1)
+	.nullable()
+	.optional()
+	.transform((value) => value ?? null);
 
 export const organizationsRouter = {
 	list: adminProcedure
@@ -47,15 +59,21 @@ export const organizationsRouter = {
 					name: organization.name,
 					slug: organization.slug,
 					logo: organization.logo,
+					activeMonitorLimit: organization.activeMonitorLimit,
+					regionsPerMonitorLimit: organization.regionsPerMonitorLimit,
 					createdAt: organization.createdAt,
 					memberCount:
-						sql<number>`(SELECT COUNT(*) FROM "member" WHERE "member"."organization_id" = "organization"."id")`.as(
-							"member_count",
-						),
-					monitorCount:
-						sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id")`.as(
-							"monitor_count",
-						),
+						sql<number>`(SELECT COUNT(*) FROM "member" WHERE "member"."organization_id" = "organization"."id")`
+							.mapWith(Number)
+							.as("member_count"),
+					totalMonitorCount:
+						sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id")`
+							.mapWith(Number)
+							.as("total_monitor_count"),
+					activeMonitorCount:
+						sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id" AND "monitor"."active" = true)`
+							.mapWith(Number)
+							.as("active_monitor_count"),
 				})
 				.from(organization)
 				.where(whereClause)
@@ -118,5 +136,54 @@ export const organizationsRouter = {
 				...org,
 				monitorCount: monitorCountResult?.count || 0,
 			};
+		}),
+
+	updateLimits: adminProcedure
+		.meta({
+			openapi: {
+				method: "PATCH",
+				path: "/admin/organizations/{id}/limits",
+				tags: ["Admin - Organizations"],
+				summary: "Update organization quota limits",
+				description:
+					"Update per-organization monitor and region limits and auto-pause monitors when needed.",
+			},
+		})
+		.input(
+			z.object({
+				id: z.string(),
+				activeMonitorLimit: organizationLimitSchema,
+				regionsPerMonitorLimit: organizationLimitSchema,
+			}),
+		)
+		.handler(async ({ input }) => {
+			const result = await applyOrganizationLimitChanges({
+				organizationId: input.id,
+				activeMonitorLimit: input.activeMonitorLimit,
+				regionsPerMonitorLimit: input.regionsPerMonitorLimit,
+			});
+
+			return result;
+		}),
+
+	getActiveQuota: protectedProcedure
+		.meta({
+			openapi: {
+				method: "GET",
+				path: "/organizations/active/quota",
+				tags: ["Organizations"],
+				summary: "Get active organization quotas",
+				description:
+					"Return the active organization's configured limits and current monitor usage.",
+			},
+		})
+		.handler(async ({ context }) => {
+			const organizationId = context.session.session.activeOrganizationId;
+
+			if (!organizationId) {
+				return null;
+			}
+
+			return getOrganizationQuotaState(organizationId);
 		}),
 };

@@ -80,7 +80,19 @@ export interface Monitor {
 	frequency: string;
 	hasIncident: boolean;
 	active: boolean;
+	pauseReason?: string | null;
 	tags?: Array<{ id: string; name: string; color: string }>;
+}
+
+function getPauseLabel(pauseReason?: string | null) {
+	switch (pauseReason) {
+		case "org_active_monitor_limit":
+			return "PAUSED BY MONITOR LIMIT";
+		case "org_region_limit":
+			return "PAUSED BY REGION LIMIT";
+		default:
+			return "PAUSED";
+	}
 }
 
 /**
@@ -193,6 +205,7 @@ export function MonitorsTable() {
 			frequency: `${m.interval}s`,
 			hasIncident: false,
 			active: m.active,
+			pauseReason: (m as any).pauseReason,
 			tags: (m as any).tags || [],
 			groupId: (m as any).groupId,
 		})) ?? [];
@@ -512,14 +525,14 @@ export function MonitorsTable() {
 										setPage(1);
 									}}
 								>
-								<SelectTrigger
-									className="h-8 w-full"
-									onPointerDown={(e) => e.stopPropagation()}
-								>
-									<SelectValue placeholder="Page size">
-										{pageSize} per page
-									</SelectValue>
-								</SelectTrigger>
+									<SelectTrigger
+										className="h-8 w-full"
+										onPointerDown={(e) => e.stopPropagation()}
+									>
+										<SelectValue placeholder="Page size">
+											{pageSize} per page
+										</SelectValue>
+									</SelectTrigger>
 									<SelectContent>
 										{PAGE_SIZE_OPTIONS.map((size) => (
 											<SelectItem key={size} value={size}>
@@ -719,7 +732,7 @@ export function MonitorsTable() {
 																	{monitor.name}
 																	{!monitor.active && (
 																		<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
-																			PAUSED
+																			{getPauseLabel(monitor.pauseReason)}
 																		</span>
 																	)}
 																	{monitor.tags && monitor.tags.length > 0 && (
@@ -914,7 +927,11 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 						toggleMonitor({ id: monitor.id, active: !monitor.active });
 					}}
 				>
-					{monitor.active ? "Pause monitoring" : "Resume monitoring"}
+					{monitor.active
+						? "Pause monitoring"
+						: monitor.pauseReason
+							? "Resume monitoring (re-check limits)"
+							: "Resume monitoring"}
 				</DropdownMenuItem>
 				<AlertDialog>
 					<AlertDialogTrigger

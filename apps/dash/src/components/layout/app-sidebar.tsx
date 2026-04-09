@@ -87,6 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		authClient.useListOrganizations();
 	const { data: activeOrg } = authClient.useActiveOrganization();
 	const { data: session } = authClient.useSession();
+	const isGlobalAdmin = session?.user?.role === "admin";
 
 	// Use organization info safely
 	// Note: Better-auth might return null/undefined while loading
@@ -160,12 +161,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 											className="gap-2 p-2"
 										>
 											<div className="flex size-6 items-center justify-center overflow-hidden rounded-sm border">
-												<img
+												<Image
 													src={
 														org.logo ||
 														"https://r2.uptimekit.dev/logos/uptimekit.svg"
 													}
 													alt={org.name}
+													width={24}
+													height={24}
 													className="size-full object-cover"
 												/>
 											</div>
@@ -178,18 +181,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 										</DropdownMenuItem>
 									))
 								)}
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									className="cursor-pointer gap-2 p-2"
-									onSelect={() => setShowCreateOrgModal(true)}
-								>
-									<div className="flex size-6 items-center justify-center rounded-md border bg-background">
-										<Plus className="size-4" />
-									</div>
-									<div className="font-medium text-muted-foreground">
-										Add Organization
-									</div>
-								</DropdownMenuItem>
+								{isGlobalAdmin && (
+									<>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem
+											className="cursor-pointer gap-2 p-2"
+											onSelect={() => setShowCreateOrgModal(true)}
+										>
+											<div className="flex size-6 items-center justify-center rounded-md border bg-background">
+												<Plus className="size-4" />
+											</div>
+											<div className="font-medium text-muted-foreground">
+												Add Organization
+											</div>
+										</DropdownMenuItem>
+									</>
+								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</SidebarMenuItem>
@@ -271,10 +278,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				</SidebarMenu>
 			</SidebarFooter>
 			<SidebarRail />
-			<CreateOrganizationDialog
-				open={showCreateOrgModal}
-				setOpen={setShowCreateOrgModal}
-			/>
+			{isGlobalAdmin && (
+				<CreateOrganizationDialog
+					open={showCreateOrgModal}
+					setOpen={setShowCreateOrgModal}
+				/>
+			)}
 		</Sidebar>
 	);
 }

@@ -41,6 +41,7 @@ export const monitor = pgTable(
 		name: text("name").notNull(),
 		type: text("type").notNull(), // 'http', 'tcp', 'ping', 'dns', etc.
 		active: boolean("active").default(true).notNull(),
+		pauseReason: text("pause_reason"),
 		interval: integer("interval").default(60).notNull(), // in seconds
 		timeout: integer("timeout").default(30).notNull(), // in seconds
 		incidentPendingDuration: integer("incident_pending_duration")

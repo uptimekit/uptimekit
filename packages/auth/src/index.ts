@@ -44,6 +44,7 @@ export const auth = betterAuth({
 		nextCookies(),
 		admin(),
 		organization({
+			allowUserToCreateOrganization: (user) => user.role === "admin",
 			organizationHooks: {
 				beforeCreateOrganization: async ({ organization }) => {
 					return {

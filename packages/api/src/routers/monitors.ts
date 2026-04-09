@@ -11,6 +11,7 @@ import { monitorTag, tag } from "@uptimekit/db/schema/tags";
 import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+import { enforceMonitorQuotaOrThrow } from "../lib/organization-limits";
 import type {
 	ChangeHistoryResult,
 	LatestChangeResult,
@@ -303,6 +304,12 @@ export const monitorsRouter = {
 			}),
 		)
 		.handler(async ({ input, context }) => {
+			await enforceMonitorQuotaOrThrow({
+				organizationId: context.session.session.activeOrganizationId!,
+				nextLocations: input.locations,
+				nextActive: true,
+			});
+
 			const [newMonitor] = await db
 				.insert(monitor)
 				.values({
@@ -314,6 +321,7 @@ export const monitorsRouter = {
 					locations: input.locations,
 					groupId: input.groupId,
 					active: true,
+					pauseReason: null,
 					incidentPendingDuration: input.incidentPendingDuration,
 					incidentRecoveryDuration: input.incidentRecoveryDuration,
 					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
@@ -433,9 +441,21 @@ export const monitorsRouter = {
 				throw new ORPCError("NOT_FOUND");
 			}
 
+			if (input.active) {
+				await enforceMonitorQuotaOrThrow({
+					organizationId: existing.organizationId,
+					nextLocations: existing.locations as string[],
+					nextActive: true,
+					excludeMonitorId: existing.id,
+				});
+			}
+
 			await db
 				.update(monitor)
-				.set({ active: input.active })
+				.set({
+					active: input.active,
+					pauseReason: null,
+				})
 				.where(eq(monitor.id, input.id));
 
 			return { success: true };
@@ -479,6 +499,13 @@ export const monitorsRouter = {
 				throw new ORPCError("NOT_FOUND");
 			}
 
+			await enforceMonitorQuotaOrThrow({
+				organizationId: existing.organizationId,
+				nextLocations: input.locations,
+				nextActive: input.active,
+				excludeMonitorId: existing.id,
+			});
+
 			await db
 				.update(monitor)
 				.set({
@@ -492,6 +519,7 @@ export const monitorsRouter = {
 					incidentRecoveryDuration: input.incidentRecoveryDuration,
 					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
 					active: input.active,
+					pauseReason: null,
 				})
 				.where(eq(monitor.id, input.id));
 

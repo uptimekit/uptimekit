@@ -23,6 +23,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 
+function getPauseDescription(pauseReason?: string | null) {
+	switch (pauseReason) {
+		case "org_active_monitor_limit":
+			return "Paused automatically after the organization active monitor limit was lowered.";
+		case "org_region_limit":
+			return "Paused automatically after the organization region limit was lowered.";
+		default:
+			return "Paused";
+	}
+}
+
 export default function MonitorDetailsPage() {
 	const queryClient = useQueryClient();
 	const params = useParams();
@@ -143,7 +154,6 @@ export default function MonitorDetailsPage() {
 
 	// Get display target based on monitor type
 	const getMonitorTarget = () => {
-		// biome-ignore lint/suspicious/noExplicitAny: its okay
 		const config = monitor.config as Record<string, any>;
 		switch (monitor.type) {
 			case "tcp":
@@ -175,7 +185,7 @@ export default function MonitorDetailsPage() {
 						</h1>
 						{!monitor.active && (
 							<Badge variant="outline" className="text-zinc-500">
-								Paused
+								{monitor.pauseReason ? "Paused by quota" : "Paused"}
 							</Badge>
 						)}
 						<Badge
@@ -198,6 +208,11 @@ export default function MonitorDetailsPage() {
 						<Clock className="h-3.5 w-3.5" />
 						<span>Checked every {monitor.interval}s</span>
 					</div>
+					{!monitor.active && monitor.pauseReason && (
+						<p className="text-amber-600 text-sm dark:text-amber-400">
+							{getPauseDescription(monitor.pauseReason)}
+						</p>
+					)}
 				</div>
 				<div className="ml-auto flex items-center gap-2">
 					<Button
