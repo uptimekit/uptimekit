@@ -8,7 +8,7 @@
 		"start": "next start"
 	},
 	"dependencies": {
-		"@clickhouse/client": "^1.15.0",
+		"@clickhouse/client": "^1.18.2",
 		"@node-rs/argon2": "^2.0.2",
 		"@radix-ui/react-slot": "^1.2.4",
 		"@radix-ui/react-tooltip": "^1.2.8",
@@ -18,25 +18,25 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
-		"drizzle-orm": "catalog:",
-		"ioredis": "^5.8.2",
+		"drizzle-orm": "^0.45.2",
+		"ioredis": "^5.10.1",
 		"lucide-react": "^0.546.0",
-		"motion": "^12.23.24",
-		"next": "^16.1.5",
+		"motion": "^12.38.0",
+		"next": "^16.2.3",
 		"next-themes": "^0.4.6",
 		"react": "19.2.1",
 		"react-dom": "19.2.1",
-		"tailwind-merge": "^3.4.0",
-		"zod": "catalog:"
+		"tailwind-merge": "^3.5.0",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"@tailwindcss/postcss": "^4.1.10",
-		"@types/node": "^20",
+		"@tailwindcss/postcss": "^4.2.2",
+		"@types/node": "^20.19.39",
 		"@types/react": "19.2.2",
 		"@types/react-dom": "19.2.2",
 		"@uptimekit/config": "workspace:*",
-		"tailwindcss": "^4.1.10",
+		"tailwindcss": "^4.2.2",
 		"tw-animate-css": "^1.4.0",
-		"typescript": "^5"
+		"typescript": "^5.9.3"
 	}
 }

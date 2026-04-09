@@ -45,7 +45,7 @@
 		"@types/node": "^22.19.17",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.4.0",
-		"turbo": "^2.9.4"
+		"turbo": "^2.9.5"
 	},
 	"lint-staged": {
 		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
