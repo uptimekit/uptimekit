@@ -13,10 +13,7 @@ import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { and, eq, isNull } from "drizzle-orm";
 import { eventBus } from "../../lib/events";
-import type {
-	LatestChangeResult,
-	LatestEventResult,
-} from "../../types/clickhouse";
+import type { LatestEventResult } from "../../types/clickhouse";
 
 // Types
 export interface HTTPTimings {
@@ -45,6 +42,11 @@ interface MonitorChangeInsert {
 	status: string;
 	timestamp: Date;
 	location?: string | null;
+}
+
+interface RegionStatusSnapshot {
+	status: MonitorEvent["status"];
+	timestamp: Date;
 }
 
 /**
@@ -283,6 +285,41 @@ async function processMonitorEventGroup(
 		(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
 	);
 
+	const configuredLocations = Array.isArray(monitorConfig.locations)
+		? monitorConfig.locations
+		: [];
+
+	const latestRegionalStatusQuery = await clickhouse.query({
+		query: `
+			SELECT location, status, timestamp
+			FROM (
+				SELECT
+					location,
+					status,
+					timestamp,
+					ROW_NUMBER() OVER (PARTITION BY location ORDER BY timestamp DESC) AS rn
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String}
+			)
+			WHERE rn = 1
+		`,
+		query_params: { monitorId },
+		format: "JSON",
+	});
+	const latestRegionalStatusJson = await latestRegionalStatusQuery.json<any>();
+	const latestRegionalStatuses = latestRegionalStatusJson.data as Array<{
+		location: string;
+		status: MonitorEvent["status"];
+		timestamp: string;
+	}>;
+	const regionStatusByLocation = new Map<string, RegionStatusSnapshot>();
+	for (const regionStatus of latestRegionalStatuses) {
+		regionStatusByLocation.set(regionStatus.location, {
+			status: regionStatus.status,
+			timestamp: new Date(regionStatus.timestamp),
+		});
+	}
+
 	// Get latest status from ClickHouse
 	const lastEventQuery = await clickhouse.query({
 		query:
@@ -293,24 +330,11 @@ async function processMonitorEventGroup(
 	const lastEventJson = await lastEventQuery.json<any>();
 	const lastEvent = (lastEventJson.data as LatestEventResult[])[0];
 
-	const lastChangeQuery = await clickhouse.query({
-		query:
-			"SELECT status, timestamp FROM uptimekit.monitor_changes WHERE monitorId = {monitorId:String} ORDER BY timestamp DESC LIMIT 1",
-		query_params: { monitorId },
-		format: "JSON",
-	});
-	const lastChangeJson = await lastChangeQuery.json<any>();
-	const lastChangeRecord = (lastChangeJson.data as LatestChangeResult[])[0];
-
 	let currentStatus = lastEvent?.status;
-	let lastChangeTime = lastChangeRecord?.timestamp
-		? new Date(lastChangeRecord.timestamp)
-		: lastEvent?.timestamp
-			? new Date(lastEvent.timestamp)
-			: new Date();
 
 	for (const event of monitorEvents) {
 		const eventTime = new Date(event.timestamp);
+		const eventLocation = event.location || workerLocation;
 		const isChange =
 			currentStatus !== undefined && currentStatus !== event.status;
 		const isFirstEvent = currentStatus === undefined;
@@ -321,15 +345,35 @@ async function processMonitorEventGroup(
 				monitorId: event.monitorId,
 				status: event.status,
 				timestamp: eventTime,
-				location: event.location || workerLocation,
+				location: eventLocation,
 			});
 			currentStatus = event.status;
-			lastChangeTime = eventTime;
 		}
 
-		// Incident logic
-		if (currentStatus === "down") {
-			const durationMs = eventTime.getTime() - lastChangeTime.getTime();
+		regionStatusByLocation.set(eventLocation, {
+			status: event.status,
+			timestamp: eventTime,
+		});
+
+		const configuredRegionStates = configuredLocations
+			.map((location) => regionStatusByLocation.get(location))
+			.filter((state): state is RegionStatusSnapshot => !!state);
+
+		const allRegionsReporting =
+			configuredLocations.length > 0 &&
+			configuredRegionStates.length === configuredLocations.length;
+		const allRegionsDown =
+			allRegionsReporting &&
+			configuredRegionStates.every((state) => state.status === "down");
+
+		// Automatic incidents only open when every configured region is currently down.
+		if (allRegionsDown) {
+			const allRegionsDownSince = new Date(
+				Math.max(
+					...configuredRegionStates.map((state) => state.timestamp.getTime()),
+				),
+			);
+			const durationMs = eventTime.getTime() - allRegionsDownSince.getTime();
 			const pendingMs = monitorConfig.incidentPendingDuration * 1000;
 
 			if (durationMs >= pendingMs && !activeIncident) {
@@ -391,13 +435,13 @@ async function processMonitorEventGroup(
 				activitiesToInsert.push({
 					id: crypto.randomUUID(),
 					incidentId: newIncidentId,
-					message: `Incident opened automatically. Monitor reported down due to: ${event.error || "unknown error"}. (Region: ${event.location || workerLocation})`,
+					message: `Incident opened automatically. All configured regions are reporting down. Last failure: ${event.error || "unknown error"}. (Region: ${eventLocation})`,
 					type: "event",
 					createdAt: eventTime,
 					userId: null,
 				});
 			}
-		} else if (currentStatus === "up" && activeIncident) {
+		} else if (activeIncident) {
 			await db
 				.update(incident)
 				.set({
@@ -419,7 +463,8 @@ async function processMonitorEventGroup(
 			activitiesToInsert.push({
 				id: crypto.randomUUID(),
 				incidentId: activeIncident.id,
-				message: "Monitor recovered. Incident resolved automatically.",
+				message:
+					"Monitor recovered in at least one region. Incident resolved automatically.",
 				type: "event",
 				createdAt: eventTime,
 				userId: null,

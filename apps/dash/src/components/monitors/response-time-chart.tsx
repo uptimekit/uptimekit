@@ -90,6 +90,13 @@ interface ChartDataPoint {
 	[key: string]: number | string | null;
 }
 
+const ONE_MINUTE_MS = 60_000;
+
+const getMinuteBucketStart = (timestamp: string) => {
+	const time = new Date(timestamp).getTime();
+	return new Date(Math.floor(time / ONE_MINUTE_MS) * ONE_MINUTE_MS);
+};
+
 /**
  * Renders a response time chart for a monitor with multi-region support.
  *
@@ -192,13 +199,16 @@ export function ResponseTimeChart({
 	const chartData = useMemo((): ChartDataPoint[] => {
 		if (!rawData || rawData.length === 0) return [];
 
-		// Group by timestamp
+		// Merge all readings that land in the same minute bucket.
 		const grouped = rawData.reduce(
 			(acc, item) => {
-				if (!acc[item.timestamp]) {
-					acc[item.timestamp] = { items: [], timestamp: item.timestamp };
+				const bucketTimestamp = getMinuteBucketStart(
+					item.timestamp,
+				).toISOString();
+				if (!acc[bucketTimestamp]) {
+					acc[bucketTimestamp] = { items: [], timestamp: bucketTimestamp };
 				}
-				acc[item.timestamp].items.push(item);
+				acc[bucketTimestamp].items.push(item);
 				return acc;
 			},
 			{} as Record<string, { items: RawDataPoint[]; timestamp: string }>,
@@ -213,23 +223,72 @@ export function ResponseTimeChart({
 			const items: RawDataPoint[] = grouped[ts].items;
 			const timestamp = new Date(ts);
 
-			// Build a location → item map for O(1) lookup
-			const byLocation = new Map<string, RawDataPoint>();
-			items.forEach((item) => byLocation.set(item.location, item));
+			// If a location reported multiple times within the same minute, average them
+			// so each region contributes a single point to that bucket.
+			const itemsByLocation = items.reduce((acc, item) => {
+				const existing = acc.get(item.location) || [];
+				existing.push(item);
+				acc.set(item.location, existing);
+				return acc;
+			}, new Map<string, RawDataPoint[]>());
+
+			const averagedItems = Array.from(itemsByLocation.entries()).map(
+				([location, locationItems]) => {
+					const average = (values: number[]) =>
+						values.reduce((sum, value) => sum + value, 0) / values.length;
+					const averageOptional = (
+						values: Array<number | undefined>,
+					): number | undefined => {
+						const definedValues = values.filter(
+							(value): value is number => value !== undefined,
+						);
+						return definedValues.length > 0
+							? average(definedValues)
+							: undefined;
+					};
+
+					return {
+						location,
+						latency: average(locationItems.map((item) => item.latency)),
+						dnsLookup: averageOptional(
+							locationItems.map((item) => item.dnsLookup),
+						),
+						tcpConnect: averageOptional(
+							locationItems.map((item) => item.tcpConnect),
+						),
+						tlsHandshake: averageOptional(
+							locationItems.map((item) => item.tlsHandshake),
+						),
+						ttfb: averageOptional(locationItems.map((item) => item.ttfb)),
+						transfer: averageOptional(
+							locationItems.map((item) => item.transfer),
+						),
+					};
+				},
+			);
+
+			const byLocation = new Map<string, (typeof averagedItems)[number]>();
+			averagedItems.forEach((item) => byLocation.set(item.location, item));
 
 			// Averages across regions present at this timestamp (used by breakdown view)
 			const avgLatency =
-				items.reduce((sum, i) => sum + i.latency, 0) / items.length;
+				averagedItems.reduce((sum, i) => sum + i.latency, 0) /
+				averagedItems.length;
 			const avgDnsLookup =
-				items.reduce((sum, i) => sum + (i.dnsLookup || 0), 0) / items.length;
+				averagedItems.reduce((sum, i) => sum + (i.dnsLookup || 0), 0) /
+				averagedItems.length;
 			const avgTcpConnect =
-				items.reduce((sum, i) => sum + (i.tcpConnect || 0), 0) / items.length;
+				averagedItems.reduce((sum, i) => sum + (i.tcpConnect || 0), 0) /
+				averagedItems.length;
 			const avgTlsHandshake =
-				items.reduce((sum, i) => sum + (i.tlsHandshake || 0), 0) / items.length;
+				averagedItems.reduce((sum, i) => sum + (i.tlsHandshake || 0), 0) /
+				averagedItems.length;
 			const avgTtfb =
-				items.reduce((sum, i) => sum + (i.ttfb || 0), 0) / items.length;
+				averagedItems.reduce((sum, i) => sum + (i.ttfb || 0), 0) /
+				averagedItems.length;
 			const avgTransfer =
-				items.reduce((sum, i) => sum + (i.transfer || 0), 0) / items.length;
+				averagedItems.reduce((sum, i) => sum + (i.transfer || 0), 0) /
+				averagedItems.length;
 
 			// Per-region slots: null for any region absent at this timestamp
 			const perRegionData: Record<string, number | null> = {};
@@ -332,7 +391,7 @@ export function ResponseTimeChart({
 				: [];
 
 		return (
-			<div className="w-56 rounded-lg border border-border bg-background text-sm text-muted-foreground shadow-lg">
+			<div className="w-56 rounded-lg border border-border bg-background text-muted-foreground text-sm shadow-lg">
 				<div className="border-border border-b px-3 py-2">
 					<p className="font-medium text-foreground">{timeDisplay}</p>
 				</div>
