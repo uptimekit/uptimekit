@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
 			},
 		],
 	},
+	logging: {
+		incomingRequests: {
+			ignore: [/api\/v1\/health/],
+		},
+	},
 };
 
 export default nextConfig;

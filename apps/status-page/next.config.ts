@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
 	typedRoutes: true,
 	reactCompiler: true,
 	output: "standalone",
+	logging: {
+		incomingRequests: {
+			ignore: [/api\/v1\/health/],
+		},
+	},
 };
 
 export default nextConfig;
