@@ -137,9 +137,11 @@ export function InviteMemberDialog() {
 												<FormControl>
 													<SelectTrigger className="w-full">
 														<SelectValue placeholder="Select a role">
-															{roleOptions.find(
-																(option) => option.value === field.value,
-															)?.label}
+															{
+																roleOptions.find(
+																	(option) => option.value === field.value,
+																)?.label
+															}
 														</SelectValue>
 													</SelectTrigger>
 												</FormControl>

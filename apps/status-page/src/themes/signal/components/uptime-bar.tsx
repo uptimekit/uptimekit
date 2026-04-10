@@ -222,7 +222,11 @@ export function UptimeBar({
 	const hoveredSegments =
 		style === "length" && hoveredDay ? calculateSegments(hoveredDay) : null;
 	const compactGapClassName =
-		days.length <= 30 ? "gap-[3px]" : days.length <= 60 ? "gap-[2px]" : "gap-px";
+		days.length <= 30
+			? "gap-[3px]"
+			: days.length <= 60
+				? "gap-[2px]"
+				: "gap-px";
 	const tooltipLeft =
 		hoveredIndex !== null
 			? `${((hoveredIndex + 0.5) / days.length) * 100}%`

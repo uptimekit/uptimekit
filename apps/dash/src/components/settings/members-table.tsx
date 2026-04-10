@@ -292,8 +292,11 @@ export function MembersTable() {
 							>
 								<SelectTrigger className="w-full">
 									<SelectValue>
-										{memberRoleOptions.find((option) => option.value === newRole)
-											?.label}
+										{
+											memberRoleOptions.find(
+												(option) => option.value === newRole,
+											)?.label
+										}
 									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>

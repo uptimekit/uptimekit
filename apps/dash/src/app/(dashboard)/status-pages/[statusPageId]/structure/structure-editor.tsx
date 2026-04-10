@@ -932,9 +932,11 @@ function MonitorConfigModal({
 						>
 							<SelectTrigger className="w-full">
 								<SelectValue>
-									{monitorStyleOptions.find(
-										(option) => option.value === monitor.style,
-									)?.label}
+									{
+										monitorStyleOptions.find(
+											(option) => option.value === monitor.style,
+										)?.label
+									}
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>

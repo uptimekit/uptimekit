@@ -207,16 +207,15 @@ export function EditUpdateForm({
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Status</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										value={field.value}
-									>
+									<Select onValueChange={field.onChange} value={field.value}>
 										<FormControl>
 											<SelectTrigger className="w-full">
 												<SelectValue placeholder="Select status">
-													{updateStatusOptions.find(
-														(option) => option.value === field.value,
-													)?.label}
+													{
+														updateStatusOptions.find(
+															(option) => option.value === field.value,
+														)?.label
+													}
 												</SelectValue>
 											</SelectTrigger>
 										</FormControl>

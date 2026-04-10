@@ -313,7 +313,7 @@ export async function GET(request: Request) {
 				>
 					Powered by
 				</div>
-				{/* eslint-disable-next-line @next/next/no-img-element */}
+				{/* biome-ignore lint/performance/noImgElement: ImageResponse markup uses raw img */}
 				<img src={logoSrc} alt="UptimeKit" height={32} />
 				<div
 					style={{

@@ -11,6 +11,18 @@ import { protectedProcedure, writeProcedure } from "../index";
 import { hashPassword } from "../lib/password";
 import { redis } from "../lib/redis";
 
+function getActiveOrganizationId(
+	activeOrganizationId: string | null | undefined,
+) {
+	if (!activeOrganizationId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "No active organization",
+		});
+	}
+
+	return activeOrganizationId;
+}
+
 export const statusPagesRouter = {
 	list: protectedProcedure
 		.meta({
@@ -37,7 +49,7 @@ export const statusPagesRouter = {
 			const filters = [
 				eq(
 					statusPage.organizationId,
-					context.session.session.activeOrganizationId!,
+					getActiveOrganizationId(context.session.session.activeOrganizationId),
 				),
 			];
 
@@ -120,7 +132,9 @@ export const statusPagesRouter = {
 					id: crypto.randomUUID(),
 					name: input.name,
 					slug: input.slug,
-					organizationId: context.session.session.activeOrganizationId!,
+					organizationId: getActiveOrganizationId(
+						context.session.session.activeOrganizationId,
+					),
 					public: !input.isPrivate,
 				})
 				.returning();
@@ -145,7 +159,9 @@ export const statusPagesRouter = {
 					eq(statusPage.id, input.id),
 					eq(
 						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -187,7 +203,9 @@ export const statusPagesRouter = {
 						theme: z.enum(["light", "dark"]).optional(),
 						headerLayout: z.enum(["vertical", "horizontal"]).optional(),
 						barStyle: z.enum(["normal", "length", "signal"]).optional(),
-						barDays: z.union([z.literal(30), z.literal(60), z.literal(90)]).optional(),
+						barDays: z
+							.union([z.literal(30), z.literal(60), z.literal(90)])
+							.optional(),
 						faviconUrl: z.string().optional(),
 					})
 					.optional(),
@@ -206,7 +224,9 @@ export const statusPagesRouter = {
 					eq(statusPage.id, input.id),
 					eq(
 						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -290,7 +310,9 @@ export const statusPagesRouter = {
 					eq(statusPage.id, input.id),
 					eq(
 						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -358,7 +380,9 @@ export const statusPagesRouter = {
 					eq(statusPage.id, input.id),
 					eq(
 						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -423,7 +447,9 @@ export const statusPagesRouter = {
 					eq(statusPage.id, input.id),
 					eq(
 						statusPage.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});

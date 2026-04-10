@@ -326,18 +326,86 @@ export function UptimeBar({
 							}}
 						>
 							{days.map((day, index) => (
+								<>
+									{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
+									<div
+										key={day.date}
+										className="relative h-full"
+										onMouseEnter={() => setHoveredIndex(index)}
+										onMouseLeave={() => setHoveredIndex(null)}
+									>
+										{hoveredIndex === index ? (
+											<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
+												<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
+											</div>
+										) : null}
+										{hoveredIndex === index ? (
+											<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
+												<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+													<div className="font-semibold text-popover-foreground text-sm">
+														{day.annotation || statusConfig[day.status].label}
+													</div>
+													<div className="mt-1 text-muted-foreground text-xs">
+														{new Date(day.date).toLocaleDateString("en-US", {
+															weekday: "long",
+															month: "short",
+															day: "numeric",
+															year: "numeric",
+														})}
+													</div>
+													{day.duration ? (
+														<div className="mt-1 text-muted-foreground text-xs">
+															Duration: {day.duration}
+														</div>
+													) : (
+														day.status !== "unknown" && (
+															<div className="mt-1 text-muted-foreground text-xs">
+																{day.downtimeMs !== undefined &&
+																day.downtimeMs > 0
+																	? formatDowntime(day.downtimeMs)
+																	: "No downtime"}
+															</div>
+														)
+													)}
+													<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+												</div>
+											</div>
+										) : null}
+									</div>
+								</>
+							))}
+						</div>
+					</div>
+				</>
+			) : (
+				<>
+					{/* Flex container for the bar segments */}
+					<div className="flex h-8 w-full gap-[3px]">
+						{days.map((day, index) => (
+							<>
+								{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
 								<div
 									key={day.date}
-									className="relative h-full"
+									className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
 									onMouseEnter={() => setHoveredIndex(index)}
 									onMouseLeave={() => setHoveredIndex(null)}
 								>
-									{hoveredIndex === index ? (
-										<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
-											<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
+									{/* The visible bar segment */}
+									{style === "length" ? (
+										<div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
+											<StackedBar segments={calculateSegments(day)} />
 										</div>
-									) : null}
-									{hoveredIndex === index ? (
+									) : (
+										<div
+											className={cn(
+												"h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
+												statusColors[day.status],
+											)}
+										/>
+									)}
+
+									{/* Tooltip */}
+									{hoveredIndex === index && (
 										<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
 											<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
 												<div className="font-semibold text-popover-foreground text-sm">
@@ -351,6 +419,7 @@ export function UptimeBar({
 														year: "numeric",
 													})}
 												</div>
+												{style === "length" && <SegmentTooltip day={day} />}
 												{day.duration ? (
 													<div className="mt-1 text-muted-foreground text-xs">
 														Duration: {day.duration}
@@ -365,77 +434,14 @@ export function UptimeBar({
 														</div>
 													)
 												)}
+
+												{/* Arrow */}
 												<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
 											</div>
 										</div>
-									) : null}
+									)}
 								</div>
-							))}
-						</div>
-					</div>
-				</>
-			) : (
-				<>
-					{/* Flex container for the bar segments */}
-					<div className="flex h-8 w-full gap-[3px]">
-						{days.map((day, index) => (
-							// biome-ignore lint/a11y/noStaticElementInteractions
-							<div
-								key={day.date}
-								className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
-								onMouseEnter={() => setHoveredIndex(index)}
-								onMouseLeave={() => setHoveredIndex(null)}
-							>
-								{/* The visible bar segment */}
-								{style === "length" ? (
-									<div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
-										<StackedBar segments={calculateSegments(day)} />
-									</div>
-								) : (
-									<div
-										className={cn(
-											"h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
-											statusColors[day.status],
-										)}
-									/>
-								)}
-
-								{/* Tooltip */}
-								{hoveredIndex === index && (
-									<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
-										<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
-											<div className="font-semibold text-popover-foreground text-sm">
-												{day.annotation || statusConfig[day.status].label}
-											</div>
-											<div className="mt-1 text-muted-foreground text-xs">
-												{new Date(day.date).toLocaleDateString("en-US", {
-													weekday: "long",
-													month: "short",
-													day: "numeric",
-													year: "numeric",
-												})}
-											</div>
-											{style === "length" && <SegmentTooltip day={day} />}
-											{day.duration ? (
-												<div className="mt-1 text-muted-foreground text-xs">
-													Duration: {day.duration}
-												</div>
-											) : (
-												day.status !== "unknown" && (
-													<div className="mt-1 text-muted-foreground text-xs">
-														{day.downtimeMs !== undefined && day.downtimeMs > 0
-															? formatDowntime(day.downtimeMs)
-															: "No downtime"}
-													</div>
-												)
-											)}
-
-											{/* Arrow */}
-											<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-										</div>
-									</div>
-								)}
-							</div>
+							</>
 						))}
 					</div>
 				</>

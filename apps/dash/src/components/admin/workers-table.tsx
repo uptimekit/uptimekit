@@ -48,15 +48,6 @@ import { getRegionInfo } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
-interface Worker {
-	id: string;
-	name: string;
-	location: string;
-	active: boolean;
-	lastHeartbeat: Date | null;
-	version: string | null;
-}
-
 const workerStatusOptions = [
 	{ label: "All Statuses", value: "all" },
 	{ label: "Online", value: "online" },
@@ -156,9 +147,11 @@ export function WorkersTable() {
 					>
 						<SelectTrigger className="w-[150px]">
 							<SelectValue placeholder="Status">
-								{workerStatusOptions.find(
-									(option) => option.value === statusFilter,
-								)?.label}
+								{
+									workerStatusOptions.find(
+										(option) => option.value === statusFilter,
+									)?.label
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>

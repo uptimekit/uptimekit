@@ -34,7 +34,7 @@ export function IssueCard({
 					<div className="mb-2 flex items-start gap-3">
 						<StatusDot status={status} className="mt-1 shrink-0" />
 						<div className="min-w-0">
-							<h3 className="font-medium text-[15px] leading-6 text-foreground sm:text-[16px]">
+							<h3 className="font-medium text-[15px] text-foreground leading-6 sm:text-[16px]">
 								{incident.title}
 							</h3>
 							<p className="mt-1 text-[12px] text-muted-foreground">
@@ -74,7 +74,7 @@ export function IssueCard({
 				<div className="border-border/80 border-t px-4 py-4 sm:px-5 sm:py-5">
 					{incident.monitors.length > 0 ? (
 						<div className="mb-5 space-y-3">
-							<div className="text-[11px] font-medium uppercase text-muted-foreground">
+							<div className="font-medium text-[11px] text-muted-foreground uppercase">
 								Affected services
 							</div>
 							<div className="flex flex-wrap gap-2">
@@ -92,21 +92,21 @@ export function IssueCard({
 
 					{incident.activities.length > 0 ? (
 						<div className="space-y-4">
-							<div className="text-[11px] font-medium uppercase text-muted-foreground">
+							<div className="font-medium text-[11px] text-muted-foreground uppercase">
 								Timeline
 							</div>
 							<div className="space-y-4">
 								{incident.activities.map((activity, index) => (
 									<div key={activity.id} className="relative pl-6">
 										{index !== incident.activities.length - 1 ? (
-											<div className="absolute left-[7px] top-4 h-[calc(100%+0.75rem)] w-px bg-border" />
+											<div className="absolute top-4 left-[7px] h-[calc(100%+0.75rem)] w-px bg-border" />
 										) : null}
-										<div className="absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full border border-background bg-muted-foreground/35" />
+										<div className="absolute top-1.5 left-0 h-3.5 w-3.5 rounded-full border border-background bg-muted-foreground/35" />
 										<div className="space-y-1">
 											<div className="text-[12px] text-muted-foreground">
 												{formatDateTime(activity.createdAt)} UTC
 											</div>
-											<p className="text-[14px] leading-6 text-foreground">
+											<p className="text-[14px] text-foreground leading-6">
 												{activity.message}
 											</p>
 										</div>

@@ -55,6 +55,8 @@ export function InputGroupAddon({
 			className={cn(inputGroupAddonVariants({ align }), className)}
 			data-align={align}
 			data-slot="input-group-addon"
+			role="button"
+			tabIndex={-1}
 			onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
 				const target = e.target as HTMLElement;
 				const isInteractive = target.closest(

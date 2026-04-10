@@ -96,15 +96,14 @@ export const workersRouter = {
 						version: worker.version,
 						createdAt: worker.createdAt,
 						updatedAt: worker.updatedAt,
-						monitorCount:
-							sql<number>`(
+						monitorCount: sql<number>`(
 								SELECT COUNT(DISTINCT "monitor"."id")
 								FROM ${monitor}
 								CROSS JOIN LATERAL json_array_elements_text("monitor"."locations") AS location(location)
 								WHERE location.location = ${worker.location}
 							)`
-								.mapWith(Number)
-								.as("monitor_count"),
+							.mapWith(Number)
+							.as("monitor_count"),
 					})
 					.from(worker)
 					.where(and(...filters))

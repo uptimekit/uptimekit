@@ -33,6 +33,18 @@ const incidentUpdateInputSchema = z.object({
 	statusPageIds: z.array(z.string()).default([]),
 });
 
+function getActiveOrganizationId(
+	activeOrganizationId: string | null | undefined,
+) {
+	if (!activeOrganizationId) {
+		throw new ORPCError("UNAUTHORIZED", {
+			message: "No active organization",
+		});
+	}
+
+	return activeOrganizationId;
+}
+
 function ensureValidTimeline(startedAt: Date, endedAt: Date | null) {
 	if (endedAt && endedAt.getTime() < startedAt.getTime()) {
 		throw new ORPCError("BAD_REQUEST", {
@@ -136,7 +148,7 @@ export const incidentsRouter = {
 			const filters = [
 				eq(
 					incident.organizationId,
-					context.session.session.activeOrganizationId!,
+					getActiveOrganizationId(context.session.session.activeOrganizationId),
 				),
 			];
 
@@ -207,7 +219,9 @@ export const incidentsRouter = {
 					eq(incident.id, input.id),
 					eq(
 						incident.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 				with: {
@@ -266,7 +280,9 @@ export const incidentsRouter = {
 			const startedAt = input.startedAt ?? now;
 			const endedAt = input.endedAt ?? null;
 			const status = endedAt ? "resolved" : "investigating";
-			const organizationId = context.session.session.activeOrganizationId!;
+			const organizationId = getActiveOrganizationId(
+				context.session.session.activeOrganizationId,
+			);
 
 			ensureValidTimeline(startedAt, endedAt);
 			await assertOrganizationResources(
@@ -354,7 +370,9 @@ export const incidentsRouter = {
 		})
 		.input(incidentUpdateInputSchema)
 		.handler(async ({ input, context }) => {
-			const organizationId = context.session.session.activeOrganizationId!;
+			const organizationId = getActiveOrganizationId(
+				context.session.session.activeOrganizationId,
+			);
 			const existing = await db.query.incident.findFirst({
 				where: and(
 					eq(incident.id, input.id),
@@ -529,7 +547,9 @@ export const incidentsRouter = {
 					eq(incident.id, input.id),
 					eq(
 						incident.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -593,7 +613,9 @@ export const incidentsRouter = {
 					eq(incident.id, input.id),
 					eq(
 						incident.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -656,7 +678,9 @@ export const incidentsRouter = {
 					eq(incident.id, input.incidentId),
 					eq(
 						incident.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});
@@ -702,7 +726,9 @@ export const incidentsRouter = {
 					eq(incident.id, input.id),
 					eq(
 						incident.organizationId,
-						context.session.session.activeOrganizationId!,
+						getActiveOrganizationId(
+							context.session.session.activeOrganizationId,
+						),
 					),
 				),
 			});

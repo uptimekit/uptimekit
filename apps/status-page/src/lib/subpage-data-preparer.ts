@@ -16,7 +16,11 @@ import type { IncidentHistoryPeriod } from "./incident-history";
 import { buildPath } from "./route-utils";
 
 function getBarDays(design: any): 30 | 60 | 90 {
-	if (design?.barDays === 30 || design?.barDays === 60 || design?.barDays === 90) {
+	if (
+		design?.barDays === 30 ||
+		design?.barDays === 60 ||
+		design?.barDays === 90
+	) {
 		return design.barDays;
 	}
 	return 90;

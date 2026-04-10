@@ -3,14 +3,8 @@ import { organization, user } from "@uptimekit/db/schema/auth";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { count } from "drizzle-orm";
 import { Activity, BarChart3, Shield, Users } from "lucide-react";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import WorkersMap from "@/components/admin/workers-map";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Disable prerendering - this page needs database access at runtime
 export const dynamic = "force-dynamic";

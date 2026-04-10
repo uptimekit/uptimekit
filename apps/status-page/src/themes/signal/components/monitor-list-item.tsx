@@ -66,7 +66,12 @@ export function MonitorListItem({
 				</div>
 
 				<div className="shrink-0 text-right">
-					<div className={cn("font-medium text-[13px]", statusConfig[status].color)}>
+					<div
+						className={cn(
+							"font-medium text-[13px]",
+							statusConfig[status].color,
+						)}
+					>
 						{displayStyle === "status"
 							? statusConfig[status].label
 							: `${uptimePercentage.toFixed(2)}% uptime`}

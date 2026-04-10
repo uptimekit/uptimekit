@@ -55,11 +55,6 @@ interface CreateMaintenanceFormProps {
 	onOpenChange: (open: boolean) => void;
 }
 
-interface Monitor {
-	id: string;
-	name: string;
-}
-
 const maintenanceStatusOptions = [
 	{ label: "Scheduled", value: "scheduled" },
 	{ label: "In Progress", value: "in_progress" },
@@ -206,16 +201,15 @@ export function CreateMaintenanceForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Status</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-										>
+										<Select onValueChange={field.onChange} value={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select status">
-														{maintenanceStatusOptions.find(
-															(option) => option.value === field.value,
-														)?.label}
+														{
+															maintenanceStatusOptions.find(
+																(option) => option.value === field.value,
+															)?.label
+														}
 													</SelectValue>
 												</SelectTrigger>
 											</FormControl>

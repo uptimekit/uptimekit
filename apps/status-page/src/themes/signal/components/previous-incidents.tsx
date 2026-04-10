@@ -22,7 +22,7 @@ export function PreviousIncidents({
 			</div>
 
 			{Object.keys(pastIncidents).length === 0 ? (
-				<div className="rounded-2xl border border-dashed border-border px-5 py-8 text-muted-foreground">
+				<div className="rounded-2xl border border-border border-dashed px-5 py-8 text-muted-foreground">
 					No previous incidents.
 				</div>
 			) : (

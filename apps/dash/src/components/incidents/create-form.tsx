@@ -7,6 +7,9 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
+import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Combobox,
 	ComboboxChip,
@@ -18,9 +21,6 @@ import {
 	ComboboxPopup,
 	ComboboxValue,
 } from "@/components/ui/combobox";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
 	Form,
@@ -64,11 +64,6 @@ const severityOptions = [
 	{ label: "Major", value: "major" },
 	{ label: "Critical", value: "critical" },
 ] as const;
-
-interface Monitor {
-	id: string;
-	name: string;
-}
 
 interface StatusPage {
 	id: string;
@@ -169,16 +164,15 @@ export function CreateIncidentForm() {
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Severity</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-										>
+										<Select onValueChange={field.onChange} value={field.value}>
 											<FormControl>
 												<SelectTrigger className="w-full">
 													<SelectValue placeholder="Select severity">
-														{severityOptions.find(
-															(option) => option.value === field.value,
-														)?.label}
+														{
+															severityOptions.find(
+																(option) => option.value === field.value,
+															)?.label
+														}
 													</SelectValue>
 												</SelectTrigger>
 											</FormControl>

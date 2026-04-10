@@ -39,10 +39,13 @@ export function groupMonitorOptions(monitors: GroupedMonitorOption[]) {
 	);
 
 	return Object.entries(groups)
-		.map(([groupName, items]) => [
-			groupName,
-			[...items].sort((a, b) => a.name.localeCompare(b.name)),
-		] as const)
+		.map(
+			([groupName, items]) =>
+				[
+					groupName,
+					[...items].sort((a, b) => a.name.localeCompare(b.name)),
+				] as const,
+		)
 		.sort(([groupNameA], [groupNameB]) => {
 			if (groupNameA === "Ungrouped") return 1;
 			if (groupNameB === "Ungrouped") return -1;

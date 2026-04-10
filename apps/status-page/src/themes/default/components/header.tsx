@@ -21,7 +21,10 @@ export function Header({
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						{logoUrl ? (
-							<img src={logoUrl} alt={title} className="h-8 w-auto" />
+							<>
+								{/* biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos */}
+								<img src={logoUrl} alt={title} className="h-8 w-auto" />
+							</>
 						) : (
 							<h1 className="font-bold text-foreground text-xl">{title}</h1>
 						)}

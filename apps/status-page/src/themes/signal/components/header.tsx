@@ -22,8 +22,8 @@ export function Header({
 	const isMailto = contactUrl?.startsWith("mailto:");
 
 	return (
-		<header className="sticky top-0 z-20 border-b border-transparent bg-background/92 backdrop-blur-sm">
-			<div className="mx-auto flex w-full max-w-[822px] flex-col gap-5 px-4 pb-4 pt-6">
+		<header className="sticky top-0 z-20 border-transparent border-b bg-background/92 backdrop-blur-sm">
+			<div className="mx-auto flex w-full max-w-[822px] flex-col gap-5 px-4 pt-6 pb-4">
 				<div className="flex min-h-9 items-center justify-between gap-4">
 					<div className="min-w-0">
 						{websiteUrl ? (
@@ -36,7 +36,10 @@ export function Header({
 								<Brand title={title} logoUrl={logoUrl} />
 							</a>
 						) : (
-							<Link href={homeHref as any} className="flex min-w-0 items-center gap-3">
+							<Link
+								href={homeHref as any}
+								className="flex min-w-0 items-center gap-3"
+							>
 								<Brand title={title} logoUrl={logoUrl} />
 							</Link>
 						)}
@@ -73,24 +76,21 @@ export function Header({
 	);
 }
 
-function Brand({
-	title,
-	logoUrl,
-}: {
-	title: string;
-	logoUrl?: string;
-}) {
+function Brand({ title, logoUrl }: { title: string; logoUrl?: string }) {
 	return (
 		<>
 			{logoUrl ? (
-				<img src={logoUrl} alt={title} className="h-8 w-auto rounded-md" />
+				<>
+					{/* biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos */}
+					<img src={logoUrl} alt={title} className="h-8 w-auto rounded-md" />
+				</>
 			) : (
 				<div className="signal-panel flex h-8 w-8 items-center justify-center rounded-md text-sm">
 					{title.slice(0, 1).toUpperCase()}
 				</div>
 			)}
 			<div className="min-w-0">
-				<div className="truncate font-bold text-[18px] leading-none text-foreground">
+				<div className="truncate font-bold text-[18px] text-foreground leading-none">
 					{title}
 				</div>
 			</div>

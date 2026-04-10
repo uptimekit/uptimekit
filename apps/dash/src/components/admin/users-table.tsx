@@ -274,8 +274,11 @@ export function UsersTable() {
 					>
 						<SelectTrigger className="w-[130px]">
 							<SelectValue placeholder="Role">
-								{roleFilterOptions.find((option) => option.value === roleFilter)
-									?.label}
+								{
+									roleFilterOptions.find(
+										(option) => option.value === roleFilter,
+									)?.label
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
@@ -295,9 +298,11 @@ export function UsersTable() {
 					>
 						<SelectTrigger className="w-[130px]">
 							<SelectValue placeholder="Status">
-								{statusFilterOptions.find(
-									(option) => option.value === statusFilter,
-								)?.label}
+								{
+									statusFilterOptions.find(
+										(option) => option.value === statusFilter,
+									)?.label
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>

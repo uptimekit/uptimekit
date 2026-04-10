@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
@@ -66,11 +66,14 @@ export default function SettingsPage() {
 		},
 	});
 
-	const getFormValuesFromActiveOrg = (): z.infer<typeof formSchema> => ({
-		name: activeOrg?.name || "",
-		slug: activeOrg?.slug || "",
-		logo: activeOrg?.logo || "",
-	});
+	const getFormValuesFromActiveOrg = useCallback(
+		(): z.infer<typeof formSchema> => ({
+			name: activeOrg?.name || "",
+			slug: activeOrg?.slug || "",
+			logo: activeOrg?.logo || "",
+		}),
+		[activeOrg],
+	);
 
 	// Update form when activeOrg loads
 	useEffect(() => {

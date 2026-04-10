@@ -133,16 +133,15 @@ export function AddMaintenanceUpdateForm({
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>Status</FormLabel>
-								<Select
-									onValueChange={field.onChange}
-									value={field.value}
-								>
+								<Select onValueChange={field.onChange} value={field.value}>
 									<FormControl>
 										<SelectTrigger className="w-full">
 											<SelectValue placeholder="Select status">
-												{maintenanceStatusOptions.find(
-													(option) => option.value === field.value,
-												)?.label}
+												{
+													maintenanceStatusOptions.find(
+														(option) => option.value === field.value,
+													)?.label
+												}
 											</SelectValue>
 										</SelectTrigger>
 									</FormControl>

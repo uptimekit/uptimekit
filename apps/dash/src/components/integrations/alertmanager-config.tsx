@@ -244,36 +244,37 @@ route:
 					/>
 				</CollapsibleTrigger>
 				<CollapsibleContent className="space-y-4 pt-4">
-			<div className="grid gap-2">
-				<Label>Default Severity</Label>
-				{(() => {
-					const selectedSeverity = severityOptions.find(
-						(option) => option.value === (config.defaultSeverity || "major"),
-					);
+					<div className="grid gap-2">
+						<Label>Default Severity</Label>
+						{(() => {
+							const selectedSeverity = severityOptions.find(
+								(option) =>
+									option.value === (config.defaultSeverity || "major"),
+							);
 
-					return (
-						<Select
-							value={config.defaultSeverity || "major"}
-							onValueChange={(value: "minor" | "major" | "critical" | null) =>
-								onChange({ ...config, defaultSeverity: value })
-							}
-						>
-							<SelectTrigger>
-								<SelectValue placeholder="Select severity">
-									{selectedSeverity?.label}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								{severityOptions.map(({ label, value }) => (
-									<SelectItem key={value} value={value}>
-										{label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					);
-				})()}
-				<p className="text-muted-foreground text-sm">
+							return (
+								<Select
+									value={config.defaultSeverity || "major"}
+									onValueChange={(
+										value: "minor" | "major" | "critical" | null,
+									) => onChange({ ...config, defaultSeverity: value })}
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="Select severity">
+											{selectedSeverity?.label}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent>
+										{severityOptions.map(({ label, value }) => (
+											<SelectItem key={value} value={value}>
+												{label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							);
+						})()}
+						<p className="text-muted-foreground text-sm">
 							Default severity when alert doesn't specify one. Alerts with
 							severity label will map: critical=critical, warning=major,
 							info=minor.

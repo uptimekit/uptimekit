@@ -431,9 +431,11 @@ function EditUpdateDialog({
 												<FormControl>
 													<SelectTrigger className="w-full">
 														<SelectValue placeholder="Status">
-															{maintenanceStatusOptions.find(
-																(option) => option.value === field.value,
-															)?.label}
+															{
+																maintenanceStatusOptions.find(
+																	(option) => option.value === field.value,
+																)?.label
+															}
 														</SelectValue>
 													</SelectTrigger>
 												</FormControl>

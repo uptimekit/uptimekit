@@ -307,7 +307,7 @@ export async function GET(
 				>
 					Powered by
 				</div>
-				{/** biome-ignore lint/performance/noImgElement: its okay */}
+				{/* biome-ignore lint/performance/noImgElement: ImageResponse markup uses raw img */}
 				<img src={logoSrc} alt="UptimeKit" height={32} />
 				<div
 					style={{

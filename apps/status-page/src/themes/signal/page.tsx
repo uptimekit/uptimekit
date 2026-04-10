@@ -31,7 +31,7 @@ export default function SignalTheme({ data }: ThemePageProps) {
 			/>
 
 			<main className="w-full flex-1">
-				<div className="mx-auto flex w-full max-w-[822px] flex-col gap-10 px-4 pb-16 pt-6 sm:gap-12">
+				<div className="mx-auto flex w-full max-w-[822px] flex-col gap-10 px-4 pt-6 pb-16 sm:gap-12">
 					<OverallStatus status={overallStatus} lastUpdated={lastUpdated} />
 					<CurrentIssuesBanner activeIssues={activeIssues} />
 					<MonitorGroups

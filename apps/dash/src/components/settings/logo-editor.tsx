@@ -67,7 +67,7 @@ export function LogoEditor({ value, onChange }: LogoEditorProps) {
 							/>
 						}
 					>
-						{/** biome-ignore lint/performance/noImgElement: next would start crying */}
+						{/* biome-ignore lint/performance/noImgElement: arbitrary external logo URL */}
 						<img
 							src={value}
 							alt="Organization logo"

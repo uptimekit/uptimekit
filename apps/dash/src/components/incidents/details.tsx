@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
+import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -26,7 +27,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -827,7 +827,9 @@ function MultiSelectField({
 								))}
 								<ComboboxChipsInput
 									aria-label={label}
-									placeholder={value.length > 0 ? undefined : emptyLabel}
+									placeholder={
+										value.length > 0 ? searchPlaceholder : emptyLabel
+									}
 								/>
 							</>
 						)}

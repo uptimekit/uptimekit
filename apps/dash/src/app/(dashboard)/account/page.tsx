@@ -569,7 +569,7 @@ function TwoFactorSettings({ session }: { session: any }) {
 										{step === "qr" && (
 											<div className="flex flex-col items-center gap-4">
 												<div className="overflow-hidden rounded-lg border bg-white p-2">
-													{/* eslint-disable-next-line @next/next/no-img-element */}
+													{/* biome-ignore lint/performance/noImgElement: external QR generator URL */}
 													<img
 														src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpURI)}`}
 														alt="QR Code"

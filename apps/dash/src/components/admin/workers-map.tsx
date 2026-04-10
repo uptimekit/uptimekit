@@ -2,14 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import countries from "world-countries";
+import { getRegionInfo } from "@/lib/regions";
+import { orpc } from "@/utils/orpc";
 import {
-	Map as WorkerRegionMap,
 	MapMarker,
 	MarkerContent,
 	MarkerTooltip,
+	Map as WorkerRegionMap,
 } from "../ui/map";
-import { getRegionInfo } from "@/lib/regions";
-import { orpc } from "@/utils/orpc";
 
 interface WorkerRecord {
 	id: string;
@@ -168,7 +168,7 @@ export default function WorkersMap() {
 										}}
 									/>
 									<div
-										className="relative rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"
+										className="relative rounded-full bg-emerald-500 shadow-emerald-500/50 shadow-lg"
 										style={{ width: size, height: size }}
 									/>
 								</div>
@@ -179,7 +179,7 @@ export default function WorkersMap() {
 										<Flag className="h-4 w-4 overflow-hidden rounded-[2px]" />
 										<div className="font-medium">{marker.label}</div>
 									</div>
-									<div className="text-[10px] uppercase text-zinc-400">
+									<div className="text-[10px] text-zinc-400 uppercase">
 										{marker.location}
 									</div>
 									<div className="mt-3 font-semibold text-emerald-400">

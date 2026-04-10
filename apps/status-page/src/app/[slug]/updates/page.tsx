@@ -33,7 +33,7 @@ export default async function SlugUpdatesPage({
 
 	const UpdatesPage = await loadUpdatesComponent(themeId);
 
-	let data;
+	let data: Awaited<ReturnType<typeof prepareUpdatesPageData>>;
 	try {
 		data = await prepareUpdatesPageData(pageConfig, period, slug);
 	} catch (_error) {

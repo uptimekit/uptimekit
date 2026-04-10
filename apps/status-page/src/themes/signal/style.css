@@ -17,16 +17,13 @@
 	--font-sans:
 		Montserrat, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 	--shadow-sm:
-		0 0 0 0.5px rgba(20, 17, 29, 0.12),
-		0 -1px 2px -1px rgba(20, 17, 29, 0.06),
+		0 0 0 0.5px rgba(20, 17, 29, 0.12), 0 -1px 2px -1px rgba(20, 17, 29, 0.06),
 		0 2px 5px -3px rgba(20, 17, 29, 0.08);
 	--shadow-md:
-		0 0 0 0.5px rgba(20, 17, 29, 0.12),
-		0 -1px 2px -1px rgba(20, 17, 29, 0.07),
+		0 0 0 0.5px rgba(20, 17, 29, 0.12), 0 -1px 2px -1px rgba(20, 17, 29, 0.07),
 		0 4px 10px -6px rgba(20, 17, 29, 0.08);
 	--shadow-lg:
-		0 0 0 0.5px rgba(20, 17, 29, 0.12),
-		0 8px 24px -18px rgba(20, 17, 29, 0.14);
+		0 0 0 0.5px rgba(20, 17, 29, 0.12), 0 8px 24px -18px rgba(20, 17, 29, 0.14);
 	--status-operational: #06c652;
 	--status-degraded: #f3b61f;
 	--status-partial-outage: #ff8a1f;
@@ -51,14 +48,11 @@
 	--secondary-foreground: #f5f3fa;
 	--ring: rgba(245, 243, 250, 0.25);
 	--shadow-sm:
-		0 0 0 0.5px rgba(245, 243, 250, 0.08),
-		0 10px 24px -20px rgba(0, 0, 0, 0.5);
+		0 0 0 0.5px rgba(245, 243, 250, 0.08), 0 10px 24px -20px rgba(0, 0, 0, 0.5);
 	--shadow-md:
-		0 0 0 0.5px rgba(245, 243, 250, 0.08),
-		0 14px 30px -24px rgba(0, 0, 0, 0.55);
+		0 0 0 0.5px rgba(245, 243, 250, 0.08), 0 14px 30px -24px rgba(0, 0, 0, 0.55);
 	--shadow-lg:
-		0 0 0 0.5px rgba(245, 243, 250, 0.08),
-		0 24px 40px -30px rgba(0, 0, 0, 0.6);
+		0 0 0 0.5px rgba(245, 243, 250, 0.08), 0 24px 40px -30px rgba(0, 0, 0, 0.6);
 }
 
 [data-theme="signal"] .signal-surface {
@@ -72,22 +66,20 @@
 }
 
 [data-theme="signal"] .signal-button {
-	background-image:
-		radial-gradient(
-			ellipse at center top,
-			rgba(255, 255, 255, 0.45) 0%,
-			rgba(244, 243, 241, 1) 100%
-		);
+	background-image: radial-gradient(
+		ellipse at center top,
+		rgba(255, 255, 255, 0.45) 0%,
+		rgba(244, 243, 241, 1) 100%
+	);
 	box-shadow: var(--shadow-sm);
 }
 
 [data-theme="signal"].dark .signal-button {
-	background-image:
-		radial-gradient(
-			ellipse at center top,
-			rgba(255, 255, 255, 0.08) 0%,
-			rgba(33, 32, 43, 1) 100%
-		);
+	background-image: radial-gradient(
+		ellipse at center top,
+		rgba(255, 255, 255, 0.08) 0%,
+		rgba(33, 32, 43, 1) 100%
+	);
 }
 
 [data-theme="signal"] .signal-divider {

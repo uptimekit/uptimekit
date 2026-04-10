@@ -594,7 +594,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<RadioGroup
 												onValueChange={field.onChange}
 												value={field.value}
-												className="grid grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2"
+												className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2"
 											>
 												<FormItem className="h-full">
 													<FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
@@ -767,11 +767,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 															<div className="flex w-full items-center gap-4">
 																<div className="flex h-10 w-16 items-center rounded bg-muted/20 px-2">
 																	<div className="flex h-1.5 w-full items-center gap-px">
-																		<div className="h-1.5 flex-[8] rounded-full bg-green-500/80" />
-																		<div className="h-1.5 flex-[1] rounded-full bg-red-500/80" />
-																		<div className="h-1.5 flex-[4] rounded-full bg-green-500/80" />
-																		<div className="h-1.5 flex-[1] rounded-full bg-yellow-500/80" />
-																		<div className="h-1.5 flex-[2] rounded-full bg-green-500/80" />
+																		<div className="h-1.5 flex-8 rounded-full bg-green-500/80" />
+																		<div className="h-1.5 flex-1 rounded-full bg-red-500/80" />
+																		<div className="h-1.5 flex-4 rounded-full bg-green-500/80" />
+																		<div className="h-1.5 flex-1 rounded-full bg-yellow-500/80" />
+																		<div className="h-1.5 flex-2 rounded-full bg-green-500/80" />
 																	</div>
 																</div>
 																<div className="space-y-1">
@@ -809,6 +809,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 										<div className="flex items-center gap-4 rounded-lg border bg-card p-4">
 											{field.value ? (
 												<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
+													{/* biome-ignore lint/performance/noImgElement: arbitrary external preview URL */}
 													<img
 														src={field.value}
 														alt="Logo preview"
@@ -862,6 +863,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												<div className="flex items-center gap-4 rounded-lg border bg-card p-4">
 													{field.value ? (
 														<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
+															{/* biome-ignore lint/performance/noImgElement: arbitrary external preview URL */}
 															<img
 																src={field.value}
 																alt="Favicon preview"

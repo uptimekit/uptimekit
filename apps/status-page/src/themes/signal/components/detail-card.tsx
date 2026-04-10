@@ -15,10 +15,10 @@ export function DetailCard({
 	return (
 		<div className="space-y-4">
 			<div className="space-y-2">
-				<div className="text-[11px] font-medium text-muted-foreground">
+				<div className="font-medium text-[11px] text-muted-foreground">
 					{eyebrow}
 				</div>
-				<h1 className="font-semibold text-3xl tracking-tight text-foreground">
+				<h1 className="font-semibold text-3xl text-foreground tracking-tight">
 					{incident.title}
 				</h1>
 			</div>
@@ -27,10 +27,10 @@ export function DetailCard({
 
 			{description ? (
 				<div className="signal-panel rounded-2xl border border-border px-4 py-4 sm:px-5">
-					<div className="mb-2 text-[11px] font-medium text-muted-foreground">
+					<div className="mb-2 font-medium text-[11px] text-muted-foreground">
 						Description
 					</div>
-					<p className="text-[14px] leading-6 text-foreground">{description}</p>
+					<p className="text-[14px] text-foreground leading-6">{description}</p>
 				</div>
 			) : null}
 		</div>

@@ -133,12 +133,12 @@ export function FormMessage({
 	className,
 	children,
 	...props
-}: React.ComponentProps<"p">): React.ReactElement {
+}: React.ComponentProps<"p">): React.ReactElement | null {
 	const { error, formMessageId } = useFormField();
 	const body = error ? String(error.message ?? "") : children;
 
 	if (!body) {
-		return <></>;
+		return null;
 	}
 
 	return (

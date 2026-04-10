@@ -217,7 +217,10 @@ export async function prepareStatusPageData(
 					});
 				}
 
-				const daily = dailyStatsMap.get(localDateStr)!;
+				const daily = dailyStatsMap.get(localDateStr);
+				if (!daily) {
+					continue;
+				}
 				daily.total_checks += Number(stat.total_checks);
 				daily.up_checks += Number(stat.up_checks);
 			}

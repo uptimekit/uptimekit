@@ -172,35 +172,34 @@ export function AddUpdateForm({
 						)}
 					/>
 
-				<FormField
-					control={form.control}
-					name="status"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Status</FormLabel>
-							<Select
-								onValueChange={field.onChange}
-								value={field.value}
-							>
-								<FormControl>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Select status">
-											{updateStatusOptions.find(
-												(option) => option.value === field.value,
-											)?.label}
-										</SelectValue>
-									</SelectTrigger>
-								</FormControl>
-								<SelectContent>
-									{updateStatusOptions.map(({ label, value }) => (
-										<SelectItem key={value} value={value}>
-											{label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<FormMessage />
-						</FormItem>
+					<FormField
+						control={form.control}
+						name="status"
+						render={({ field }) => (
+							<FormItem>
+								<FormLabel>Status</FormLabel>
+								<Select onValueChange={field.onChange} value={field.value}>
+									<FormControl>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select status">
+												{
+													updateStatusOptions.find(
+														(option) => option.value === field.value,
+													)?.label
+												}
+											</SelectValue>
+										</SelectTrigger>
+									</FormControl>
+									<SelectContent>
+										{updateStatusOptions.map(({ label, value }) => (
+											<SelectItem key={value} value={value}>
+												{label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<FormMessage />
+							</FormItem>
 						)}
 					/>
 				</div>

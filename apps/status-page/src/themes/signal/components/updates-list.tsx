@@ -21,7 +21,7 @@ export function UpdatesList({
 
 	if (Object.keys(incidentsByDate).length === 0) {
 		return (
-			<div className="rounded-2xl border border-dashed border-border px-5 py-10 text-center text-muted-foreground">
+			<div className="rounded-2xl border border-border border-dashed px-5 py-10 text-center text-muted-foreground">
 				{emptyMessage}
 			</div>
 		);

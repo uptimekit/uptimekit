@@ -34,7 +34,11 @@ export function ScheduledMaintenanceSection({
 
 			<div className="space-y-3">
 				{items.map((item) => (
-					<IssueCard key={item.id} incident={item as any} detailsLink={item.detailsLink} />
+					<IssueCard
+						key={item.id}
+						incident={item as any}
+						detailsLink={item.detailsLink}
+					/>
 				))}
 			</div>
 		</section>
