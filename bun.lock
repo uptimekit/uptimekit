@@ -21,7 +21,7 @@
     },
     "apps/dash": {
       "name": "@uptimekit/dash",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "dependencies": {
         "@base-ui/react": "^1.3.0",
         "@dnd-kit/core": "^6.3.1",
@@ -109,7 +109,7 @@
     },
     "apps/status-page": {
       "name": "@uptimekit/status-page",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "dependencies": {
         "@clickhouse/client": "^1.18.2",
         "@node-rs/argon2": "^2.0.2",
@@ -215,7 +215,7 @@
     },
     "packages/scheduler": {
       "name": "@uptimekit/scheduler",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "dependencies": {
         "@uptimekit/config": "workspace:*",
         "@uptimekit/db": "workspace:*",
