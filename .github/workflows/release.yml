@@ -59,7 +59,7 @@ jobs:
           fi
           
           # Push to release branch
-          git push origin HEAD:release
+          git push --force origin HEAD:release
           
           # Sync to the repository default branch
           git fetch origin release ${{ env.DEFAULT_BRANCH }}
