@@ -1,10 +1,7 @@
-import { z } from "zod";
+import type * as z from "zod";
+import { assertSafeWebhookUrl } from "../../../lib/safe-url";
 import type { IntegrationDefinition } from "../registry";
-
-const WebhookConfigSchema = z.object({
-	url: z.string().url(),
-	secret: z.string().optional(),
-});
+import { WebhookConfigSchema } from "./webhook-meta";
 
 export const webhookIntegration: IntegrationDefinition<
 	z.infer<typeof WebhookConfigSchema>
@@ -25,6 +22,7 @@ export const webhookIntegration: IntegrationDefinition<
 	handler: async (config, event, payload) => {
 		// console.log(`[Webhook] Sending ${event} to ${config.url}`);
 		try {
+			await assertSafeWebhookUrl(config.url);
 			await fetch(config.url, {
 				method: "POST",
 				headers: {

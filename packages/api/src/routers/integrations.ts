@@ -4,6 +4,7 @@ import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+import { assertSafeWebhookUrl } from "../lib/safe-url";
 import { integrationRegistry } from "../pkg/integrations/registry";
 
 export const integrationsRouter = {
@@ -76,6 +77,9 @@ export const integrationsRouter = {
 			}
 
 			const parsedConfig = integrationDef.configSchema.parse(input.config);
+			if (input.type === "webhook") {
+				await assertSafeWebhookUrl(parsedConfig.url);
+			}
 
 			// Check if exists
 			const existing = await db.query.integrationConfig.findFirst({
@@ -204,12 +208,21 @@ export const integrationsRouter = {
 			};
 
 			try {
+				if (config.type === "webhook") {
+					await assertSafeWebhookUrl((config.config as { url: string }).url);
+				}
 				await integration.handler(config.config, testEvent, testPayload);
 				return { success: true, message: "Test event sent successfully" };
 			} catch (error: any) {
-				throw new ORPCError("INTERNAL_SERVER_ERROR", {
-					message: `Failed to send test event: ${error.message}`,
-				});
+				const isWebhookValidationError =
+					config.type === "webhook" && error instanceof Error;
+
+				throw new ORPCError(
+					isWebhookValidationError ? "BAD_REQUEST" : "INTERNAL_SERVER_ERROR",
+					{
+						message: `Failed to send test event: ${error.message}`,
+					},
+				);
 			}
 		}),
 };

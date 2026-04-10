@@ -12,8 +12,10 @@ services:
       - CLICKHOUSE_PASSWORD=clickhouse
       - REDIS_URL=redis://redis:6379
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: always
 
   scheduler:
@@ -27,9 +29,12 @@ services:
       - CLICKHOUSE_PASSWORD=clickhouse
       - REDIS_URL=redis://redis:6379
     depends_on:
-      - db
-      - redis
-      - clickhouse
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      clickhouse:
+        condition: service_started
     restart: always
 
   status-page:
@@ -45,9 +50,12 @@ services:
       - CLICKHOUSE_PASSWORD=clickhouse
       - REDIS_URL=redis://redis:6379
     depends_on:
-      - db
-      - redis
-      - clickhouse
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      clickhouse:
+        condition: service_started
     restart: always
 
   db:
@@ -58,6 +66,12 @@ services:
       POSTGRES_DB: uptimekit
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d uptimekit"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: always
 
   redis:

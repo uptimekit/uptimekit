@@ -21,7 +21,7 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-# Install clickhouse client for migrations (needed by migrate.cjs but pruned by turbo)
+# Install clickhouse client for migrations (needed by migrate.ts but pruned by turbo)
 RUN bun add @clickhouse/client@^1.15.0
 
 USER nextjs
@@ -33,9 +33,6 @@ COPY --from=installer --chown=nextjs:nodejs /app/packages/db ./packages/db
 COPY --from=installer --chown=nextjs:nodejs /app/packages/config ./packages/config
 COPY --from=installer --chown=nextjs:nodejs /app/packages/api ./packages/api
 COPY --from=installer --chown=nextjs:nodejs /app/packages/auth ./packages/auth
-
-# Copy migrate script from installer
-COPY --from=installer --chown=nextjs:nodejs /app/packages/db/src/migrate.cjs ./migrate.cjs
 
 COPY --from=installer --chown=nextjs:nodejs /app/apps/dash/.next/standalone ./
 COPY --from=installer --chown=nextjs:nodejs /app/apps/dash/.next/static ./apps/dash/.next/static
@@ -52,4 +49,4 @@ ENV NODE_PATH=/app/node_modules
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "bun migrate.cjs && bun apps/dash/server.js"]
+CMD ["sh", "-c", "bun packages/db/src/migrate.ts && bun apps/dash/server.js"]

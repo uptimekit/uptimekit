@@ -467,7 +467,9 @@ export const maintenanceRouter = {
 			}
 
 			// Delete the maintenance (cascade will delete updates and associations)
-			await db.delete(maintenance);
+			await db
+				.delete(maintenance)
+				.where(eq(maintenance.id, input.maintenanceId));
 
 			return { success: true };
 		}),
