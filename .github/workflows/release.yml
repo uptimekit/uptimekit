@@ -8,6 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_BASE: ghcr.io/${{ github.repository }}
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
 jobs:
   prepare:
@@ -60,12 +61,11 @@ jobs:
           # Push to release branch
           git push origin HEAD:release
           
-          # Sync to development
-          git fetch origin release
-          git checkout development
-          git pull origin development
+          # Sync to the repository default branch
+          git fetch origin release ${{ env.DEFAULT_BRANCH }}
+          git checkout -B ${{ env.DEFAULT_BRANCH }} origin/${{ env.DEFAULT_BRANCH }}
           git merge origin/release
-          git push origin development
+          git push origin ${{ env.DEFAULT_BRANCH }}
 
       - name: Find All Packages with Dockerfiles
         id: detect
