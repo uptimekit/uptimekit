@@ -1,6 +1,5 @@
 {
 	"name": "@uptimekit/auth",
-	"version": "2.1.0",
 	"private": true,
 	"exports": {
 		".": {
