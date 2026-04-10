@@ -106,8 +106,11 @@ function MonitorCard({
 
 export function MonitorGroups({
 	monitorGroups,
+	layout = "vertical",
 	barStyle = "normal",
 }: MonitorGroupsProps) {
+	const isGrid = layout === "horizontal";
+
 	return (
 		<section className="space-y-8">
 			{monitorGroups.map((group, groupIndex) => (
@@ -120,7 +123,11 @@ export function MonitorGroups({
 							{group.group.name}
 						</div>
 					) : null}
-					<div className="space-y-4">
+					<div
+						className={cn(
+							isGrid ? "grid grid-cols-1 gap-4 md:grid-cols-2" : "space-y-4",
+						)}
+					>
 						{group.monitors.map((monitor, monitorIndex) => (
 							<MonitorCard
 								key={monitor.id}

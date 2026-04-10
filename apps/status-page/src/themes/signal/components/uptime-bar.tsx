@@ -214,13 +214,15 @@ function StackedBar({ segments }: { segments: BarSegments }) {
 export function UptimeBar({
 	days,
 	className,
-	style = "signal",
+	style = "normal",
 }: UptimeBarProps) {
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 	const segments = buildSegments(days);
 	const hoveredDay = hoveredIndex !== null ? days[hoveredIndex] : null;
 	const hoveredSegments =
 		style === "length" && hoveredDay ? calculateSegments(hoveredDay) : null;
+	const compactGapClassName =
+		days.length <= 30 ? "gap-[3px]" : days.length <= 60 ? "gap-[2px]" : "gap-px";
 	const tooltipLeft =
 		hoveredIndex !== null
 			? `${((hoveredIndex + 0.5) / days.length) * 100}%`
@@ -282,7 +284,7 @@ export function UptimeBar({
 					</div>
 				</>
 			) : (
-				<div className="flex h-10 w-full gap-[3px]">
+				<div className={cn("flex h-10 w-full", compactGapClassName)}>
 					{days.map((day, index) => (
 						// biome-ignore lint/a11y/noStaticElementInteractions: visual hover target
 						<div

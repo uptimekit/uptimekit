@@ -18,6 +18,7 @@ interface MonitorListItemProps {
 	displayStyle?: "history" | "status";
 	description?: string | null;
 	className?: string;
+	barStyle?: "normal" | "length" | "signal";
 }
 
 export function MonitorListItem({
@@ -28,6 +29,7 @@ export function MonitorListItem({
 	displayStyle = "history",
 	description,
 	className,
+	barStyle = "normal",
 }: MonitorListItemProps) {
 	return (
 		<div className={cn("space-y-3", className)}>
@@ -73,7 +75,7 @@ export function MonitorListItem({
 			</div>
 
 			{displayStyle === "history" ? (
-				<UptimeBar days={history} />
+				<UptimeBar days={history} style={barStyle} />
 			) : (
 				<div className="text-[13px] text-muted-foreground">
 					Current state: {statusConfig[status].label}

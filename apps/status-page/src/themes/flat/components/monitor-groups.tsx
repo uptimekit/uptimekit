@@ -106,7 +106,7 @@ const MonitorGroupItem = memo(
 						<div
 							className={cn(
 								isGrid
-									? "grid grid-cols-1 gap-3 px-6 py-4 md:grid-cols-2 lg:grid-cols-3"
+									? "grid grid-cols-1 gap-3 px-6 py-4 md:grid-cols-2"
 									: "divide-y divide-border/50 px-6 py-4",
 							)}
 						>

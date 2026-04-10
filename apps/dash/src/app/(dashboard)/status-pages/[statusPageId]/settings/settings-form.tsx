@@ -895,7 +895,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 					<div className="space-y-2">
 						<h2 className="font-semibold text-lg leading-none tracking-tight">
-							Custom domain
+							Custom domain SOON
 						</h2>
 						<p className="text-muted-foreground text-sm">
 							Deploy your status page to a custom subdomain for a branded

@@ -77,6 +77,7 @@ import { orpc } from "@/utils/orpc";
 
 // Types
 type MonitorStyle = "history" | "status";
+type BarStyle = "normal" | "length" | "signal";
 
 const monitorStyleOptions = [
 	{ label: "With History", value: "history" },
@@ -114,7 +115,7 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
  */
 export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	const queryClient = useQueryClient();
-	const { isLoading: isPageLoading } = useQuery(
+	const { data: statusPage, isLoading: isPageLoading } = useQuery(
 		orpc.statusPages.get.queryOptions({ input: { id: statusPageId } }),
 	);
 	const { data: structure, isLoading: isStructureLoading } = useQuery(
@@ -163,6 +164,9 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	}, [structure]);
 
 	const [layout] = useState<"vertical" | "horizontal">("vertical");
+	const barStyle =
+		(statusPage?.design as { barStyle?: BarStyle } | undefined)?.barStyle ||
+		"normal";
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -441,6 +445,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 										<SortableGroup
 											key={group.id}
 											group={group}
+											barStyle={barStyle}
 											allMonitors={allMonitors || []}
 											onRemove={() => removeGroup(group.id)}
 											onUpdateName={(name) => updateGroupName(group.id, name)}
@@ -477,11 +482,16 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 								{activeId && activeItem?.type === "Group" ? (
 									<GroupCard
 										group={activeItem.data}
+										barStyle={barStyle}
 										isOverlay
 										layout={layout}
 									/>
 								) : activeId && activeItem?.type === "Monitor" ? (
-									<MonitorRow monitor={activeItem.data} isOverlay />
+									<MonitorRow
+										monitor={activeItem.data}
+										barStyle={barStyle}
+										isOverlay
+									/>
 								) : null}
 							</DragOverlay>
 						</DndContext>
@@ -508,6 +518,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 
 function SortableGroup({
 	group,
+	barStyle,
 	allMonitors,
 	onRemove,
 	onUpdateName,
@@ -517,6 +528,7 @@ function SortableGroup({
 	layout,
 }: {
 	group: GroupItem;
+	barStyle: BarStyle;
 	allMonitors: { id: string; name: string }[];
 	onRemove: () => void;
 	onUpdateName: (val: string) => void;
@@ -552,6 +564,7 @@ function SortableGroup({
 		>
 			<GroupCard
 				group={group}
+				barStyle={barStyle}
 				listeners={listeners}
 				allMonitors={allMonitors}
 				onRemove={onRemove}
@@ -567,6 +580,7 @@ function SortableGroup({
 
 function GroupCard({
 	group,
+	barStyle,
 	isOverlay,
 	listeners,
 	allMonitors,
@@ -647,6 +661,7 @@ function GroupCard({
 							<SortableMonitor
 								key={monitor.instanceId}
 								monitor={monitor}
+								barStyle={barStyle}
 								onRemove={() => onRemoveMonitor(monitor)}
 								onConfigChange={(updates) => onConfigChange(monitor, updates)}
 							/>
@@ -741,10 +756,12 @@ function AddMonitorInput({
  */
 function SortableMonitor({
 	monitor,
+	barStyle,
 	onRemove,
 	onConfigChange,
 }: {
 	monitor: MonitorItem;
+	barStyle: BarStyle;
 	onRemove: () => void;
 	onConfigChange: (updates: Partial<MonitorItem>) => void;
 }) {
@@ -775,6 +792,7 @@ function SortableMonitor({
 		>
 			<MonitorRow
 				monitor={monitor}
+				barStyle={barStyle}
 				listeners={listeners}
 				onRemove={onRemove}
 				onConfigChange={onConfigChange}
@@ -786,6 +804,7 @@ function SortableMonitor({
 
 function MonitorRow({
 	monitor,
+	barStyle,
 	isOverlay,
 	isDragging,
 	listeners,
@@ -793,6 +812,7 @@ function MonitorRow({
 	onConfigChange,
 }: {
 	monitor: MonitorItem;
+	barStyle: BarStyle;
 	isOverlay?: boolean;
 	isDragging?: boolean;
 	listeners?: any;
@@ -850,6 +870,7 @@ function MonitorRow({
 			{/* Configuration Modal */}
 			<MonitorConfigModal
 				monitor={monitor}
+				barStyle={barStyle}
 				open={isConfigOpen}
 				onOpenChange={setIsConfigOpen}
 				onConfigChange={onConfigChange}
@@ -861,11 +882,13 @@ function MonitorRow({
 // Monitor Configuration Modal
 function MonitorConfigModal({
 	monitor,
+	barStyle,
 	open,
 	onOpenChange,
 	onConfigChange,
 }: {
 	monitor: MonitorItem;
+	barStyle: BarStyle;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onConfigChange?: (updates: Partial<MonitorItem>) => void;
@@ -890,6 +913,7 @@ function MonitorConfigModal({
 							<MonitorPreview
 								name={monitor.name}
 								style={monitor.style}
+								barStyle={barStyle}
 								description={monitor.description}
 							/>
 						</div>
@@ -960,10 +984,12 @@ function MonitorConfigModal({
 function MonitorPreview({
 	name,
 	style,
+	barStyle,
 	description,
 }: {
 	name: string;
 	style: MonitorStyle;
+	barStyle: BarStyle;
 	description?: string | null;
 }) {
 	// Generate placeholder data - always operational
@@ -972,7 +998,12 @@ function MonitorPreview({
 		date.setDate(date.getDate() - (89 - i));
 		return {
 			date: date.toISOString().split("T")[0],
-			status: "operational" as const,
+			status:
+				i === 22
+					? ("degraded" as const)
+					: i === 61
+						? ("major_outage" as const)
+						: ("operational" as const),
 			uptime: 100,
 		};
 	});
@@ -1039,12 +1070,39 @@ function MonitorPreview({
 
 			{/* Uptime Bar */}
 			<div className="flex h-8 w-full gap-[3px]">
-				{placeholderHistory.map((day) => (
-					<div
-						key={day.date}
-						className="flex-1 rounded-[1px] bg-green-500 first:rounded-l-sm last:rounded-r-sm"
-					/>
-				))}
+				{placeholderHistory.map((day) => {
+					if (barStyle === "length") {
+						return (
+							<div
+								key={day.date}
+								className="flex flex-1 flex-col overflow-hidden rounded-[1px] first:rounded-l-sm last:rounded-r-sm"
+							>
+								<div className="w-full flex-1 bg-green-500" />
+								{day.status === "degraded" ? (
+									<div className="h-2 w-full bg-yellow-500" />
+								) : null}
+								{day.status === "major_outage" ? (
+									<div className="h-3 w-full bg-red-500" />
+								) : null}
+							</div>
+						);
+					}
+
+					return (
+						<div
+							key={day.date}
+							className={cn(
+								"flex-1 rounded-[1px] first:rounded-l-sm last:rounded-r-sm",
+								barStyle === "signal" && "mx-[1px] rounded-full",
+								day.status === "degraded"
+									? "bg-yellow-500"
+									: day.status === "major_outage"
+										? "bg-red-500"
+										: "bg-green-500",
+							)}
+						/>
+					);
+				})}
 			</div>
 
 			{/* Legend */}
