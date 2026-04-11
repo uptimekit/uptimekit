@@ -16,6 +16,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "IP=$$(hostname -i | awk '{print $$1}'); wget -qO- \"http://$$IP:3000/api/health\" >/dev/null 2>&1",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     restart: always
 
   scheduler:
@@ -35,6 +45,8 @@ services:
         condition: service_started
       clickhouse:
         condition: service_started
+      dash:
+        condition: service_healthy
     restart: always
 
   status-page:
@@ -56,6 +68,8 @@ services:
         condition: service_started
       clickhouse:
         condition: service_started
+      dash:
+        condition: service_healthy
     restart: always
 
   db:

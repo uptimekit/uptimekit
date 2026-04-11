@@ -1,3 +1,4 @@
+@import url(https://fonts.bunny.net/css?family=Open+Sans:300,400,500,600,700,800,300i,400i,500i,600i,700i,800i);
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -5,7 +6,7 @@
 
 @theme {
 	--font-sans:
-		var(--font-sans, "Nunito"), "Inter", ui-sans-serif, system-ui, sans-serif,
+		var(--font-sans, "Open Sans"), ui-sans-serif, system-ui, sans-serif,
 		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
@@ -59,7 +60,7 @@ body {
 	--sidebar-border: --alpha(var(--color-black) / 6%);
 	--sidebar-ring: var(--color-neutral-400);
 	--destructive-foreground: var(--color-red-700);
-	--font-sans: Montserrat, ui-sans-serif, sans-serif, system-ui;
+	--font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
 	--font-serif: Georgia, serif;
 	--font-mono: Geist Mono, monospace;
 	--shadow-color: hsl(0 0% 0%);
@@ -149,7 +150,7 @@ body {
 	--sidebar-ring: var(--color-neutral-400);
 	--destructive-foreground: var(--color-red-400);
 	--radius: 0.5rem;
-	--font-sans: Montserrat, ui-sans-serif, sans-serif, system-ui;
+	--font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
 	--font-serif: Georgia, serif;
 	--font-mono: Geist Mono, monospace;
 	--shadow-color: hsl(0 0% 0%);
@@ -295,7 +296,7 @@ body {
 		font-family: var(--font-mono);
 	}
 	html {
-		@apply font-sans font-mono;
+		@apply font-sans;
 	}
 	.maplibregl-popup-content {
 		@apply bg-transparent! shadow-none! p-0! rounded-none!;

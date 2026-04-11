@@ -117,6 +117,31 @@ const waitForPostgres = async (
 	}
 };
 
+const waitForClickHouse = async (
+	clickhouse: ReturnType<typeof createClient>,
+	maxAttempts = 30,
+	delayMs = 2000,
+) => {
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		try {
+			await clickhouse.command({
+				query: "SELECT 1",
+			});
+			if (attempt > 1) {
+				console.log(`✅ ClickHouse became ready after ${attempt} attempts`);
+			}
+			return;
+		} catch (error) {
+			if (attempt === maxAttempts) {
+				throw error;
+			}
+
+			console.log(`⏳ Waiting for ClickHouse... (${attempt}/${maxAttempts})`);
+			await sleep(delayMs);
+		}
+	}
+};
+
 const syncMigrationJournal = async (
 	client: ReturnType<typeof postgres>,
 	migrationsFolder: string,
@@ -238,6 +263,8 @@ const runClickHouseMigrations = async () => {
 	const start = Date.now();
 
 	try {
+		await waitForClickHouse(clickhouse);
+
 		await clickhouse.command({
 			query: "CREATE DATABASE IF NOT EXISTS uptimekit",
 		});
