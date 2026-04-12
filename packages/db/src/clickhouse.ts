@@ -33,6 +33,28 @@ const CLICKHOUSE_BOOTSTRAP_QUERIES = [
 		) ENGINE = MergeTree()
 		ORDER BY (monitorId, timestamp)
 	`,
+	`
+	-- The main culprit (Every query you run)
+	ALTER TABLE system.query_log MODIFY TTL event_date + INTERVAL 3 DAY;
+
+	-- Thread-level details (Very high volume)
+	ALTER TABLE system.query_thread_log MODIFY TTL event_date + INTERVAL 3 DAY;
+
+	-- Sampling of query execution (Can get huge)
+	ALTER TABLE system.trace_log MODIFY TTL event_date + INTERVAL 3 DAY;
+
+	-- Async metrics (Snapshots of system state)
+	ALTER TABLE system.asynchronous_metric_log MODIFY TTL event_date + INTERVAL 3 DAY;
+
+	-- Periodic metrics
+	ALTER TABLE system.metric_log MODIFY TTL event_date + INTERVAL 3 DAY;
+
+	-- Error history
+	ALTER TABLE system.error_log MODIFY TTL event_date + INTERVAL 3 DAY;
+
+	-- Part mutations history
+	ALTER TABLE system.part_log MODIFY TTL event_date + INTERVAL 3 DAY;
+	`,
 ] as const;
 
 function getClickHouse(): ClickHouseClient {
