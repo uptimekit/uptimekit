@@ -209,6 +209,7 @@ export function SubscribeForm({
 					autoComplete="email"
 					required
 					disabled={isPending}
+					aria-label="Email address"
 					className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
 				/>
 				<input
@@ -217,6 +218,7 @@ export function SubscribeForm({
 					placeholder="https://hooks.slack.com/services/..."
 					autoComplete="off"
 					disabled={isPending}
+					aria-label="Slack webhook URL"
 					className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
 				/>
 				<input
@@ -225,6 +227,7 @@ export function SubscribeForm({
 					placeholder="https://discord.com/api/webhooks/..."
 					autoComplete="off"
 					disabled={isPending}
+					aria-label="Discord webhook URL"
 					className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
 				/>
 				<button

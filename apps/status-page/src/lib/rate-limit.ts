@@ -11,9 +11,9 @@ export async function checkRateLimit(
 		maxAttempts?: number;
 	},
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
-	const namespace = options?.namespace || "password";
-	const windowMs = options?.windowMs || WINDOW_MS;
-	const maxAttempts = options?.maxAttempts || MAX_ATTEMPTS;
+	const namespace = options?.namespace ?? "password";
+	const windowMs = options?.windowMs ?? WINDOW_MS;
+	const maxAttempts = options?.maxAttempts ?? MAX_ATTEMPTS;
 	const key = `rate-limit:${namespace}:${identifier}`;
 	const now = Date.now();
 

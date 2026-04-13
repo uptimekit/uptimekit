@@ -51,7 +51,8 @@ async function sendViaResend({ to, subject, text, html }: SubscriberEmailInput) 
 
 async function sendViaSmtp({ to, subject, text, html }: SubscriberEmailInput) {
 	const host = process.env.SMTP_HOST?.trim();
-	const port = Number(process.env.SMTP_PORT || 587);
+	const portRaw = process.env.SMTP_PORT || "587";
+	const port = Number(portRaw);
 	const user = process.env.SMTP_USER?.trim();
 	const pass = process.env.SMTP_PASS?.trim();
 	const secure =
@@ -62,11 +63,15 @@ async function sendViaSmtp({ to, subject, text, html }: SubscriberEmailInput) {
 		throw new Error("SMTP_HOST is not configured");
 	}
 
+	if (!Number.isFinite(port) || port <= 0) {
+		throw new Error(`SMTP_PORT is invalid: ${portRaw}`);
+	}
+
 	const transporter = nodemailer.createTransport({
 		host,
 		port,
 		secure,
-		auth: user || pass ? { user, pass } : undefined,
+		auth: user && pass ? { user, pass } : undefined,
 	});
 
 	await transporter.sendMail({

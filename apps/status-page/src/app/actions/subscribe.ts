@@ -129,27 +129,9 @@ export async function subscribeToStatusPage(
 			})
 			.onConflictDoNothing();
 
-		const existingSubscription = await db
-			.select()
-			.from(statusPageEmailSubscribers)
-			.where(
-				and(
-					eq(statusPageEmailSubscribers.statusPageId, statusPageId),
-					eq(statusPageEmailSubscribers.email, normalizedEmail),
-				),
-			)
-			.limit(1);
-
-		if (existingSubscription.length > 0) {
-			return {
-				error: "",
-				success: "You're subscribed to status updates.",
-			};
-		}
-
 		return {
-			error: "This email is already subscribed elsewhere. Run the latest DB migration to allow per-page subscriptions.",
-			success: "",
+			error: "",
+			success: "You're subscribed to status updates.",
 		};
 	} catch (error) {
 		console.error("Status page subscribe action error:", error);

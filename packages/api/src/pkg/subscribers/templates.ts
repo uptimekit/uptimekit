@@ -41,7 +41,6 @@ export function renderSubscriberEmailHtml(
 	const severity = escapeHtml(input.severity);
 	const description = escapeHtml(input.description);
 	const incidentUrl = escapeHtml(input.incidentUrl);
-	console.log("sending email", input)
 
 	return `
 		<!doctype html>

@@ -31,6 +31,30 @@ function formatDowntime(ms: number): string {
 }
 
 /**
+ * Format a date string for tooltip display.
+ * Handles YYYY-MM-DD format without timezone shift.
+ */
+function formatTooltipDate(dateString: string): string {
+	if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+		const [year, month, day] = dateString.split("-").map(Number);
+		const date = new Date(year, month - 1, day);
+		return date.toLocaleDateString("en-US", {
+			weekday: "long",
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
+	}
+
+	return new Date(dateString).toLocaleDateString("en-US", {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+}
+
+/**
  * Parse a duration string into milliseconds.
  * Handles formats like: "5h 15m", "6m", "30s down", "5h down", etc.
  */
@@ -344,12 +368,7 @@ export function UptimeBar({
 													{day.annotation || statusConfig[day.status].label}
 												</div>
 												<div className="mt-1 text-muted-foreground text-xs">
-													{new Date(day.date).toLocaleDateString("en-US", {
-														weekday: "long",
-														month: "short",
-														day: "numeric",
-														year: "numeric",
-													})}
+													{formatTooltipDate(day.date)}
 												</div>
 												{day.duration ? (
 													<div className="mt-1 text-muted-foreground text-xs">
@@ -409,12 +428,7 @@ export function UptimeBar({
 													{day.annotation || statusConfig[day.status].label}
 												</div>
 												<div className="mt-1 text-muted-foreground text-xs">
-													{new Date(day.date).toLocaleDateString("en-US", {
-														weekday: "long",
-														month: "short",
-														day: "numeric",
-														year: "numeric",
-													})}
+													{formatTooltipDate(day.date)}
 												</div>
 												{style === "length" && <SegmentTooltip day={day} />}
 												{day.duration ? (

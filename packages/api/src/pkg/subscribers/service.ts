@@ -126,17 +126,32 @@ function buildMessageContent(
 
 async function postWebhook(url: string, body: unknown, destination: string) {
 	await assertSafeWebhookUrl(url);
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(body),
-	});
 
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(`${destination} webhook failed: ${response.status} ${text}`);
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(body),
+			signal: controller.signal,
+		});
+
+		clearTimeout(timeoutId);
+
+		if (!response.ok) {
+			const text = await response.text();
+			throw new Error(`${destination} webhook failed: ${response.status} ${text}`);
+		}
+	} catch (error) {
+		clearTimeout(timeoutId);
+		if (error instanceof Error && error.name === "AbortError") {
+			throw new Error(`${destination} webhook timed out after 10 seconds`);
+		}
+		throw error;
 	}
 }
 
@@ -159,99 +174,107 @@ export class SubscriberNotificationService {
 		event: SubscriberEventName,
 		payload: SubscriberEventPayload,
 	) {
-		const statusPageLinks = await db
-			.select({
-				statusPageId: incidentStatusPage.statusPageId,
-			})
-			.from(incidentStatusPage)
-			.where(eq(incidentStatusPage.incidentId, payload.incidentId));
-
-		if (statusPageLinks.length === 0) {
-			return;
-		}
-
-		const statusPageIds = statusPageLinks.map((row) => row.statusPageId);
-		const [pages, subscribers] = await Promise.all([
-			db
+		try {
+			const statusPageLinks = await db
 				.select({
-					id: statusPage.id,
-					name: statusPage.name,
-					slug: statusPage.slug,
-					domain: statusPage.domain,
-					design: statusPage.design,
+					statusPageId: incidentStatusPage.statusPageId,
 				})
-				.from(statusPage)
-				.where(
-					and(
-						eq(statusPage.organizationId, payload.organizationId),
-						inArray(statusPage.id, statusPageIds),
+				.from(incidentStatusPage)
+				.where(eq(incidentStatusPage.incidentId, payload.incidentId));
+
+			if (statusPageLinks.length === 0) {
+				return;
+			}
+
+			const statusPageIds = statusPageLinks.map((row) => row.statusPageId);
+			const [pages, subscribers] = await Promise.all([
+				db
+					.select({
+						id: statusPage.id,
+						name: statusPage.name,
+						slug: statusPage.slug,
+						domain: statusPage.domain,
+						design: statusPage.design,
+					})
+					.from(statusPage)
+					.where(
+						and(
+							eq(statusPage.organizationId, payload.organizationId),
+							inArray(statusPage.id, statusPageIds),
+						),
 					),
-				),
-			db
-				.select()
-				.from(statusPageEmailSubscribers)
-				.where(inArray(statusPageEmailSubscribers.statusPageId, statusPageIds)),
-		]);
+				db
+					.select()
+					.from(statusPageEmailSubscribers)
+					.where(inArray(statusPageEmailSubscribers.statusPageId, statusPageIds)),
+			]);
 
-		const pagesById = new Map(pages.map((page) => [page.id, page]));
+			const pagesById = new Map(pages.map((page) => [page.id, page]));
 
-		for (const subscriber of subscribers) {
-			const page = pagesById.get(subscriber.statusPageId);
+			for (const subscriber of subscribers) {
+				const page = pagesById.get(subscriber.statusPageId);
 
-			if (!page) {
-				continue;
-			}
+				if (!page) {
+					continue;
+				}
 
-			const design = (page.design as Record<string, unknown> | null) || {};
-			if (!design.allowSubscriptions) {
-				continue;
-			}
+				const design = (page.design as Record<string, unknown> | null) || {};
+				if (!design.allowSubscriptions) {
+					continue;
+				}
 
-			const message = buildMessageContent(event, payload, page);
+				const message = buildMessageContent(event, payload, page);
 
-			try {
-				await sendSubscriberEmail({
-					to: subscriber.email,
-					subject: message.subject,
-					text: message.text,
-					html: message.html,
-				});
-			} catch (error) {
-				logger.error(
-					`Failed to send email notification for incident ${payload.incidentId} to ${subscriber.email}`,
-					error,
-				);
-			}
-
-			if (subscriber.slackWebhookUrl) {
 				try {
-					await postWebhook(
-						subscriber.slackWebhookUrl,
-						{ text: message.slackText },
-						"Slack",
-					);
+					await sendSubscriberEmail({
+						to: subscriber.email,
+						subject: message.subject,
+						text: message.text,
+						html: message.html,
+					});
 				} catch (error) {
 					logger.error(
-						`Failed to send Slack notification for incident ${payload.incidentId} on status page ${page.id}`,
+						`Failed to send email notification for incident ${payload.incidentId} to ${subscriber.email}`,
 						error,
 					);
 				}
-			}
 
-			if (subscriber.discordWebhookUrl) {
-				try {
-					await postWebhook(
-						subscriber.discordWebhookUrl,
-						message.discordBody,
-						"Discord",
-					);
-				} catch (error) {
-					logger.error(
-						`Failed to send Discord notification for incident ${payload.incidentId} on status page ${page.id}`,
-						error,
-					);
+				if (subscriber.slackWebhookUrl) {
+					try {
+						await postWebhook(
+							subscriber.slackWebhookUrl,
+							{ text: message.slackText },
+							"Slack",
+						);
+					} catch (error) {
+						logger.error(
+							`Failed to send Slack notification for incident ${payload.incidentId} on status page ${page.id}`,
+							error,
+						);
+					}
+				}
+
+				if (subscriber.discordWebhookUrl) {
+					try {
+						await postWebhook(
+							subscriber.discordWebhookUrl,
+							message.discordBody,
+							"Discord",
+						);
+					} catch (error) {
+						logger.error(
+							`Failed to send Discord notification for incident ${payload.incidentId} on status page ${page.id}`,
+							error,
+						);
+					}
 				}
 			}
+		} catch (error) {
+			logger.error(
+				`Failed to handle subscriber event ${event} for incident ${payload.incidentId}`,
+				error,
+			);
+			return;
 		}
 	}
 }
