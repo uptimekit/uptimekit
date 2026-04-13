@@ -2,7 +2,7 @@
 
 import { db, statusPageEmailSubscribers } from "@uptimekit/db";
 import { statusPage } from "@uptimekit/db/schema/status-pages";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { getCookieName, verifyAccessToken } from "@/lib/access-token";
