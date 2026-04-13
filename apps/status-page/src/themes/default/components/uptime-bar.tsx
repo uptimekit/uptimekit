@@ -31,6 +31,30 @@ function formatDowntime(ms: number): string {
 }
 
 /**
+ * Format a date string for tooltip display.
+ * Handles YYYY-MM-DD format without timezone shift.
+ */
+function formatTooltipDate(dateString: string): string {
+	if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+		const [year, month, day] = dateString.split("-").map(Number);
+		const date = new Date(year, month - 1, day);
+		return date.toLocaleDateString("en-US", {
+			weekday: "long",
+			month: "short",
+			day: "numeric",
+			year: "numeric",
+		});
+	}
+
+	return new Date(dateString).toLocaleDateString("en-US", {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+}
+
+/**
  * Parse a duration string into milliseconds.
  * Handles formats like: "5h 15m", "6m", "30s down", "5h down", etc.
  */
@@ -326,38 +350,31 @@ export function UptimeBar({
 							}}
 						>
 							{days.map((day, index) => (
-								<>
-									{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
-									<div
-										key={day.date}
-										className="relative h-full"
-										onMouseEnter={() => setHoveredIndex(index)}
-										onMouseLeave={() => setHoveredIndex(null)}
-									>
-										{hoveredIndex === index ? (
-											<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
-												<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
-											</div>
-										) : null}
-										{hoveredIndex === index ? (
-											<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
-												<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
-													<div className="font-semibold text-popover-foreground text-sm">
-														{day.annotation || statusConfig[day.status].label}
-													</div>
+								<div
+									key={day.date}
+									className="relative h-full"
+									onMouseEnter={() => setHoveredIndex(index)}
+									onMouseLeave={() => setHoveredIndex(null)}
+								>
+									{hoveredIndex === index ? (
+										<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
+											<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
+										</div>
+									) : null}
+									{hoveredIndex === index ? (
+										<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
+											<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+												<div className="font-semibold text-popover-foreground text-sm">
+													{day.annotation || statusConfig[day.status].label}
+												</div>
+												<div className="mt-1 text-muted-foreground text-xs">
+													{formatTooltipDate(day.date)}
+												</div>
+												{day.duration ? (
 													<div className="mt-1 text-muted-foreground text-xs">
-														{new Date(day.date).toLocaleDateString("en-US", {
-															weekday: "long",
-															month: "short",
-															day: "numeric",
-															year: "numeric",
-														})}
+														Duration: {day.duration}
 													</div>
-													{day.duration ? (
-														<div className="mt-1 text-muted-foreground text-xs">
-															Duration: {day.duration}
-														</div>
-													) : (
+												) : (
 														day.status !== "unknown" && (
 															<div className="mt-1 text-muted-foreground text-xs">
 																{day.downtimeMs !== undefined &&
@@ -372,7 +389,6 @@ export function UptimeBar({
 											</div>
 										) : null}
 									</div>
-								</>
 							))}
 						</div>
 					</div>
@@ -412,12 +428,7 @@ export function UptimeBar({
 													{day.annotation || statusConfig[day.status].label}
 												</div>
 												<div className="mt-1 text-muted-foreground text-xs">
-													{new Date(day.date).toLocaleDateString("en-US", {
-														weekday: "long",
-														month: "short",
-														day: "numeric",
-														year: "numeric",
-													})}
+													{formatTooltipDate(day.date)}
 												</div>
 												{style === "length" && <SegmentTooltip day={day} />}
 												{day.duration ? (

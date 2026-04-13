@@ -3,8 +3,13 @@ import { type ClickHouseClient, createClient } from "@clickhouse/client";
 let _clickhouse: ClickHouseClient | null = null;
 let _clickhouseInit: Promise<void> | null = null;
 
-const CLICKHOUSE_BOOTSTRAP_QUERIES = [
-	"CREATE DATABASE IF NOT EXISTS uptimekit",
+type BootstrapQuery = {
+	query: string;
+	ignoreUnknownTable?: boolean;
+};
+
+const CLICKHOUSE_BOOTSTRAP_QUERIES: BootstrapQuery[] = [
+	{ query: "CREATE DATABASE IF NOT EXISTS uptimekit" },
 	`
 		CREATE TABLE IF NOT EXISTS uptimekit.monitor_events (
 			id UUID,
@@ -33,29 +38,62 @@ const CLICKHOUSE_BOOTSTRAP_QUERIES = [
 		) ENGINE = MergeTree()
 		ORDER BY (monitorId, timestamp)
 	`,
-	`
-	-- The main culprit (Every query you run)
-	ALTER TABLE system.query_log MODIFY TTL event_date + INTERVAL 3 DAY;
+].map((query) =>
+	typeof query === "string"
+		? ({ query }) satisfies BootstrapQuery
+		: query,
+);
 
-	-- Thread-level details (Very high volume)
-	ALTER TABLE system.query_thread_log MODIFY TTL event_date + INTERVAL 3 DAY;
+CLICKHOUSE_BOOTSTRAP_QUERIES.push(
+	{
+		query: "ALTER TABLE system.query_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+	{
+		query:
+			"ALTER TABLE system.query_thread_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+	{
+		query: "ALTER TABLE system.trace_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+	{
+		query:
+			"ALTER TABLE system.asynchronous_metric_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+	{
+		query:
+			"ALTER TABLE system.metric_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+	{
+		query: "ALTER TABLE system.error_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+	{
+		query: "ALTER TABLE system.part_log MODIFY TTL event_date + INTERVAL 3 DAY",
+		ignoreUnknownTable: true,
+	},
+);
 
-	-- Sampling of query execution (Can get huge)
-	ALTER TABLE system.trace_log MODIFY TTL event_date + INTERVAL 3 DAY;
+function isUnknownTableError(error: unknown): boolean {
+	if (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		(error as { code?: string }).code === "60"
+	) {
+		return true;
+	}
 
-	-- Async metrics (Snapshots of system state)
-	ALTER TABLE system.asynchronous_metric_log MODIFY TTL event_date + INTERVAL 3 DAY;
-
-	-- Periodic metrics
-	ALTER TABLE system.metric_log MODIFY TTL event_date + INTERVAL 3 DAY;
-
-	-- Error history
-	ALTER TABLE system.error_log MODIFY TTL event_date + INTERVAL 3 DAY;
-
-	-- Part mutations history
-	ALTER TABLE system.part_log MODIFY TTL event_date + INTERVAL 3 DAY;
-	`,
-] as const;
+	const errorText = error instanceof Error ? error.message : String(error ?? "");
+	return (
+		errorText.includes("UNKNOWN_TABLE") ||
+		errorText.includes("Could not find table")
+	);
+}
 
 function getClickHouse(): ClickHouseClient {
 	if (!_clickhouse) {
@@ -76,8 +114,19 @@ async function ensureClickHouseSchema() {
 		_clickhouseInit = (async () => {
 			const client = getClickHouse();
 
-			for (const query of CLICKHOUSE_BOOTSTRAP_QUERIES) {
-				await client.command({ query });
+			for (const { query, ignoreUnknownTable } of CLICKHOUSE_BOOTSTRAP_QUERIES) {
+				try {
+					await client.command({ query });
+				} catch (error) {
+					if (ignoreUnknownTable && isUnknownTableError(error)) {
+						console.warn(
+							`[clickhouse] Skipping optional bootstrap query because the table does not exist: ${query}`,
+						);
+						continue;
+					}
+
+					throw error;
+				}
 			}
 		})().catch((error) => {
 			_clickhouseInit = null;

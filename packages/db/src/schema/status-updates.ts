@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { monitor } from "./monitors";
 import { statusPage } from "./status-pages";
@@ -61,6 +61,25 @@ export const statusPageReportMonitor = pgTable(
 	(table) => [
 		index("status_page_report_monitor_reportId_idx").on(table.reportId),
 		index("status_page_report_monitor_monitorId_idx").on(table.monitorId),
+	],
+);
+
+export const statusPageEmailSubscribers = pgTable(
+	"status_page_email_subscribers",
+	{
+		email: text("email").notNull(),
+		slackWebhookUrl: text("slack_webhook_url"),
+		discordWebhookUrl: text("discord_webhook_url"),
+		statusPageId: text("status_page_id")
+			.notNull()
+			.references(() => statusPage.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at").defaultNow(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.statusPageId, table.email],
+		}),
+		index("status_page_email_subscribers_page_id_idx").on(table.statusPageId),
 	],
 );
 
