@@ -326,38 +326,36 @@ export function UptimeBar({
 							}}
 						>
 							{days.map((day, index) => (
-								<>
-									{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
-									<div
-										key={day.date}
-										className="relative h-full"
-										onMouseEnter={() => setHoveredIndex(index)}
-										onMouseLeave={() => setHoveredIndex(null)}
-									>
-										{hoveredIndex === index ? (
-											<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
-												<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
-											</div>
-										) : null}
-										{hoveredIndex === index ? (
-											<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
-												<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
-													<div className="font-semibold text-popover-foreground text-sm">
-														{day.annotation || statusConfig[day.status].label}
-													</div>
+								<div
+									key={day.date}
+									className="relative h-full"
+									onMouseEnter={() => setHoveredIndex(index)}
+									onMouseLeave={() => setHoveredIndex(null)}
+								>
+									{hoveredIndex === index ? (
+										<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
+											<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
+										</div>
+									) : null}
+									{hoveredIndex === index ? (
+										<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
+											<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+												<div className="font-semibold text-popover-foreground text-sm">
+													{day.annotation || statusConfig[day.status].label}
+												</div>
+												<div className="mt-1 text-muted-foreground text-xs">
+													{new Date(day.date).toLocaleDateString("en-US", {
+														weekday: "long",
+														month: "short",
+														day: "numeric",
+														year: "numeric",
+													})}
+												</div>
+												{day.duration ? (
 													<div className="mt-1 text-muted-foreground text-xs">
-														{new Date(day.date).toLocaleDateString("en-US", {
-															weekday: "long",
-															month: "short",
-															day: "numeric",
-															year: "numeric",
-														})}
+														Duration: {day.duration}
 													</div>
-													{day.duration ? (
-														<div className="mt-1 text-muted-foreground text-xs">
-															Duration: {day.duration}
-														</div>
-													) : (
+												) : (
 														day.status !== "unknown" && (
 															<div className="mt-1 text-muted-foreground text-xs">
 																{day.downtimeMs !== undefined &&
@@ -372,7 +370,6 @@ export function UptimeBar({
 											</div>
 										) : null}
 									</div>
-								</>
 							))}
 						</div>
 					</div>

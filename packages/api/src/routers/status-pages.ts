@@ -10,6 +10,7 @@ import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { hashPassword } from "../lib/password";
 import { redis } from "../lib/redis";
+import { subscribersRouter } from "./subscribers";
 
 function getActiveOrganizationId(
 	activeOrganizationId: string | null | undefined,
@@ -469,4 +470,6 @@ export const statusPagesRouter = {
 
 			return { success: true };
 		}),
+
+	subscribers: subscribersRouter,
 };
