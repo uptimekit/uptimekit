@@ -35,7 +35,7 @@
 		"check-types": "tsc --noEmit -p tsconfig.json"
 	},
 	"devDependencies": {
-		"@types/nodemailer": "^7.0.1",
+		"@types/nodemailer": "^8.0.0",
 		"@uptimekit/config": "workspace:*",
 		"typescript": "^5.9.3"
 	},
@@ -55,7 +55,7 @@
 		"drizzle-orm": "catalog:",
 		"ioredis": "^5.8.2",
 		"next": "^16.2.3",
-		"nodemailer": "^7.0.5",
+		"nodemailer": "^8.0.5",
 		"zod": "catalog:"
 	}
 }
