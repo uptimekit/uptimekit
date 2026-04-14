@@ -632,7 +632,7 @@ export function IncidentsTable() {
 						<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
 						<Button
 							type="button"
-							className="bg-red-500 hover:bg-red-600"
+							variant="destructive"
 							onClick={() =>
 								incidentToDelete && deleteIncident(incidentToDelete.id)
 							}

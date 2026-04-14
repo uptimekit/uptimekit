@@ -29,7 +29,6 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -883,10 +882,12 @@ export function MonitorsTable() {
 
 function MonitorActions({ monitor }: { monitor: Monitor }) {
 	const queryClient = useQueryClient();
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
 	const { mutate: deleteMonitor } = useMutation({
 		mutationFn: (id: string) => client.monitors.delete({ id }),
 		onSuccess: () => {
+			setDeleteDialogOpen(false);
 			sileo.success({ title: "Monitor deleted" });
 			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
 		},
@@ -904,70 +905,69 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 	});
 
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={
-					<Button
-						variant="ghost"
-						size="icon"
-						className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-					/>
-				}
-			>
-				<MoreHorizontal className="h-4 w-4" />
-				<span className="sr-only">Open menu</span>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
-				<DropdownMenuItem render={<Link href={`/monitors/${monitor.id}`} />}>
-					View details
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					onClick={(e) => {
-						e.stopPropagation();
-						toggleMonitor({ id: monitor.id, active: !monitor.active });
-					}}
+		<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+						/>
+					}
 				>
-					{monitor.active
-						? "Pause monitoring"
-						: monitor.pauseReason
-							? "Resume monitoring (re-check limits)"
-							: "Resume monitoring"}
-				</DropdownMenuItem>
-				<AlertDialog>
-					<AlertDialogTrigger
-						render={
-							<DropdownMenuItem
-								className="text-red-500"
-								onSelect={(e) => e.preventDefault()}
-							/>
-						}
+					<MoreHorizontal className="h-4 w-4" />
+					<span className="sr-only">Open menu</span>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem render={<Link href={`/monitors/${monitor.id}`} />}>
+						View details
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={(e) => {
+							e.stopPropagation();
+							toggleMonitor({ id: monitor.id, active: !monitor.active });
+						}}
+					>
+						{monitor.active
+							? "Pause monitoring"
+							: monitor.pauseReason
+								? "Resume monitoring (re-check limits)"
+								: "Resume monitoring"}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						className="text-red-500"
+						onClick={(e) => {
+							e.stopPropagation();
+							setDeleteDialogOpen(true);
+						}}
 					>
 						Delete
-					</AlertDialogTrigger>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-							<AlertDialogDescription>
-								This action cannot be undone. This will permanently delete the
-								monitor and all of its data.
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel>Cancel</AlertDialogCancel>
-							<Button
-								type="button"
-								className="bg-red-500 hover:bg-red-600"
-								onClick={(e) => {
-									e.stopPropagation();
-									deleteMonitor(monitor.id);
-								}}
-							>
-								Delete
-							</Button>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
-			</DropdownMenuContent>
-		</DropdownMenu>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+					<AlertDialogDescription>
+						This action cannot be undone. This will permanently delete the
+						monitor and all of its data.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<Button
+						type="button"
+						variant="destructive"
+						onClick={(e) => {
+							e.stopPropagation();
+							deleteMonitor(monitor.id);
+						}}
+					>
+						Delete
+					</Button>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }

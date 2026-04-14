@@ -515,7 +515,7 @@ export function IncidentDetails({ id }: { id: string }) {
 						</AlertDialogCancel>
 						<Button
 							type="button"
-							className="bg-red-500 hover:bg-red-600"
+							variant="destructive"
 							onClick={() => deleteIncident.mutate({ id })}
 							disabled={deleteIncident.isPending}
 						>
