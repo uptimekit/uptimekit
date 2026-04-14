@@ -236,33 +236,43 @@ export const monitorsRouter = {
 				tagsByMonitor.get(monitorId)?.push(tagRecord);
 			}
 
-			// Fetch latest events for all monitors in a single query
-			const latestEventsQuery = await clickhouse.query({
-				query: BATCH_LATEST_EVENTS_QUERY,
-				query_params: { ids: monitorIds },
-				format: "JSON",
-			});
-			const latestEventsJson = await latestEventsQuery.json<any>();
-			const latestEventsMap = new Map(
-				(latestEventsJson.data as LatestEventResult[]).map((event) => [
-					event.monitorId,
-					event,
-				]),
-			);
+			let latestEventsMap = new Map<string, LatestEventResult>();
+			let latestChangesMap = new Map<string, LatestChangeResult>();
 
-			// Fetch latest changes for all monitors in a single query
-			const latestChangesQuery = await clickhouse.query({
-				query: BATCH_LATEST_CHANGES_QUERY,
-				query_params: { ids: monitorIds },
-				format: "JSON",
-			});
-			const latestChangesJson = await latestChangesQuery.json<any>();
-			const latestChangesMap = new Map(
-				(latestChangesJson.data as LatestChangeResult[]).map((change) => [
-					change.monitorId,
-					change,
-				]),
-			);
+			if (monitorIds.length > 0) {
+				try {
+					const latestEventsQuery = await clickhouse.query({
+						query: BATCH_LATEST_EVENTS_QUERY,
+						query_params: { ids: monitorIds },
+						format: "JSON",
+					});
+					const latestEventsJson = await latestEventsQuery.json<any>();
+					latestEventsMap = new Map(
+						(latestEventsJson.data as LatestEventResult[]).map((event) => [
+							event.monitorId,
+							event,
+						]),
+					);
+
+					const latestChangesQuery = await clickhouse.query({
+						query: BATCH_LATEST_CHANGES_QUERY,
+						query_params: { ids: monitorIds },
+						format: "JSON",
+					});
+					const latestChangesJson = await latestChangesQuery.json<any>();
+					latestChangesMap = new Map(
+						(latestChangesJson.data as LatestChangeResult[]).map((change) => [
+							change.monitorId,
+							change,
+						]),
+					);
+				} catch (error) {
+					console.error(
+						"[monitors.list] Failed to load latest monitor state from ClickHouse",
+						error,
+					);
+				}
+			}
 
 			// Map the results to monitors
 			const monitorsWithStatus = monitors.map((row) => {
