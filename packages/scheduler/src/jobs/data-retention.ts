@@ -21,6 +21,7 @@ export async function processDataRetention() {
 	const retentionDays = Number.parseInt(config?.value || "30", 10);
 	const cutoffDate = new Date();
 	cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+	const cutoffTimestamp = cutoffDate.getTime();
 
 	logger.info(
 		`Deleting records older than ${retentionDays} days (before ${cutoffDate.toISOString()})`,
@@ -31,9 +32,9 @@ export async function processDataRetention() {
 		await clickhouse.command({
 			query: `
 				ALTER TABLE uptimekit.monitor_events 
-				DELETE WHERE timestamp < toDateTime64({cutoff:String}, 3)
+				DELETE WHERE timestamp < toDateTime64({cutoff:UInt64} / 1000, 3)
 			`,
-			query_params: { cutoff: cutoffDate.toISOString() },
+			query_params: { cutoff: cutoffTimestamp },
 		});
 		logger.info("Deleted old monitor_events");
 
@@ -41,9 +42,9 @@ export async function processDataRetention() {
 		await clickhouse.command({
 			query: `
 				ALTER TABLE uptimekit.monitor_changes 
-				DELETE WHERE timestamp < toDateTime64({cutoff:String}, 3)
+				DELETE WHERE timestamp < toDateTime64({cutoff:UInt64} / 1000, 3)
 			`,
-			query_params: { cutoff: cutoffDate.toISOString() },
+			query_params: { cutoff: cutoffTimestamp },
 		});
 		logger.info("Deleted old monitor_changes");
 
