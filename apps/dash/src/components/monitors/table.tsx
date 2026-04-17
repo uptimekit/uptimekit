@@ -20,6 +20,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
+import {
+	parseAsBoolean,
+	parseAsInteger,
+	parseAsString,
+	parseAsStringEnum,
+	useQueryStates,
+} from "nuqs";
 import { sileo } from "sileo";
 import {
 	AlertDialog,
@@ -60,6 +67,13 @@ import { LatencySparkline } from "./latency-sparkline";
 import { TagCreationDialog } from "./tag-creation-dialog";
 
 const PAGE_SIZE_OPTIONS = ["10", "25", "50", "100"] as const;
+const MONITOR_STATUS_FILTERS = [
+	"up",
+	"down",
+	"degraded",
+	"maintenance",
+] as const;
+const MONITOR_TYPE_FILTERS = ["http", "ping", "tcp", "keyword"] as const;
 
 export type MonitorStatus =
 	| "up"
@@ -89,6 +103,8 @@ function getPauseLabel(pauseReason?: string | null) {
 			return "PAUSED BY MONITOR LIMIT";
 		case "org_region_limit":
 			return "PAUSED BY REGION LIMIT";
+		case "worker_deleted":
+			return "PAUSED BY WORKER REMOVAL";
 		default:
 			return "PAUSED";
 	}
@@ -103,44 +119,61 @@ function getPauseLabel(pauseReason?: string | null) {
  * @returns The React element for the monitors management UI.
  */
 export function MonitorsTable() {
-	const [search, setSearch] = useState("");
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [groupsOpen, setGroupsOpen] = useState(false);
 	const [tagsOpen, setTagsOpen] = useState(false);
-	const [activeFilter, setActiveFilter] = useState<boolean | undefined>(
-		undefined,
-	);
-	const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
-	const [statusFilter, setStatusFilter] = useState<string | undefined>(
-		undefined,
-	);
-	const [groupFilter, setGroupFilter] = useState<string | undefined>(undefined);
-	const [tagFilter, setTagFilter] = useState<string | undefined>(undefined);
-	const [page, setPage] = useState(1);
-	const [pageSize, setPageSize] = useState<number>(25);
+	const [filters, setFilters] = useQueryStates({
+		search: parseAsString.withDefault(""),
+		active: parseAsBoolean,
+		type: parseAsStringEnum([...MONITOR_TYPE_FILTERS]),
+		status: parseAsStringEnum([...MONITOR_STATUS_FILTERS]),
+		groupId: parseAsString,
+		tagId: parseAsString,
+		page: parseAsInteger.withDefault(1),
+		pageSize: parseAsStringEnum([...PAGE_SIZE_OPTIONS]).withDefault("25"),
+	});
+	const {
+		search,
+		active: activeFilter,
+		type: typeFilter,
+		status: statusFilter,
+		groupId: groupFilter,
+		tagId: tagFilter,
+		page,
+		pageSize: pageSizeParam,
+	} = filters;
+	const pageSize = Number(pageSizeParam);
 	const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
 		{},
 	);
 
 	// Debounce search
-	const [debouncedSearch, setDebouncedSearch] = useState("");
+	const [searchInput, setSearchInput] = useState(search);
+	const [debouncedSearch, setDebouncedSearch] = useState(search);
+	useEffect(() => {
+		setSearchInput(search);
+	}, [search]);
+
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			setDebouncedSearch(search);
-			setPage(1);
+			setDebouncedSearch(searchInput);
+			void setFilters({
+				search: searchInput || null,
+				page: 1,
+			});
 		}, 500);
 		return () => clearTimeout(timer);
-	}, [search]);
+	}, [searchInput, setFilters]);
 
 	const { data, isLoading } = useQuery({
 		...orpc.monitors.list.queryOptions({
 			input: {
 				q: debouncedSearch || undefined,
-				active: activeFilter,
-				type: typeFilter as any,
-				status: statusFilter as any,
-				groupId: groupFilter,
-				tagId: tagFilter,
+				active: activeFilter ?? undefined,
+				type: typeFilter ?? undefined,
+				status: statusFilter ?? undefined,
+				groupId: groupFilter ?? undefined,
+				tagId: tagFilter ?? undefined,
 				limit: pageSize,
 				offset: (page - 1) * pageSize,
 			},
@@ -230,21 +263,24 @@ export function MonitorsTable() {
 	};
 
 	const clearFilters = () => {
-		setSearch("");
-		setActiveFilter(undefined);
-		setTypeFilter(undefined);
-		setStatusFilter(undefined);
-		setGroupFilter(undefined);
-		setTagFilter(undefined);
-		setPage(1);
+		setSearchInput("");
+		void setFilters({
+			search: null,
+			active: null,
+			type: null,
+			status: null,
+			groupId: null,
+			tagId: null,
+			page: 1,
+		});
 	};
 
 	const activeFilterCount = [
-		activeFilter !== undefined,
-		typeFilter !== undefined,
-		statusFilter !== undefined,
-		groupFilter !== undefined,
-		tagFilter !== undefined,
+		activeFilter !== null,
+		typeFilter !== null,
+		statusFilter !== null,
+		groupFilter !== null,
+		tagFilter !== null,
 	].filter(Boolean).length;
 
 	return (
@@ -257,8 +293,8 @@ export function MonitorsTable() {
 							autoFocus
 							placeholder="Search monitors..."
 							className="h-12 rounded-full border-muted bg-background pr-12 pl-6 shadow-lg"
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
+							value={searchInput}
+							onChange={(e) => setSearchInput(e.target.value)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter") {
 									setSearchOpen(false);
@@ -283,8 +319,8 @@ export function MonitorsTable() {
 						<Input
 							placeholder="Search monitors..."
 							className="pl-8"
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
+							value={searchInput}
+							onChange={(e) => setSearchInput(e.target.value)}
 						/>
 					</div>
 					<Button
@@ -307,7 +343,7 @@ export function MonitorsTable() {
 							<Filter className="h-4 w-4" />
 							{activeFilterCount > 0 && (
 								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-									{activeFilterCount}
+									<div className="-mt-px">{activeFilterCount}</div>
 								</span>
 							)}
 						</DropdownMenuTrigger>
@@ -317,8 +353,7 @@ export function MonitorsTable() {
 							</div>
 							<DropdownMenuItem
 								onClick={() => {
-									setStatusFilter(undefined);
-									setPage(1);
+									void setFilters({ status: null, page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -327,8 +362,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setStatusFilter("up");
-									setPage(1);
+									void setFilters({ status: "up", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -337,8 +371,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setStatusFilter("down");
-									setPage(1);
+									void setFilters({ status: "down", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -347,8 +380,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setStatusFilter("degraded");
-									setPage(1);
+									void setFilters({ status: "degraded", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -357,8 +389,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setStatusFilter("maintenance");
-									setPage(1);
+									void setFilters({ status: "maintenance", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -375,8 +406,7 @@ export function MonitorsTable() {
 							</div>
 							<DropdownMenuItem
 								onClick={() => {
-									setTypeFilter(undefined);
-									setPage(1);
+									void setFilters({ type: null, page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -385,8 +415,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setTypeFilter("http");
-									setPage(1);
+									void setFilters({ type: "http", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -395,8 +424,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setTypeFilter("ping");
-									setPage(1);
+									void setFilters({ type: "ping", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -405,8 +433,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setTypeFilter("tcp");
-									setPage(1);
+									void setFilters({ type: "tcp", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -416,8 +443,7 @@ export function MonitorsTable() {
 
 							<DropdownMenuItem
 								onClick={() => {
-									setTypeFilter("keyword");
-									setPage(1);
+									void setFilters({ type: "keyword", page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -432,18 +458,16 @@ export function MonitorsTable() {
 							</div>
 							<DropdownMenuItem
 								onClick={() => {
-									setActiveFilter(undefined);
-									setPage(1);
+									void setFilters({ active: null, page: 1 });
 								}}
 								className="flex justify-between"
 							>
 								All
-								{activeFilter === undefined && <Check className="h-4 w-4" />}
+								{activeFilter === null && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setActiveFilter(true);
-									setPage(1);
+									void setFilters({ active: true, page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -452,8 +476,7 @@ export function MonitorsTable() {
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
-									setActiveFilter(false);
-									setPage(1);
+									void setFilters({ active: false, page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -480,8 +503,7 @@ export function MonitorsTable() {
 							</div>
 							<DropdownMenuItem
 								onClick={() => {
-									setGroupFilter(undefined);
-									setPage(1);
+									void setFilters({ groupId: null, page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -492,8 +514,7 @@ export function MonitorsTable() {
 								<DropdownMenuItem
 									key={group.id}
 									onClick={() => {
-										setGroupFilter(group.id);
-										setPage(1);
+										void setFilters({ groupId: group.id, page: 1 });
 									}}
 									className="flex justify-between"
 								>
@@ -518,10 +539,12 @@ export function MonitorsTable() {
 								onPointerDown={(e) => e.stopPropagation()}
 							>
 								<Select
-									value={String(pageSize)}
+									value={pageSizeParam}
 									onValueChange={(value) => {
-										setPageSize(Number(value));
-										setPage(1);
+										void setFilters({
+											pageSize: value as (typeof PAGE_SIZE_OPTIONS)[number],
+											page: 1,
+										});
 									}}
 								>
 									<SelectTrigger
@@ -561,8 +584,7 @@ export function MonitorsTable() {
 							</div>
 							<DropdownMenuItem
 								onClick={() => {
-									setTagFilter(undefined);
-									setPage(1);
+									void setFilters({ tagId: null, page: 1 });
 								}}
 								className="flex justify-between"
 							>
@@ -573,8 +595,7 @@ export function MonitorsTable() {
 								<DropdownMenuItem
 									key={tag.id}
 									onClick={() => {
-										setTagFilter(tag.id);
-										setPage(1);
+										void setFilters({ tagId: tag.id, page: 1 });
 									}}
 									className="flex justify-between"
 								>
@@ -590,10 +611,10 @@ export function MonitorsTable() {
 							))}
 
 							{(activeFilter !== undefined ||
-								typeFilter !== undefined ||
-								statusFilter !== undefined ||
-								groupFilter !== undefined ||
-								tagFilter !== undefined) && (
+								typeFilter !== null ||
+								statusFilter !== null ||
+								groupFilter !== null ||
+								tagFilter !== null) && (
 								<>
 									<div className="my-2 h-px bg-muted" />
 									<DropdownMenuItem
@@ -641,7 +662,7 @@ export function MonitorsTable() {
 										<p className="font-medium text-lg">No monitors found</p>
 										<p className="text-muted-foreground text-sm">
 											{search ||
-											activeFilter !== undefined ||
+											activeFilter !== null ||
 											typeFilter ||
 											statusFilter ||
 											groupFilter ||
@@ -650,7 +671,7 @@ export function MonitorsTable() {
 												: "Get started by creating your first monitor."}
 										</p>
 										{!search &&
-											activeFilter === undefined &&
+											activeFilter === null &&
 											!typeFilter &&
 											!statusFilter &&
 											!groupFilter &&
@@ -678,7 +699,7 @@ export function MonitorsTable() {
 											onClick={() => toggleGroup(groupId)}
 										>
 											<TableCell colSpan={6} className="py-3">
-												<div className="flex items-center gap-2 font-medium text-sm">
+												<div className="flex select-none items-center gap-2 font-medium text-sm">
 													<ChevronRight
 														className={cn(
 															"h-4 w-4 transition-transform",
@@ -820,7 +841,7 @@ export function MonitorsTable() {
 										variant="ghost"
 										size="icon"
 										disabled={page === 1}
-										onClick={() => setPage(page - 1)}
+										onClick={() => void setFilters({ page: page - 1 })}
 									>
 										<ChevronLeftIcon className="h-4 w-4" />
 									</Button>
@@ -849,7 +870,7 @@ export function MonitorsTable() {
 												<Button
 													variant={p === page ? "outline" : "ghost"}
 													size="icon"
-													onClick={() => setPage(p)}
+													onClick={() => void setFilters({ page: p })}
 													className="h-8 w-8"
 												>
 													{p}
@@ -862,7 +883,7 @@ export function MonitorsTable() {
 									<Button
 										variant="ghost"
 										size="icon"
-										onClick={() => setPage(page + 1)}
+										onClick={() => void setFilters({ page: page + 1 })}
 										disabled={page === totalPages}
 									>
 										<ChevronRightIcon className="h-4 w-4" />

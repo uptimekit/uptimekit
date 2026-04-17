@@ -1,7 +1,8 @@
 import { db } from "@uptimekit/db";
 import { organization, user } from "@uptimekit/db/schema/auth";
 import { monitor } from "@uptimekit/db/schema/monitors";
-import { count } from "drizzle-orm";
+import { worker } from "@uptimekit/db/schema/workers";
+import { and, count, eq, isNotNull } from "drizzle-orm";
 import { Activity, BarChart3, Shield, Users } from "lucide-react";
 import WorkersMap from "@/components/admin/workers-map";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,16 +14,40 @@ async function getStats() {
 	const [userCount] = await db.select({ count: count() }).from(user);
 	const [orgCount] = await db.select({ count: count() }).from(organization);
 	const [monitorCount] = await db.select({ count: count() }).from(monitor);
+	const [workerCount] = await db.select({ count: count() }).from(worker);
+	const [unreachableWorkerCount] = await db
+		.select({ count: count() })
+		.from(worker)
+		.where(and(eq(worker.active, false), isNotNull(worker.lastHeartbeat)));
 
 	return {
 		users: userCount?.count || 0,
 		orgs: orgCount?.count || 0,
 		monitors: monitorCount?.count || 0,
+		workers: workerCount?.count || 0,
+		unreachableWorkers: unreachableWorkerCount?.count || 0,
 	};
 }
 
 export default async function AdminPage() {
 	const stats = await getStats();
+	const hasWorkers = stats.workers > 0;
+	const hasUnreachableWorkers = stats.unreachableWorkers > 0;
+	const systemHealthLabel = !hasWorkers
+		? "No workers"
+		: hasUnreachableWorkers
+			? "Degraded"
+			: "Operational";
+	const systemHealthClassName = !hasWorkers
+		? "text-muted-foreground"
+		: hasUnreachableWorkers
+			? "text-amber-500"
+			: "text-green-500";
+	const systemHealthDescription = !hasWorkers
+		? "No workers registered yet"
+		: hasUnreachableWorkers
+			? `${stats.unreachableWorkers} worker${stats.unreachableWorkers === 1 ? "" : "s"} unreachable`
+			: "All workers reachable";
 
 	return (
 		<div className="flex flex-col gap-8 p-4">
@@ -78,15 +103,17 @@ export default async function AdminPage() {
 						<BarChart3 className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="font-bold text-2xl text-green-500">Operational</div>
-						<p className="text-muted-foreground text-xs">All systems normal</p>
+						<div className={`font-bold text-2xl ${systemHealthClassName}`}>
+							{systemHealthLabel}
+						</div>
+						<p className="text-muted-foreground text-xs">
+							{systemHealthDescription}
+						</p>
 					</CardContent>
 				</Card>
 			</div>
 
-			{/* Changed to grid-cols-12 for better control */}
 			<div className="mt-8 grid grid-cols-12 gap-4">
-				{/* This card takes up 8 of 12 columns (2/3 width) */}
 				<Card className="col-span-8">
 					<CardHeader>
 						<CardTitle>Workers Overview</CardTitle>
@@ -98,7 +125,6 @@ export default async function AdminPage() {
 					</CardContent>
 				</Card>
 
-				{/* This card takes up 4 of 12 columns (1/3 width) */}
 				<Card className="col-span-4">
 					<CardHeader>
 						<CardTitle>Workers</CardTitle>

@@ -168,11 +168,11 @@ export function GroupsManager({ autoCreate = false }: GroupsManagerProps) {
 						<DropdownMenu>
 							<DropdownMenuTrigger
 								render={
-									<Button variant="ghost" size="icon" className="h-8 w-8" />
+									<Button variant="ghost" size="icon" className="h-8 w-8">
+										<MoreHorizontal className="h-4 w-4" />
+									</Button>
 								}
-							>
-								<MoreHorizontal className="h-4 w-4" />
-							</DropdownMenuTrigger>
+							/>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem
 									onClick={() => {

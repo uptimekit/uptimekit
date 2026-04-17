@@ -11,7 +11,6 @@ import {
 	getActiveStatusPageReports,
 	getMaintenanceHistory,
 	getMonitorStatus,
-	getMonitorUptime,
 	getScheduledMaintenances,
 	getStatusPageEvents,
 	getStatusPageReports,
@@ -19,22 +18,9 @@ import {
 import { buildPath } from "./route-utils";
 import { calculateAggregateStatus } from "./status-utils";
 
-function calculateDailyStatus(total: number, up: number): StatusType {
-	if (total === 0) return "unknown";
-	const ratio = up / total;
-	if (ratio < 1) return "major_outage";
-	return "operational";
-}
-
-function fillMissingDays(
-	stats: {
-		date: string;
-		total_checks: number;
-		up_checks: number;
-	}[],
+function buildOperationalHistory(
 	days = 90,
 	endDate?: string,
-	intervalSeconds = 60,
 ): UptimeDay[] {
 	const result: UptimeDay[] = [];
 	let now: Date;
@@ -47,33 +33,17 @@ function fillMissingDays(
 		);
 	}
 
-	const statsMap = new Map(stats.map((s) => [s.date, s]));
-
 	for (let i = days - 1; i >= 0; i--) {
 		const d = new Date(now);
 		d.setDate(d.getDate() - i);
 		const dateStr = d.toISOString().split("T")[0];
-		const stat = statsMap.get(dateStr);
 
-		if (stat) {
-			const uptime =
-				stat.total_checks > 0 ? (stat.up_checks / stat.total_checks) * 100 : 0;
-			const failedChecks = stat.total_checks - stat.up_checks;
-			const downtimeMs = failedChecks * intervalSeconds * 1000;
-			result.push({
-				date: dateStr,
-				status: calculateDailyStatus(stat.total_checks, stat.up_checks),
-				uptime: uptime,
-				downtimeMs: downtimeMs,
-			});
-		} else {
-			result.push({
-				date: dateStr,
-				status: "unknown",
-				uptime: 0,
-				downtimeMs: 0,
-			});
-		}
+		result.push({
+			date: dateStr,
+			status: "operational",
+			uptime: 100,
+			downtimeMs: 0,
+		});
 	}
 	return result;
 }
@@ -187,48 +157,8 @@ export async function prepareStatusPageData(
 		(a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 	);
 
-	const monitorsWithStats = await Promise.all(
-		pageConfig.monitors.map(async (pm: any) => {
-			const hourlyStats = await getMonitorUptime(pm.monitorId, barDays);
-			return { pm, hourlyStats };
-		}),
-	);
-
 	const monitorsData = await Promise.all(
-		monitorsWithStats.map(async ({ pm, hourlyStats }) => {
-			const dailyStatsMap = new Map<
-				string,
-				{ date: string; total_checks: number; up_checks: number }
-			>();
-
-			for (const stat of hourlyStats) {
-				const dateObj = new Date(`${stat.date_hour.replace(" ", "T")}:00:00Z`);
-
-				const year = dateObj.getUTCFullYear();
-				const month = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
-				const day = String(dateObj.getUTCDate()).padStart(2, "0");
-				const localDateStr = `${year}-${month}-${day}`;
-
-				if (!dailyStatsMap.has(localDateStr)) {
-					dailyStatsMap.set(localDateStr, {
-						date: localDateStr,
-						total_checks: 0,
-						up_checks: 0,
-					});
-				}
-
-				const daily = dailyStatsMap.get(localDateStr);
-				if (!daily) {
-					continue;
-				}
-				daily.total_checks += Number(stat.total_checks);
-				daily.up_checks += Number(stat.up_checks);
-			}
-
-			const dailyStats = Array.from(dailyStatsMap.values()).sort((a, b) =>
-				b.date.localeCompare(a.date),
-			);
-
+		pageConfig.monitors.map(async (pm: any) => {
 			let currentStatus: StatusType = "operational";
 
 			const isUnderMaintenance = activeMaintenances.some((m: any) =>
@@ -266,27 +196,9 @@ export async function prepareStatusPageData(
 				}
 			}
 
-			const monitorInterval = pm.monitor.interval || 60;
-			const incidentPendingDuration = pm.monitor.incidentPendingDuration || 0;
-			const incidentThresholdMs = incidentPendingDuration * 1000;
-
-			let history = fillMissingDays(
-				dailyStats,
-				barDays,
-				undefined,
-				monitorInterval,
-			);
-
-			history = history.map((day) => ({
-				...day,
-				downtimeMs:
-					(day.downtimeMs || 0) > incidentThresholdMs ? day.downtimeMs : 0,
-			}));
+			let history = buildOperationalHistory(barDays);
 
 			history = history.map((day) => {
-				const dayDate = new Date(day.date);
-				dayDate.setHours(12, 0, 0, 0);
-
 				const dayStart = new Date(day.date);
 				dayStart.setHours(0, 0, 0, 0);
 				const dayEnd = new Date(day.date);
@@ -379,20 +291,10 @@ export async function prepareStatusPageData(
 					};
 				}
 
-				if (day.status !== "unknown" && day.status !== "operational") {
-					return {
-						...day,
-						status: "operational",
-						duration: undefined,
-					};
-				}
-
 				return day;
 			});
 
-			const knownDays = history.filter(
-				(d) => d.status !== "unknown" && d.status !== "maintenance",
-			);
+			const knownDays = history.filter((d) => d.status !== "maintenance");
 
 			const avgUptime =
 				knownDays.length > 0

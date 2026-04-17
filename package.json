@@ -25,6 +25,7 @@
 		"lint": "biome check .",
 		"prepare": "husky || true",
 		"build": "turbo build",
+		"clear:cache": "find . -type d -name .next -prune -exec rm -rf {} +",
 		"check-types": "turbo check-types",
 		"test": "cd apps/worker && go test ./...",
 		"dev": "turbo dev",

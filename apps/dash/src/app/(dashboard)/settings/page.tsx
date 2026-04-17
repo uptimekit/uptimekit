@@ -21,9 +21,10 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PageNav } from "@/components/ui/page-nav";
 import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth-client";
+import { parseAsStringEnum, useQueryState } from "nuqs";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@/components/ui/tabs";
 
 const formSchema = z.object({
 	name: z.string().min(2, {
@@ -38,7 +39,6 @@ const formSchema = z.object({
 			message: "Slug can only contain lowercase letters, numbers, and dashes.",
 		}),
 	logo: z
-		.string()
 		.url({
 			message: "Please enter a valid URL.",
 		})
@@ -56,6 +56,12 @@ const formSchema = z.object({
  */
 export default function SettingsPage() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
+	const [activeTab, setActiveTab] = useQueryState(
+		"activeTab",
+		parseAsStringEnum(["general", "team", "groups", "tags"]).withDefault(
+			"general",
+		),
+	);
 
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -149,15 +155,15 @@ export default function SettingsPage() {
 					</p>
 				</div>
 
-				<PageNav defaultValue="general">
-					<PageNav.List>
-						<PageNav.Trigger value="general">General</PageNav.Trigger>
-						<PageNav.Trigger value="team">Team</PageNav.Trigger>
-						<PageNav.Trigger value="groups">Groups</PageNav.Trigger>
-						<PageNav.Trigger value="tags">Tags</PageNav.Trigger>
-					</PageNav.List>
+				<Tabs value={activeTab} onValueChange={(e) => setActiveTab(e)}>
+					<TabsList variant="underline" className="mb-6">
+						<TabsTab value="general">General</TabsTab>
+						<TabsTab value="team">Team</TabsTab>
+						<TabsTab value="groups">Groups</TabsTab>
+						<TabsTab value="tags">Tags</TabsTab>
+					</TabsList>
 
-					<PageNav.Content value="general">
+					<TabsPanel value="general">
 						<Form {...form}>
 							<form
 								onSubmit={form.handleSubmit(submitForm)}
@@ -273,20 +279,20 @@ export default function SettingsPage() {
 								</div>
 							</form>
 						</Form>
-					</PageNav.Content>
+					</TabsPanel>
 
-					<PageNav.Content value="team">
+					<TabsPanel value="team">
 						<TeamSettings />
-					</PageNav.Content>
+					</TabsPanel>
 
-					<PageNav.Content value="groups">
+					<TabsPanel value="groups">
 						<GroupSettings />
-					</PageNav.Content>
+					</TabsPanel>
 
-					<PageNav.Content value="tags">
+					<TabsPanel value="tags">
 						<TagSettings />
-					</PageNav.Content>
-				</PageNav>
+					</TabsPanel>
+				</Tabs>
 			</div>
 		</div>
 	);

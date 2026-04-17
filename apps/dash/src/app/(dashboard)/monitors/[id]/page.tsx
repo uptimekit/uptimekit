@@ -29,6 +29,8 @@ function getPauseDescription(pauseReason?: string | null) {
 			return "Paused automatically after the organization active monitor limit was lowered.";
 		case "org_region_limit":
 			return "Paused automatically after the organization region limit was lowered.";
+		case "worker_deleted":
+			return "Paused automatically because all assigned workers were removed.";
 		default:
 			return "Paused";
 	}
@@ -204,9 +206,11 @@ export default function MonitorDetailsPage() {
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<Globe className="h-3.5 w-3.5" />
 						<span className="font-mono">{getMonitorTarget()}</span>
-						<span>·</span>
+						<span className="select-none">·</span>
 						<Clock className="h-3.5 w-3.5" />
-						<span>Checked every {monitor.interval}s</span>
+						<span className="select-none">
+							Checked every {monitor.interval}s
+						</span>
 					</div>
 					{!monitor.active && monitor.pauseReason && (
 						<p className="text-amber-600 text-sm dark:text-amber-400">

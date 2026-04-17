@@ -546,11 +546,20 @@ export const monitorsRouter = {
 			}
 
 			if (input.active) {
+				const existingWorkerIds =
+					(existing.workerIds as string[] | null) ??
+					(existing.locations as string[]);
+
+				if (existingWorkerIds.length === 0) {
+					throw new ORPCError("BAD_REQUEST", {
+						message:
+							"Monitor has no assigned workers. Select at least one worker before re-enabling it.",
+					});
+				}
+
 				await enforceMonitorQuotaOrThrow({
 					organizationId: existing.organizationId,
-					nextWorkerIds:
-						(existing.workerIds as string[] | null) ??
-						(existing.locations as string[]),
+					nextWorkerIds: existingWorkerIds,
 					nextActive: true,
 					excludeMonitorId: existing.id,
 				});
