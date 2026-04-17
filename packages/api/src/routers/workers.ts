@@ -265,30 +265,48 @@ export const workersRouter = {
 				.where(eq(workerApiKey.workerId, input.id));
 
 			await db.transaction(async (tx) => {
-				const monitors = await tx.query.monitor.findMany();
-				const affectedMonitors = monitors.filter((monitorRecord) => {
-					const monitorWorkerIds =
-						(monitorRecord.workerIds as string[] | null) ?? [];
-					return monitorWorkerIds.includes(input.id);
-				});
+				const affectedMonitors = await tx
+					.select()
+					.from(monitor)
+					.where(sql`${monitor.workerIds} @> ${sql.array([input.id])}`);
+
+				const uniqueNextWorkerIds = new Set<string>();
+				for (const monitorRecord of affectedMonitors) {
+					const nextWorkerIds = (
+						(monitorRecord.workerIds as string[] | null) ?? []
+					).filter((workerId) => workerId !== input.id);
+					for (const workerId of nextWorkerIds) {
+						uniqueNextWorkerIds.add(workerId);
+					}
+				}
+
+				const remainingWorkers =
+					uniqueNextWorkerIds.size > 0
+						? await tx
+								.select({
+									id: worker.id,
+									location: worker.location,
+								})
+								.from(worker)
+								.where(inArray(worker.id, [...uniqueNextWorkerIds]))
+						: [];
+
+				const workerLocationMap = new Map(
+					remainingWorkers.map((w) => [w.id, w.location])
+				);
 
 				for (const monitorRecord of affectedMonitors) {
 					const nextWorkerIds = (
 						(monitorRecord.workerIds as string[] | null) ?? []
 					).filter((workerId) => workerId !== input.id);
 
-					const remainingWorkers =
-						nextWorkerIds.length > 0
-							? await tx
-									.select({
-										id: worker.id,
-										location: worker.location,
-									})
-									.from(worker)
-									.where(inArray(worker.id, nextWorkerIds))
-							: [];
-
-					const nextLocations = [...new Set(remainingWorkers.map((w) => w.location))];
+					const nextLocations = [
+						...new Set(
+							nextWorkerIds
+								.map((workerId) => workerLocationMap.get(workerId))
+								.filter((loc): loc is string => loc !== undefined)
+						),
+					];
 					const hasAssignedWorkers = nextWorkerIds.length > 0;
 
 					await tx

@@ -547,8 +547,7 @@ export const monitorsRouter = {
 
 			if (input.active) {
 				const existingWorkerIds =
-					(existing.workerIds as string[] | null) ??
-					(existing.locations as string[]);
+					(existing.workerIds as string[] | null) ?? [];
 
 				if (existingWorkerIds.length === 0) {
 					throw new ORPCError("BAD_REQUEST", {

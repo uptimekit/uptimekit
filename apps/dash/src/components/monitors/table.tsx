@@ -157,13 +157,15 @@ export function MonitorsTable() {
 	useEffect(() => {
 		const timer = setTimeout(() => {
 			setDebouncedSearch(searchInput);
-			void setFilters({
-				search: searchInput || null,
-				page: 1,
-			});
+			if (searchInput !== search) {
+				void setFilters({
+					search: searchInput || null,
+					page: 1,
+				});
+			}
 		}, 500);
 		return () => clearTimeout(timer);
-	}, [searchInput, setFilters]);
+	}, [searchInput, setFilters, search]);
 
 	const { data, isLoading } = useQuery({
 		...orpc.monitors.list.queryOptions({
@@ -610,7 +612,7 @@ export function MonitorsTable() {
 								</DropdownMenuItem>
 							))}
 
-							{(activeFilter !== undefined ||
+							{(activeFilter !== null ||
 								typeFilter !== null ||
 								statusFilter !== null ||
 								groupFilter !== null ||
