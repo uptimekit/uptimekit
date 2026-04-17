@@ -21,6 +21,7 @@ import {
 	inArray,
 	isNotNull,
 	isNull,
+	sql,
 } from "drizzle-orm";
 import {
 	getIncidentHistoryCutoff,
@@ -114,7 +115,10 @@ async function getPublishedIncidentRecords(
 	}
 
 	if (options?.cutoff) {
-		filters.push(gte(incident.startedAt, options.cutoff));
+		const cutoff = options.cutoff;
+		filters.push(
+			sql`(${incident.startedAt} >= ${cutoff} OR ${incident.endedAt} IS NULL OR ${incident.endedAt} >= ${cutoff})`,
+		);
 	}
 
 	let incidentIdsQuery = db

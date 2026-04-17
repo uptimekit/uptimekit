@@ -31,7 +31,6 @@ const items: NavItem[] = [
 	{
 		title: "Subscribers",
 		href: "subscribers",
-		disabled: true,
 	},
 	{
 		title: "Translations",
@@ -61,18 +60,22 @@ export function StatusPageNav({
 	return (
 		<Tabs value={activeTab} className={className} {...props}>
 			<TabsList variant="underline">
-				{items.map((item) => (
-					<TabsTab
-						key={item.href}
-						value={item.href}
-						disabled={item.disabled}
-						onClick={() =>
-							router.push(`/status-pages/${statusPageId}/${item.href}` as any)
-						}
-					>
-						{item.title}
-					</TabsTab>
-				))}
+				{items.map((item) => {
+					const tabProps = item.disabled
+						? { disabled: true }
+						: {
+								onClick: () =>
+									router.push(
+										`/status-pages/${statusPageId}/${item.href}` as any,
+									),
+							};
+
+					return (
+						<TabsTab key={item.href} value={item.href} {...tabProps}>
+							{item.title}
+						</TabsTab>
+					);
+				})}
 			</TabsList>
 		</Tabs>
 	);

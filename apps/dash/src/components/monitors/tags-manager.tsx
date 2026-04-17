@@ -212,11 +212,11 @@ export function TagsManager({ autoCreate = false }: TagsManagerProps) {
 										variant="ghost"
 										size="icon"
 										className="h-5 w-5 text-muted-foreground hover:text-foreground"
-									/>
+									>
+										<MoreHorizontal className="h-3 w-3" />
+									</Button>
 								}
-							>
-								<MoreHorizontal className="h-3 w-3" />
-							</DropdownMenuTrigger>
+							/>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem
 									onSelect={(e) => {

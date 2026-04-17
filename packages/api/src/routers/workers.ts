@@ -7,6 +7,7 @@ import {
 	desc,
 	eq,
 	type InferSelectModel,
+	inArray,
 	ilike,
 	isNotNull,
 	isNull,
@@ -21,6 +22,7 @@ import { hashApiKey, invalidateApiKeyCache } from "../pkg/worker/auth";
 const logger = createLogger("API");
 
 type Worker = InferSelectModel<typeof worker>;
+const WORKER_DELETED_PAUSE_REASON = "worker_deleted";
 
 // Generate a secure random API key with prefix
 function generateApiKey(): string {
@@ -262,11 +264,70 @@ export const workersRouter = {
 				.from(workerApiKey)
 				.where(eq(workerApiKey.workerId, input.id));
 
-			// Delete API keys first (foreign key constraint)
-			await db.delete(workerApiKey).where(eq(workerApiKey.workerId, input.id));
+			await db.transaction(async (tx) => {
+				const affectedMonitors = await tx
+					.select()
+					.from(monitor)
+					.where(sql`${monitor.workerIds} @> ${sql.array([input.id])}`);
 
-			// Delete the worker
-			await db.delete(worker).where(eq(worker.id, input.id));
+				const uniqueNextWorkerIds = new Set<string>();
+				for (const monitorRecord of affectedMonitors) {
+					const nextWorkerIds = (
+						(monitorRecord.workerIds as string[] | null) ?? []
+					).filter((workerId) => workerId !== input.id);
+					for (const workerId of nextWorkerIds) {
+						uniqueNextWorkerIds.add(workerId);
+					}
+				}
+
+				const remainingWorkers =
+					uniqueNextWorkerIds.size > 0
+						? await tx
+								.select({
+									id: worker.id,
+									location: worker.location,
+								})
+								.from(worker)
+								.where(inArray(worker.id, [...uniqueNextWorkerIds]))
+						: [];
+
+				const workerLocationMap = new Map(
+					remainingWorkers.map((w) => [w.id, w.location])
+				);
+
+				for (const monitorRecord of affectedMonitors) {
+					const nextWorkerIds = (
+						(monitorRecord.workerIds as string[] | null) ?? []
+					).filter((workerId) => workerId !== input.id);
+
+					const nextLocations = [
+						...new Set(
+							nextWorkerIds
+								.map((workerId) => workerLocationMap.get(workerId))
+								.filter((loc): loc is string => loc !== undefined)
+						),
+					];
+					const hasAssignedWorkers = nextWorkerIds.length > 0;
+
+					await tx
+						.update(monitor)
+						.set({
+							workerIds: nextWorkerIds,
+							locations: nextLocations,
+							active: hasAssignedWorkers ? monitorRecord.active : false,
+							pauseReason: hasAssignedWorkers
+								? monitorRecord.pauseReason
+								: WORKER_DELETED_PAUSE_REASON,
+						})
+						.where(eq(monitor.id, monitorRecord.id));
+				}
+
+				// Delete API keys first (foreign key constraint)
+				await tx.delete(workerApiKey).where(eq(workerApiKey.workerId, input.id));
+
+				// Delete the worker
+				await tx.delete(worker).where(eq(worker.id, input.id));
+			});
 
 			// Invalidate cached API keys
 			for (const key of apiKeys) {
