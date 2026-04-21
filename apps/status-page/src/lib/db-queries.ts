@@ -23,6 +23,7 @@ import {
 	isNull,
 	sql,
 } from "drizzle-orm";
+import { cache } from "react";
 import {
 	getIncidentHistoryCutoff,
 	type IncidentHistoryPeriod,
@@ -307,7 +308,7 @@ export const getStatusPageByDomain = async (domain: string) => {
 	);
 };
 
-export const getStatusPageBySlug = async (slug: string) => {
+export const getStatusPageBySlug = cache(async (slug: string) => {
 	return cached(
 		`status-page:slug:${slug}`,
 		600, // 10 minutes
@@ -335,7 +336,7 @@ export const getStatusPageBySlug = async (slug: string) => {
 			};
 		},
 	);
-};
+});
 
 export const getMonitorUptime = async (monitorId: string, days = 90) => {
 	return cached(

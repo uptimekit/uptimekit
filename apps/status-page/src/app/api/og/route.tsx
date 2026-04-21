@@ -2,6 +2,12 @@
 
 import { createLogger } from "@uptimekit/api/lib/logger";
 import { ImageResponse } from "next/og";
+import type { NextRequest } from "next/server";
+import {
+	hasStatusPageAccessToken,
+	isStatusPagePubliclyAccessible,
+} from "@/lib/access-check";
+import { getCookieName } from "@/lib/access-token";
 import {
 	getActiveMaintenances,
 	getActiveStatusPageReports,
@@ -9,6 +15,8 @@ import {
 	getStatusPageByDomain,
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
+import { privateImageResponse } from "@/lib/og-responses";
+import { getDomainFromHost, getHostFromHeaders } from "@/lib/route-utils";
 
 const logger = createLogger("STATUS-PAGE");
 
@@ -54,17 +62,14 @@ function getSlugFromOgPath(pathname: string): string | undefined {
 	return undefined;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
 	const slug = getSlugFromOgPath(new URL(request.url).pathname);
-	const host =
-		request.headers.get("x-forwarded-host") ||
-		request.headers.get("x-original-host") ||
-		request.headers.get("host");
+	const host = getHostFromHeaders(request.headers);
 
 	let pageConfig = slug ? await getStatusPageBySlug(slug) : undefined;
 
 	if (!pageConfig && host) {
-		const domain = host.split(":")[0];
+		const domain = getDomainFromHost(host);
 		pageConfig = await getStatusPageByDomain(domain);
 	}
 
@@ -112,6 +117,14 @@ export async function GET(request: Request) {
 				height: 630,
 			},
 		);
+	}
+
+	if (!isStatusPagePubliclyAccessible(pageConfig)) {
+		const token = request.cookies.get(getCookieName(pageConfig.id))?.value;
+
+		if (!hasStatusPageAccessToken(pageConfig, token)) {
+			return privateImageResponse();
+		}
 	}
 
 	const [activeReports, activeMaintenances] = await Promise.all([
@@ -329,6 +342,9 @@ export async function GET(request: Request) {
 		{
 			width: 1200,
 			height: 630,
+			headers: {
+				"Cache-Control": "private, no-store",
+			},
 		},
 	);
 }

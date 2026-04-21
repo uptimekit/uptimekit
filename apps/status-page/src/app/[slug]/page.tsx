@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { checkStatusPageAccess } from "@/lib/access-check";
+import { canAccessStatusPage, checkStatusPageAccess } from "@/lib/access-check";
 import { prepareStatusPageData } from "@/lib/data-preparer";
 import { getStatusPageBySlug } from "@/lib/db-queries";
+import { getHostFromHeaders, getProtocolFromHeaders } from "@/lib/route-utils";
 import { loadThemeComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
@@ -13,13 +14,24 @@ export async function generateMetadata({
 }) {
 	const { slug } = await params;
 	const headersList = await headers();
-	const host =
-		headersList.get("x-forwarded-host") ||
-		headersList.get("x-original-host") ||
-		headersList.get("host");
-	const protocol = headersList.get("x-forwarded-proto") || "https";
+	const host = getHostFromHeaders(headersList);
+	const protocol = getProtocolFromHeaders(headersList);
 
 	const pageConfig = await getStatusPageBySlug(slug);
+	const canAccessPage = pageConfig
+		? await canAccessStatusPage(pageConfig)
+		: false;
+
+	if (pageConfig && !canAccessPage) {
+		return {
+			title: "Private Status Page",
+			description: "This status page requires a password.",
+			robots: {
+				index: false,
+				follow: false,
+			},
+		};
+	}
 
 	const title = pageConfig?.name ? `${pageConfig.name} Status` : "Status Page";
 	const description = pageConfig?.name
