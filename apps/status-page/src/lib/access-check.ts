@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { getCookieName, verifyAccessToken } from "./access-token";
 
 interface StatusPageConfig {
@@ -35,7 +36,7 @@ export function hasStatusPageAccessToken(
 	return Boolean(token && verifyAccessToken(token, statusPage.id));
 }
 
-export async function canAccessStatusPage(
+export const canAccessStatusPage = cache(async function canAccessStatusPage(
 	statusPage: StatusPageConfig,
 ): Promise<boolean> {
 	if (isStatusPagePubliclyAccessible(statusPage)) {
@@ -47,4 +48,4 @@ export async function canAccessStatusPage(
 	const token = cookieStore.get(cookieName)?.value;
 
 	return hasStatusPageAccessToken(statusPage, token);
-}
+});

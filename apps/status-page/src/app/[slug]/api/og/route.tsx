@@ -2,7 +2,7 @@
 
 import { createLogger } from "@uptimekit/api/lib/logger";
 import { ImageResponse } from "next/og";
-import { type NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import {
 	hasStatusPageAccessToken,
 	isStatusPagePubliclyAccessible,
@@ -14,6 +14,7 @@ import {
 	getMonitorStatus,
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
+import { privateImageResponse } from "@/lib/og-responses";
 
 const logger = createLogger("STATUS-PAGE");
 
@@ -57,15 +58,6 @@ function getSlugFromOgPath(pathname: string): string | undefined {
 	}
 
 	return undefined;
-}
-
-function privateImageResponse() {
-	return new NextResponse(null, {
-		status: 404,
-		headers: {
-			"Cache-Control": "private, no-store",
-		},
-	});
 }
 
 export async function GET(
