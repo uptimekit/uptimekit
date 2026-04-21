@@ -1,8 +1,13 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { checkStatusPageAccess } from "@/lib/access-check";
+import { canAccessStatusPage, checkStatusPageAccess } from "@/lib/access-check";
 import { prepareStatusPageData } from "@/lib/data-preparer";
 import { getStatusPageByDomain } from "@/lib/db-queries";
+import {
+	getDomainFromHost,
+	getHostFromHeaders,
+	getProtocolFromHeaders,
+} from "@/lib/route-utils";
 import { loadThemeComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
@@ -11,17 +16,14 @@ const DEFAULT_STATUS_PAGE_SLUG = process.env.DEFAULT_STATUS_PAGE_SLUG;
 
 function isStatusPageDomain(host: string): boolean {
 	if (!STATUS_PAGE_DOMAIN) return false;
-	const domain = host.split(":")[0];
+	const domain = getDomainFromHost(host);
 	return domain === STATUS_PAGE_DOMAIN;
 }
 
 export async function generateMetadata() {
 	const headersList = await headers();
-	const host =
-		headersList.get("x-forwarded-host") ||
-		headersList.get("x-original-host") ||
-		headersList.get("host");
-	const protocol = headersList.get("x-forwarded-proto") || "https";
+	const host = getHostFromHeaders(headersList);
+	const protocol = getProtocolFromHeaders(headersList);
 
 	if (!host) {
 		return {};
@@ -34,8 +36,22 @@ export async function generateMetadata() {
 		};
 	}
 
-	const domain = host.split(":")[0];
+	const domain = getDomainFromHost(host);
 	const pageConfig = await getStatusPageByDomain(domain);
+	const canAccessPage = pageConfig
+		? await canAccessStatusPage(pageConfig)
+		: false;
+
+	if (pageConfig && !canAccessPage) {
+		return {
+			title: "Private Status Page",
+			description: "This status page requires a password.",
+			robots: {
+				index: false,
+				follow: false,
+			},
+		};
+	}
 
 	const title = pageConfig?.name ? `${pageConfig.name} Status` : "Status Page";
 	const description = pageConfig?.name
@@ -98,10 +114,7 @@ function LandingPage() {
 
 export default async function StatusPage() {
 	const headersList = await headers();
-	const host =
-		headersList.get("x-forwarded-host") ||
-		headersList.get("x-original-host") ||
-		headersList.get("host");
+	const host = getHostFromHeaders(headersList);
 
 	if (!host) {
 		notFound();
@@ -115,7 +128,7 @@ export default async function StatusPage() {
 		return <LandingPage />;
 	}
 
-	const domain = host.split(":")[0];
+	const domain = getDomainFromHost(host);
 
 	const pageConfig = await getStatusPageByDomain(domain);
 
