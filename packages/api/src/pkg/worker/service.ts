@@ -45,9 +45,102 @@ interface MonitorChangeInsert {
 	location?: string | null;
 }
 
-interface RegionStatusSnapshot {
+interface WorkerStatusSnapshot {
 	status: MonitorEvent["status"];
 	timestamp: Date;
+}
+
+interface ConfiguredWorkerStateResult {
+	allWorkersReporting: boolean;
+	states: WorkerStatusSnapshot[];
+}
+
+interface AutomaticIncidentOpenEvaluation {
+	eligible: boolean;
+	allWorkersDownSince: Date | null;
+}
+
+/**
+ * The ClickHouse `location` field currently stores worker IDs for worker-submitted
+ * events. Keep the storage schema unchanged, but treat it as a worker identity key
+ * for automatic incident aggregation.
+ */
+export function getConfiguredWorkerStates(
+	configuredWorkerIds: string[],
+	workerStatusById: Map<string, WorkerStatusSnapshot>,
+): ConfiguredWorkerStateResult {
+	if (configuredWorkerIds.length === 0) {
+		return {
+			allWorkersReporting: false,
+			states: [],
+		};
+	}
+
+	const states = configuredWorkerIds
+		.map((workerId) => workerStatusById.get(workerId))
+		.filter((state): state is WorkerStatusSnapshot => !!state);
+
+	return {
+		allWorkersReporting: states.length === configuredWorkerIds.length,
+		states,
+	};
+}
+
+export function isAutomaticIncidentOpenEligible(input: {
+	configuredWorkerIds: string[];
+	workerStatusById: Map<string, WorkerStatusSnapshot>;
+	activeIncident: { id: string } | undefined;
+	eventTime: Date;
+	incidentPendingDurationSeconds: number;
+}): AutomaticIncidentOpenEvaluation {
+	if (input.activeIncident) {
+		return { eligible: false, allWorkersDownSince: null };
+	}
+
+	const configuredWorkerStates = getConfiguredWorkerStates(
+		input.configuredWorkerIds,
+		input.workerStatusById,
+	);
+
+	const allWorkersDown =
+		configuredWorkerStates.allWorkersReporting &&
+		configuredWorkerStates.states.every((state) => state.status === "down");
+
+	if (!allWorkersDown) {
+		return { eligible: false, allWorkersDownSince: null };
+	}
+
+	const allWorkersDownSince = new Date(
+		Math.max(
+			...configuredWorkerStates.states.map((state) =>
+				state.timestamp.getTime(),
+			),
+		),
+	);
+	const durationMs = input.eventTime.getTime() - allWorkersDownSince.getTime();
+	const pendingMs = input.incidentPendingDurationSeconds * 1000;
+
+	return {
+		eligible: durationMs >= pendingMs,
+		allWorkersDownSince,
+	};
+}
+
+export function isAutomaticIncidentResolveEligible(input: {
+	configuredWorkerIds: string[];
+	workerStatusById: Map<string, WorkerStatusSnapshot>;
+	activeIncident: { id: string } | undefined;
+}): boolean {
+	if (!input.activeIncident) {
+		return false;
+	}
+
+	const configuredWorkerStates = getConfiguredWorkerStates(
+		input.configuredWorkerIds,
+		input.workerStatusById,
+	);
+
+	return configuredWorkerStates.states.some((state) => state.status !== "down");
 }
 
 /**
@@ -311,19 +404,7 @@ async function processMonitorEventGroup(
 					})
 					.from(worker)
 					.where(inArray(worker.id, monitorWorkerIds))
-			: Array.isArray(monitorConfig.locations) &&
-					monitorConfig.locations.length > 0
-				? await db
-						.select({
-							id: worker.id,
-							name: worker.name,
-							location: worker.location,
-						})
-						.from(worker)
-						.where(
-							inArray(worker.location, monitorConfig.locations as string[]),
-						)
-				: [];
+			: [];
 	const configuredWorkerIds = configuredWorkers.map(
 		(configuredWorker) => configuredWorker.id,
 	);
@@ -334,7 +415,7 @@ async function processMonitorEventGroup(
 		]),
 	);
 
-	const latestRegionalStatusQuery = await clickhouse.query({
+	const latestWorkerStatusQuery = await clickhouse.query({
 		query: `
 			SELECT location, status, timestamp
 			FROM (
@@ -351,17 +432,17 @@ async function processMonitorEventGroup(
 		query_params: { monitorId },
 		format: "JSON",
 	});
-	const latestRegionalStatusJson = await latestRegionalStatusQuery.json<any>();
-	const latestRegionalStatuses = latestRegionalStatusJson.data as Array<{
+	const latestWorkerStatusJson = await latestWorkerStatusQuery.json<any>();
+	const latestWorkerStatuses = latestWorkerStatusJson.data as Array<{
 		location: string;
 		status: MonitorEvent["status"];
 		timestamp: string;
 	}>;
-	const regionStatusByLocation = new Map<string, RegionStatusSnapshot>();
-	for (const regionStatus of latestRegionalStatuses) {
-		regionStatusByLocation.set(regionStatus.location, {
-			status: regionStatus.status,
-			timestamp: new Date(regionStatus.timestamp),
+	const workerStatusById = new Map<string, WorkerStatusSnapshot>();
+	for (const workerStatus of latestWorkerStatuses) {
+		workerStatusById.set(workerStatus.location, {
+			status: workerStatus.status,
+			timestamp: new Date(workerStatus.timestamp),
 		});
 	}
 
@@ -379,7 +460,7 @@ async function processMonitorEventGroup(
 
 	for (const event of monitorEvents) {
 		const eventTime = new Date(event.timestamp);
-		const eventLocation = event.location || workerId;
+		const eventWorkerId = event.location || workerId;
 		const isChange =
 			currentStatus !== undefined && currentStatus !== event.status;
 		const isFirstEvent = currentStatus === undefined;
@@ -390,103 +471,28 @@ async function processMonitorEventGroup(
 				monitorId: event.monitorId,
 				status: event.status,
 				timestamp: eventTime,
-				location: eventLocation,
+				location: eventWorkerId,
 			});
 			currentStatus = event.status;
 		}
 
-		regionStatusByLocation.set(eventLocation, {
+		workerStatusById.set(eventWorkerId, {
 			status: event.status,
 			timestamp: eventTime,
 		});
 
-		const configuredRegionStates = configuredWorkerIds
-			.map((location) => regionStatusByLocation.get(location))
-			.filter((state): state is RegionStatusSnapshot => !!state);
-
-		const allRegionsReporting =
-			configuredWorkerIds.length > 0 &&
-			configuredRegionStates.length === configuredWorkerIds.length;
-		const allRegionsDown =
-			allRegionsReporting &&
-			configuredRegionStates.every((state) => state.status === "down");
-
-		// Automatic incidents only open when every configured region is currently down.
-		if (allRegionsDown) {
-			const allRegionsDownSince = new Date(
-				Math.max(
-					...configuredRegionStates.map((state) => state.timestamp.getTime()),
-				),
-			);
-			const durationMs = eventTime.getTime() - allRegionsDownSince.getTime();
-			const pendingMs = monitorConfig.incidentPendingDuration * 1000;
-
-			if (durationMs >= pendingMs && !activeIncident) {
-				const newIncidentId = crypto.randomUUID();
-				activeIncident = {
-					id: newIncidentId,
-					status: "investigating",
-					endedAt: null,
-					type: "automatic",
-				};
-
-				incidentsToInsert.push({
-					id: newIncidentId,
-					organizationId: monitorConfig.organizationId,
-					title: `Monitor ${monitorConfig.name} is down`,
-					description: `Monitor ${monitorConfig.name} is down. \n\nError: ${event.error || "Unknown error"}`,
-					status: "investigating",
-					severity: "major",
-					type: "automatic",
-					startedAt: eventTime,
-					endedAt: null,
-					createdAt: eventTime,
-					updatedAt: eventTime,
-					resolvedAt: null,
-				});
-
-				incidentMonitorsToInsert.push({
-					incidentId: newIncidentId,
-					monitorId: monitorId,
-				});
-
-				if (monitorConfig.publishIncidentToStatusPage) {
-					const statusPages = await db
-						.select({
-							statusPageId: statusPageMonitor.statusPageId,
-						})
-						.from(statusPageMonitor)
-						.where(eq(statusPageMonitor.monitorId, monitorId));
-
-					for (const { statusPageId } of statusPages) {
-						incidentStatusPagesToInsert.push({
-							incidentId: newIncidentId,
-							statusPageId,
-						});
-					}
-
-					if (statusPages.length > 0) {
-						activitiesToInsert.push({
-							id: crypto.randomUUID(),
-							incidentId: newIncidentId,
-							message: `Published to ${statusPages.length} status page${statusPages.length === 1 ? "" : "s"} automatically.`,
-							type: "event",
-							createdAt: eventTime,
-							userId: null,
-						});
-					}
-				}
-
-				activitiesToInsert.push({
-					id: crypto.randomUUID(),
-					incidentId: newIncidentId,
-					message: `Incident opened automatically. All configured workers are reporting down. Last failure: ${event.error || "unknown error"}. (Worker: ${workerLabels.get(eventLocation) || eventLocation})`,
-					type: "event",
-					createdAt: eventTime,
-					userId: null,
-				});
+		if (
+			isAutomaticIncidentResolveEligible({
+				configuredWorkerIds,
+				workerStatusById,
+				activeIncident,
+			})
+		) {
+			const resolvedIncident = activeIncident;
+			if (!resolvedIncident) {
+				continue;
 			}
-		} else if (activeIncident) {
+
 			await db
 				.update(incident)
 				.set({
@@ -495,10 +501,10 @@ async function processMonitorEventGroup(
 					resolvedAt: eventTime,
 					updatedAt: eventTime,
 				})
-				.where(eq(incident.id, activeIncident.id));
+				.where(eq(incident.id, resolvedIncident.id));
 
 			eventBus.emit("incident.resolved", {
-				incidentId: activeIncident.id,
+				incidentId: resolvedIncident.id,
 				organizationId: monitorConfig.organizationId,
 				title: `Monitor ${monitorConfig.name} recovered`,
 				description: "Monitor is back up.",
@@ -507,7 +513,7 @@ async function processMonitorEventGroup(
 
 			activitiesToInsert.push({
 				id: crypto.randomUUID(),
-				incidentId: activeIncident.id,
+				incidentId: resolvedIncident.id,
 				message:
 					"Monitor recovered in at least one region. Incident resolved automatically.",
 				type: "event",
@@ -516,6 +522,84 @@ async function processMonitorEventGroup(
 			});
 
 			activeIncident = undefined;
+			continue;
+		}
+
+		const openEvaluation = isAutomaticIncidentOpenEligible({
+			configuredWorkerIds,
+			workerStatusById,
+			activeIncident,
+			eventTime,
+			incidentPendingDurationSeconds: monitorConfig.incidentPendingDuration,
+		});
+
+		if (openEvaluation.eligible && openEvaluation.allWorkersDownSince) {
+			const newIncidentId = crypto.randomUUID();
+			activeIncident = {
+				id: newIncidentId,
+				status: "investigating",
+				endedAt: null,
+				type: "automatic",
+			};
+
+			incidentsToInsert.push({
+				id: newIncidentId,
+				organizationId: monitorConfig.organizationId,
+				title: `Monitor ${monitorConfig.name} is down`,
+				description: `Monitor ${monitorConfig.name} is down. \n\nError: ${event.error || "Unknown error"}`,
+				status: "investigating",
+				severity: "major",
+				type: "automatic",
+				startedAt: openEvaluation.allWorkersDownSince,
+				endedAt: null,
+				createdAt: eventTime,
+				updatedAt: eventTime,
+				resolvedAt: null,
+			});
+
+			incidentMonitorsToInsert.push({
+				incidentId: newIncidentId,
+				monitorId: monitorId,
+			});
+
+			if (monitorConfig.publishIncidentToStatusPage) {
+				const statusPages = await db
+					.select({
+						statusPageId: statusPageMonitor.statusPageId,
+					})
+					.from(statusPageMonitor)
+					.where(eq(statusPageMonitor.monitorId, monitorId));
+
+				for (const { statusPageId } of statusPages) {
+					incidentStatusPagesToInsert.push({
+						incidentId: newIncidentId,
+						statusPageId,
+					});
+				}
+
+				if (statusPages.length > 0) {
+					activitiesToInsert.push({
+						id: crypto.randomUUID(),
+						incidentId: newIncidentId,
+						message: `Published to ${statusPages.length} status page${statusPages.length === 1 ? "" : "s"} automatically.`,
+						type: "event",
+						createdAt: eventTime,
+						userId: null,
+					});
+				}
+			}
+
+			activitiesToInsert.push({
+				id: crypto.randomUUID(),
+				incidentId: newIncidentId,
+				message: `Incident opened automatically. All configured workers are reporting down. Last failure: ${event.error || "unknown error"}. (Worker: ${workerLabels.get(eventWorkerId) || eventWorkerId})`,
+				type: "event",
+				createdAt: eventTime,
+				userId: null,
+			});
 		}
 	}
+
+	// `incidentRecoveryDuration` exists on the monitor schema but remains intentionally
+	// unused here so this fix only changes multi-worker incident gating behavior.
 }
