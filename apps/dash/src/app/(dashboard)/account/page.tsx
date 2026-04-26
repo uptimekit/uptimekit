@@ -33,8 +33,13 @@ import {
 	InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
-import { PageNav } from "@/components/ui/page-nav";
 import { Separator } from "@/components/ui/separator";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@/components/ui/tabs";
 import { setUserPassword } from "@/lib/actions/auth-actions";
 import { authClient } from "@/lib/auth-client";
 import { AvatarEditor } from "./avatar-editor";
@@ -114,22 +119,22 @@ export default function AccountPage() {
 					</p>
 				</div>
 
-				<PageNav defaultValue="general">
-					<PageNav.List>
-						<PageNav.Trigger value="general">General</PageNav.Trigger>
-						<PageNav.Trigger value="security">Security</PageNav.Trigger>
-					</PageNav.List>
+				<Tabs defaultValue="general">
+					<TabsList variant="underline">
+						<TabsTrigger value="general">General</TabsTrigger>
+						<TabsTrigger value="security">Security</TabsTrigger>
+					</TabsList>
 
-					<PageNav.Content value="general">
+					<TabsContent value="general">
 						<ProfileSettings session={session} />
-					</PageNav.Content>
+					</TabsContent>
 
-					<PageNav.Content value="security" className="space-y-10">
+					<TabsContent value="security" className="space-y-10">
 						<TwoFactorSettings session={session} />
 						<Separator />
 						<PasswordSettings />
-					</PageNav.Content>
-				</PageNav>
+					</TabsContent>
+				</Tabs>
 			</div>
 		</div>
 	);

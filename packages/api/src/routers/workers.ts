@@ -268,7 +268,9 @@ export const workersRouter = {
 				const affectedMonitors = await tx
 					.select()
 					.from(monitor)
-					.where(sql`${monitor.workerIds} @> ${sql.array([input.id])}`);
+					.where(
+						sql`${monitor.workerIds}::jsonb @> ${JSON.stringify([input.id])}::jsonb`,
+					);
 
 				const uniqueNextWorkerIds = new Set<string>();
 				for (const monitorRecord of affectedMonitors) {
