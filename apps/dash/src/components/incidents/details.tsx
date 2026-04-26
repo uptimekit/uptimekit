@@ -569,10 +569,10 @@ function EditIncidentDialog({
 	}, [form, incident]);
 
 	const { data: monitorsData } = useQuery(
-		orpc.monitors.list.queryOptions({ limit: 100 }),
+		orpc.monitors.list.queryOptions({ input: { limit: 100 } }),
 	);
 	const { data: statusPagesData } = useQuery(
-		orpc.statusPages.list.queryOptions({ limit: 100 }),
+		orpc.statusPages.list.queryOptions({ input: { limit: 100 } }),
 	);
 	const selectedMonitors =
 		monitorsData?.items.filter((item: any) =>

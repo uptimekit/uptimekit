@@ -122,7 +122,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 		orpc.statusPages.getStructure.queryOptions({ input: { id: statusPageId } }),
 	);
 	const { data: monitorsData, isLoading: isMonitorsLoading } = useQuery(
-		orpc.monitors.list.queryOptions({ limit: 100 }),
+		orpc.monitors.list.queryOptions({ input: { limit: 100 } }),
 	);
 	const allMonitors = monitorsData?.items || [];
 

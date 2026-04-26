@@ -89,7 +89,7 @@ export function AddUpdateForm({
 	});
 
 	const { data: monitorsData } = useQuery(
-		orpc.monitors.list.queryOptions({ limit: 100 }),
+		orpc.monitors.list.queryOptions({ input: { limit: 100 } }),
 	);
 	const monitors = monitorsData?.items ?? [];
 

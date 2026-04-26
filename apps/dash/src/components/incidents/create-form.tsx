@@ -87,10 +87,10 @@ export function CreateIncidentForm() {
 	});
 
 	const { data: monitorsData } = useQuery(
-		orpc.monitors.list.queryOptions({ limit: 100 }),
+		orpc.monitors.list.queryOptions({ input: { limit: 100 } }),
 	);
 	const { data: statusPagesData } = useQuery(
-		orpc.statusPages.list.queryOptions({ limit: 100 }),
+		orpc.statusPages.list.queryOptions({ input: { limit: 100 } }),
 	);
 	const monitors = monitorsData?.items ?? [];
 	const statusPages = statusPagesData?.items ?? [];

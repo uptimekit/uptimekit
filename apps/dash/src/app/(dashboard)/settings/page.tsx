@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect } from "react";
+import { Suspense, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
@@ -55,6 +55,22 @@ const formSchema = z.object({
  * @returns The Settings page React element.
  */
 export default function SettingsPage() {
+	return (
+		<Suspense
+			fallback={
+				<div className="flex h-full w-full items-center justify-center">
+					<div className="text-muted-foreground">
+						Loading organization settings...
+					</div>
+				</div>
+			}
+		>
+			<SettingsPageContent />
+		</Suspense>
+	);
+}
+
+function SettingsPageContent() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
 	const [activeTab, setActiveTab] = useQueryState(
 		"activeTab",
