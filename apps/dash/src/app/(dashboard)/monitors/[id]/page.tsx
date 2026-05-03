@@ -193,6 +193,8 @@ export default function MonitorDetailsPage() {
 		switch (monitor.type) {
 			case "tcp":
 				return `${config.hostname}:${config.port}`;
+			case "dns":
+				return `${config.recordType || "A"} ${config.hostname}`;
 			case "ping":
 				return config.hostname;
 			default:

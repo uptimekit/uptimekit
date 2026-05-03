@@ -35,6 +35,7 @@ func DefaultRegistry() *Registry {
 	r.Register("http", NewHTTPMonitor())
 	r.Register("tcp", NewTCPMonitor())
 	r.Register("ping", NewPingMonitor())
+	r.Register("dns", NewDNSMonitor())
 	r.Register("keyword", NewKeywordMonitor())
 	r.Register("http-json", NewJSONMonitor())
 	return r

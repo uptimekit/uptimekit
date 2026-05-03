@@ -159,7 +159,7 @@ export default function SignUpForm({
 										value={field.state.value}
 										onBlur={field.handleBlur}
 										onChange={(e) => field.handleChange(e.target.value)}
-										placeholder="your.email@example.com"
+										placeholder="foo@bar.com"
 										disabled={emailReadOnly}
 										aria-invalid={showErrors || undefined}
 									/>

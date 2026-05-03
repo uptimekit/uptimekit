@@ -9,6 +9,7 @@ import {
 	timestamp,
 } from "drizzle-orm/pg-core";
 import { organization } from "./auth";
+import { monitorNotification } from "./integrations";
 import { monitorTag } from "./tags";
 
 export const monitorGroup = pgTable(
@@ -80,6 +81,7 @@ export const monitorRelations = relations(monitor, ({ one, many }) => ({
 		references: [monitorGroup.id],
 	}),
 	monitorTags: many(monitorTag),
+	monitorNotifications: many(monitorNotification),
 }));
 
 export const monitorGroupRelations = relations(

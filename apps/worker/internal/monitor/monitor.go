@@ -13,17 +13,19 @@ type Config struct {
 	ID                  string      `json:"id"`
 	Type                string      `json:"type"`
 	URL                 string      `json:"url,omitempty"`
-	Hostname            string      `json:"hostname,omitempty"` // For TCP, Ping monitors
-	Port                int         `json:"port,omitempty"`     // For TCP monitor
-	Timeout             int         `json:"timeout"`            // seconds
-	Interval            int         `json:"interval"`           // seconds
-	Method              string      `json:"method,omitempty"`   // HTTP method
-	Headers             interface{} `json:"headers,omitempty"`  // HTTP headers (can be map or empty array)
-	Body                string      `json:"body,omitempty"`     // Request body
+	Hostname            string      `json:"hostname,omitempty"`        // For TCP, Ping, DNS monitors
+	Port                int         `json:"port,omitempty"`            // For TCP and DNS monitors
+	ResolverServers     string      `json:"resolverServers,omitempty"` // For DNS monitor
+	RecordType          string      `json:"recordType,omitempty"`      // For DNS monitor
+	Timeout             int         `json:"timeout"`                   // seconds
+	Interval            int         `json:"interval"`                  // seconds
+	Method              string      `json:"method,omitempty"`          // HTTP method
+	Headers             interface{} `json:"headers,omitempty"`         // HTTP headers (can be map or empty array)
+	Body                string      `json:"body,omitempty"`            // Request body
 	AcceptedStatusCodes string      `json:"acceptedStatusCodes,omitempty"`
 	Keyword             string      `json:"keyword,omitempty"`       // For keyword monitor
 	JSONPath            string      `json:"jsonPath,omitempty"`      // For JSON monitor
-	ExpectedValue       string      `json:"expectedValue,omitempty"` // For JSON value validation
+	ExpectedValue       string      `json:"expectedValue,omitempty"` // For DNS expected answer and JSON value validation
 }
 
 // GetHeaders returns headers as map[string]string, handling various API formats.

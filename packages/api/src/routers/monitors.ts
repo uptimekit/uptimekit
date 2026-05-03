@@ -6,6 +6,10 @@ import {
 	incidentActivity,
 	incidentMonitor,
 } from "@uptimekit/db/schema/incidents";
+import {
+	integrationConfig,
+	monitorNotification,
+} from "@uptimekit/db/schema/integrations";
 import { monitor, monitorGroup } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { monitorTag, tag } from "@uptimekit/db/schema/tags";
@@ -124,6 +128,64 @@ async function getWorkersForMonitorAssignments(input: {
 	return workers;
 }
 
+async function getDefaultNotificationIds(organizationId: string) {
+	const defaults = await db
+		.select({ id: integrationConfig.id })
+		.from(integrationConfig)
+		.where(
+			and(
+				eq(integrationConfig.organizationId, organizationId),
+				eq(integrationConfig.active, true),
+				eq(integrationConfig.isDefault, true),
+			),
+		);
+
+	return defaults.map((item) => item.id);
+}
+
+async function assertNotificationIdsForOrganization(input: {
+	organizationId: string;
+	notificationIds: string[];
+}) {
+	const uniqueNotificationIds = [...new Set(input.notificationIds)];
+
+	if (uniqueNotificationIds.length === 0) {
+		return [];
+	}
+
+	const matchingNotifications = await db
+		.select({ id: integrationConfig.id })
+		.from(integrationConfig)
+		.where(
+			and(
+				eq(integrationConfig.organizationId, input.organizationId),
+				inArray(integrationConfig.id, uniqueNotificationIds),
+			),
+		);
+
+	if (matchingNotifications.length !== uniqueNotificationIds.length) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "One or more selected notifications are missing.",
+		});
+	}
+
+	return uniqueNotificationIds;
+}
+
+async function resolveNotificationIdsForCreate(input: {
+	organizationId: string;
+	notificationIds?: string[];
+}) {
+	if (input.notificationIds === undefined) {
+		return getDefaultNotificationIds(input.organizationId);
+	}
+
+	return assertNotificationIdsForOrganization({
+		organizationId: input.organizationId,
+		notificationIds: input.notificationIds,
+	});
+}
+
 export const monitorsRouter = {
 	list: protectedProcedure
 		.input(
@@ -209,6 +271,20 @@ export const monitorsRouter = {
 
 			// Batch fetch latest events and changes for all monitors to avoid N+1 query problem
 			const monitorIds = monitors.map((row) => row.monitor.id);
+			const notificationCounts =
+				monitorIds.length > 0
+					? await db
+							.select({
+								monitorId: monitorNotification.monitorId,
+								count: sql<number>`count(*)`.mapWith(Number),
+							})
+							.from(monitorNotification)
+							.where(inArray(monitorNotification.monitorId, monitorIds))
+							.groupBy(monitorNotification.monitorId)
+					: [];
+			const notificationCountMap = new Map(
+				notificationCounts.map((item) => [item.monitorId, item.count]),
+			);
 
 			// Fetch tags for all monitors
 			const tagsForMonitors =
@@ -301,6 +377,7 @@ export const monitorsRouter = {
 						? parseClickhouseTimestamp(latestChange.timestamp)
 						: null,
 					usedOn: usageMap.get(row.monitor.id) || 0,
+					notificationCount: notificationCountMap.get(row.monitor.id) || 0,
 				};
 			});
 
@@ -391,14 +468,17 @@ export const monitorsRouter = {
 				tags: z.array(z.string()).optional(),
 				config: z.record(z.any(), z.any()),
 				workerIds: z.array(z.string()).min(1),
+				notificationIds: z.array(z.string()).optional(),
 				incidentPendingDuration: z.number().min(0).default(0),
 				incidentRecoveryDuration: z.number().min(0).default(0),
 				publishIncidentToStatusPage: z.boolean().default(false),
 			}),
 		)
 		.handler(async ({ input, context }) => {
+			const organizationId = context.session.session.activeOrganizationId!;
+
 			await enforceMonitorQuotaOrThrow({
-				organizationId: context.session.session.activeOrganizationId!,
+				organizationId,
 				nextWorkerIds: input.workerIds,
 				nextActive: true,
 			});
@@ -411,39 +491,57 @@ export const monitorsRouter = {
 				},
 			});
 
-			const [newMonitor] = await db
-				.insert(monitor)
-				.values({
-					id: crypto.randomUUID(),
-					name: input.name,
-					organizationId: context.session.session.activeOrganizationId!,
-					type: input.type,
-					config: input.config,
-					locations: selectedWorkers.map(
-						(selectedWorker) => selectedWorker.location,
-					),
-					workerIds: input.workerIds,
-					groupId: input.groupId,
-					active: true,
-					pauseReason: null,
-					incidentPendingDuration: input.incidentPendingDuration,
-					incidentRecoveryDuration: input.incidentRecoveryDuration,
-					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
-				})
-				.returning();
+			const notificationIds = await resolveNotificationIdsForCreate({
+				organizationId,
+				notificationIds: input.notificationIds,
+			});
 
-			if (!newMonitor) {
-				throw new ORPCError("INTERNAL_SERVER_ERROR");
-			}
+			const newMonitor = await db.transaction(async (tx) => {
+				const [createdMonitor] = await tx
+					.insert(monitor)
+					.values({
+						id: crypto.randomUUID(),
+						name: input.name,
+						organizationId,
+						type: input.type,
+						config: input.config,
+						locations: selectedWorkers.map(
+							(selectedWorker) => selectedWorker.location,
+						),
+						workerIds: input.workerIds,
+						groupId: input.groupId,
+						active: true,
+						pauseReason: null,
+						incidentPendingDuration: input.incidentPendingDuration,
+						incidentRecoveryDuration: input.incidentRecoveryDuration,
+						publishIncidentToStatusPage: input.publishIncidentToStatusPage,
+					})
+					.returning();
 
-			if (input.tags && input.tags.length > 0) {
-				await db.insert(monitorTag).values(
-					input.tags.map((tagId) => ({
-						monitorId: newMonitor.id,
-						tagId,
-					})),
-				);
-			}
+				if (!createdMonitor) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR");
+				}
+
+				if (input.tags && input.tags.length > 0) {
+					await tx.insert(monitorTag).values(
+						input.tags.map((tagId) => ({
+							monitorId: createdMonitor.id,
+							tagId,
+						})),
+					);
+				}
+
+				if (notificationIds.length > 0) {
+					await tx.insert(monitorNotification).values(
+						notificationIds.map((notificationId) => ({
+							monitorId: createdMonitor.id,
+							integrationConfigId: notificationId,
+						})),
+					);
+				}
+
+				return createdMonitor;
+			});
 
 			return newMonitor;
 		}),
@@ -594,6 +692,7 @@ export const monitorsRouter = {
 				tags: z.array(z.string()).optional(),
 				config: z.record(z.any(), z.any()),
 				workerIds: z.array(z.string()).min(1),
+				notificationIds: z.array(z.string()).optional(),
 				incidentPendingDuration: z.number().min(0).default(0),
 				incidentRecoveryDuration: z.number().min(0).default(0),
 				publishIncidentToStatusPage: z.boolean().default(false),
@@ -627,40 +726,65 @@ export const monitorsRouter = {
 				},
 			});
 
-			await db
-				.update(monitor)
-				.set({
-					name: input.name,
-					type: input.type,
-					interval: input.interval,
-					groupId: input.groupId,
-					config: input.config,
-					locations: selectedWorkers.map(
-						(selectedWorker) => selectedWorker.location,
-					),
-					workerIds: input.workerIds,
-					incidentPendingDuration: input.incidentPendingDuration,
-					incidentRecoveryDuration: input.incidentRecoveryDuration,
-					publishIncidentToStatusPage: input.publishIncidentToStatusPage,
-					active: input.active,
-					pauseReason: null,
-				})
-				.where(eq(monitor.id, input.id));
+			const notificationIds =
+				input.notificationIds === undefined
+					? undefined
+					: await assertNotificationIdsForOrganization({
+							organizationId: existing.organizationId,
+							notificationIds: input.notificationIds,
+						});
 
-			if (input.tags) {
-				// Remove existing tags
-				await db.delete(monitorTag).where(eq(monitorTag.monitorId, input.id));
+			await db.transaction(async (tx) => {
+				await tx
+					.update(monitor)
+					.set({
+						name: input.name,
+						type: input.type,
+						interval: input.interval,
+						groupId: input.groupId,
+						config: input.config,
+						locations: selectedWorkers.map(
+							(selectedWorker) => selectedWorker.location,
+						),
+						workerIds: input.workerIds,
+						incidentPendingDuration: input.incidentPendingDuration,
+						incidentRecoveryDuration: input.incidentRecoveryDuration,
+						publishIncidentToStatusPage: input.publishIncidentToStatusPage,
+						active: input.active,
+						pauseReason: null,
+					})
+					.where(eq(monitor.id, input.id));
 
-				// Add new tags
-				if (input.tags.length > 0) {
-					await db.insert(monitorTag).values(
-						input.tags.map((tagId) => ({
-							monitorId: input.id,
-							tagId,
-						})),
-					);
+				if (input.tags) {
+					// Remove existing tags
+					await tx.delete(monitorTag).where(eq(monitorTag.monitorId, input.id));
+
+					// Add new tags
+					if (input.tags.length > 0) {
+						await tx.insert(monitorTag).values(
+							input.tags.map((tagId) => ({
+								monitorId: input.id,
+								tagId,
+							})),
+						);
+					}
 				}
-			}
+
+				if (notificationIds !== undefined) {
+					await tx
+						.delete(monitorNotification)
+						.where(eq(monitorNotification.monitorId, input.id));
+
+					if (notificationIds.length > 0) {
+						await tx.insert(monitorNotification).values(
+							notificationIds.map((notificationId) => ({
+								monitorId: input.id,
+								integrationConfigId: notificationId,
+							})),
+						);
+					}
+				}
+			});
 
 			return { success: true };
 		}),
@@ -733,6 +857,21 @@ export const monitorsRouter = {
 				.innerJoin(tag, eq(monitorTag.tagId, tag.id))
 				.where(eq(monitorTag.monitorId, found.monitor.id));
 
+			const notifications = await db
+				.select({
+					id: integrationConfig.id,
+					name: integrationConfig.name,
+					type: integrationConfig.type,
+					active: integrationConfig.active,
+					isDefault: integrationConfig.isDefault,
+				})
+				.from(monitorNotification)
+				.innerJoin(
+					integrationConfig,
+					eq(monitorNotification.integrationConfigId, integrationConfig.id),
+				)
+				.where(eq(monitorNotification.monitorId, found.monitor.id));
+
 			const monitorWorkerIds =
 				(found.monitor.workerIds as string[] | null) ?? [];
 			const monitorLocations =
@@ -746,6 +885,8 @@ export const monitorsRouter = {
 				...found.monitor,
 				group: found.monitor_group || null,
 				tags: monitorTags.map((mt) => mt.tag),
+				notificationIds: notifications.map((notification) => notification.id),
+				notifications,
 				workers: monitorWorkers,
 				status: latestEvent?.status || "pending",
 				lastCheck: latestEvent

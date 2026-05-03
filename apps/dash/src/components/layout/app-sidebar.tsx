@@ -59,7 +59,7 @@ const mainNav = [
 		icon: LayoutDashboard,
 	},
 	{
-		title: "Integrations",
+		title: "Notifications",
 		url: "/integrations",
 		icon: Grid2X2,
 	},
@@ -209,7 +209,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						<SidebarMenu>
 							{mainNav
 								.filter((item) => {
-									if (item.title === "Integrations") {
+									if (item.title === "Notifications") {
 										const members = activeOrg?.members;
 										const role = members?.find(
 											(m) => m.userId === session?.user?.id,

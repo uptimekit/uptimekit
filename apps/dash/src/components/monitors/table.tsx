@@ -73,7 +73,7 @@ const MONITOR_STATUS_FILTERS = [
 	"degraded",
 	"maintenance",
 ] as const;
-const MONITOR_TYPE_FILTERS = ["http", "ping", "tcp", "keyword"] as const;
+const MONITOR_TYPE_FILTERS = ["http", "ping", "tcp", "dns", "keyword"] as const;
 
 export type MonitorStatus =
 	| "up"
@@ -441,6 +441,16 @@ export function MonitorsTable() {
 							>
 								TCP
 								{typeFilter === "tcp" && <Check className="h-4 w-4" />}
+							</DropdownMenuItem>
+
+							<DropdownMenuItem
+								onClick={() => {
+									void setFilters({ type: "dns", page: 1 });
+								}}
+								className="flex justify-between"
+							>
+								DNS
+								{typeFilter === "dns" && <Check className="h-4 w-4" />}
 							</DropdownMenuItem>
 
 							<DropdownMenuItem
@@ -946,7 +956,11 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 				queryKey: orpc.monitors.getResponseTimes.key(),
 			});
 			queryClient.invalidateQueries({ queryKey: orpc.incidents.list.key() });
-			queryClient.invalidateQueries({ queryKey: orpc.monitors.getBatchLatencySparkline.key({ input: { monitorIds: [monitor.id] } }) });
+			queryClient.invalidateQueries({
+				queryKey: orpc.monitors.getBatchLatencySparkline.key({
+					input: { monitorIds: [monitor.id] },
+				}),
+			});
 		},
 		onError: () => sileo.error({ title: "Failed to nuke monitor data" }),
 	});

@@ -1,6 +1,6 @@
 {
-  "id": "57cbf7fb-bbab-4bd4-b41e-fff764308718",
-  "prevId": "b8ccf236-b8ce-448c-946e-d7002a16487f",
+  "id": "b228fab8-770d-48cf-be62-2d24dc8db972",
+  "prevId": "cdb5bf46-ad88-4787-ac48-0f1374dabc22",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1526,6 +1526,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "type": {
           "name": "type",
           "type": "text",
@@ -1544,6 +1550,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -1608,6 +1621,104 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.monitor_notification": {
+      "name": "monitor_notification",
+      "schema": "",
+      "columns": {
+        "monitor_id": {
+          "name": "monitor_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "integration_config_id": {
+          "name": "integration_config_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "monitor_notification_monitor_idx": {
+          "name": "monitor_notification_monitor_idx",
+          "columns": [
+            {
+              "expression": "monitor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "monitor_notification_config_idx": {
+          "name": "monitor_notification_config_idx",
+          "columns": [
+            {
+              "expression": "integration_config_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monitor_notification_monitor_id_monitor_id_fk": {
+          "name": "monitor_notification_monitor_id_monitor_id_fk",
+          "tableFrom": "monitor_notification",
+          "tableTo": "monitor",
+          "columnsFrom": [
+            "monitor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "monitor_notification_integration_config_id_integration_config_id_fk": {
+          "name": "monitor_notification_integration_config_id_integration_config_id_fk",
+          "tableFrom": "monitor_notification",
+          "tableTo": "integration_config",
+          "columnsFrom": [
+            "integration_config_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "monitor_notification_monitor_id_integration_config_id_pk": {
+          "name": "monitor_notification_monitor_id_integration_config_id_pk",
+          "columns": [
+            "monitor_id",
+            "integration_config_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2737,8 +2848,20 @@
         "email": {
           "name": "email",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
+        },
+        "slack_webhook_url": {
+          "name": "slack_webhook_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discord_webhook_url": {
+          "name": "discord_webhook_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "status_page_id": {
           "name": "status_page_id",
@@ -2754,7 +2877,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "status_page_email_subscribers_page_id_idx": {
+          "name": "status_page_email_subscribers_page_id_idx",
+          "columns": [
+            {
+              "expression": "status_page_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "status_page_email_subscribers_status_page_id_status_page_id_fk": {
           "name": "status_page_email_subscribers_status_page_id_status_page_id_fk",
@@ -2770,7 +2909,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "status_page_email_subscribers_status_page_id_email_pk": {
+          "name": "status_page_email_subscribers_status_page_id_email_pk",
+          "columns": [
+            "status_page_id",
+            "email"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

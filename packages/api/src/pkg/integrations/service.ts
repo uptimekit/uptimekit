@@ -1,4 +1,10 @@
 import { db } from "@uptimekit/db";
+import { incidentMonitor } from "@uptimekit/db/schema/incidents";
+import {
+	integrationConfig,
+	monitorNotification,
+} from "@uptimekit/db/schema/integrations";
+import { and, eq, inArray } from "drizzle-orm";
 import { eventBus } from "../../lib/events";
 import { alertManagerIntegration } from "./definitions/alertmanager";
 import { discordIntegration } from "./definitions/discord";
@@ -11,6 +17,20 @@ integrationRegistry.register(webhookIntegration);
 integrationRegistry.register(discordIntegration);
 integrationRegistry.register(telegramIntegration);
 integrationRegistry.register(alertManagerIntegration);
+
+export function dedupeNotificationConfigs<TConfig extends { id: string }>(
+	configs: TConfig[],
+) {
+	const configsById = new Map<string, TConfig>();
+
+	for (const config of configs) {
+		if (!configsById.has(config.id)) {
+			configsById.set(config.id, config);
+		}
+	}
+
+	return Array.from(configsById.values());
+}
 
 export class IntegrationService {
 	constructor() {
@@ -48,10 +68,9 @@ export class IntegrationService {
 			return;
 		}
 
-		// Fetch active integrations for this org
-		const configs = await db.query.integrationConfig.findMany({
-			where: (t, { eq, and }) =>
-				and(eq(t.organizationId, organizationId), eq(t.active, true)),
+		const configs = await this.getNotificationConfigs({
+			organizationId,
+			incidentId: payload.incidentId,
 		});
 
 		for (const config of configs) {
@@ -80,6 +99,58 @@ export class IntegrationService {
 			columns: { organizationId: true },
 		});
 		return inc?.organizationId || null;
+	}
+
+	private async getNotificationConfigs(input: {
+		organizationId: string;
+		incidentId?: string;
+	}) {
+		if (!input.incidentId) {
+			return db.query.integrationConfig.findMany({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.organizationId, input.organizationId),
+						eq(t.active, true),
+						eq(t.isDefault, true),
+					),
+			});
+		}
+
+		const incidentMonitors = await db
+			.select({ monitorId: incidentMonitor.monitorId })
+			.from(incidentMonitor)
+			.where(eq(incidentMonitor.incidentId, input.incidentId));
+
+		if (incidentMonitors.length === 0) {
+			return db.query.integrationConfig.findMany({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.organizationId, input.organizationId),
+						eq(t.active, true),
+						eq(t.isDefault, true),
+					),
+			});
+		}
+
+		const monitorIds = incidentMonitors.map((item) => item.monitorId);
+		const assignedConfigs = await db
+			.select({ config: integrationConfig })
+			.from(integrationConfig)
+			.innerJoin(
+				monitorNotification,
+				eq(monitorNotification.integrationConfigId, integrationConfig.id),
+			)
+			.where(
+				and(
+					eq(integrationConfig.organizationId, input.organizationId),
+					eq(integrationConfig.active, true),
+					inArray(monitorNotification.monitorId, monitorIds),
+				),
+			);
+
+		return dedupeNotificationConfigs(
+			assignedConfigs.map(({ config }) => config),
+		);
 	}
 }
 

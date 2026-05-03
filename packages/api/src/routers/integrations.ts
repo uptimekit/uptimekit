@@ -1,6 +1,10 @@
 import { ORPCError } from "@orpc/server"; /* manually added ORPCError import */
 import { db } from "@uptimekit/db";
-import { integrationConfig } from "@uptimekit/db/schema/integrations";
+import {
+	integrationConfig,
+	monitorNotification,
+} from "@uptimekit/db/schema/integrations";
+import { monitor } from "@uptimekit/db/schema/monitors";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
@@ -23,6 +27,8 @@ export const integrationsRouter = {
 			return integrations.map((i) => ({
 				id: i.id,
 				name: i.name,
+				type: i.type,
+				logo: i.logo,
 				description: i.description,
 				events: i.events,
 			}));
@@ -44,9 +50,15 @@ export const integrationsRouter = {
 
 			const configs = await db.query.integrationConfig.findMany({
 				where: (t, { eq }) => eq(t.organizationId, organizationId),
+				with: {
+					monitorNotifications: true,
+				},
 			});
 
-			return configs;
+			return configs.map(({ monitorNotifications, ...config }) => ({
+				...config,
+				assignedMonitorCount: monitorNotifications.length,
+			}));
 		}),
 
 	configure: writeProcedure
@@ -61,9 +73,13 @@ export const integrationsRouter = {
 		})
 		.input(
 			z.object({
+				id: z.string().optional(),
+				name: z.string().trim().min(1),
 				type: z.string(),
 				config: z.record(z.any(), z.any()), // We accept any JSON, validation happens inside or before
 				active: z.boolean().default(true),
+				isDefault: z.boolean().default(false),
+				applyToExistingMonitors: z.boolean().default(false),
 			}),
 		)
 		.handler(async ({ context, input }) => {
@@ -81,32 +97,66 @@ export const integrationsRouter = {
 				await assertSafeWebhookUrl(parsedConfig.url);
 			}
 
-			// Check if exists
-			const existing = await db.query.integrationConfig.findFirst({
-				where: (t, { eq, and }) =>
-					and(eq(t.organizationId, organizationId), eq(t.type, input.type)),
-			});
+			const notificationId = input.id ?? crypto.randomUUID();
 
-			if (existing) {
-				await db
-					.update(integrationConfig)
-					.set({
+			await db.transaction(async (tx) => {
+				if (input.id) {
+					const inputId = input.id;
+					const existing = await tx.query.integrationConfig.findFirst({
+						where: (t, { eq, and }) =>
+							and(eq(t.id, inputId), eq(t.organizationId, organizationId)),
+					});
+
+					if (!existing) {
+						throw new ORPCError("NOT_FOUND", {
+							message: "Integration not found",
+						});
+					}
+
+					await tx
+						.update(integrationConfig)
+						.set({
+							name: input.name,
+							type: input.type,
+							config: parsedConfig,
+							active: input.active,
+							isDefault: input.isDefault,
+							updatedAt: new Date(),
+						})
+						.where(eq(integrationConfig.id, existing.id));
+				} else {
+					await tx.insert(integrationConfig).values({
+						id: notificationId,
+						name: input.name,
+						organizationId,
+						type: input.type,
 						config: parsedConfig,
 						active: input.active,
-						updatedAt: new Date(),
-					})
-					.where(eq(integrationConfig.id, existing.id));
-			} else {
-				await db.insert(integrationConfig).values({
-					id: crypto.randomUUID(),
-					organizationId,
-					type: input.type,
-					config: parsedConfig,
-					active: input.active,
-				});
-			}
+						isDefault: input.isDefault,
+					});
+				}
 
-			return { success: true };
+				if (input.applyToExistingMonitors) {
+					const monitors = await tx
+						.select({ id: monitor.id })
+						.from(monitor)
+						.where(eq(monitor.organizationId, organizationId));
+
+					if (monitors.length > 0) {
+						await tx
+							.insert(monitorNotification)
+							.values(
+								monitors.map((monitorRecord) => ({
+									monitorId: monitorRecord.id,
+									integrationConfigId: notificationId,
+								})),
+							)
+							.onConflictDoNothing();
+					}
+				}
+			});
+
+			return { success: true, id: notificationId };
 		}),
 
 	delete: writeProcedure

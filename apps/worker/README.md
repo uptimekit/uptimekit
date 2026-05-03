@@ -24,6 +24,7 @@ The worker supports a variety of check types:
 - [x] **HTTP/HTTPS**: Standard website and API availability checks.
 - [x] **TCP**: Connect to any port (e.g., SMTP, SSH, Redis).
 - [x] **ICMP/Ping**: Network-level connectivity testing.
+- [x] **DNS**: Query DNS records through configurable resolver servers.
 - [x] **Keyword Detection**: Search for specific text in the response body.
 - [x] **HTTP JSON**: Validate specific JSON fields in the response.
 

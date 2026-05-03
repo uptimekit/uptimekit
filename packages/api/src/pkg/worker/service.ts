@@ -147,7 +147,7 @@ export function isAutomaticIncidentResolveEligible(input: {
  * Retrieve active monitors assigned to the given worker location and return their runtime configuration.
  *
  * @param workerLocation - The worker location identifier used to filter monitors whose `locations` include this value
- * @returns An array of monitor configuration objects containing: `id`, `type`, `url` (defaults to `""`), `hostname` (defaults to `""`), `port` (defaults to `0`), `interval`, `timeout`, `method` (defaults to `"GET"`), `headers` (defaults to `{}`), `body`, `acceptedStatusCodes`, `keyword`, `jsonPath`, `expectedValue`, `checkSsl` (defaults to `true`), and `sslCertExpiryNotificationDays` (defaults to `30`)
+ * @returns An array of monitor configuration objects containing: `id`, `type`, `url` (defaults to `""`), `hostname` (defaults to `""`), `port` (defaults to `0`), `resolverServers`, `recordType`, `interval`, `timeout`, `method` (defaults to `"GET"`), `headers` (defaults to `{}`), `body`, `acceptedStatusCodes`, `keyword`, `jsonPath`, `expectedValue`, `checkSsl` (defaults to `true`), and `sslCertExpiryNotificationDays` (defaults to `30`)
  */
 export async function getMonitorsForWorker(workerId: string) {
 	const workerRecord = await db.query.worker.findFirst({
@@ -176,6 +176,8 @@ export async function getMonitorsForWorker(workerId: string) {
 				url?: string;
 				hostname?: string;
 				port?: number;
+				resolverServers?: string;
+				recordType?: string;
 				method?: string;
 				headers?: Record<string, string>;
 				body?: string;
@@ -192,6 +194,8 @@ export async function getMonitorsForWorker(workerId: string) {
 				url: config.url || "",
 				hostname: config.hostname || "",
 				port: config.port || 0,
+				resolverServers: config.resolverServers || "",
+				recordType: config.recordType || "",
 				interval: m.interval,
 				timeout: m.timeout,
 				method: config.method || "GET",
@@ -261,15 +265,6 @@ export async function processMonitorEvents(
 
 	if (incidentsToInsert.length > 0) {
 		await db.insert(incident).values(incidentsToInsert);
-		for (const inc of incidentsToInsert) {
-			eventBus.emit("incident.created", {
-				incidentId: inc.id,
-				organizationId: inc.organizationId,
-				title: inc.title,
-				description: inc.description,
-				severity: inc.severity as any,
-			});
-		}
 	}
 
 	if (incidentMonitorsToInsert.length > 0) {
@@ -282,6 +277,16 @@ export async function processMonitorEvents(
 
 	if (activitiesToInsert.length > 0) {
 		await db.insert(incidentActivity).values(activitiesToInsert);
+	}
+
+	for (const inc of incidentsToInsert) {
+		eventBus.emit("incident.created", {
+			incidentId: inc.id,
+			organizationId: inc.organizationId,
+			title: inc.title,
+			description: inc.description,
+			severity: inc.severity as any,
+		});
 	}
 
 	// Insert events to ClickHouse
