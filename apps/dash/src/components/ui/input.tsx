@@ -4,22 +4,32 @@ import { Input as InputPrimitive } from "@base-ui/react/input";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type InputProps = Omit<
-	InputPrimitive.Props & React.RefAttributes<HTMLInputElement>,
-	"size"
-> & {
+type InputOwnProps = {
+	className?: string;
 	size?: "sm" | "default" | "lg" | number;
 	unstyled?: boolean;
-	nativeInput?: boolean;
 };
 
-export function Input({
-	className,
-	size = "default",
-	unstyled = false,
-	nativeInput = false,
-	...props
-}: InputProps): React.ReactElement {
+type NativeInputProps = Omit<
+	React.ComponentPropsWithRef<"input">,
+	"className" | "size"
+> &
+	InputOwnProps & {
+		nativeInput: true;
+	};
+
+type PrimitiveInputProps = Omit<
+	InputPrimitive.Props & React.RefAttributes<HTMLInputElement>,
+	"className" | "size"
+> &
+	InputOwnProps & {
+		nativeInput?: false;
+	};
+
+export type InputProps = NativeInputProps | PrimitiveInputProps;
+
+export function Input(props: InputProps): React.ReactElement {
+	const { className, size = "default", unstyled = false } = props;
 	const inputClassName = cn(
 		"h-8.5 w-full min-w-0 rounded-[inherit] px-[calc(--spacing(3)-1px)] leading-8.5 outline-none [transition:background-color_5000000s_ease-in-out_0s] placeholder:text-muted-foreground/72 sm:h-7.5 sm:leading-7.5",
 		size === "sm" &&
@@ -43,23 +53,49 @@ export function Input({
 			data-size={size}
 			data-slot="input-control"
 		>
-			{nativeInput ? (
+			{props.nativeInput ? (
 				<input
 					className={inputClassName}
 					data-slot="input"
 					size={typeof size === "number" ? size : undefined}
-					{...props}
+					{...getNativeInputProps(props)}
 				/>
 			) : (
 				<InputPrimitive
 					className={inputClassName}
 					data-slot="input"
 					size={typeof size === "number" ? size : undefined}
-					{...props}
+					{...getPrimitiveInputProps(props)}
 				/>
 			)}
 		</span>
 	);
+}
+
+function getNativeInputProps({
+	className: _className,
+	size: _size,
+	unstyled: _unstyled,
+	nativeInput: _nativeInput,
+	...props
+}: NativeInputProps): Omit<
+	NativeInputProps,
+	keyof InputOwnProps | "nativeInput"
+> {
+	return props;
+}
+
+function getPrimitiveInputProps({
+	className: _className,
+	size: _size,
+	unstyled: _unstyled,
+	nativeInput: _nativeInput,
+	...props
+}: PrimitiveInputProps): Omit<
+	PrimitiveInputProps,
+	keyof InputOwnProps | "nativeInput"
+> {
+	return props;
 }
 
 export { InputPrimitive };

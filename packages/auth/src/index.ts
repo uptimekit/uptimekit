@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { apiKey } from "@better-auth/api-key";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
-import type { Auth } from "better-auth";
+import type { Auth, BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { type BetterAuthOptions, betterAuth } from "better-auth/minimal";
 import { nextCookies } from "better-auth/next-js";
@@ -160,7 +160,7 @@ const authConfig: BetterAuthOptions = {
 				timeWindow: 60 * 1000,
 			},
 			references: "organization",
-		}),
+		}) as unknown as BetterAuthPlugin,
 	],
 	socialProviders: {
 		discord: {
