@@ -50,7 +50,7 @@ export function Footer({
 						rel="noopener noreferrer"
 						className="font-medium transition-colors hover:text-foreground"
 					>
-						MsCode
+						MSCode
 					</a>
 				</div>
 			</div>
