@@ -243,16 +243,18 @@ function collectGroupAndDescendantIds(
 	}
 
 	const result: string[] = [];
+	const visited = new Set<string>();
 	const stack = [rootId];
 	while (stack.length > 0) {
 		const current = stack.pop()!;
+		if (visited.has(current)) continue;
+		visited.add(current);
 		result.push(current);
 		const children = childrenByParent.get(current);
 		if (children) {
 			stack.push(...children);
 		}
 	}
-
 	return result;
 }
 

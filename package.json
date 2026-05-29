@@ -17,7 +17,8 @@
 			"dotenv": "latest",
 			"postgres": "latest",
 			"zod": "latest",
-			"drizzle-orm": "latest"
+			"drizzle-orm": "latest",
+			"evlog": "latest"
 		}
 	},
 	"overrides": {

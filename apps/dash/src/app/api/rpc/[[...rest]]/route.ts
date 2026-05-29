@@ -7,6 +7,7 @@ import { createContext } from "@uptimekit/api/context";
 import { createLogger } from "@uptimekit/api/lib/logger";
 import { appRouter } from "@uptimekit/api/routers/index";
 import type { NextRequest } from "next/server";
+import { withEvlog } from "@/lib/evlog";
 
 const logger = createLogger("RPC");
 
@@ -46,8 +47,8 @@ async function handleRequest(req: NextRequest) {
 	return new Response("Not found", { status: 404 });
 }
 
-export const GET = handleRequest;
-export const POST = handleRequest;
-export const PUT = handleRequest;
-export const PATCH = handleRequest;
-export const DELETE = handleRequest;
+export const GET = withEvlog(handleRequest);
+export const POST = withEvlog(handleRequest);
+export const PUT = withEvlog(handleRequest);
+export const PATCH = withEvlog(handleRequest);
+export const DELETE = withEvlog(handleRequest);
