@@ -3,6 +3,7 @@ export {
 	cleanupAppEventOutbox,
 	dispatchPersistedAppEvent,
 	drainPendingEvents,
+	ensureNotificationWorkerStarted,
 	getNextRetryAt,
 	MAX_EVENT_ATTEMPTS,
 	mapOutboxRowToEvent,
@@ -12,4 +13,5 @@ export {
 	processAppEventRow,
 	processPendingNotifications,
 	startNotificationWorker,
+	stopManagedNotificationWorker,
 } from "./processor";

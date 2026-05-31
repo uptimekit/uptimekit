@@ -1,11 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	type AppEventOutboxRow,
 	claimPendingEvents,
 	cleanupAppEventOutbox,
+	ensureNotificationWorkerStarted,
 	getNextRetryAt,
 	markEventFailed,
 	processAppEventRow,
+	stopManagedNotificationWorker,
 } from "../pkg/notifications/processor";
 
 function buildRow(
@@ -31,6 +33,10 @@ function buildRow(
 }
 
 describe("notification outbox processor", () => {
+	afterEach(async () => {
+		await stopManagedNotificationWorker();
+	});
+
 	it("does not pass Date instances into raw Postgres queries", async () => {
 		const sql = vi.fn(async () => []) as any;
 
@@ -125,5 +131,35 @@ describe("notification outbox processor", () => {
 		expect(getNextRetryAt(10, now).toISOString()).toBe(
 			"2026-06-01T10:15:00.000Z",
 		);
+	});
+
+	it("starts a single managed Postgres listener and drains on notifications", async () => {
+		let notify: (() => void) | undefined;
+		const unlisten = vi.fn(async () => undefined);
+		const sql = vi.fn(async () => []) as any;
+		sql.listen = vi.fn(async (_channel, onNotify, onListen) => {
+			notify = onNotify;
+			onListen();
+			return { unlisten };
+		});
+
+		const firstWorker = await ensureNotificationWorkerStarted({
+			workerId: "worker-1",
+			sql,
+		});
+		const secondWorker = await ensureNotificationWorkerStarted({
+			workerId: "worker-2",
+			sql,
+		});
+
+		expect(secondWorker).toBe(firstWorker);
+		expect(sql.listen).toHaveBeenCalledTimes(1);
+
+		const queryCountAfterStartup = sql.mock.calls.length;
+		notify?.();
+
+		await vi.waitFor(() => {
+			expect(sql.mock.calls.length).toBeGreaterThan(queryCountAfterStartup);
+		});
 	});
 });

@@ -42,6 +42,23 @@ interface ProcessAppEventRowDependencies {
 	now?: Date;
 }
 
+interface ManagedNotificationWorkerState {
+	worker?: PostgresNotificationWorker;
+	startPromise?: Promise<PostgresNotificationWorker>;
+}
+
+const managedNotificationWorkerKey = Symbol.for(
+	"uptimekit.managedNotificationWorker",
+);
+
+function getManagedNotificationWorkerState() {
+	const globalForWorker = globalThis as typeof globalThis &
+		Record<symbol, ManagedNotificationWorkerState | undefined>;
+
+	globalForWorker[managedNotificationWorkerKey] ??= {};
+	return globalForWorker[managedNotificationWorkerKey];
+}
+
 export function getNextRetryAt(attempts: number, now = new Date()) {
 	const delayMs = getRetryDelayMs(attempts);
 
@@ -347,6 +364,46 @@ export async function startNotificationWorker() {
 	const worker = new PostgresNotificationWorker();
 	await worker.start();
 	return worker;
+}
+
+export async function ensureNotificationWorkerStarted(
+	input: { workerId?: string; sql?: NotificationSqlClient } = {},
+) {
+	const state = getManagedNotificationWorkerState();
+
+	if (state.worker) {
+		return state.worker;
+	}
+
+	if (state.startPromise) {
+		return state.startPromise;
+	}
+
+	const worker = new PostgresNotificationWorker(input);
+	state.startPromise = worker
+		.start()
+		.then(() => {
+			state.worker = worker;
+			logger.info("Postgres notification worker started");
+			return worker;
+		})
+		.catch((error) => {
+			state.startPromise = undefined;
+			throw error;
+		});
+
+	return state.startPromise;
+}
+
+export async function stopManagedNotificationWorker() {
+	const state = getManagedNotificationWorkerState();
+
+	if (state.worker) {
+		await state.worker.stop();
+	}
+
+	state.worker = undefined;
+	state.startPromise = undefined;
 }
 
 export async function processPendingNotifications(source = "api-inline") {

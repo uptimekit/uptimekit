@@ -548,7 +548,7 @@ export const incidentsRouter = {
 					);
 				}
 			});
-			await processPendingNotifications("incident-acknowledged");
+			await processPendingNotifications("incident-updated");
 
 			return { success: true };
 		}),
@@ -617,7 +617,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
-			await processPendingNotifications("incident-resolved");
+			await processPendingNotifications("incident-acknowledged");
 
 			return { success: true };
 		}),
@@ -686,7 +686,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
-			await processPendingNotifications("incident-comment-added");
+			await processPendingNotifications("incident-resolved");
 
 			return { success: true };
 		}),
@@ -740,7 +740,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
-			await processPendingNotifications("incident-deleted");
+			await processPendingNotifications("incident-comment-added");
 
 			return { success: true };
 		}),
@@ -785,6 +785,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
+			await processPendingNotifications("incident-deleted");
 
 			return { success: true };
 		}),
