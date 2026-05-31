@@ -265,7 +265,6 @@ export async function cleanupAppEventOutbox(
 		processedOlderThanDays?: number;
 		failedOlderThanDays?: number;
 		sql?: NotificationSqlClient;
-		now?: Date;
 	} = {},
 ) {
 	const sql = input.sql ?? postgresClient;
