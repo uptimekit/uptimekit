@@ -353,3 +353,9 @@ export async function startNotificationWorker() {
 	await worker.start();
 	return worker;
 }
+
+export async function processPendingNotifications(source = "api-inline") {
+	await drainPendingEvents({
+		workerId: `${source}-${process.pid}`,
+	});
+}

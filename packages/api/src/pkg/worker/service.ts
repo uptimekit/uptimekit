@@ -24,6 +24,7 @@ import {
 	isAutomaticIncidentResolveEligible,
 	type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
+import { processPendingNotifications } from "../notifications";
 
 // Types
 export interface HTTPTimings {
@@ -157,6 +158,10 @@ async function persistProcessedMonitorEventGroup(input: {
 			});
 		}
 	});
+
+	if (processed.eventsToDispatch.length > 0) {
+		await processPendingNotifications("worker-events");
+	}
 
 	if (monitorEvents.length > 0) {
 		await timeseries.insertMonitorEvents(

@@ -10,5 +10,6 @@ export {
 	markEventProcessed,
 	PostgresNotificationWorker,
 	processAppEventRow,
+	processPendingNotifications,
 	startNotificationWorker,
 } from "./processor";

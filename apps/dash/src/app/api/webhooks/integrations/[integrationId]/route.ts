@@ -4,6 +4,7 @@ import {
 	type AlertManagerConfig,
 	AlertManagerPayloadSchema,
 } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
+import { processPendingNotifications } from "@uptimekit/api/pkg/notifications";
 import { db } from "@uptimekit/db";
 import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { eq } from "drizzle-orm";
@@ -83,6 +84,7 @@ export async function POST(
 					config.organizationId,
 					parseResult.data,
 				);
+				await processPendingNotifications("alertmanager-webhook");
 				return NextResponse.json({
 					success: true,
 					...result,

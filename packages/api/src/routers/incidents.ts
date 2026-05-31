@@ -12,6 +12,7 @@ import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { publishAppEvent } from "../lib/events";
+import { processPendingNotifications } from "../pkg/notifications";
 
 const incidentTimestampSchema = z.coerce.date();
 
@@ -377,6 +378,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
+			await processPendingNotifications("incident-created");
 
 			return { id };
 		}),
@@ -546,6 +548,7 @@ export const incidentsRouter = {
 					);
 				}
 			});
+			await processPendingNotifications("incident-acknowledged");
 
 			return { success: true };
 		}),
@@ -614,6 +617,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
+			await processPendingNotifications("incident-resolved");
 
 			return { success: true };
 		}),
@@ -682,6 +686,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
+			await processPendingNotifications("incident-comment-added");
 
 			return { success: true };
 		}),
@@ -735,6 +740,7 @@ export const incidentsRouter = {
 					{ tx },
 				);
 			});
+			await processPendingNotifications("incident-deleted");
 
 			return { success: true };
 		}),

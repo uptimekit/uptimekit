@@ -1,4 +1,5 @@
 import { publishAppEvent } from "@uptimekit/api/lib/events";
+import { processPendingNotifications } from "@uptimekit/api/pkg/notifications";
 import { authenticateWorker, isAuthError } from "@uptimekit/api/pkg/worker";
 import { db } from "@uptimekit/db";
 import { monitor } from "@uptimekit/db/schema/monitors";
@@ -182,6 +183,7 @@ export async function POST(
 				{ tx },
 			);
 		});
+		await processPendingNotifications("ssl-certificate");
 	}
 
 	return NextResponse.json({
