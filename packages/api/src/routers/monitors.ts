@@ -365,74 +365,16 @@ export const monitorsRouter = {
 				db.$count(monitor, and(...filters)),
 			]);
 
-			const usageCounts = await db
-				.select({
-					monitorId: statusPageMonitor.monitorId,
-					count: sql<number>`count(*)`.mapWith(Number),
-				})
-				.from(statusPageMonitor)
-				.innerJoin(monitor, eq(statusPageMonitor.monitorId, monitor.id))
-				.where(
-					eq(
-						monitor.organizationId,
-						context.session.session.activeOrganizationId!,
-					),
-				)
-				.groupBy(statusPageMonitor.monitorId);
-
-			const usageMap = new Map(usageCounts.map((c) => [c.monitorId, c.count]));
-
-			// Batch fetch latest events and changes for all monitors to avoid N+1 query problem
 			const monitorIds = monitors.map((row) => row.monitor.id);
-			const notificationCounts =
-				monitorIds.length > 0
-					? await db
-							.select({
-								monitorId: monitorNotification.monitorId,
-								count: sql<number>`count(*)`.mapWith(Number),
-							})
-							.from(monitorNotification)
-							.where(inArray(monitorNotification.monitorId, monitorIds))
-							.groupBy(monitorNotification.monitorId)
-					: [];
-			const notificationCountMap = new Map(
-				notificationCounts.map((item) => [item.monitorId, item.count]),
-			);
+			const createEmptyMonitorState = () => ({
+				latestEventsMap: new Map<string, { status: string; timestamp: Date }>(),
+				latestChangesMap: new Map<string, { timestamp: Date }>(),
+				aggregateStatusesMap: new Map<string, { status: string }>(),
+			});
 
-			// Fetch tags for all monitors
-			const tagsForMonitors =
-				monitorIds.length > 0
-					? await db
-							.select({
-								monitorId: monitorTag.monitorId,
-								tag: tag,
-							})
-							.from(monitorTag)
-							.innerJoin(tag, eq(monitorTag.tagId, tag.id))
-							.where(
-								sql`${monitorTag.monitorId} IN (${sql.join(
-									monitorIds.map((id) => sql`${id}`),
-									sql`, `,
-								)})`,
-							)
-					: [];
+			const loadMonitorState = async () => {
+				const monitorState = createEmptyMonitorState();
 
-			const tagsByMonitor = new Map<string, (typeof tag.$inferSelect)[]>();
-			for (const { monitorId, tag: tagRecord } of tagsForMonitors) {
-				if (!tagsByMonitor.has(monitorId)) {
-					tagsByMonitor.set(monitorId, []);
-				}
-				tagsByMonitor.get(monitorId)?.push(tagRecord);
-			}
-
-			let latestEventsMap = new Map<
-				string,
-				{ status: string; timestamp: Date }
-			>();
-			let latestChangesMap = new Map<string, { timestamp: Date }>();
-			let aggregateStatusesMap = new Map<string, { status: string }>();
-
-			if (monitorIds.length > 0) {
 				try {
 					const monitorStatusInputs = monitors.map((row) => ({
 						id: row.monitor.id,
@@ -445,33 +387,82 @@ export const monitorsRouter = {
 							timeseries.getLatestChangesForMonitors(monitorIds),
 							getAggregateMonitorStatusesForMonitors(monitorStatusInputs),
 						]);
-					latestEventsMap = new Map(
-						latestEvents.map((event) => [
-							event.monitorId,
-							{ status: event.status, timestamp: event.timestamp },
-						]),
-					);
 
-					latestChangesMap = new Map(
-						latestChanges.map((change) => [
-							change.monitorId,
-							{ timestamp: change.timestamp },
-						]),
-					);
-					aggregateStatusesMap = new Map(
-						Array.from(aggregateStatuses.entries()).map(
-							([monitorId, aggregateStatus]) => [
-								monitorId,
-								{ status: aggregateStatus.status },
-							],
-						),
-					);
+					for (const event of latestEvents) {
+						monitorState.latestEventsMap.set(event.monitorId, {
+							status: event.status,
+							timestamp: event.timestamp,
+						});
+					}
+
+					for (const change of latestChanges) {
+						monitorState.latestChangesMap.set(change.monitorId, {
+							timestamp: change.timestamp,
+						});
+					}
+
+					for (const [monitorId, aggregateStatus] of aggregateStatuses) {
+						monitorState.aggregateStatusesMap.set(monitorId, {
+							status: aggregateStatus.status,
+						});
+					}
 				} catch (error) {
 					console.error(
 						"[monitors.list] Failed to load latest monitor state from time-series store",
 						error,
 					);
 				}
+
+				return monitorState;
+			};
+
+			const [
+				usageCounts,
+				notificationCounts,
+				tagsForMonitors,
+				{ latestEventsMap, latestChangesMap, aggregateStatusesMap },
+			] =
+				monitorIds.length > 0
+					? await Promise.all([
+							db
+								.select({
+									monitorId: statusPageMonitor.monitorId,
+									count: sql<number>`count(*)`.mapWith(Number),
+								})
+								.from(statusPageMonitor)
+								.where(inArray(statusPageMonitor.monitorId, monitorIds))
+								.groupBy(statusPageMonitor.monitorId),
+							db
+								.select({
+									monitorId: monitorNotification.monitorId,
+									count: sql<number>`count(*)`.mapWith(Number),
+								})
+								.from(monitorNotification)
+								.where(inArray(monitorNotification.monitorId, monitorIds))
+								.groupBy(monitorNotification.monitorId),
+							db
+								.select({
+									monitorId: monitorTag.monitorId,
+									tag: tag,
+								})
+								.from(monitorTag)
+								.innerJoin(tag, eq(monitorTag.tagId, tag.id))
+								.where(inArray(monitorTag.monitorId, monitorIds)),
+							loadMonitorState(),
+						])
+					: [[], [], [], createEmptyMonitorState()];
+
+			const usageMap = new Map(usageCounts.map((c) => [c.monitorId, c.count]));
+			const notificationCountMap = new Map(
+				notificationCounts.map((item) => [item.monitorId, item.count]),
+			);
+
+			const tagsByMonitor = new Map<string, (typeof tag.$inferSelect)[]>();
+			for (const { monitorId, tag: tagRecord } of tagsForMonitors) {
+				if (!tagsByMonitor.has(monitorId)) {
+					tagsByMonitor.set(monitorId, []);
+				}
+				tagsByMonitor.get(monitorId)?.push(tagRecord);
 			}
 
 			// Map the results to monitors
@@ -1267,8 +1258,9 @@ export const monitorsRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			const { session } = context.session;
+			const monitorIds = [...new Set(input.monitorIds)];
 
-			if (input.monitorIds.length === 0) {
+			if (monitorIds.length === 0) {
 				return {};
 			}
 
@@ -1278,15 +1270,13 @@ export const monitorsRouter = {
 				.from(monitor)
 				.where(
 					and(
-						sql`${monitor.id} IN ${input.monitorIds}`,
+						inArray(monitor.id, monitorIds),
 						eq(monitor.organizationId, session.activeOrganizationId!),
 					),
 				);
 
 			const accessibleIds = new Set(monitors.map((m) => m.id));
-			const filteredIds = input.monitorIds.filter((id) =>
-				accessibleIds.has(id),
-			);
+			const filteredIds = monitorIds.filter((id) => accessibleIds.has(id));
 
 			if (filteredIds.length === 0) {
 				return {};

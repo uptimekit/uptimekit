@@ -395,16 +395,32 @@ export class TimescaleDriver implements TimeSeriesDriver {
 		const rows = await sql<
 			{ monitor_id: string; latency: number; timestamp: Date }[]
 		>`
-			SELECT monitor_id, AVG(latency) AS latency, MAX(timestamp) AS timestamp
-			FROM (
-				SELECT monitor_id, location, latency, timestamp,
-					ROW_NUMBER() OVER (
-						PARTITION BY monitor_id, location ORDER BY timestamp DESC
-					) AS rn
+			WITH monitor_locations AS (
+				SELECT DISTINCT monitor_id, location
 				FROM monitor_events
 				WHERE monitor_id = ANY(${monitorIds})
-			) sub
-			WHERE rn <= ${limitPerMonitor}
+			),
+			recent_events AS (
+				SELECT
+					monitor_locations.monitor_id,
+					event.latency,
+					event.timestamp,
+					ROW_NUMBER() OVER (
+						PARTITION BY monitor_locations.monitor_id, monitor_locations.location
+						ORDER BY event.timestamp DESC
+					) AS rn
+				FROM monitor_locations
+				CROSS JOIN LATERAL (
+					SELECT latency, timestamp
+					FROM monitor_events AS monitor_event
+					WHERE monitor_event.monitor_id = monitor_locations.monitor_id
+						AND monitor_event.location IS NOT DISTINCT FROM monitor_locations.location
+					ORDER BY monitor_event.timestamp DESC
+					LIMIT ${limitPerMonitor}
+				) event
+			)
+			SELECT monitor_id, AVG(latency) AS latency, MAX(timestamp) AS timestamp
+			FROM recent_events
 			GROUP BY monitor_id, rn
 			ORDER BY monitor_id, MAX(timestamp) ASC
 		`;
@@ -444,17 +460,12 @@ export class TimescaleDriver implements TimeSeriesDriver {
 				timestamp: Date;
 			}[]
 		>`
-			SELECT monitor_id, location, status, timestamp
-			FROM (
-				SELECT monitor_id, location, status, timestamp,
-					ROW_NUMBER() OVER (
-						PARTITION BY monitor_id, location ORDER BY timestamp DESC
-					) AS rn
-				FROM monitor_events
-				WHERE monitor_id = ANY(${monitorIds})
-					AND location IS NOT NULL
-			) sub
-			WHERE rn = 1
+			SELECT DISTINCT ON (monitor_id, location)
+				monitor_id, location, status, timestamp
+			FROM monitor_events
+			WHERE monitor_id = ANY(${monitorIds})
+				AND location IS NOT NULL
+			ORDER BY monitor_id, location, timestamp DESC
 		`;
 
 		return rows

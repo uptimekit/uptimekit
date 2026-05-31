@@ -289,13 +289,19 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			timestamp: string;
 		}>(
 			`
-				SELECT monitorId, status, timestamp
+				SELECT
+					monitorId,
+					status,
+					latestTimestamp AS timestamp
 				FROM (
-					SELECT monitorId, status, timestamp,
-						ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
+					SELECT
+						monitorId,
+						argMax(status, timestamp) AS status,
+						max(timestamp) AS latestTimestamp
 					FROM uptimekit.monitor_events
 					WHERE monitorId IN ({ids:Array(String)})
-				) WHERE rn = 1
+					GROUP BY monitorId
+				)
 			`,
 			{ ids: monitorIds },
 		);
@@ -316,13 +322,10 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			timestamp: string;
 		}>(
 			`
-				SELECT monitorId, timestamp
-				FROM (
-					SELECT monitorId, timestamp,
-						ROW_NUMBER() OVER (PARTITION BY monitorId ORDER BY timestamp DESC) as rn
-					FROM uptimekit.monitor_changes
-					WHERE monitorId IN ({ids:Array(String)})
-				) WHERE rn = 1
+				SELECT monitorId, max(timestamp) AS timestamp
+				FROM uptimekit.monitor_changes
+				WHERE monitorId IN ({ids:Array(String)})
+				GROUP BY monitorId
 			`,
 			{ ids: monitorIds },
 		);
@@ -450,13 +453,22 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			`
 				SELECT monitorId, avg(latency) AS latency, max(timestamp) AS timestamp
 				FROM (
-					SELECT monitorId, location, latency, timestamp,
+					SELECT
+						monitorId,
+						location,
+						latency,
+						timestamp,
 						ROW_NUMBER() OVER (
 							PARTITION BY monitorId, location ORDER BY timestamp DESC
 						) as rn
-					FROM uptimekit.monitor_events
-					WHERE monitorId IN ({ids:Array(String)})
-				) WHERE rn <= {limit:UInt32}
+					FROM (
+						SELECT monitorId, location, latency, timestamp
+						FROM uptimekit.monitor_events
+						WHERE monitorId IN ({ids:Array(String)})
+						ORDER BY monitorId, location, timestamp DESC
+						LIMIT {limit:UInt32} BY monitorId, location
+					)
+				)
 				GROUP BY monitorId, rn
 				ORDER BY monitorId, timestamp ASC
 			`,
@@ -494,21 +506,22 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			timestamp: string;
 		}>(
 			`
-				SELECT monitorId, location, status, timestamp
+				SELECT
+					monitorId,
+					location,
+					status,
+					latestTimestamp AS timestamp
 				FROM (
 					SELECT
 						monitorId,
 						location,
-						status,
-						timestamp,
-						ROW_NUMBER() OVER (
-							PARTITION BY monitorId, location ORDER BY timestamp DESC
-						) AS rn
+						argMax(status, timestamp) AS status,
+						max(timestamp) AS latestTimestamp
 					FROM uptimekit.monitor_events
 					WHERE monitorId IN ({monitorIds:Array(String)})
 						AND location IS NOT NULL
+					GROUP BY monitorId, location
 				)
-				WHERE rn = 1
 			`,
 			{ monitorIds },
 		);
