@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
 	type AppEventOutboxRow,
+	claimPendingEvents,
+	cleanupAppEventOutbox,
 	getNextRetryAt,
+	markEventFailed,
 	processAppEventRow,
 } from "../pkg/notifications/processor";
 
@@ -28,6 +31,35 @@ function buildRow(
 }
 
 describe("notification outbox processor", () => {
+	it("does not pass Date instances into raw Postgres queries", async () => {
+		const sql = vi.fn(async () => []) as any;
+
+		await claimPendingEvents({
+			sql,
+			workerId: "worker-1",
+			staleProcessingMs: 300_000,
+		});
+		await markEventFailed(
+			{
+				id: "event-1",
+				attempts: 1,
+				error: new Error("failed"),
+				now: new Date("2026-06-01T10:00:00.000Z"),
+			},
+			sql,
+		);
+		await cleanupAppEventOutbox({
+			sql,
+			now: new Date("2026-06-01T10:00:00.000Z"),
+		});
+
+		for (const call of sql.mock.calls) {
+			for (const value of call.slice(1)) {
+				expect(value).not.toBeInstanceOf(Date);
+			}
+		}
+	});
+
 	it("dispatches an event row and marks it processed", async () => {
 		const dispatchEvent = vi.fn(async () => undefined);
 		const markProcessed = vi.fn(async () => undefined);

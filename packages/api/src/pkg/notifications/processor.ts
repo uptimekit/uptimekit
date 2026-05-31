@@ -43,12 +43,16 @@ interface ProcessAppEventRowDependencies {
 }
 
 export function getNextRetryAt(attempts: number, now = new Date()) {
-	const delayMs = Math.min(
+	const delayMs = getRetryDelayMs(attempts);
+
+	return new Date(now.getTime() + delayMs);
+}
+
+function getRetryDelayMs(attempts: number) {
+	return Math.min(
 		MAX_RETRY_DELAY_MS,
 		BASE_RETRY_DELAY_MS * 2 ** Math.max(attempts - 1, 0),
 	);
-
-	return new Date(now.getTime() + delayMs);
 }
 
 export function mapOutboxRowToEvent(row: AppEventOutboxRow): PersistedAppEvent {
@@ -85,14 +89,10 @@ export async function claimPendingEvents(input: {
 	workerId: string;
 	batchSize?: number;
 	staleProcessingMs?: number;
-	now?: Date;
 }) {
 	const sql = input.sql ?? postgresClient;
 	const batchSize = input.batchSize ?? DEFAULT_BATCH_SIZE;
-	const staleBefore = new Date(
-		(input.now ?? new Date()).getTime() -
-			(input.staleProcessingMs ?? STALE_PROCESSING_MS),
-	);
+	const staleProcessingMs = input.staleProcessingMs ?? STALE_PROCESSING_MS;
 
 	return sql<AppEventOutboxRow[]>`
 		with next_events as (
@@ -103,7 +103,7 @@ export async function claimPendingEvents(input: {
 				and available_at <= now()
 			) or (
 				status = 'processing'
-				and locked_at < ${staleBefore}
+				and locked_at < now() - (${staleProcessingMs} * interval '1 millisecond')
 			)
 			order by available_at asc, created_at asc
 			limit ${batchSize}
@@ -176,7 +176,7 @@ export async function markEventFailed(
 		update app_event_outbox
 		set
 			status = 'pending',
-			available_at = ${getNextRetryAt(input.attempts, input.now)},
+			available_at = now() + (${getRetryDelayMs(input.attempts)} * interval '1 millisecond'),
 			locked_at = null,
 			locked_by = null,
 			last_error = ${errorMessage},
@@ -252,22 +252,17 @@ export async function cleanupAppEventOutbox(
 	} = {},
 ) {
 	const sql = input.sql ?? postgresClient;
-	const now = input.now ?? new Date();
-	const processedCutoff = new Date(
-		now.getTime() - (input.processedOlderThanDays ?? 7) * 24 * 60 * 60 * 1000,
-	);
-	const failedCutoff = new Date(
-		now.getTime() - (input.failedOlderThanDays ?? 30) * 24 * 60 * 60 * 1000,
-	);
+	const processedOlderThanDays = input.processedOlderThanDays ?? 7;
+	const failedOlderThanDays = input.failedOlderThanDays ?? 30;
 
 	await sql`
 		delete from app_event_outbox
 		where (
 			status = 'processed'
-			and processed_at < ${processedCutoff}
+			and processed_at < now() - (${processedOlderThanDays} * interval '1 day')
 		) or (
 			status = 'failed'
-			and updated_at < ${failedCutoff}
+			and updated_at < now() - (${failedOlderThanDays} * interval '1 day')
 		)
 	`;
 }
