@@ -63,19 +63,22 @@ export const telegramIntegration: IntegrationDefinition<
 				const details =
 					sslPayload.error ||
 					`Certificate expires in ${sslPayload.daysUntilExpiry} day${sslPayload.daysUntilExpiry === 1 ? "" : "s"}.`;
+				const escapeHtml = (s: string) =>
+					s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 				const message = [
 					sslPayload.isValid
 						? "<b>SSL certificate expiring</b>"
 						: "<b>SSL certificate problem</b>",
 					"",
-					`<b>Monitor:</b> ${sslPayload.monitorName}`,
-					`<b>Domain:</b> ${sslPayload.domain}`,
-					`<b>Issuer:</b> ${sslPayload.issuer || "Unknown"}`,
-					`<b>Valid until:</b> ${sslPayload.validTo || "Unknown"}`,
+					`<b>Monitor:</b> ${escapeHtml(sslPayload.monitorName)}`,
+					`<b>Domain:</b> ${escapeHtml(sslPayload.domain)}`,
+					`<b>Issuer:</b> ${escapeHtml(sslPayload.issuer || "Unknown")}`,
+					`<b>Valid until:</b> ${escapeHtml(sslPayload.validTo || "Unknown")}`,
 					`<b>Threshold:</b> ${sslPayload.threshold} days`,
 					"",
 					"<b>Details:</b>",
-					`<pre>${details}</pre>`,
+					`<pre>${escapeHtml(details)}</pre>`,
 					"",
 					`<a href="${monitorUrl}">View Monitor</a>`,
 				].join("\n");
