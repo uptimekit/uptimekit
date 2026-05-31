@@ -18,6 +18,7 @@ export const webhookIntegration: IntegrationDefinition<
 		"incident.resolved",
 		"incident.acknowledged",
 		"incident.comment_added",
+		"monitor.ssl.expiring",
 		"integration.test",
 	],
 	handler: async (config, event, payload) => {

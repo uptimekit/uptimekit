@@ -47,6 +47,51 @@ export const appriseIntegration: IntegrationDefinition<
 				return;
 			}
 
+			if (event === "monitor.ssl.expiring") {
+				const sslPayload = payload as {
+					monitorId: string;
+					monitorName: string;
+					domain: string;
+					issuer?: string;
+					validTo?: string;
+					daysUntilExpiry: number;
+					isValid: boolean;
+					error?: string;
+					threshold: number;
+				};
+				const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+				const monitorUrl = `${baseUrl}/monitors/${sslPayload.monitorId}`;
+				const details =
+					sslPayload.error ||
+					`Certificate expires in ${sslPayload.daysUntilExpiry} day${sslPayload.daysUntilExpiry === 1 ? "" : "s"}.`;
+				const body = [
+					`Monitor: ${sslPayload.monitorName}`,
+					`Domain: ${sslPayload.domain}`,
+					`Issuer: ${sslPayload.issuer || "Unknown"}`,
+					`Valid until: ${sslPayload.validTo || "Unknown"}`,
+					`Threshold: ${sslPayload.threshold} days`,
+					"",
+					"Details:",
+					details,
+					"",
+					`View Monitor: ${monitorUrl}`,
+				].join("\n");
+
+				await fetchIntegrationWebhook(`${appriseUrl}/notify`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						urls: config.notifyUrl,
+						title: sslPayload.isValid
+							? "SSL certificate expiring"
+							: "SSL certificate problem",
+						body,
+						format: "text",
+					}),
+				});
+				return;
+			}
+
 			// Fetch full incident data to get monitors
 			const incidentData = await db.query.incident.findFirst({
 				where: (t, { eq }) => eq(t.id, payload.incidentId),

@@ -1,3 +1,4 @@
+import { cleanupAppEventOutbox } from "@uptimekit/api/pkg/notifications";
 import { db, timeseries } from "@uptimekit/db";
 import { configuration } from "@uptimekit/db/schema/configuration";
 import { eq } from "drizzle-orm";
@@ -24,6 +25,7 @@ export async function processDataRetention() {
 
 	try {
 		await timeseries.deleteOlderThan(cutoffDate);
+		await cleanupAppEventOutbox();
 		// Note: on the ClickHouse backend `ALTER TABLE … DELETE` is an asynchronous
 		// lightweight mutation, so rows may still be physically present for a short
 		// window after this returns. Timescale deletes synchronously.

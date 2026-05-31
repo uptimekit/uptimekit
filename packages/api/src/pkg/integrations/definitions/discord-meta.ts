@@ -31,6 +31,7 @@ export const discordIntegrationMeta: Omit<
 		"incident.resolved",
 		"incident.acknowledged",
 		"incident.comment_added",
+		"monitor.ssl.expiring",
 		"integration.test",
 	],
 };

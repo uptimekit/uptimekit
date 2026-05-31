@@ -56,6 +56,88 @@ export const discordIntegration: IntegrationDefinition<
 			return;
 		}
 
+		if (event === "monitor.ssl.expiring") {
+			const sslPayload = payload as {
+				monitorId: string;
+				monitorName: string;
+				domain: string;
+				issuer?: string;
+				validTo?: string;
+				daysUntilExpiry: number;
+				isValid: boolean;
+				error?: string;
+				threshold: number;
+			};
+			const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+			const monitorUrl = `${baseUrl}/monitors/${sslPayload.monitorId}`;
+			const statusHeader = sslPayload.isValid
+				? "> SSL certificate expiring"
+				: "> SSL certificate problem";
+			const details =
+				sslPayload.error ||
+				`Certificate expires in ${sslPayload.daysUntilExpiry} day${sslPayload.daysUntilExpiry === 1 ? "" : "s"}.`;
+
+			await fetchIntegrationWebhook(config.webhookUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					embeds: [
+						{
+							color: sslPayload.isValid ? 16776960 : 16711680,
+							description: statusHeader,
+							fields: [
+								{
+									name: "Monitor",
+									value: sslPayload.monitorName,
+									inline: true,
+								},
+								{
+									name: "Domain",
+									value: sslPayload.domain,
+									inline: true,
+								},
+								{
+									name: "Threshold",
+									value: `${sslPayload.threshold} days`,
+									inline: true,
+								},
+								{
+									name: "Issuer",
+									value: sslPayload.issuer || "Unknown",
+									inline: true,
+								},
+								{
+									name: "Valid until",
+									value: sslPayload.validTo || "Unknown",
+									inline: true,
+								},
+								{
+									name: "Details",
+									value: `\`\`\`\n${details}\n\`\`\``,
+								},
+							],
+						},
+					],
+					components: [
+						{
+							type: 1,
+							components: [
+								{
+									type: 2,
+									style: 5,
+									label: "View Monitor",
+									url: monitorUrl,
+								},
+							],
+						},
+					],
+				}),
+			});
+			return;
+		}
+
 		// Fetch full incident data to get monitors
 		const incidentData = await db.query.incident.findFirst({
 			where: (t, { eq }) => eq(t.id, payload.incidentId),

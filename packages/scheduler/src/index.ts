@@ -1,7 +1,12 @@
+import { pathToFileURL } from "node:url";
 import { loadEnv } from "@uptimekit/config/env";
 
 loadEnv();
 
+import {
+	type PostgresNotificationWorker,
+	startNotificationWorker,
+} from "@uptimekit/api/pkg/notifications";
 import { type Job, Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 import { ensureConfiguration } from "./jobs/config-integrity";
@@ -20,6 +25,7 @@ const JOBS = {
 let connection: IORedis | null = null;
 let schedulerQueue: Queue | null = null;
 let worker: Worker | null = null;
+let notificationWorker: PostgresNotificationWorker | null = null;
 
 function getRequiredRedisUrl() {
 	const redisUrl = process.env.REDIS_URL?.trim();
@@ -149,6 +155,7 @@ async function registerJobs() {
  */
 async function shutdown() {
 	logger.info("Shutting down scheduler...");
+	await notificationWorker?.stop();
 	await worker?.close();
 	await schedulerQueue?.close();
 	await connection?.quit();
@@ -167,6 +174,21 @@ export async function startScheduler() {
 
 	await ensureConfiguration();
 	await registerJobs();
+	notificationWorker = await startNotificationWorker();
 
 	logger.info("Scheduler is running...");
+}
+
+function isDirectExecution() {
+	const entrypoint = process.argv[1];
+	return Boolean(
+		entrypoint && import.meta.url === pathToFileURL(entrypoint).href,
+	);
+}
+
+if (isDirectExecution()) {
+	startScheduler().catch((error) => {
+		logger.error("Scheduler failed to start", error);
+		process.exit(1);
+	});
 }

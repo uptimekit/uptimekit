@@ -2,7 +2,7 @@ import { db, statusPageEmailSubscribers } from "@uptimekit/db";
 import { incidentStatusPage } from "@uptimekit/db/schema/incidents";
 import { statusPage } from "@uptimekit/db/schema/status-pages";
 import { and, eq, inArray } from "drizzle-orm";
-import { eventBus } from "../../lib/events";
+import type { PersistedAppEvent } from "../../lib/events";
 import { createLogger } from "../../lib/logger";
 import { assertSafeWebhookUrl } from "../../lib/safe-url";
 import { sendSubscriberEmail } from "./email";
@@ -165,18 +165,18 @@ async function postWebhook(url: string, body: unknown, destination: string) {
 }
 
 export class SubscriberNotificationService {
-	constructor() {
-		this.setupListeners();
-	}
-
-	private setupListeners() {
-		const events = ["incident.acknowledged", "incident.resolved"] as const;
-
-		for (const eventName of events) {
-			eventBus.on(eventName, async (payload) => {
-				await this.handleEvent(eventName, payload);
-			});
+	async handleAppEvent(event: PersistedAppEvent) {
+		if (
+			event.eventName !== "incident.acknowledged" &&
+			event.eventName !== "incident.resolved"
+		) {
+			return;
 		}
+
+		await this.handleEvent(
+			event.eventName,
+			event.payload as SubscriberEventPayload,
+		);
 	}
 
 	private async handleEvent(
@@ -300,3 +300,7 @@ export const subscriberNotificationService = (() => {
 
 	return globalForService[subscriberNotificationServiceKey];
 })();
+
+export async function handleSubscriberEvent(event: PersistedAppEvent) {
+	await subscriberNotificationService.handleAppEvent(event);
+}

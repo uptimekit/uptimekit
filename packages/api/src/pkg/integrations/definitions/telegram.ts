@@ -46,6 +46,58 @@ export const telegramIntegration: IntegrationDefinition<
 				return;
 			}
 
+			if (event === "monitor.ssl.expiring") {
+				const sslPayload = payload as {
+					monitorId: string;
+					monitorName: string;
+					domain: string;
+					issuer?: string;
+					validTo?: string;
+					daysUntilExpiry: number;
+					isValid: boolean;
+					error?: string;
+					threshold: number;
+				};
+				const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+				const monitorUrl = `${baseUrl}/monitors/${sslPayload.monitorId}`;
+				const details =
+					sslPayload.error ||
+					`Certificate expires in ${sslPayload.daysUntilExpiry} day${sslPayload.daysUntilExpiry === 1 ? "" : "s"}.`;
+				const message = [
+					sslPayload.isValid
+						? "<b>SSL certificate expiring</b>"
+						: "<b>SSL certificate problem</b>",
+					"",
+					`<b>Monitor:</b> ${sslPayload.monitorName}`,
+					`<b>Domain:</b> ${sslPayload.domain}`,
+					`<b>Issuer:</b> ${sslPayload.issuer || "Unknown"}`,
+					`<b>Valid until:</b> ${sslPayload.validTo || "Unknown"}`,
+					`<b>Threshold:</b> ${sslPayload.threshold} days`,
+					"",
+					"<b>Details:</b>",
+					`<pre>${details}</pre>`,
+					"",
+					`<a href="${monitorUrl}">View Monitor</a>`,
+				].join("\n");
+
+				await fetchIntegrationWebhook(
+					`https://api.telegram.org/bot${config.botToken}/sendMessage`,
+					{
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							chat_id: config.chatId,
+							text: message,
+							parse_mode: "HTML",
+							disable_web_page_preview: true,
+						}),
+					},
+				);
+				return;
+			}
+
 			// Fetch full incident data to get monitors
 			const incidentData = await db.query.incident.findFirst({
 				where: (t, { eq }) => eq(t.id, payload.incidentId),

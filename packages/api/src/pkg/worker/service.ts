@@ -13,7 +13,7 @@ import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, isNull } from "drizzle-orm";
-import { type AppEventPayload, eventBus } from "../../lib/events";
+import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
 	type AutomaticIncidentOpenEvaluation,
 	type ConfiguredWorkerStateResult,
@@ -57,10 +57,16 @@ interface MonitorChangeInsert {
 interface ProcessedMonitorEventGroup {
 	changesToInsert: MonitorChangeInsert[];
 	incidentsToInsert: (typeof incident.$inferInsert)[];
+	incidentUpdatesToApply: IncidentUpdate[];
 	incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[];
 	incidentStatusPagesToInsert: (typeof incidentStatusPage.$inferInsert)[];
 	activitiesToInsert: (typeof incidentActivity.$inferInsert)[];
 	eventsToDispatch: WorkerIncidentEventDispatch[];
+}
+
+interface IncidentUpdate {
+	id: string;
+	values: Partial<typeof incident.$inferInsert>;
 }
 
 type WorkerIncidentEventDispatch =
@@ -110,23 +116,47 @@ async function persistProcessedMonitorEventGroup(input: {
 		await timeseries.insertMonitorChanges(processed.changesToInsert);
 	}
 
-	if (processed.incidentsToInsert.length > 0) {
-		await db.insert(incident).values(processed.incidentsToInsert);
-	}
+	await db.transaction(async (tx) => {
+		if (processed.incidentsToInsert.length > 0) {
+			await tx.insert(incident).values(processed.incidentsToInsert);
+		}
 
-	if (processed.incidentMonitorsToInsert.length > 0) {
-		await db.insert(incidentMonitor).values(processed.incidentMonitorsToInsert);
-	}
+		for (const update of processed.incidentUpdatesToApply) {
+			await tx
+				.update(incident)
+				.set(update.values)
+				.where(eq(incident.id, update.id));
+		}
 
-	if (processed.incidentStatusPagesToInsert.length > 0) {
-		await db
-			.insert(incidentStatusPage)
-			.values(processed.incidentStatusPagesToInsert);
-	}
+		if (processed.incidentMonitorsToInsert.length > 0) {
+			await tx
+				.insert(incidentMonitor)
+				.values(processed.incidentMonitorsToInsert);
+		}
 
-	if (processed.activitiesToInsert.length > 0) {
-		await db.insert(incidentActivity).values(processed.activitiesToInsert);
-	}
+		if (processed.incidentStatusPagesToInsert.length > 0) {
+			await tx
+				.insert(incidentStatusPage)
+				.values(processed.incidentStatusPagesToInsert);
+		}
+
+		if (processed.activitiesToInsert.length > 0) {
+			await tx.insert(incidentActivity).values(processed.activitiesToInsert);
+		}
+
+		for (const eventToDispatch of processed.eventsToDispatch) {
+			if (eventToDispatch.event === "incident.created") {
+				await publishAppEvent("incident.created", eventToDispatch.payload, {
+					tx,
+				});
+				continue;
+			}
+
+			await publishAppEvent("incident.resolved", eventToDispatch.payload, {
+				tx,
+			});
+		}
+	});
 
 	if (monitorEvents.length > 0) {
 		await timeseries.insertMonitorEvents(
@@ -147,17 +177,6 @@ async function persistProcessedMonitorEventGroup(input: {
 			})),
 		);
 	}
-}
-
-async function dispatchWorkerIncidentEvent(
-	dispatch: WorkerIncidentEventDispatch,
-) {
-	if (dispatch.event === "incident.created") {
-		await eventBus.emitAsync("incident.created", dispatch.payload);
-		return;
-	}
-
-	await eventBus.emitAsync("incident.resolved", dispatch.payload);
 }
 
 export {
@@ -259,10 +278,8 @@ export async function processMonitorEvents(
 		eventsByMonitor.set(event.monitorId, list);
 	}
 
-	const eventsToDispatch: WorkerIncidentEventDispatch[] = [];
-
 	for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-		const processed = await withMonitorEventLock(monitorId, async () => {
+		await withMonitorEventLock(monitorId, async () => {
 			const processedGroup = await processMonitorEventGroup(
 				monitorId,
 				monitorEvents,
@@ -277,12 +294,6 @@ export async function processMonitorEvents(
 
 			return processedGroup;
 		});
-
-		eventsToDispatch.push(...processed.eventsToDispatch);
-	}
-
-	for (const eventToDispatch of eventsToDispatch) {
-		await dispatchWorkerIncidentEvent(eventToDispatch);
 	}
 
 	return { success: true, count: events.length };
@@ -309,6 +320,7 @@ async function processMonitorEventGroup(
 	const result: ProcessedMonitorEventGroup = {
 		changesToInsert: [],
 		incidentsToInsert: [],
+		incidentUpdatesToApply: [],
 		incidentMonitorsToInsert: [],
 		incidentStatusPagesToInsert: [],
 		activitiesToInsert: [],
@@ -456,15 +468,15 @@ async function processMonitorEventGroup(
 				continue;
 			}
 
-			await db
-				.update(incident)
-				.set({
+			result.incidentUpdatesToApply.push({
+				id: resolvedIncident.id,
+				values: {
 					status: "resolved",
 					endedAt: eventTime,
 					resolvedAt: eventTime,
 					updatedAt: eventTime,
-				})
-				.where(eq(incident.id, resolvedIncident.id));
+				},
+			});
 
 			result.eventsToDispatch.push({
 				event: "incident.resolved",

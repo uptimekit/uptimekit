@@ -467,6 +467,9 @@ importers:
 
   packages/scheduler:
     dependencies:
+      '@uptimekit/api':
+        specifier: workspace:*
+        version: link:../api
       '@uptimekit/config':
         specifier: workspace:*
         version: link:../config

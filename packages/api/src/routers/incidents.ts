@@ -11,7 +11,7 @@ import { statusPage } from "@uptimekit/db/schema/status-pages";
 import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import { eventBus } from "../lib/events";
+import { publishAppEvent } from "../lib/events";
 
 const incidentTimestampSchema = z.coerce.date();
 
@@ -364,14 +364,18 @@ export const incidentsRouter = {
 						userId: context.session.user.id,
 					});
 				}
-			});
 
-			await eventBus.emitAsync("incident.created", {
-				incidentId: id,
-				organizationId,
-				title: input.title,
-				description: input.description,
-				severity: input.severity,
+				await publishAppEvent(
+					"incident.created",
+					{
+						incidentId: id,
+						organizationId,
+						title: input.title,
+						description: input.description,
+						severity: input.severity,
+					},
+					{ tx },
+				);
 			});
 
 			return { id };
@@ -597,14 +601,18 @@ export const incidentsRouter = {
 					createdAt: now,
 					userId: context.session.user.id,
 				});
-			});
 
-			await eventBus.emitAsync("incident.acknowledged", {
-				incidentId: input.id,
-				organizationId: existing.organizationId,
-				title: existing.title,
-				description: existing.description,
-				severity: existing.severity as any,
+				await publishAppEvent(
+					"incident.acknowledged",
+					{
+						incidentId: input.id,
+						organizationId: existing.organizationId,
+						title: existing.title,
+						description: existing.description,
+						severity: existing.severity as any,
+					},
+					{ tx },
+				);
 			});
 
 			return { success: true };
@@ -661,14 +669,18 @@ export const incidentsRouter = {
 					createdAt: now,
 					userId: context.session.user.id,
 				});
-			});
 
-			await eventBus.emitAsync("incident.resolved", {
-				incidentId: input.id,
-				organizationId: existing.organizationId,
-				title: existing.title,
-				description: existing.description,
-				severity: existing.severity as any,
+				await publishAppEvent(
+					"incident.resolved",
+					{
+						incidentId: input.id,
+						organizationId: existing.organizationId,
+						title: existing.title,
+						description: existing.description,
+						severity: existing.severity as any,
+					},
+					{ tx },
+				);
 			});
 
 			return { success: true };
@@ -701,21 +713,27 @@ export const incidentsRouter = {
 				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
 			}
 
-			await db.insert(incidentActivity).values({
-				id: crypto.randomUUID(),
-				incidentId: input.incidentId,
-				message: input.message,
-				type: "comment",
-				createdAt: now,
-				userId: context.session.user.id,
-			});
+			await db.transaction(async (tx) => {
+				await tx.insert(incidentActivity).values({
+					id: crypto.randomUUID(),
+					incidentId: input.incidentId,
+					message: input.message,
+					type: "comment",
+					createdAt: now,
+					userId: context.session.user.id,
+				});
 
-			await eventBus.emitAsync("incident.comment_added", {
-				incidentId: input.incidentId,
-				organizationId: existing.organizationId,
-				title: existing.title,
-				message: input.message,
-				severity: existing.severity as any,
+				await publishAppEvent(
+					"incident.comment_added",
+					{
+						incidentId: input.incidentId,
+						organizationId: existing.organizationId,
+						title: existing.title,
+						message: input.message,
+						severity: existing.severity as any,
+					},
+					{ tx },
+				);
 			});
 
 			return { success: true };
@@ -747,13 +765,19 @@ export const incidentsRouter = {
 				throw new ORPCError("NOT_FOUND", { message: "Incident not found" });
 			}
 
-			await db.delete(incident).where(eq(incident.id, input.id));
+			await db.transaction(async (tx) => {
+				await tx.delete(incident).where(eq(incident.id, input.id));
 
-			await eventBus.emitAsync("incident.deleted", {
-				incidentId: input.id,
-				organizationId: existing.organizationId,
-				title: existing.title,
-				severity: existing.severity as any,
+				await publishAppEvent(
+					"incident.deleted",
+					{
+						incidentId: input.id,
+						organizationId: existing.organizationId,
+						title: existing.title,
+						severity: existing.severity as any,
+					},
+					{ tx },
+				);
 			});
 
 			return { success: true };

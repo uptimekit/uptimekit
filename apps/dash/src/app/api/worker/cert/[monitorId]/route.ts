@@ -1,4 +1,4 @@
-import { eventBus } from "@uptimekit/api/lib/events";
+import { publishAppEvent } from "@uptimekit/api/lib/events";
 import { authenticateWorker, isAuthError } from "@uptimekit/api/pkg/worker";
 import { db } from "@uptimekit/db";
 import { monitor } from "@uptimekit/db/schema/monitors";
@@ -144,37 +144,43 @@ export async function POST(
 	if (shouldNotify) {
 		const now = new Date();
 
-		if (lastNotification) {
-			await db
-				.update(sslCertificateNotification)
-				.set({
+		await db.transaction(async (tx) => {
+			if (lastNotification) {
+				await tx
+					.update(sslCertificateNotification)
+					.set({
+						lastNotifiedAt: now,
+						daysUntilExpiryAtNotification: body.daysUntilExpiry.toString(),
+						updatedAt: now,
+					})
+					.where(eq(sslCertificateNotification.id, lastNotification.id));
+			} else {
+				await tx.insert(sslCertificateNotification).values({
+					id: crypto.randomUUID(),
+					monitorId: monitorRecord.id,
+					domain: body.domain,
 					lastNotifiedAt: now,
 					daysUntilExpiryAtNotification: body.daysUntilExpiry.toString(),
-					updatedAt: now,
-				})
-				.where(eq(sslCertificateNotification.id, lastNotification.id));
-		} else {
-			await db.insert(sslCertificateNotification).values({
-				id: crypto.randomUUID(),
-				monitorId: monitorRecord.id,
-				domain: body.domain,
-				lastNotifiedAt: now,
-				daysUntilExpiryAtNotification: body.daysUntilExpiry.toString(),
-			});
-		}
+				});
+			}
 
-		eventBus.emit("monitor.ssl.expiring", {
-			monitorId: monitorRecord.id,
-			organizationId: monitorRecord.organizationId,
-			monitorName: monitorRecord.name,
-			domain: body.domain,
-			issuer: body.issuer,
-			validFrom: body.validFrom,
-			validTo: body.validTo,
-			daysUntilExpiry: body.daysUntilExpiry,
-			isValid: body.isValid,
-			error: body.error,
-			threshold: notificationThreshold,
+			await publishAppEvent(
+				"monitor.ssl.expiring",
+				{
+					monitorId: monitorRecord.id,
+					organizationId: monitorRecord.organizationId,
+					monitorName: monitorRecord.name,
+					domain: body.domain,
+					issuer: body.issuer,
+					validFrom: body.validFrom,
+					validTo: body.validTo,
+					daysUntilExpiry: body.daysUntilExpiry,
+					isValid: body.isValid,
+					error: body.error,
+					threshold: notificationThreshold,
+				},
+				{ tx },
+			);
 		});
 	}
 

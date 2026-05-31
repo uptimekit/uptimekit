@@ -10,7 +10,6 @@ import { statusPagesRouter } from "./status-pages";
 import { statusUpdatesRouter } from "./status-updates";
 import { usersRouter } from "./users";
 import { workersRouter } from "./workers";
-import "../pkg/notifications"; // Initialize notification services
 import "../pkg/imports"; // Register import sources
 
 export const appRouter = {

@@ -21,5 +21,6 @@ export const webhookIntegrationMeta: Omit<
 		"incident.resolved",
 		"incident.acknowledged",
 		"incident.comment_added",
+		"monitor.ssl.expiring",
 	],
 };

@@ -2,7 +2,7 @@ import { db } from "@uptimekit/db";
 import { incident, incidentActivity } from "@uptimekit/db/schema/incidents";
 import { and, eq } from "drizzle-orm";
 import type { z } from "zod";
-import { eventBus } from "../../../lib/events";
+import { publishAppEvent } from "../../../lib/events";
 import type { IntegrationDefinition } from "../registry";
 import {
 	type AlertManagerConfig,
@@ -110,14 +110,18 @@ export async function processAlertManagerWebhook(
 					type: "event",
 					createdAt: now,
 				});
-			});
 
-			await eventBus.emitAsync("incident.created", {
-				incidentId,
-				organizationId,
-				title,
-				description,
-				severity,
+				await publishAppEvent(
+					"incident.created",
+					{
+						incidentId,
+						organizationId,
+						title,
+						description,
+						severity,
+					},
+					{ tx },
+				);
 			});
 
 			result.created++;
@@ -152,14 +156,21 @@ export async function processAlertManagerWebhook(
 					type: "event",
 					createdAt: now,
 				});
-			});
 
-			await eventBus.emitAsync("incident.resolved", {
-				incidentId: existingIncident.id,
-				organizationId,
-				title: existingIncident.title,
-				description: existingIncident.description,
-				severity: existingIncident.severity as "minor" | "major" | "critical",
+				await publishAppEvent(
+					"incident.resolved",
+					{
+						incidentId: existingIncident.id,
+						organizationId,
+						title: existingIncident.title,
+						description: existingIncident.description,
+						severity: existingIncident.severity as
+							| "minor"
+							| "major"
+							| "critical",
+					},
+					{ tx },
+				);
 			});
 
 			result.resolved++;

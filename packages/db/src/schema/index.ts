@@ -1,3 +1,4 @@
+export * from "./app-events";
 export * from "./auth";
 export * from "./configuration";
 export * from "./incidents";

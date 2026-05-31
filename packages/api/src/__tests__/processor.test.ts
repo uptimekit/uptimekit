@@ -1,0 +1,97 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+	type AppEventOutboxRow,
+	getNextRetryAt,
+	processAppEventRow,
+} from "../pkg/notifications/processor";
+
+function buildRow(
+	overrides: Partial<AppEventOutboxRow> = {},
+): AppEventOutboxRow {
+	const now = new Date("2026-06-01T10:00:00.000Z");
+
+	return {
+		id: "event-1",
+		event_name: "incident.created",
+		organization_id: "org-1",
+		payload: {
+			incidentId: "incident-1",
+			organizationId: "org-1",
+			title: "API down",
+			severity: "major",
+		},
+		attempts: 1,
+		created_at: now,
+		available_at: now,
+		...overrides,
+	};
+}
+
+describe("notification outbox processor", () => {
+	it("dispatches an event row and marks it processed", async () => {
+		const dispatchEvent = vi.fn(async () => undefined);
+		const markProcessed = vi.fn(async () => undefined);
+		const markFailed = vi.fn(async () => undefined);
+
+		await processAppEventRow(buildRow(), {
+			dispatchEvent,
+			markFailed,
+			markProcessed,
+		});
+
+		expect(dispatchEvent).toHaveBeenCalledWith({
+			id: "event-1",
+			eventName: "incident.created",
+			organizationId: "org-1",
+			payload: {
+				incidentId: "incident-1",
+				organizationId: "org-1",
+				title: "API down",
+				severity: "major",
+			},
+			attempts: 1,
+			createdAt: new Date("2026-06-01T10:00:00.000Z"),
+			availableAt: new Date("2026-06-01T10:00:00.000Z"),
+		});
+		expect(markProcessed).toHaveBeenCalledWith("event-1");
+		expect(markFailed).not.toHaveBeenCalled();
+	});
+
+	it("marks the row failed when dispatch throws", async () => {
+		const error = new Error("webhook failed");
+		const dispatchEvent = vi.fn(async () => {
+			throw error;
+		});
+		const markProcessed = vi.fn(async () => undefined);
+		const markFailed = vi.fn(async () => undefined);
+
+		await processAppEventRow(buildRow({ attempts: 3 }), {
+			dispatchEvent,
+			markFailed,
+			markProcessed,
+			now: new Date("2026-06-01T10:00:00.000Z"),
+		});
+
+		expect(markProcessed).not.toHaveBeenCalled();
+		expect(markFailed).toHaveBeenCalledWith({
+			id: "event-1",
+			attempts: 3,
+			error,
+			now: new Date("2026-06-01T10:00:00.000Z"),
+		});
+	});
+
+	it("uses exponential retry delay capped at fifteen minutes", () => {
+		const now = new Date("2026-06-01T10:00:00.000Z");
+
+		expect(getNextRetryAt(1, now).toISOString()).toBe(
+			"2026-06-01T10:00:30.000Z",
+		);
+		expect(getNextRetryAt(3, now).toISOString()).toBe(
+			"2026-06-01T10:02:00.000Z",
+		);
+		expect(getNextRetryAt(10, now).toISOString()).toBe(
+			"2026-06-01T10:15:00.000Z",
+		);
+	});
+});

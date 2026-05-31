@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { IntegrationEventName } from "../../lib/events";
 
 export interface IntegrationDefinition<Config = unknown> {
 	id: string;
@@ -7,8 +8,12 @@ export interface IntegrationDefinition<Config = unknown> {
 	logo?: string;
 	description: string;
 	configSchema: z.ZodSchema<Config>;
-	events: string[];
-	handler: (config: Config, event: string, payload: unknown) => Promise<void>;
+	events: IntegrationEventName[];
+	handler: (
+		config: Config,
+		event: IntegrationEventName,
+		payload: unknown,
+	) => Promise<void>;
 }
 
 class IntegrationRegistry {

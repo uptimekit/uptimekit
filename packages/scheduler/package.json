@@ -10,6 +10,7 @@
 		"start": "tsx src/index.ts"
 	},
 	"dependencies": {
+		"@uptimekit/api": "workspace:*",
 		"@uptimekit/config": "workspace:*",
 		"@uptimekit/db": "workspace:*",
 		"drizzle-orm": "^0.45.2",

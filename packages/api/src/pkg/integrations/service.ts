@@ -5,7 +5,11 @@ import {
 	monitorNotification,
 } from "@uptimekit/db/schema/integrations";
 import { and, eq, inArray } from "drizzle-orm";
-import { eventBus } from "../../lib/events";
+import type {
+	AppEventName,
+	AppEventPayload,
+	PersistedAppEvent,
+} from "../../lib/events";
 import { createLogger } from "../../lib/logger";
 import { alertManagerIntegration } from "./definitions/alertmanager";
 import { appriseIntegration } from "./definitions/apprise";
@@ -58,33 +62,18 @@ export function dedupeNotificationConfigs<TConfig extends { id: string }>(
 }
 
 export class IntegrationService {
-	constructor() {
-		this.setupListeners();
+	async handleAppEvent(event: PersistedAppEvent) {
+		await this.handleEvent(event.eventName, event.payload);
 	}
 
-	private setupListeners() {
-		const events = [
-			"incident.created",
-			"incident.acknowledged",
-			"incident.resolved",
-			"incident.comment_added",
-		] as const;
-
-		for (const eventName of events) {
-			eventBus.on(eventName, async (payload) => {
-				await this.handleEvent(eventName, payload);
-			});
-		}
-	}
-
-	private async handleEvent(event: string, payload: any) {
-		// console.log(`[IntegrationService] Processing event: ${event}`);
-
+	private async handleEvent<K extends AppEventName>(
+		event: K,
+		payload: AppEventPayload<K>,
+	) {
+		const incidentId = "incidentId" in payload ? payload.incidentId : undefined;
 		const organizationId =
 			payload.organizationId ||
-			(payload.incidentId
-				? await this.getOrgIdFromIncident(payload.incidentId)
-				: null);
+			(incidentId ? await this.getOrgIdFromIncident(incidentId) : null);
 
 		if (!organizationId) {
 			// console.warn(
@@ -95,7 +84,8 @@ export class IntegrationService {
 
 		const configs = await this.getNotificationConfigs({
 			organizationId,
-			incidentId: payload.incidentId,
+			incidentId,
+			monitorId: "monitorId" in payload ? payload.monitorId : undefined,
 		});
 
 		for (const config of configs) {
@@ -130,7 +120,42 @@ export class IntegrationService {
 	private async getNotificationConfigs(input: {
 		organizationId: string;
 		incidentId?: string;
+		monitorId?: string;
 	}) {
+		if (input.monitorId) {
+			const assignedConfigs = await db
+				.select({ config: integrationConfig })
+				.from(integrationConfig)
+				.innerJoin(
+					monitorNotification,
+					eq(monitorNotification.integrationConfigId, integrationConfig.id),
+				)
+				.where(
+					and(
+						eq(integrationConfig.organizationId, input.organizationId),
+						eq(integrationConfig.active, true),
+						eq(monitorNotification.monitorId, input.monitorId),
+					),
+				);
+
+			const configs = dedupeNotificationConfigs(
+				assignedConfigs.map(({ config }) => config),
+			);
+
+			if (configs.length > 0) {
+				return configs;
+			}
+
+			return db.query.integrationConfig.findMany({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.organizationId, input.organizationId),
+						eq(t.active, true),
+						eq(t.isDefault, true),
+					),
+			});
+		}
+
 		if (!input.incidentId) {
 			return db.query.integrationConfig.findMany({
 				where: (t, { eq, and }) =>
@@ -189,3 +214,7 @@ export const integrationService = (() => {
 
 	return globalForService[integrationServiceKey];
 })();
+
+export async function handleIntegrationEvent(event: PersistedAppEvent) {
+	await integrationService.handleAppEvent(event);
+}

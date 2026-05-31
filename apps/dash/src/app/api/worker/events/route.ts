@@ -4,7 +4,6 @@ import {
 	type MonitorEvent,
 	processMonitorEvents,
 } from "@uptimekit/api/pkg/worker";
-import "@uptimekit/api/pkg/notifications";
 import { NextResponse } from "next/server";
 
 /**
