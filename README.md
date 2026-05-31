@@ -60,7 +60,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 ### Prerequisites
 
-- Bun
+- pnpm
 - Redis
 - Clickhouse
 - PostgreSQL
@@ -77,7 +77,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 2. **Install dependencies**
 
     ```bash
-    bun install
+    pnpm install
     ```
 
 3. **Environment Setup**
@@ -89,7 +89,7 @@ Follow these steps to get UptimeKit running locally on your machine.
     Push the schema to your database:
 
     ```bash
-    bun run db:push
+    pnpm run db:push
     ```
 
 5. **Run Development Server**
@@ -97,7 +97,7 @@ Follow these steps to get UptimeKit running locally on your machine.
     Start all applications (Dashboard, Status Page, Marketing/Docs):
 
     ```bash
-    bun run dev
+    pnpm run dev
     ```
 
     - **Dashboard**: [http://localhost:3000](http://localhost:3000)

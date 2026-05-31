@@ -12,15 +12,16 @@
 	},
 	"scripts": {
 		"check-types": "tsc --noEmit -p tsconfig.json",
-		"db:push": "bun src/migrate.ts",
+		"db:push": "tsx src/migrate.ts",
 		"db:studio": "drizzle-kit studio",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "bun src/migrate.ts",
+		"db:migrate": "tsx src/migrate.ts",
 		"test": "vitest run"
 	},
 	"devDependencies": {
 		"drizzle-kit": "^0.31.8",
 		"testcontainers": "^10.16.0",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
 		"vitest": "^2.1.9"
 	},

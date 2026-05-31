@@ -134,7 +134,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								<ChevronDown className="ml-auto group-data-[collapsible=icon]:hidden" />
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
-								className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+								className="w-(--anchor-width) min-w-56 rounded-lg"
 								align="start"
 								side="bottom"
 								sideOffset={4}
@@ -341,19 +341,19 @@ function UserMenuComponent() {
 				<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
-				className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+				className="w-(--anchor-width) min-w-56"
 				side="bottom"
 				align="end"
 				sideOffset={4}
 			>
 				<DropdownMenuLabel className="p-0 font-normal">
 					<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-						<Avatar className="h-8 w-8 rounded-lg">
+						<Avatar className="h-8 w-8">
 							<AvatarImage
 								src={session.user.image || ""}
 								alt={session.user.name}
 							/>
-							<AvatarFallback className="rounded-lg">
+							<AvatarFallback className="">
 								{session.user.name.slice(0, 2).toUpperCase()}
 							</AvatarFallback>
 						</Avatar>

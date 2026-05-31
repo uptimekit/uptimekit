@@ -16,13 +16,14 @@ const args = [
 	...files,
 ];
 
-const child = spawn("bunx", args, {
+const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
+const child = spawn(command, ["exec", ...args], {
 	stdio: "inherit",
-	shell: true,
 });
 
 child.on("error", (err) => {
-	console.error("Failed to start biome check:", err);
+	console.error("Failed to start pnpm biome check:", err);
 	process.exit(0);
 });
 

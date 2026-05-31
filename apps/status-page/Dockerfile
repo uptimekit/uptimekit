@@ -1,8 +1,12 @@
-FROM oven/bun:1.3.11-alpine AS base
+FROM node:22-alpine AS base
 
 # Install libc6-compat for turbo/next
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
 RUN apk add --no-cache libc6-compat
-RUN bun add -g turbo@^2.5.4
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+RUN pnpm add -g turbo@^2.5.4
 
 FROM base AS builder
 WORKDIR /app
@@ -16,12 +20,12 @@ WORKDIR /app
 # First install dependencies (as they change less often)
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/bun.lock ./bun.lock
-RUN bun install
+COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
 
 # Build the project
 COPY --from=builder /app/out/full/ .
-RUN bun x turbo build --filter=@uptimekit/status-page...
+RUN pnpm exec turbo build --filter=@uptimekit/status-page...
 
 FROM base AS runner
 WORKDIR /app
@@ -51,4 +55,4 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3001
 EXPOSE 3001
-CMD ["bun", "apps/status-page/server.js"]
+CMD ["node", "apps/status-page/server.js"]

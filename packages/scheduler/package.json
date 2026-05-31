@@ -5,16 +5,16 @@
 	"type": "module",
 	"main": "./src/index.ts",
 	"scripts": {
-		"build": "bun build src/index.ts --outdir ./dist --target bun --production",
+		"build": "tsc -p tsconfig.json",
 		"check-types": "tsc --noEmit -p tsconfig.json",
-		"start": "bun dist/index.js"
+		"start": "tsx src/index.ts"
 	},
 	"dependencies": {
 		"@uptimekit/config": "workspace:*",
 		"@uptimekit/db": "workspace:*",
 		"drizzle-orm": "^0.45.2",
 		"bullmq": "^5.73.0",
-		"ioredis": "^5.10.1"
+		"ioredis": "5.10.1"
 	},
 	"devDependencies": {
 		"@types/node": "^22.19.17",

@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+catalog:
+  "@orpc/client": latest
+  "@orpc/openapi": latest
+  "@orpc/server": latest
+  "@orpc/zod": latest
+  better-auth: latest
+  dotenv: latest
+  drizzle-orm: latest
+  postgres: latest
+  zod: latest

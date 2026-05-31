@@ -1223,7 +1223,11 @@ export function CreateMonitorForm({
 																return;
 															}
 
-															field.onChange(values.map((tag) => tag.id));
+															const tagValues = values.filter(
+																(tag): tag is TagOption => tag !== "create_tag",
+															);
+
+															field.onChange(tagValues.map((tag) => tag.id));
 														}}
 														multiple
 													>

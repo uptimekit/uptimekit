@@ -1,8 +1,12 @@
-FROM docker.io/oven/bun:1.3.11-alpine AS base
+FROM docker.io/node:22-alpine AS base
 WORKDIR /app
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
 RUN apk add --no-cache libc6-compat
-RUN bun add -g turbo@^2.5.4
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+RUN pnpm add -g turbo@^2.5.4
 
 FROM base AS builder
 COPY . .
@@ -10,19 +14,16 @@ RUN turbo prune @uptimekit/dash --docker
 
 FROM base AS installer
 COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/bun.lock ./bun.lock
-RUN bun install
+COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
 COPY --from=builder /app/out/full/ .
-RUN bun x turbo build --filter=@uptimekit/dash...
+RUN pnpm exec turbo build --filter=@uptimekit/dash...
 
 FROM base AS runner
 WORKDIR /app
 
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
-
-# Install clickhouse client for migrations (needed by migrate.ts but pruned by turbo)
-RUN bun add @clickhouse/client@^1.15.0
 
 USER nextjs
 
@@ -50,4 +51,4 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "bun packages/db/src/migrate.ts && bun apps/dash/server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/tsx packages/db/src/migrate.ts && node apps/dash/server.js"]

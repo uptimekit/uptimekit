@@ -21,6 +21,10 @@
 			"cache": false,
 			"persistent": true
 		},
+		"start": {
+			"cache": false,
+			"persistent": true
+		},
 		"db:push": {
 			"cache": false
 		},

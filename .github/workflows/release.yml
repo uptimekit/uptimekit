@@ -27,10 +27,8 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Extract Version
         id: get_version
@@ -41,7 +39,7 @@ jobs:
           echo "version=$ROOT_VERSION" >> $GITHUB_OUTPUT
       
       - name: Update Lockfile
-        run: bun install --lockfile-only
+        run: pnpm install --lockfile-only
 
       - name: Git Identity
         run: |

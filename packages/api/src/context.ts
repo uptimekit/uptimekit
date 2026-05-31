@@ -4,7 +4,6 @@ import {
 	getApiKeyFromHeaders,
 	type UptimeKitAuthSession,
 } from "@uptimekit/auth";
-import type { NextRequest } from "next/server";
 
 export interface ContextHeaders {
 	get(name: string): string | null;
@@ -27,6 +26,10 @@ export interface Context {
 	authType: "anonymous" | "apiKey" | "session";
 	headers: ContextHeaders;
 	session: UptimeKitAuthSession | null;
+}
+
+interface ContextRequest {
+	headers: Headers;
 }
 
 interface VerifiedApiKey {
@@ -112,7 +115,7 @@ function withActiveOrganization(
 	};
 }
 
-export async function createContext(req: NextRequest): Promise<Context> {
+export async function createContext(req: ContextRequest): Promise<Context> {
 	const session = await auth.api.getSession({
 		headers: req.headers,
 	});

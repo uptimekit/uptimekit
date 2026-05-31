@@ -1,6 +1,5 @@
 "use client";
 
-import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
 import {
 	Controller,
@@ -14,6 +13,12 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const Form = FormProvider;
+
+type SlottableProps = React.HTMLAttributes<HTMLElement> & {
+	"aria-describedby"?: string;
+	"aria-invalid"?: boolean;
+	id?: string;
+};
 
 interface FormFieldContextValue<
 	TFieldValues extends FieldValues = FieldValues,
@@ -97,20 +102,29 @@ export function FormLabel({
 }
 
 export function FormControl({
+	children,
 	...props
-}: React.ComponentProps<typeof Slot>): React.ReactElement {
+}: Omit<SlottableProps, "children"> & {
+	children: React.ReactElement;
+}): React.ReactElement {
 	const { error, formDescriptionId, formItemId, formMessageId } =
 		useFormField();
+	const controlProps: SlottableProps = {
+		"aria-describedby": error
+			? `${formDescriptionId} ${formMessageId}`
+			: formDescriptionId,
+		"aria-invalid": Boolean(error),
+		id: formItemId,
+		...props,
+	};
 
-	return (
-		<Slot
-			aria-describedby={
-				error ? `${formDescriptionId} ${formMessageId}` : formDescriptionId
-			}
-			aria-invalid={Boolean(error)}
-			id={formItemId}
-			{...props}
-		/>
+	if (!React.isValidElement(children)) {
+		throw new Error("FormControl expects a single valid React element");
+	}
+
+	return React.cloneElement(
+		children as React.ReactElement<SlottableProps>,
+		controlProps,
 	);
 }
 

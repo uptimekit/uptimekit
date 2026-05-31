@@ -23,13 +23,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Generate Sponsors
-        run: bunx sponsorkit@latest
+        run: pnpm dlx sponsorkit@latest
         env:
           SPONSORKIT_GITHUB_TOKEN: ${{ secrets.SPONSORS_TOKEN }}
 

@@ -10,10 +10,9 @@
 		"start": "next start"
 	},
 	"dependencies": {
+		"@base-ui/react": "^1.4.1",
 		"@clickhouse/client": "^1.18.5",
 		"@node-rs/argon2": "^2.0.2",
-		"@radix-ui/react-slot": "^1.2.4",
-		"@radix-ui/react-tooltip": "^1.2.8",
 		"@uptimekit/api": "workspace:*",
 		"@uptimekit/db": "workspace:*",
 		"babel-plugin-react-compiler": "^1.0.0",
