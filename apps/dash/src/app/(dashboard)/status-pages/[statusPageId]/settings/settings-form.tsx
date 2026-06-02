@@ -40,6 +40,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { getStatusPageBaseDomain } from "@/lib/status-page-url";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
@@ -61,6 +62,7 @@ const settingsSchema = z.object({
 	barStyle: z.enum(["normal", "length", "signal"]),
 	barDays: z.enum(["30", "60", "90"]),
 	percentDigits: z.number().int().min(2).max(6),
+	customCss: z.string().max(50_000, "Custom CSS is too long").optional(),
 	customDomain: z.string().optional().or(z.literal("")),
 	isPrivate: z.boolean(),
 	password: z
@@ -115,6 +117,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			barStyle: "normal",
 			barDays: "90",
 			percentDigits: 2,
+			customCss: "",
 			customDomain: "",
 			isPrivate: false,
 			password: "",
@@ -142,6 +145,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 					: "normal",
 			barDays: String(design.barDays || 90) as "30" | "60" | "90",
 			percentDigits: Number(design.percentDigits ?? 2),
+			customCss: design.customCss || "",
 			customDomain: statusPage?.domain || "",
 			isPrivate: statusPage ? !statusPage.public : false,
 			password: "",
@@ -183,6 +187,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				barStyle: data.barStyle,
 				barDays: Number(data.barDays) as 30 | 60 | 90,
 				percentDigits: data.percentDigits,
+				customCss: data.customCss || "",
 			},
 		});
 	};
@@ -930,6 +935,27 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 									/>
 								</CollapsibleContent>
 							</Collapsible>
+
+							<FormField
+								control={form.control}
+								name="customCss"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Custom CSS</FormLabel>
+										<FormControl>
+											<Textarea
+												placeholder={
+													":root {\n  --status-page-accent: #2563eb;\n}\n\n.status-page-header {\n  border-radius: 0;\n}"
+												}
+												spellCheck={false}
+												className="min-h-56 font-mono text-xs leading-5"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 						</CardContent>
 					</Card>
 				</div>

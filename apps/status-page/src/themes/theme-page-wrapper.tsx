@@ -8,6 +8,23 @@ interface ThemePageWrapperProps<T extends Record<string, any>> {
 	componentProps: T;
 }
 
+type PropsWithCustomCss = {
+	data?: {
+		config?: {
+			design?: {
+				customCss?: unknown;
+			};
+		};
+	};
+};
+
+function getCustomCss(componentProps: Record<string, any>): string {
+	const customCss = (componentProps as PropsWithCustomCss).data?.config?.design
+		?.customCss;
+
+	return typeof customCss === "string" ? customCss : "";
+}
+
 export function ThemePageWrapper<T extends Record<string, any>>({
 	themeId,
 	theme,
@@ -15,6 +32,7 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 	componentProps,
 }: ThemePageWrapperProps<T>) {
 	const sanitizedThemeId = JSON.stringify(themeId);
+	const customCss = getCustomCss(componentProps);
 
 	const themeScript = `
 		(function() {
@@ -31,6 +49,7 @@ export function ThemePageWrapper<T extends Record<string, any>>({
 				suppressHydrationWarning
 			/>
 			<ThemeProvider themeId={themeId} theme={theme} />
+			{customCss.trim() && <style data-uptimekit-custom-css>{customCss}</style>}
 			<ThemeComponent {...componentProps} />
 		</>
 	);

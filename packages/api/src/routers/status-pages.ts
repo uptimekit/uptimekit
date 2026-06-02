@@ -202,6 +202,7 @@ export const statusPagesRouter = {
 							.optional(),
 						percentDigits: z.number().optional().default(2),
 						faviconUrl: z.string().optional(),
+						customCss: z.string().max(50_000).optional(),
 					})
 					.optional(),
 				description: z.string().optional(),

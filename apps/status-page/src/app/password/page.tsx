@@ -76,12 +76,15 @@ export default async function PasswordPage({
 		redirect(safeRedirectPath as never);
 	}
 
-	const design = (page.design as { theme?: string }) || {};
+	const design = (page.design as { customCss?: string; theme?: string }) || {};
 	const theme = design.theme === "dark" ? "dark" : "light";
+	const customCss =
+		typeof design.customCss === "string" ? design.customCss : "";
 
 	return (
 		<>
 			<ThemeSetter theme={theme} />
+			{customCss.trim() && <style data-uptimekit-custom-css>{customCss}</style>}
 			<main className="min-h-screen bg-background">
 				<PasswordForm statusPageId={pageId} redirectUrl={safeRedirectPath} />
 			</main>
