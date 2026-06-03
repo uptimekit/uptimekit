@@ -40,13 +40,12 @@ type OrpcHandleOptions = Parameters<typeof rpcHandler.handle>[1];
 const orpcHandler = withOrpcEvlog(
 	{
 		async handle(request: Request, options?: OrpcHandleOptions) {
-			const handleOptions = options as OrpcHandleOptions;
-			const rpcResult = await rpcHandler.handle(request, handleOptions);
+			const rpcResult = await rpcHandler.handle(request, options);
 			if (rpcResult.response) return rpcResult;
 
 			return apiHandler.handle(
 				request,
-				handleOptions as Parameters<typeof apiHandler.handle>[1],
+				options as Parameters<typeof apiHandler.handle>[1],
 			);
 		},
 	},
