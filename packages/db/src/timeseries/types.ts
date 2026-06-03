@@ -62,6 +62,7 @@ export interface ChangeTimelineItem {
 export interface ResponseTimePoint {
 	timestamp: Date;
 	location: string | null;
+	status: string | null;
 	latency: number;
 	dnsLookup: number | null;
 	tcpConnect: number | null;
@@ -88,6 +89,9 @@ export interface ResponseTimesQuery {
 	since: Date;
 	locations?: string[];
 	limit?: number | null;
+	bucketSeconds?: number;
+	bucketQuantile?: number;
+	groupByLocation?: boolean;
 }
 
 export interface ChangeTimelineQuery {

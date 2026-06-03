@@ -16,6 +16,7 @@ import {
 	CartesianGrid,
 	Line,
 	LineChart,
+	ReferenceArea,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -203,6 +204,7 @@ const resolveSelectedWorkerIds = (
 interface RawDataPoint {
 	timestamp: string;
 	location: string;
+	status?: string;
 	latency: number;
 	dnsLookup?: number;
 	tcpConnect?: number;
@@ -213,18 +215,32 @@ interface RawDataPoint {
 
 interface LatencyBucketPoint {
 	timestamp: string;
+	timestampMs: number;
 	label: string;
-	latency: number;
-	dnsLookup: number;
-	tcpConnect: number;
-	tlsHandshake: number;
-	ttfb: number;
-	transfer: number;
+	latency: number | null;
+	dnsLookup: number | null;
+	tcpConnect: number | null;
+	tlsHandshake: number | null;
+	ttfb: number | null;
+	transfer: number | null;
 }
 
 interface RegionTrendPoint {
 	label: string;
 	value: number;
+}
+
+interface ChartGapBand {
+	startMs: number;
+	endMs: number;
+	severity: "down" | "degraded";
+}
+
+interface RegionChartPoint {
+	timestamp: string;
+	timestampMs: number;
+	label: string;
+	[workerId: string]: string | number | null;
 }
 
 interface RegionMetricRow {
@@ -239,6 +255,32 @@ interface RegionMetricRow {
 }
 
 const ONE_MINUTE_MS = 60_000;
+const STATUS_BAND_COLORS = {
+	down: "#ef4444",
+	degraded: "#f59e0b",
+} as const;
+const LATENCY_RESOLUTION_ORDER = ["1", "5", "15", "30", "60"] as const;
+const LATENCY_CHART_VALUE_KEYS = [
+	"latency",
+	"dnsLookup",
+	"tcpConnect",
+	"tlsHandshake",
+	"ttfb",
+	"transfer",
+] as const;
+const MIN_LATENCY_RESOLUTION_BY_RANGE: Record<
+	RangeKey,
+	(typeof LATENCY_RESOLUTION_ORDER)[number]
+> = {
+	"3h": "1",
+	"24h": "1",
+	"7d": "5",
+	"30d": "30",
+	"3mo": "60",
+	"6mo": "60",
+	"1y": "60",
+	all: "60",
+};
 
 const quantileToRatio = (quantile: QuantileKey) => {
 	switch (quantile) {
@@ -257,7 +299,49 @@ const getBucketStart = (timestamp: string, resolutionMinutes: number) => {
 	return new Date(Math.floor(time / bucketSize) * bucketSize).toISOString();
 };
 
-const getRegionBucketMinutes = (range: RangeKey) => (range === "3h" ? 5 : 15);
+const compareLatencyResolution = (
+	left: (typeof LATENCY_RESOLUTION_ORDER)[number],
+	right: (typeof LATENCY_RESOLUTION_ORDER)[number],
+) =>
+	LATENCY_RESOLUTION_ORDER.indexOf(left) -
+	LATENCY_RESOLUTION_ORDER.indexOf(right);
+
+const normalizeLatencyResolution = (
+	range: RangeKey,
+	resolution: LatencyResolutionKey,
+): LatencyResolutionKey => {
+	if (resolution === "all") {
+		return resolution;
+	}
+
+	const minimumResolution = MIN_LATENCY_RESOLUTION_BY_RANGE[range];
+	return compareLatencyResolution(resolution, minimumResolution) < 0
+		? minimumResolution
+		: resolution;
+};
+
+const getLatencyBucketSeconds = (resolution: LatencyResolutionKey) =>
+	resolution === "all" ? undefined : Number(resolution) * 60;
+
+const getRegionBucketSeconds = (range: RangeKey) => {
+	switch (range) {
+		case "3h":
+			return 5 * 60;
+		case "24h":
+			return 15 * 60;
+		case "7d":
+			return 60 * 60;
+		case "30d":
+			return 6 * 60 * 60;
+		case "3mo":
+			return 12 * 60 * 60;
+		default:
+			return 24 * 60 * 60;
+	}
+};
+
+const getRegionBucketMinutes = (range: RangeKey) =>
+	getRegionBucketSeconds(range) / 60;
 
 const formatChartTimestamp = (timestamp: string, range: RangeKey) => {
 	const date = new Date(timestamp);
@@ -270,13 +354,184 @@ const formatChartTimestamp = (timestamp: string, range: RangeKey) => {
 	return format(date, "MMM d");
 };
 
-const formatCheckTimestamp = (timestamp: string, range: RangeKey) => {
+const formatDetailedTimestamp = (timestamp: string) => {
 	const date = new Date(timestamp);
-	if (range === "3h" || range === "24h" || range === "7d") {
-		return format(date, "MMM d 'at' h:mm:ss a");
-	}
 	return format(date, "MMM d, yyyy 'at' h:mm:ss a");
 };
+
+const formatAxisTimestamp = (timestampMs: number, range: RangeKey) => {
+	const date = new Date(timestampMs);
+	if (range === "3h" || range === "24h") {
+		return format(date, "h:mm:ss a");
+	}
+	if (range === "7d" || range === "30d" || range === "3mo") {
+		return format(date, "MMM d, h:mm:ss a");
+	}
+	return format(date, "MMM d, yyyy h:mm:ss a");
+};
+
+const getMedianIntervalMs = (points: Array<{ timestampMs: number }>) => {
+	const diffs = points
+		.map((point, index) =>
+			index === 0 ? 0 : point.timestampMs - points[index - 1].timestampMs,
+		)
+		.filter((diff) => diff > 0)
+		.sort((left, right) => left - right);
+
+	if (diffs.length === 0) {
+		return null;
+	}
+
+	return diffs[Math.floor(diffs.length / 2)];
+};
+
+const getGapThresholdMs = (
+	points: Array<{ timestampMs: number }>,
+	fallbackIntervalMs: number,
+) => {
+	const medianIntervalMs = getMedianIntervalMs(points);
+	if (medianIntervalMs == null) {
+		return fallbackIntervalMs * 2.5;
+	}
+
+	const inferredIntervalMs = Math.min(
+		Math.max(medianIntervalMs, fallbackIntervalMs),
+		fallbackIntervalMs * 6,
+	);
+	return inferredIntervalMs * 2.5;
+};
+
+const getGapBands = (
+	points: Array<{ timestampMs: number }>,
+	thresholdMs: number,
+): ChartGapBand[] =>
+	points.slice(1).flatMap((point, index) => {
+		const previous = points[index];
+		return point.timestampMs - previous.timestampMs > thresholdMs
+			? [
+					{
+						startMs: previous.timestampMs,
+						endMs: point.timestampMs,
+						severity: "down",
+					},
+				]
+			: [];
+	});
+
+const createNullChartPoint = <
+	T extends { timestamp: string; timestampMs: number; label: string },
+>(
+	point: T,
+	timestampMs: number,
+	valueKeys: readonly string[],
+) => {
+	const nextPoint = {
+		...point,
+		timestamp: new Date(timestampMs).toISOString(),
+		timestampMs,
+		label: "No data",
+	} as T;
+
+	for (const key of valueKeys) {
+		(nextPoint as Record<string, unknown>)[key] = null;
+	}
+
+	return nextPoint;
+};
+
+const insertGapBreaks = <
+	T extends { timestamp: string; timestampMs: number; label: string },
+>(
+	points: T[],
+	thresholdMs: number,
+	valueKeys: readonly string[],
+) => {
+	if (points.length < 2) {
+		return points;
+	}
+
+	return points.slice(1).reduce(
+		(acc, point) => {
+			const previous = acc.at(-1);
+			if (previous && point.timestampMs - previous.timestampMs > thresholdMs) {
+				acc.push(
+					createNullChartPoint(previous, previous.timestampMs + 1, valueKeys),
+					createNullChartPoint(point, point.timestampMs - 1, valueKeys),
+				);
+			}
+			acc.push(point);
+			return acc;
+		},
+		[points[0]] as T[],
+	);
+};
+
+const getStatusBands = (
+	points: RawDataPoint[],
+	bucketMs: number,
+	selectedWorkerIds: string[],
+): ChartGapBand[] => {
+	const buckets = points.reduce((acc, point) => {
+		if (!point.status || point.status === "up") {
+			return acc;
+		}
+
+		const timestampMs = new Date(point.timestamp).getTime();
+		const bucketStartMs = Math.floor(timestampMs / bucketMs) * bucketMs;
+		const bucket = acc.get(bucketStartMs) ?? {
+			aggregateStatuses: [] as string[],
+			statusesByLocation: new Map<string, string>(),
+		};
+		if (point.location) {
+			bucket.statusesByLocation.set(point.location, point.status);
+		} else {
+			bucket.aggregateStatuses.push(point.status);
+		}
+		acc.set(bucketStartMs, bucket);
+		return acc;
+	}, new Map<
+		number,
+		{ aggregateStatuses: string[]; statusesByLocation: Map<string, string> }
+	>());
+
+	return Array.from(buckets.entries())
+		.sort(([left], [right]) => left - right)
+		.map(([startMs, bucket]) => {
+			const aggregateDown = bucket.aggregateStatuses.includes("down");
+			const downWorkerCount = Array.from(
+				bucket.statusesByLocation.values(),
+			).filter((status) => status === "down").length;
+			const allSelectedWorkersDown =
+				selectedWorkerIds.length > 0 &&
+				downWorkerCount >= selectedWorkerIds.length;
+
+			return {
+				startMs,
+				endMs: startMs + bucketMs,
+				severity: aggregateDown || allSelectedWorkersDown ? "down" : "degraded",
+			};
+		});
+};
+
+const mergeBands = (bands: ChartGapBand[]) =>
+	bands
+		.sort(
+			(left, right) =>
+				left.startMs - right.startMs || (left.severity === "down" ? -1 : 1),
+		)
+		.reduce((acc, band) => {
+			const previous = acc.at(-1);
+			if (!previous || band.startMs > previous.endMs) {
+				acc.push({ ...band });
+				return acc;
+			}
+
+			previous.endMs = Math.max(previous.endMs, band.endMs);
+			if (band.severity === "down") {
+				previous.severity = "down";
+			}
+			return acc;
+		}, [] as ChartGapBand[]);
 
 const calculateQuantile = (
 	values: Array<number | undefined>,
@@ -362,7 +617,7 @@ export function ResponseTimeChart({
 				"p99",
 			),
 			regionView: parseAsStringEnum([...REGION_VIEW_VALUES]).withDefault(
-				"table",
+				"chart",
 			),
 			rowsPerPage: parseAsStringEnum([...ROWS_PER_PAGE_VALUES]).withDefault(
 				"20",
@@ -423,7 +678,28 @@ export function ResponseTimeChart({
 		() => resolveSelectedWorkerIds(selectedWorkerIds, workerIds),
 		[selectedWorkerIds, workerIds],
 	);
-	const isAllChecksResolution = latencyResolutionMinutes === "all";
+	const effectiveLatencyResolutionMinutes = normalizeLatencyResolution(
+		latencyRange,
+		latencyResolutionMinutes,
+	);
+	const isAllChecksResolution = effectiveLatencyResolutionMinutes === "all";
+	const latencyBucketSeconds = getLatencyBucketSeconds(
+		effectiveLatencyResolutionMinutes,
+	);
+
+	useEffect(() => {
+		if (effectiveLatencyResolutionMinutes === latencyResolutionMinutes) {
+			return;
+		}
+
+		updateChartState({
+			latencyResolutionMinutes: effectiveLatencyResolutionMinutes,
+		});
+	}, [
+		effectiveLatencyResolutionMinutes,
+		latencyResolutionMinutes,
+		updateChartState,
+	]);
 
 	const { data: latencyRawData = [], isLoading: isLatencyLoading } = useQuery({
 		...orpc.monitors.getResponseTimes.queryOptions({
@@ -432,6 +708,9 @@ export function ResponseTimeChart({
 				range: latencyRange,
 				workerIds: activeWorkerIds,
 				allChecks: isAllChecksResolution,
+				bucketSeconds: latencyBucketSeconds,
+				bucketQuantile: latencyQuantile,
+				groupByLocation: !isAllChecksResolution,
 			},
 		}),
 		enabled: activeWorkerIds.length > 0,
@@ -443,6 +722,9 @@ export function ResponseTimeChart({
 				monitorId,
 				range: regionRange,
 				workerIds: activeWorkerIds,
+				bucketSeconds: getRegionBucketSeconds(regionRange),
+				bucketQuantile: regionQuantile,
+				groupByLocation: true,
 			},
 		}),
 		enabled: activeWorkerIds.length > 0,
@@ -464,7 +746,7 @@ export function ResponseTimeChart({
 		};
 	};
 
-	const chartData = useMemo((): LatencyBucketPoint[] => {
+	const baseLatencyChartData = useMemo((): LatencyBucketPoint[] => {
 		if (latencyRawData.length === 0) {
 			return [];
 		}
@@ -472,7 +754,8 @@ export function ResponseTimeChart({
 		if (isAllChecksResolution) {
 			return latencyRawData.map((point) => ({
 				timestamp: point.timestamp,
-				label: formatCheckTimestamp(point.timestamp, latencyRange),
+				timestampMs: new Date(point.timestamp).getTime(),
+				label: formatDetailedTimestamp(point.timestamp),
 				latency: point.latency,
 				dnsLookup: point.dnsLookup ?? 0,
 				tcpConnect: point.tcpConnect ?? 0,
@@ -486,7 +769,7 @@ export function ResponseTimeChart({
 			(acc, point) => {
 				const bucketStart = getBucketStart(
 					point.timestamp,
-					Number(latencyResolutionMinutes),
+					Number(effectiveLatencyResolutionMinutes),
 				);
 				if (!acc[bucketStart]) {
 					acc[bucketStart] = [];
@@ -501,7 +784,8 @@ export function ResponseTimeChart({
 			.sort(([left], [right]) => left.localeCompare(right))
 			.map(([timestamp, points]) => ({
 				timestamp,
-				label: formatChartTimestamp(timestamp, latencyRange),
+				timestampMs: new Date(timestamp).getTime(),
+				label: formatDetailedTimestamp(timestamp),
 				latency: calculateQuantile(
 					points.map((point) => point.latency),
 					latencyQuantile,
@@ -530,10 +814,51 @@ export function ResponseTimeChart({
 	}, [
 		latencyRawData,
 		isAllChecksResolution,
-		latencyResolutionMinutes,
-		latencyRange,
+		effectiveLatencyResolutionMinutes,
 		latencyQuantile,
 	]);
+	const latencyGapThresholdMs = useMemo(
+		() =>
+			getGapThresholdMs(
+				baseLatencyChartData,
+				(latencyBucketSeconds ?? 60) * 1000,
+			),
+		[baseLatencyChartData, latencyBucketSeconds],
+	);
+	const latencyStatusBucketMs = useMemo(
+		() =>
+			latencyBucketSeconds != null
+				? latencyBucketSeconds * 1000
+				: Math.max(getMedianIntervalMs(baseLatencyChartData) ?? 60_000, 60_000),
+		[baseLatencyChartData, latencyBucketSeconds],
+	);
+	const latencyBands = useMemo(
+		() =>
+			mergeBands([
+				...getGapBands(baseLatencyChartData, latencyGapThresholdMs),
+				...getStatusBands(
+					latencyRawData,
+					latencyStatusBucketMs,
+					activeWorkerIds,
+				),
+			]),
+		[
+			activeWorkerIds,
+			baseLatencyChartData,
+			latencyGapThresholdMs,
+			latencyRawData,
+			latencyStatusBucketMs,
+		],
+	);
+	const chartData = useMemo(
+		() =>
+			insertGapBreaks(
+				baseLatencyChartData,
+				latencyGapThresholdMs,
+				LATENCY_CHART_VALUE_KEYS,
+			),
+		[baseLatencyChartData, latencyGapThresholdMs],
+	);
 
 	const regionMetrics = useMemo((): RegionMetricRow[] => {
 		if (regionRawData.length === 0) {
@@ -596,7 +921,7 @@ export function ResponseTimeChart({
 		return colors;
 	}, [activeWorkerIds]);
 
-	const regionChartData = useMemo(() => {
+	const baseRegionChartData = useMemo((): RegionChartPoint[] => {
 		if (regionRawData.length === 0 || activeWorkerIds.length === 0) {
 			return [];
 		}
@@ -635,11 +960,47 @@ export function ResponseTimeChart({
 
 				return {
 					timestamp,
-					label: formatChartTimestamp(timestamp, regionRange),
+					timestampMs: new Date(timestamp).getTime(),
+					label: formatDetailedTimestamp(timestamp),
 					...byLocation,
 				};
 			});
 	}, [regionRawData, activeWorkerIds, regionQuantile, regionRange]);
+	const regionGapThresholdMs = useMemo(
+		() =>
+			getGapThresholdMs(
+				baseRegionChartData,
+				getRegionBucketSeconds(regionRange) * 1000,
+			),
+		[baseRegionChartData, regionRange],
+	);
+	const regionBands = useMemo(
+		() =>
+			mergeBands([
+				...getGapBands(baseRegionChartData, regionGapThresholdMs),
+				...getStatusBands(
+					regionRawData,
+					getRegionBucketSeconds(regionRange) * 1000,
+					activeWorkerIds,
+				),
+			]),
+		[
+			activeWorkerIds,
+			baseRegionChartData,
+			regionGapThresholdMs,
+			regionRange,
+			regionRawData,
+		],
+	);
+	const regionChartData = useMemo(
+		() =>
+			insertGapBreaks(
+				baseRegionChartData,
+				regionGapThresholdMs,
+				activeWorkerIds,
+			),
+		[activeWorkerIds, baseRegionChartData, regionGapThresholdMs],
+	);
 
 	const totalPages = Math.max(
 		1,
@@ -663,36 +1024,42 @@ export function ResponseTimeChart({
 		}
 	}, [page, regionPageResetKey, updateChartState]);
 
-	const topChartTooltip = ({ active, payload, label }: any) => {
+	const topChartTooltip = ({ active, payload }: any) => {
 		if (!active || !payload?.length) {
 			return null;
 		}
+
+		const label = payload[0]?.payload?.label;
 
 		return (
 			<div className="rounded-xl border border-border bg-background/96 px-3 py-2 text-xs shadow-xl backdrop-blur">
 				<div className="mb-2 font-medium text-foreground">{label}</div>
 				<div className="space-y-1.5">
-					{payload.map((entry: any) => (
-						<div key={entry.dataKey} className="flex items-center gap-2">
-							<span
-								className="h-2.5 w-2.5 rounded-[2px]"
-								style={{ backgroundColor: entry.color }}
-							/>
-							<span className="text-muted-foreground">{entry.name}</span>
-							<span className="ml-auto font-medium text-foreground">
-								{Math.round(entry.value)} ms
-							</span>
-						</div>
-					))}
+					{payload
+						.filter((entry: any) => entry.value != null)
+						.map((entry: any) => (
+							<div key={entry.dataKey} className="flex items-center gap-2">
+								<span
+									className="h-2.5 w-2.5 rounded-[2px]"
+									style={{ backgroundColor: entry.color }}
+								/>
+								<span className="text-muted-foreground">{entry.name}</span>
+								<span className="ml-auto font-medium text-foreground">
+									{Math.round(entry.value)} ms
+								</span>
+							</div>
+						))}
 				</div>
 			</div>
 		);
 	};
 
-	const regionChartTooltip = ({ active, payload, label }: any) => {
+	const regionChartTooltip = ({ active, payload }: any) => {
 		if (!active || !payload?.length) {
 			return null;
 		}
+
+		const label = payload[0]?.payload?.label;
 
 		return (
 			<div className="rounded-xl border border-border bg-background/96 px-3 py-2 text-xs shadow-xl backdrop-blur">
@@ -856,9 +1223,16 @@ export function ResponseTimeChart({
 						)}
 						<Select
 							value={latencyRange}
-							onValueChange={(value) =>
-								updateChartState({ latencyRange: value as RangeKey })
-							}
+							onValueChange={(value) => {
+								const nextRange = value as RangeKey;
+								updateChartState({
+									latencyRange: nextRange,
+									latencyResolutionMinutes: normalizeLatencyResolution(
+										nextRange,
+										effectiveLatencyResolutionMinutes,
+									),
+								});
+							}}
 						>
 							<SelectTrigger className="h-8 w-[150px] bg-background/60 text-foreground">
 								<SelectValue>
@@ -879,11 +1253,14 @@ export function ResponseTimeChart({
 						</Select>
 						<span>{isAllChecksResolution ? "shown as" : "within a"}</span>
 						<Select
-							value={latencyResolutionMinutes}
+							value={effectiveLatencyResolutionMinutes}
 							onValueChange={(value) => {
 								if (value) {
 									updateChartState({
-										latencyResolutionMinutes: value as LatencyResolutionKey,
+										latencyResolutionMinutes: normalizeLatencyResolution(
+											latencyRange,
+											value as LatencyResolutionKey,
+										),
 									});
 								}
 							}}
@@ -892,14 +1269,25 @@ export function ResponseTimeChart({
 								<SelectValue>
 									{
 										RESOLUTION_OPTIONS.find(
-											(option) => option.value === latencyResolutionMinutes,
+											(option) =>
+												option.value === effectiveLatencyResolutionMinutes,
 										)?.label
 									}
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
 								{RESOLUTION_OPTIONS.map(({ label, value }) => (
-									<SelectItem key={value} value={value}>
+									<SelectItem
+										key={value}
+										value={value}
+										disabled={
+											value !== "all" &&
+											compareLatencyResolution(
+												value,
+												MIN_LATENCY_RESOLUTION_BY_RANGE[latencyRange],
+											) < 0
+										}
+									>
 										{label}
 									</SelectItem>
 								))}
@@ -930,12 +1318,18 @@ export function ResponseTimeChart({
 										strokeDasharray="0"
 									/>
 									<XAxis
-										dataKey="label"
+										dataKey="timestampMs"
+										type="number"
+										scale="time"
+										domain={["dataMin", "dataMax"]}
 										axisLine={false}
 										tickLine={false}
 										minTickGap={28}
 										stroke="#8a8a8a"
 										fontSize={11}
+										tickFormatter={(value) =>
+											formatAxisTimestamp(Number(value), latencyRange)
+										}
 									/>
 									<YAxis
 										orientation="right"
@@ -947,6 +1341,18 @@ export function ResponseTimeChart({
 										tickFormatter={(value) => `${Math.round(value)}ms`}
 									/>
 									<Tooltip content={topChartTooltip} />
+									{latencyBands.map((band) => (
+										<ReferenceArea
+											key={`${band.severity}-${band.startMs}-${band.endMs}`}
+											x1={band.startMs}
+											x2={band.endMs}
+											fill={STATUS_BAND_COLORS[band.severity]}
+											fillOpacity={band.severity === "down" ? 0.34 : 0.28}
+											stroke={STATUS_BAND_COLORS[band.severity]}
+											strokeOpacity={0.2}
+											ifOverflow="extendDomain"
+										/>
+									))}
 
 									{hasDetailedTimings ? (
 										TIMING_KEYS.map((key) => (
@@ -1073,18 +1479,6 @@ export function ResponseTimeChart({
 						<div className="flex items-center gap-2 rounded-lg border bg-background/60 p-1">
 							<button
 								type="button"
-								onClick={() => updateChartState({ regionView: "table" })}
-								className={cn(
-									"rounded-md px-3 py-1.5 text-xs transition-colors",
-									regionView === "table"
-										? "bg-muted text-foreground"
-										: "text-muted-foreground hover:text-foreground",
-								)}
-							>
-								Table
-							</button>
-							<button
-								type="button"
 								onClick={() => updateChartState({ regionView: "chart" })}
 								className={cn(
 									"rounded-md px-3 py-1.5 text-xs transition-colors",
@@ -1094,6 +1488,18 @@ export function ResponseTimeChart({
 								)}
 							>
 								Chart
+							</button>
+							<button
+								type="button"
+								onClick={() => updateChartState({ regionView: "table" })}
+								className={cn(
+									"rounded-md px-3 py-1.5 text-xs transition-colors",
+									regionView === "table"
+										? "bg-muted text-foreground"
+										: "text-muted-foreground hover:text-foreground",
+								)}
+							>
+								Table
 							</button>
 						</div>
 					</div>
@@ -1324,12 +1730,18 @@ export function ResponseTimeChart({
 												strokeDasharray="0"
 											/>
 											<XAxis
-												dataKey="label"
+												dataKey="timestampMs"
+												type="number"
+												scale="time"
+												domain={["dataMin", "dataMax"]}
 												axisLine={false}
 												tickLine={false}
 												minTickGap={28}
 												stroke="#8a8a8a"
 												fontSize={11}
+												tickFormatter={(value) =>
+													formatAxisTimestamp(Number(value), regionRange)
+												}
 											/>
 											<YAxis
 												axisLine={false}
@@ -1340,6 +1752,18 @@ export function ResponseTimeChart({
 												tickFormatter={(value) => `${Math.round(value)}ms`}
 											/>
 											<Tooltip content={regionChartTooltip} />
+											{regionBands.map((band) => (
+												<ReferenceArea
+													key={`${band.severity}-${band.startMs}-${band.endMs}`}
+													x1={band.startMs}
+													x2={band.endMs}
+													fill={STATUS_BAND_COLORS[band.severity]}
+													fillOpacity={band.severity === "down" ? 0.34 : 0.28}
+													stroke={STATUS_BAND_COLORS[band.severity]}
+													strokeOpacity={0.2}
+													ifOverflow="extendDomain"
+												/>
+											))}
 											{activeWorkerIds.map((workerId) => {
 												const { primaryLabel } = getLocationDisplay(workerId);
 												return (
@@ -1351,7 +1775,6 @@ export function ResponseTimeChart({
 														stroke={regionColors[workerId]}
 														strokeWidth={2}
 														dot={false}
-														connectNulls
 														isAnimationActive={false}
 													/>
 												);

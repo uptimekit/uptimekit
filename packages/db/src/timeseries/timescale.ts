@@ -325,6 +325,181 @@ export class TimescaleDriver implements TimeSeriesDriver {
 		await this.ensureSchema();
 
 		const sql = this.getClient();
+		if (query.bucketSeconds !== undefined) {
+			const bucketSeconds = query.bucketSeconds;
+			const quantile = query.bucketQuantile ?? 0.99;
+			const hasLocations = query.locations && query.locations.length > 0;
+
+			if (query.groupByLocation) {
+				const rows = hasLocations
+					? await sql<
+							{
+								timestamp: Date;
+								location: string | null;
+								status: string | null;
+								latency: number;
+								dns_lookup: number | null;
+								tcp_connect: number | null;
+								tls_handshake: number | null;
+								ttfb: number | null;
+								transfer: number | null;
+							}[]
+						>`
+							SELECT
+								time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
+								location,
+								CASE
+									WHEN BOOL_AND(status = 'down') THEN 'down'
+									WHEN BOOL_OR(status IN ('down', 'degraded')) THEN 'degraded'
+									WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
+									ELSE 'up'
+								END AS status,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+							FROM monitor_events
+							WHERE monitor_id = ${query.monitorId}
+								AND timestamp >= ${query.since}
+								AND location = ANY(${query.locations as string[]})
+							GROUP BY 1, location
+							ORDER BY timestamp ASC, location ASC
+						`
+					: await sql<
+							{
+								timestamp: Date;
+								location: string | null;
+								status: string | null;
+								latency: number;
+								dns_lookup: number | null;
+								tcp_connect: number | null;
+								tls_handshake: number | null;
+								ttfb: number | null;
+								transfer: number | null;
+							}[]
+						>`
+							SELECT
+								time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
+								location,
+								CASE
+									WHEN BOOL_AND(status = 'down') THEN 'down'
+									WHEN BOOL_OR(status IN ('down', 'degraded')) THEN 'degraded'
+									WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
+									ELSE 'up'
+								END AS status,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
+								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+							FROM monitor_events
+							WHERE monitor_id = ${query.monitorId}
+								AND timestamp >= ${query.since}
+							GROUP BY 1, location
+							ORDER BY timestamp ASC, location ASC
+						`;
+
+				return rows.map((r) => ({
+					timestamp: r.timestamp,
+					location: r.location ?? null,
+					status: r.status ?? null,
+					latency: Number(r.latency) || 0,
+					dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
+					tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
+					tlsHandshake:
+						r.tls_handshake != null ? Number(r.tls_handshake) : null,
+					ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+					transfer: r.transfer != null ? Number(r.transfer) : null,
+				}));
+			}
+
+			const rows = hasLocations
+				? await sql<
+						{
+							timestamp: Date;
+							location: string | null;
+							status: string | null;
+							latency: number;
+							dns_lookup: number | null;
+							tcp_connect: number | null;
+							tls_handshake: number | null;
+							ttfb: number | null;
+							transfer: number | null;
+						}[]
+					>`
+						SELECT
+							time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
+							NULL::TEXT AS location,
+							CASE
+								WHEN BOOL_AND(status = 'down') THEN 'down'
+								WHEN BOOL_OR(status IN ('down', 'degraded')) THEN 'degraded'
+								WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
+								ELSE 'up'
+							END AS status,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+						FROM monitor_events
+						WHERE monitor_id = ${query.monitorId}
+							AND timestamp >= ${query.since}
+							AND location = ANY(${query.locations as string[]})
+						GROUP BY 1
+						ORDER BY timestamp ASC
+					`
+				: await sql<
+						{
+							timestamp: Date;
+							location: string | null;
+							status: string | null;
+							latency: number;
+							dns_lookup: number | null;
+							tcp_connect: number | null;
+							tls_handshake: number | null;
+							ttfb: number | null;
+							transfer: number | null;
+						}[]
+					>`
+						SELECT
+							time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
+							NULL::TEXT AS location,
+							CASE
+								WHEN BOOL_AND(status = 'down') THEN 'down'
+								WHEN BOOL_OR(status IN ('down', 'degraded')) THEN 'degraded'
+								WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
+								ELSE 'up'
+							END AS status,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
+							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+						FROM monitor_events
+						WHERE monitor_id = ${query.monitorId}
+							AND timestamp >= ${query.since}
+						GROUP BY 1
+						ORDER BY timestamp ASC
+					`;
+
+			return rows.map((r) => ({
+				timestamp: r.timestamp,
+				location: r.location ?? null,
+				status: r.status ?? null,
+				latency: Number(r.latency) || 0,
+				dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
+				tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
+				tlsHandshake: r.tls_handshake != null ? Number(r.tls_handshake) : null,
+				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+				transfer: r.transfer != null ? Number(r.transfer) : null,
+			}));
+		}
+
 		const limit = query.limit === undefined ? 2000 : query.limit;
 		const limitClause = limit === null ? sql`` : sql`LIMIT ${limit}`;
 		const hasLocations = query.locations && query.locations.length > 0;
@@ -334,6 +509,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					{
 						timestamp: Date;
 						location: string | null;
+						status: string | null;
 						latency: number;
 						dns_lookup: number | null;
 						tcp_connect: number | null;
@@ -342,7 +518,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
 						transfer: number | null;
 					}[]
 				>`
-					SELECT timestamp, location, latency,
+					SELECT timestamp, location, status, latency,
 						dns_lookup, tcp_connect, tls_handshake, ttfb, transfer
 					FROM monitor_events
 					WHERE monitor_id = ${query.monitorId}
@@ -355,6 +531,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					{
 						timestamp: Date;
 						location: string | null;
+						status: string | null;
 						latency: number;
 						dns_lookup: number | null;
 						tcp_connect: number | null;
@@ -363,7 +540,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
 						transfer: number | null;
 					}[]
 				>`
-					SELECT timestamp, location, latency,
+					SELECT timestamp, location, status, latency,
 						dns_lookup, tcp_connect, tls_handshake, ttfb, transfer
 					FROM monitor_events
 					WHERE monitor_id = ${query.monitorId}
@@ -378,6 +555,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			.map((r) => ({
 				timestamp: r.timestamp,
 				location: r.location ?? null,
+				status: r.status ?? null,
 				latency: Number(r.latency) || 0,
 				dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
 				tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,

@@ -594,6 +594,86 @@ export function defineDriverTests(
 					"worker-b",
 				]);
 			});
+
+			it("returns bucketed response times across the full range without applying the raw cap", async () => {
+				const driver = getDriver();
+				const monitorId = uid("response-buckets");
+				const now = new Date("2026-06-03T12:00:00.000Z");
+
+				await driver.insertMonitorEvents([
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 100,
+						timestamp: new Date("2026-06-01T12:00:00.000Z"),
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 200,
+						timestamp: new Date("2026-06-02T12:00:00.000Z"),
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 300,
+						timestamp: now,
+					},
+				]);
+
+				const buckets = await driver.getResponseTimes({
+					monitorId,
+					since: new Date("2026-06-01T00:00:00.000Z"),
+					bucketSeconds: 24 * 60 * 60,
+					bucketQuantile: 0.5,
+					limit: 1,
+				});
+
+				expect(buckets.map((point) => point.latency)).toEqual([100, 200, 300]);
+			});
+
+			it("keeps separate bucketed series when grouped by location", async () => {
+				const driver = getDriver();
+				const monitorId = uid("response-location-buckets");
+
+				await driver.insertMonitorEvents([
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 100,
+						timestamp: new Date("2026-06-03T12:00:00.000Z"),
+						location: "worker-a",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 200,
+						timestamp: new Date("2026-06-03T12:00:00.000Z"),
+						location: "worker-b",
+					},
+				]);
+
+				const buckets = await driver.getResponseTimes({
+					monitorId,
+					since: new Date("2026-06-03T00:00:00.000Z"),
+					locations: ["worker-a", "worker-b"],
+					bucketSeconds: 60 * 60,
+					bucketQuantile: 0.5,
+					groupByLocation: true,
+				});
+
+				expect(buckets).toHaveLength(2);
+				expect(buckets.map((point) => point.location)).toEqual([
+					"worker-a",
+					"worker-b",
+				]);
+				expect(buckets.map((point) => point.latency)).toEqual([100, 200]);
+			});
 		});
 
 		describe("worker status snapshots", () => {

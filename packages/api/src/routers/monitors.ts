@@ -54,6 +54,9 @@ const RESPONSE_TIME_RANGE_VALUES = [
 ] as const;
 const responseTimeRangeSchema = z.enum(RESPONSE_TIME_RANGE_VALUES);
 type ResponseTimeRange = (typeof RESPONSE_TIME_RANGE_VALUES)[number];
+const RESPONSE_TIME_QUANTILE_VALUES = ["p50", "p90", "p99"] as const;
+const responseTimeQuantileSchema = z.enum(RESPONSE_TIME_QUANTILE_VALUES);
+type ResponseTimeQuantile = (typeof RESPONSE_TIME_QUANTILE_VALUES)[number];
 
 const URL_MONITOR_TYPES = new Set(["http", "http-json", "keyword"]);
 
@@ -118,6 +121,17 @@ function getResponseTimeRangeStart(
 	}
 
 	return startDate;
+}
+
+function getResponseTimeQuantileRatio(quantile: ResponseTimeQuantile) {
+	switch (quantile) {
+		case "p90":
+			return 0.9;
+		case "p99":
+			return 0.99;
+		default:
+			return 0.5;
+	}
 }
 
 async function getWorkersForMonitorAssignments(input: {
@@ -1303,6 +1317,9 @@ export const monitorsRouter = {
 				range: responseTimeRangeSchema,
 				workerIds: z.array(z.string()).optional().default([]),
 				allChecks: z.boolean().optional().default(false),
+				bucketSeconds: z.number().int().min(60).max(86_400).optional(),
+				bucketQuantile: responseTimeQuantileSchema.optional().default("p99"),
+				groupByLocation: z.boolean().optional().default(false),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -1330,18 +1347,26 @@ export const monitorsRouter = {
 			// Scale the cap by worker count; a single shared cap would shrink the
 			// visible time window as more workers compete for the same row budget.
 			const workerCount = Math.max(filterLocations?.length ?? 1, 1);
-			const limit = input.allChecks ? null : 2000 * workerCount;
+			const shouldBucket =
+				!input.allChecks && input.bucketSeconds !== undefined;
+			const limit = input.allChecks || shouldBucket ? null : 2000 * workerCount;
 
 			const events = await timeseries.getResponseTimes({
 				monitorId: input.monitorId,
 				since: startDate,
 				locations: filterLocations,
 				limit,
+				bucketSeconds: shouldBucket ? input.bucketSeconds : undefined,
+				bucketQuantile: shouldBucket
+					? getResponseTimeQuantileRatio(input.bucketQuantile)
+					: undefined,
+				groupByLocation: shouldBucket ? input.groupByLocation : undefined,
 			});
 
 			return events.map((e) => ({
 				timestamp: e.timestamp.toISOString(),
 				location: e.location ?? "",
+				status: e.status ?? undefined,
 				latency: e.latency,
 				dnsLookup: e.dnsLookup ?? undefined,
 				tcpConnect: e.tcpConnect ?? undefined,

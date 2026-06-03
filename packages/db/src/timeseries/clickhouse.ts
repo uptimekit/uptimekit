@@ -104,6 +104,14 @@ function parseTimestamp(value: string): Date {
 	return new Date(`${value.replace(" ", "T")}Z`);
 }
 
+function getQuantileLevel(value: number | undefined) {
+	const quantile = value ?? 0.99;
+	if (!Number.isFinite(quantile) || quantile < 0 || quantile > 1) {
+		throw new Error("Response time bucket quantile must be between 0 and 1");
+	}
+	return quantile.toString();
+}
+
 export interface ClickHouseDriverOptions {
 	url?: string;
 	username?: string;
@@ -403,6 +411,79 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			params.locations = query.locations;
 		}
 
+		if (query.bucketSeconds !== undefined) {
+			params.bucketSeconds = query.bucketSeconds;
+			const quantile = getQuantileLevel(query.bucketQuantile);
+			const locationSelect = query.groupByLocation
+				? "location"
+				: "CAST(NULL, 'Nullable(String)') AS location";
+			const groupBy = query.groupByLocation ? "bucket, location" : "bucket";
+			const orderBy = query.groupByLocation
+				? "bucket ASC, location ASC"
+				: "bucket ASC";
+
+			const rows = await this.queryJson<{
+				timestamp: string;
+				location: string | null;
+				status: string | null;
+				latency: number | string;
+				dnsLookup: number | string | null;
+				tcpConnect: number | string | null;
+				tlsHandshake: number | string | null;
+				ttfb: number | string | null;
+				transfer: number | string | null;
+			}>(
+				`
+					SELECT
+						bucket AS timestamp,
+						${locationSelect},
+						multiIf(
+							countIf(status = 'down') = count(), 'down',
+							countIf(status IN ('down', 'degraded')) > 0, 'degraded',
+							countIf(status = 'maintenance') > 0, 'maintenance',
+							'up'
+						) AS status,
+						quantileExact(${quantile})(latency) AS latency,
+						quantileExactOrNull(${quantile})(dnsLookup) AS dnsLookup,
+						quantileExactOrNull(${quantile})(tcpConnect) AS tcpConnect,
+						quantileExactOrNull(${quantile})(tlsHandshake) AS tlsHandshake,
+						quantileExactOrNull(${quantile})(ttfb) AS ttfb,
+						quantileExactOrNull(${quantile})(transfer) AS transfer
+					FROM (
+						SELECT
+							toStartOfInterval(timestamp, toIntervalSecond({bucketSeconds:UInt32})) AS bucket,
+							location,
+							status,
+							latency,
+							dnsLookup,
+							tcpConnect,
+							tlsHandshake,
+							ttfb,
+							transfer
+						FROM uptimekit.monitor_events
+						WHERE monitorId = {monitorId:String}
+							AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
+							${locationFilter}
+					)
+					GROUP BY ${groupBy}
+					ORDER BY ${orderBy}
+				`,
+				params,
+			);
+
+			return rows.map((r) => ({
+				timestamp: parseTimestamp(r.timestamp),
+				location: r.location ?? null,
+				status: r.status ?? null,
+				latency: Number(r.latency) || 0,
+				dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
+				tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
+				tlsHandshake: r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
+				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+				transfer: r.transfer != null ? Number(r.transfer) : null,
+			}));
+		}
+
 		const limit = query.limit === undefined ? 2000 : query.limit;
 		const limitClause = limit === null ? "" : "LIMIT {limit:UInt32}";
 		if (limit !== null) {
@@ -412,6 +493,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 		const rows = await this.queryJson<{
 			timestamp: string;
 			location: string | null;
+			status: string | null;
 			latency: number | string;
 			dnsLookup: number | string | null;
 			tcpConnect: number | string | null;
@@ -420,7 +502,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			transfer: number | string | null;
 		}>(
 			`
-				SELECT timestamp, location, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
+				SELECT timestamp, location, status, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
 				FROM uptimekit.monitor_events
 				WHERE monitorId = {monitorId:String}
 					AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
@@ -437,6 +519,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			.map((r) => ({
 				timestamp: parseTimestamp(r.timestamp),
 				location: r.location ?? null,
+				status: r.status ?? null,
 				latency: Number(r.latency) || 0,
 				dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
 				tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
