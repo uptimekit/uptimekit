@@ -14,6 +14,7 @@ import {
 	getMonitorStatus,
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
+import { withEvlog } from "@/lib/evlog";
 import { privateImageResponse } from "@/lib/og-responses";
 
 const logger = createLogger("STATUS-PAGE");
@@ -60,7 +61,7 @@ function getSlugFromOgPath(pathname: string): string | undefined {
 	return undefined;
 }
 
-export async function GET(
+async function handleGet(
 	request: NextRequest,
 	{ params }: { params: Promise<{ slug: string }> },
 ) {
@@ -344,3 +345,5 @@ export async function GET(
 		},
 	);
 }
+
+export const GET = withEvlog(handleGet);

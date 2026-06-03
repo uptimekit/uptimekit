@@ -4,9 +4,10 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { generateAccessToken, getCookieName } from "@/lib/access-token";
+import { withEvlog } from "@/lib/evlog";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
 	try {
 		const body = await request.json();
 		const { statusPageId, password } = body;
@@ -103,3 +104,5 @@ export async function POST(request: NextRequest) {
 		);
 	}
 }
+
+export const POST = withEvlog(handlePost);

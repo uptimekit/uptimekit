@@ -1,8 +1,15 @@
 import { auth } from "@uptimekit/auth";
+import { evlogMiddleware } from "evlog/next";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
+const withEvlog = evlogMiddleware();
+
 export async function proxy(request: NextRequest) {
+	if (request.nextUrl.pathname.startsWith("/api/")) {
+		return withEvlog(request);
+	}
+
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
@@ -15,5 +22,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ["/"], // Apply middleware to specific routes
+	matcher: ["/", "/api/:path*"],
 };

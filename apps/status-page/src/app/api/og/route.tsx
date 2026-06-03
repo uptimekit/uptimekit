@@ -15,6 +15,7 @@ import {
 	getStatusPageByDomain,
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
+import { withEvlog } from "@/lib/evlog";
 import { privateImageResponse } from "@/lib/og-responses";
 import { getDomainFromHost, getHostFromHeaders } from "@/lib/route-utils";
 
@@ -62,7 +63,7 @@ function getSlugFromOgPath(pathname: string): string | undefined {
 	return undefined;
 }
 
-export async function GET(request: NextRequest) {
+async function handleGet(request: NextRequest) {
 	const slug = getSlugFromOgPath(new URL(request.url).pathname);
 	const host = getHostFromHeaders(request.headers);
 
@@ -348,3 +349,5 @@ export async function GET(request: NextRequest) {
 		},
 	);
 }
+
+export const GET = withEvlog(handleGet);

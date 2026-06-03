@@ -51,6 +51,36 @@ const RESPONSE_TIME_RANGE_VALUES = [
 const responseTimeRangeSchema = z.enum(RESPONSE_TIME_RANGE_VALUES);
 type ResponseTimeRange = (typeof RESPONSE_TIME_RANGE_VALUES)[number];
 
+const URL_MONITOR_TYPES = new Set(["http", "http-json", "keyword"]);
+
+function isHttpUrl(value: unknown) {
+	if (typeof value !== "string") {
+		return false;
+	}
+
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
+function assertSafeMonitorUrlConfig(
+	type: string,
+	config: Record<string, unknown>,
+) {
+	if (!URL_MONITOR_TYPES.has(type)) {
+		return;
+	}
+
+	if (!isHttpUrl(config.url)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Monitor URL must use HTTP or HTTPS.",
+		});
+	}
+}
+
 function getResponseTimeRangeStart(
 	range: ResponseTimeRange,
 	allTimeStartDate?: Date,
@@ -616,6 +646,7 @@ export const monitorsRouter = {
 		)
 		.handler(async ({ input, context }) => {
 			const organizationId = context.session.session.activeOrganizationId!;
+			assertSafeMonitorUrlConfig(input.type, input.config);
 
 			if (input.groupId) {
 				await assertGroupForOrganization({
@@ -820,6 +851,8 @@ export const monitorsRouter = {
 			),
 		)
 		.handler(async ({ input, context }) => {
+			assertSafeMonitorUrlConfig(input.type, input.config);
+
 			const existing = await db.query.monitor.findFirst({
 				where: eq(monitor.id, input.id),
 			});

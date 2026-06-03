@@ -36,6 +36,24 @@ function getPauseDescription(pauseReason?: string | null) {
 	}
 }
 
+function getSafeHttpHref(rawUrl: unknown) {
+	if (typeof rawUrl !== "string") {
+		return null;
+	}
+
+	try {
+		const url = new URL(rawUrl);
+
+		if (url.protocol !== "http:" && url.protocol !== "https:") {
+			return null;
+		}
+
+		return url.href;
+	} catch {
+		return null;
+	}
+}
+
 export default function MonitorDetailsPage() {
 	const queryClient = useQueryClient();
 	const params = useParams();
@@ -168,6 +186,8 @@ export default function MonitorDetailsPage() {
 		}
 	};
 	const monitorTarget = getMonitorTarget();
+	const monitorHref =
+		monitor.type === "http" ? getSafeHttpHref(monitorTarget) : null;
 	const statusReason = (monitor as any).statusReason as string | null;
 
 	return (
@@ -208,8 +228,8 @@ export default function MonitorDetailsPage() {
 					</div>
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<Globe className="h-3.5 w-3.5" />
-						{monitor.type === "http" ? (
-							<a href={monitorTarget} className="font-mono hover:underline">
+						{monitorHref ? (
+							<a href={monitorHref} className="font-mono hover:underline">
 								{monitorTarget}
 							</a>
 						) : (

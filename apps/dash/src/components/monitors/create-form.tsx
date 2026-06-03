@@ -109,9 +109,21 @@ const baseSchema = withMonitorTimingRelations(
 	}),
 );
 
+const httpUrlSchema = z
+	.string()
+	.url("Must be a valid URL")
+	.refine((value) => {
+		try {
+			const url = new URL(value);
+			return url.protocol === "http:" || url.protocol === "https:";
+		} catch {
+			return false;
+		}
+	}, "URL must start with http:// or https://");
+
 const httpSchema = z.object({
 	type: z.literal("http"),
-	url: z.string().url("Must be a valid URL"),
+	url: httpUrlSchema,
 	checkSsl: z.boolean().default(true),
 	sslCertExpiryNotificationDays: z.coerce.number().min(1).max(90).default(30),
 	headers: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
@@ -124,7 +136,7 @@ const httpSchema = z.object({
 
 const httpJsonSchema = z.object({
 	type: z.literal("http-json"),
-	url: z.string().url("Must be a valid URL"),
+	url: httpUrlSchema,
 	jsonPath: z.string().min(1, "JSONata expression is required"),
 	checkSsl: z.boolean().default(true),
 	sslCertExpiryNotificationDays: z.coerce.number().min(1).max(90).default(30),
@@ -138,7 +150,7 @@ const httpJsonSchema = z.object({
 
 const keywordSchema = z.object({
 	type: z.literal("keyword"),
-	url: z.string().url("Must be a valid URL"),
+	url: httpUrlSchema,
 	keyword: z.string().min(1, "Keyword is required"),
 	checkSsl: z.boolean().default(true),
 	sslCertExpiryNotificationDays: z.coerce.number().min(1).max(90).default(30),
@@ -904,7 +916,7 @@ export function CreateMonitorForm({
 					queryKey: orpc.monitors.get.key({ input: { id: monitorId } }),
 				});
 			}
-			router.push("/monitors");
+			router.push(`/monitors/${monitorId}`);
 		},
 		onError: (error) => {
 			sileo.error({

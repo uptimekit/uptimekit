@@ -5,6 +5,7 @@ import {
 	processMonitorEvents,
 } from "@uptimekit/api/pkg/worker";
 import { NextResponse } from "next/server";
+import { withEvlog } from "@/lib/evlog";
 
 /**
  * Handle POST requests: authenticate the worker, validate a JSON `events` array, and process monitor events.
@@ -15,7 +16,7 @@ import { NextResponse } from "next/server";
  * @param request - Incoming HTTP request whose JSON body must include an `events` array of monitor events
  * @returns A JSON HTTP response: on error returns an object with an `error` message and the appropriate status code; on success returns the result of processing the monitor events
  */
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
 	const authResult = await authenticateWorker(request);
 
 	if (isAuthError(authResult)) {
@@ -43,3 +44,5 @@ export async function POST(request: Request) {
 
 	return NextResponse.json(result);
 }
+
+export const POST = withEvlog(handlePost);

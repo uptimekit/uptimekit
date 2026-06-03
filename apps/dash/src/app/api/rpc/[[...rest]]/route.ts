@@ -6,9 +6,15 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { createContext } from "@uptimekit/api/context";
 import { createLogger } from "@uptimekit/api/lib/logger";
 import { appRouter } from "@uptimekit/api/routers/index";
+import { withEvlog as withOrpcEvlog } from "evlog/orpc";
 import type { NextRequest } from "next/server";
 
 const logger = createLogger("RPC");
+const evlogOrpcOptions = {
+	routes: {
+		"/api/rpc/**": { service: "@uptimekit/api" },
+	},
+};
 
 const rpcHandler = new RPCHandler(appRouter, {
 	interceptors: [
@@ -29,19 +35,30 @@ const apiHandler = new OpenAPIHandler(appRouter, {
 		}),
 	],
 });
+type OrpcHandleOptions = Parameters<typeof rpcHandler.handle>[1];
+
+const orpcHandler = withOrpcEvlog(
+	{
+		async handle(request: Request, options?: OrpcHandleOptions) {
+			const handleOptions = options as OrpcHandleOptions;
+			const rpcResult = await rpcHandler.handle(request, handleOptions);
+			if (rpcResult.response) return rpcResult;
+
+			return apiHandler.handle(
+				request,
+				handleOptions as Parameters<typeof apiHandler.handle>[1],
+			);
+		},
+	},
+	evlogOrpcOptions,
+);
 
 async function handleRequest(req: NextRequest) {
-	const rpcResult = await rpcHandler.handle(req, {
+	const result = await orpcHandler.handle(req, {
 		prefix: "/api/rpc",
 		context: await createContext(req),
 	});
-	if (rpcResult.response) return rpcResult.response;
-
-	const apiResult = await apiHandler.handle(req, {
-		prefix: "/api/rpc",
-		context: await createContext(req),
-	});
-	if (apiResult.response) return apiResult.response;
+	if (result.response) return result.response;
 
 	return new Response("Not found", { status: 404 });
 }

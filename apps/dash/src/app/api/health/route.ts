@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { withEvlog } from "@/lib/evlog";
 
-export function GET() {
+function handleGet() {
 	return NextResponse.json({ ok: true });
 }
+
+export const GET = withEvlog(handleGet);

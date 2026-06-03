@@ -9,8 +9,9 @@ import { db } from "@uptimekit/db";
 import { integrationConfig } from "@uptimekit/db/schema/integrations";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { withEvlog } from "@/lib/evlog";
 
-export async function POST(
+async function handlePost(
 	request: Request,
 	{ params }: { params: Promise<{ integrationId: string }> },
 ) {
@@ -104,3 +105,5 @@ export async function POST(
 		);
 	}
 }
+
+export const POST = withEvlog(handlePost);

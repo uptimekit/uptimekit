@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCookieName, verifyAccessToken } from "@/lib/access-token";
+import { withEvlog } from "@/lib/evlog";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const subscribeSchema = z.object({
@@ -29,7 +30,7 @@ const emptyToUndefined = (value: unknown) =>
 		? value.trim()
 		: undefined;
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
 	try {
 		const body = await request.json();
 		const payload = subscribeSchema.safeParse({
@@ -143,3 +144,5 @@ export async function POST(request: NextRequest) {
 		);
 	}
 }
+
+export const POST = withEvlog(handlePost);

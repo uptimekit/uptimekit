@@ -59,6 +59,7 @@
 		"dotenv": "catalog:",
 		"drizzle-orm": "catalog:",
 		"effect": "^3.21.2",
+		"evlog": "^2.18.1",
 		"ioredis": "^5.8.2",
 		"nodemailer": "^8.0.5",
 		"semver": "^7.8.1",

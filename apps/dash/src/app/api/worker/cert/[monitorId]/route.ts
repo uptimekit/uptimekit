@@ -6,6 +6,7 @@ import { monitor } from "@uptimekit/db/schema/monitors";
 import { sslCertificateNotification } from "@uptimekit/db/schema/ssl-notifications";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { withEvlog } from "@/lib/evlog";
 
 interface CertificateInfo {
 	domain: string;
@@ -73,7 +74,7 @@ function shouldSendNotification(
  * @param params - An object whose `monitorId` route parameter identifies the target monitor
  * @returns A NextResponse with a JSON body. On success the body includes `success`, `notified`, `threshold`, `daysUntilExpiry`, and `nextNotificationIn` when applicable. On error the body includes an `error` message and an appropriate HTTP status (e.g., authentication failure, monitor not found, invalid JSON, or missing required fields).
  */
-export async function POST(
+async function handlePost(
 	request: Request,
 	{ params }: { params: Promise<{ monitorId: string }> },
 ) {
@@ -198,3 +199,5 @@ export async function POST(
 			: undefined,
 	});
 }
+
+export const POST = withEvlog(handlePost);

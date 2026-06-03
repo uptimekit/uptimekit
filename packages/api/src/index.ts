@@ -2,6 +2,7 @@ import { ORPCError, os } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import { member } from "@uptimekit/db/schema/auth";
 import { and, eq } from "drizzle-orm";
+import { type EvlogOrpcContext, evlog as evlogProcedure } from "evlog/orpc";
 
 export * from "./pkg/integrations/definitions/discord";
 export * from "./pkg/integrations/definitions/webhook";
@@ -11,7 +12,9 @@ import type { Context } from "./context";
 
 export const o = os.$context<Context>();
 
-export const publicProcedure = o;
+export const publicProcedure = o.use(
+	evlogProcedure<Context & Partial<EvlogOrpcContext>>(),
+);
 
 const requireAuth = o.middleware(async ({ context, next }) => {
 	if (context.apiKey?.error === "invalid") {
