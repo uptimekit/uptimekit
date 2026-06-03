@@ -23,7 +23,9 @@ import {
 	PlayCircle,
 	Plus,
 	Search,
+	Server,
 	ShieldAlert,
+	X,
 } from "@/components/icons";
 import {
 	AlertDialog,
@@ -35,7 +37,17 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogPanel,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -43,7 +55,9 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { getRegionInfo } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 import { GroupCreationDialog } from "./group-creation-dialog";
@@ -135,6 +149,10 @@ export function MonitorsTable() {
 	const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
 		{},
 	);
+	const [selectedMonitorIds, setSelectedMonitorIds] = useState<Set<string>>(
+		() => new Set(),
+	);
+	const [assignWorkerOpen, setAssignWorkerOpen] = useState(false);
 
 	// Debounce search
 	const [searchInput, setSearchInput] = useState(search);
@@ -268,6 +286,47 @@ export function MonitorsTable() {
 
 	const ungroupedMonitors = monitorsByGroup.ungrouped ?? [];
 
+	const allMonitorIds = tableData.map((m) => m.id);
+	const selectedIds = allMonitorIds.filter((id) => selectedMonitorIds.has(id));
+	const selectedCount = selectedIds.length;
+	const allSelected =
+		allMonitorIds.length > 0 &&
+		allMonitorIds.every((id) => selectedMonitorIds.has(id));
+	const someSelected =
+		allMonitorIds.length > 0 &&
+		allMonitorIds.some((id) => selectedMonitorIds.has(id));
+
+	useEffect(() => {
+		if (!monitors) {
+			return;
+		}
+		const visibleIds = new Set(monitors.map((m) => m.id));
+		setSelectedMonitorIds((previous) => {
+			const next = new Set(
+				Array.from(previous).filter((id) => visibleIds.has(id)),
+			);
+			return next.size === previous.size ? previous : next;
+		});
+	}, [monitors]);
+
+	const toggleMonitorSelection = (id: string, checked: boolean) => {
+		setSelectedMonitorIds((previous) => {
+			const next = new Set(previous);
+			if (checked) {
+				next.add(id);
+			} else {
+				next.delete(id);
+			}
+			return next;
+		});
+	};
+
+	const toggleSelectAll = (checked: boolean) => {
+		setSelectedMonitorIds(checked ? new Set(allMonitorIds) : new Set());
+	};
+
+	const clearSelection = () => setSelectedMonitorIds(new Set());
+
 	const renderMonitorRow = (
 		monitor: Monitor & { groupId?: string },
 		depth: number,
@@ -278,10 +337,24 @@ export function MonitorsTable() {
 				"group relative h-[72px] cursor-pointer hover:bg-muted/40",
 				!monitor.active && "opacity-50 grayscale",
 			)}
+			data-state={selectedMonitorIds.has(monitor.id) ? "selected" : undefined}
 		>
 			<TableCell
+				className="relative z-20 w-10 pr-0 pl-4"
+				onClick={(e) => e.stopPropagation()}
+			>
+				<Checkbox
+					aria-label={`Select ${monitor.name}`}
+					checked={selectedMonitorIds.has(monitor.id)}
+					onCheckedChange={(checked) =>
+						toggleMonitorSelection(monitor.id, checked === true)
+					}
+				/>
+			</TableCell>
+
+			<TableCell
 				className="relative"
-				style={{ paddingLeft: 24 + (depth - 0.2) * 16 }}
+				style={{ paddingLeft: 8 + (depth - 0.2) * 16 }}
 			>
 				<Link
 					href={`/monitors/${monitor.id}`}
@@ -426,7 +499,7 @@ export function MonitorsTable() {
 				className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
 				onClick={() => toggleGroup(node.group.id)}
 			>
-				<TableCell colSpan={5} className="py-3">
+				<TableCell colSpan={6} className="py-3">
 					<div
 						className="flex select-none items-center gap-2 font-medium text-sm"
 						style={{ marginLeft: node.depth * 16 }}
@@ -810,9 +883,51 @@ export function MonitorsTable() {
 			</div>
 
 			<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-				<div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
-					<ChevronDown className="h-4 w-4" />
-					Monitors
+				<div className="flex min-h-12 flex-col gap-3 border-b bg-muted/20 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+					<div className="flex items-center gap-3 font-medium text-muted-foreground text-sm">
+						{allMonitorIds.length > 0 ? (
+							<Checkbox
+								aria-label={
+									allSelected ? "Deselect all monitors" : "Select all monitors"
+								}
+								checked={allSelected}
+								indeterminate={someSelected && !allSelected}
+								onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+							/>
+						) : (
+							<ChevronDown className="h-4 w-4" />
+						)}
+						<span>Monitors</span>
+					</div>
+					{selectedCount > 0 && (
+						<div className="flex min-h-7 flex-wrap items-center gap-2 lg:justify-end">
+							<span className="mr-1 whitespace-nowrap font-medium text-foreground text-sm">
+								{selectedCount} selected
+							</span>
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={<Button variant="outline" size="xs" />}
+								>
+									Actions
+									<ChevronDown className="h-4 w-4" />
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end">
+									<DropdownMenuItem onSelect={() => setAssignWorkerOpen(true)}>
+										<Server className="h-4 w-4" />
+										Assign worker
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+							<Button
+								variant="ghost"
+								size="icon-xs"
+								aria-label="Clear selection"
+								onClick={clearSelection}
+							>
+								<X className="h-4 w-4" />
+							</Button>
+						</div>
+					)}
 				</div>
 				{isCapped && (
 					<div className="border-b bg-amber-50 px-4 py-2 text-amber-900 text-sm dark:bg-amber-950/30 dark:text-amber-200">
@@ -824,13 +939,13 @@ export function MonitorsTable() {
 					<TableBody>
 						{isLoading ? (
 							<TableRow>
-								<TableCell colSpan={5} className="h-24 text-center">
+								<TableCell colSpan={6} className="h-24 text-center">
 									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
 								</TableCell>
 							</TableRow>
 						) : !tableData || tableData.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={5} className="h-24 text-center">
+								<TableCell colSpan={6} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
 										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
 											<PlayCircle className="h-6 w-6 text-muted-foreground" />
@@ -870,7 +985,7 @@ export function MonitorsTable() {
 											className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
 											onClick={() => toggleGroup("ungrouped")}
 										>
-											<TableCell colSpan={5} className="py-3">
+											<TableCell colSpan={6} className="py-3">
 												<div className="flex select-none items-center gap-2 font-medium text-sm">
 													<ChevronRight
 														className={cn(
@@ -900,7 +1015,245 @@ export function MonitorsTable() {
 
 			<GroupCreationDialog open={groupsOpen} onOpenChange={setGroupsOpen} />
 			<TagCreationDialog open={tagsOpen} onOpenChange={setTagsOpen} />
+			<BulkAssignWorkerDialog
+				open={assignWorkerOpen}
+				onOpenChange={setAssignWorkerOpen}
+				monitorIds={selectedIds}
+				onSuccess={clearSelection}
+			/>
 		</div>
+	);
+}
+
+type AssignWorkerMode = "add" | "replace";
+
+function BulkAssignWorkerDialog({
+	open,
+	onOpenChange,
+	monitorIds,
+	onSuccess,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	monitorIds: string[];
+	onSuccess: () => void;
+}) {
+	const queryClient = useQueryClient();
+	const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(
+		() => new Set(),
+	);
+	const [mode, setMode] = useState<AssignWorkerMode>("add");
+
+	const { data: workers, isLoading: workersLoading } = useQuery({
+		...orpc.workers.listActive.queryOptions(),
+		enabled: open,
+	});
+
+	useEffect(() => {
+		if (!open) {
+			setSelectedWorkerIds(new Set());
+			setMode("add");
+		}
+	}, [open]);
+
+	const { mutate: assignWorkers, isPending } = useMutation({
+		mutationFn: (input: {
+			monitorIds: string[];
+			workerIds: string[];
+			mode: AssignWorkerMode;
+		}) => client.monitors.bulkAssignWorkers(input),
+		onSuccess: (result) => {
+			sileo.success({
+				title: `Workers assigned to ${result.updatedCount} monitor${
+					result.updatedCount === 1 ? "" : "s"
+				}`,
+			});
+			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
+			onOpenChange(false);
+			onSuccess();
+		},
+		onError: (error) =>
+			sileo.error({ title: `Failed to assign workers: ${error.message}` }),
+	});
+
+	const monitorCount = monitorIds.length;
+	const workerList = workers ?? [];
+	const allWorkersSelected =
+		workerList.length > 0 &&
+		workerList.every((activeWorker) => selectedWorkerIds.has(activeWorker.id));
+
+	const toggleWorker = (id: string, checked: boolean) => {
+		setSelectedWorkerIds((previous) => {
+			const next = new Set(previous);
+			if (checked) {
+				next.add(id);
+			} else {
+				next.delete(id);
+			}
+			return next;
+		});
+	};
+
+	const toggleAllWorkers = () => {
+		setSelectedWorkerIds(
+			allWorkersSelected
+				? new Set()
+				: new Set(workerList.map((activeWorker) => activeWorker.id)),
+		);
+	};
+
+	const handleSubmit = () => {
+		if (selectedWorkerIds.size === 0) {
+			return;
+		}
+		assignWorkers({
+			monitorIds,
+			workerIds: Array.from(selectedWorkerIds),
+			mode,
+		});
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent showCloseButton={!isPending}>
+				<DialogHeader>
+					<DialogTitle>Assign workers to monitors</DialogTitle>
+					<DialogDescription>
+						Apply workers to{" "}
+						<span className="font-medium text-foreground">
+							{monitorCount} selected monitor{monitorCount === 1 ? "" : "s"}
+						</span>
+						. If any monitor would exceed its per-monitor worker limit, nothing
+						is changed.
+					</DialogDescription>
+				</DialogHeader>
+
+				<DialogPanel className="space-y-4">
+					<div className="space-y-2" role="group" aria-label="Workers">
+						<div className="flex items-center justify-between">
+							<span className="font-medium text-sm">Workers</span>
+							<Button
+								type="button"
+								variant="link"
+								className="h-auto p-0 text-xs"
+								onClick={toggleAllWorkers}
+								disabled={isPending || workerList.length === 0}
+							>
+								{allWorkersSelected ? "Deselect all" : "Select all"}
+							</Button>
+						</div>
+						<div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border p-1">
+							{workersLoading ? (
+								<p className="px-2 py-3 text-muted-foreground text-sm">
+									Loading workers...
+								</p>
+							) : workerList.length === 0 ? (
+								<p className="px-2 py-3 text-muted-foreground text-sm">
+									No active workers available.
+								</p>
+							) : (
+								workerList.map((activeWorker) => {
+									const regionInfo = getRegionInfo(activeWorker.location);
+									const Flag = regionInfo.Flag;
+									const checkboxId = `bulk-worker-${activeWorker.id}`;
+									return (
+										<div
+											key={activeWorker.id}
+											className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40"
+										>
+											<Checkbox
+												id={checkboxId}
+												checked={selectedWorkerIds.has(activeWorker.id)}
+												disabled={isPending}
+												onCheckedChange={(checked) =>
+													toggleWorker(activeWorker.id, checked === true)
+												}
+											/>
+											<Label
+												htmlFor={checkboxId}
+												className="flex flex-1 cursor-pointer items-center gap-2 font-normal"
+											>
+												<span className="relative size-5 shrink-0 overflow-hidden shadow-sm">
+													<Flag className="h-full w-full" />
+												</span>
+												<span className="min-w-0">
+													<span className="block truncate">
+														{activeWorker.name}
+													</span>
+													<span className="block truncate text-muted-foreground text-xs">
+														{regionInfo.label}
+													</span>
+												</span>
+											</Label>
+										</div>
+									);
+								})
+							)}
+						</div>
+						<p className="text-muted-foreground text-xs">
+							{selectedWorkerIds.size} selected
+						</p>
+					</div>
+
+					<div className="space-y-2" role="group" aria-label="Assignment mode">
+						<span className="font-medium text-sm">Mode</span>
+						<div className="grid grid-cols-2 gap-2">
+							<button
+								type="button"
+								disabled={isPending}
+								onClick={() => setMode("add")}
+								className={cn(
+									"rounded-lg border p-3 text-left text-sm transition-colors",
+									mode === "add"
+										? "border-primary bg-primary/5"
+										: "border-input hover:bg-muted/40",
+								)}
+							>
+								<span className="font-medium">Add</span>
+								<p className="mt-0.5 text-muted-foreground text-xs">
+									Keep existing workers and add the selected ones.
+								</p>
+							</button>
+							<button
+								type="button"
+								disabled={isPending}
+								onClick={() => setMode("replace")}
+								className={cn(
+									"rounded-lg border p-3 text-left text-sm transition-colors",
+									mode === "replace"
+										? "border-primary bg-primary/5"
+										: "border-input hover:bg-muted/40",
+								)}
+							>
+								<span className="font-medium">Replace</span>
+								<p className="mt-0.5 text-muted-foreground text-xs">
+									Replace all workers with the selected ones.
+								</p>
+							</button>
+						</div>
+						{mode === "replace" && (
+							<p className="text-amber-600 text-xs dark:text-amber-500">
+								This removes any other workers currently assigned.
+							</p>
+						)}
+					</div>
+				</DialogPanel>
+
+				<DialogFooter>
+					<DialogClose render={<Button variant="ghost" disabled={isPending} />}>
+						Cancel
+					</DialogClose>
+					<Button
+						type="button"
+						onClick={handleSubmit}
+						loading={isPending}
+						disabled={selectedWorkerIds.size === 0 || monitorCount === 0}
+					>
+						Assign to {monitorCount} monitor{monitorCount === 1 ? "" : "s"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 

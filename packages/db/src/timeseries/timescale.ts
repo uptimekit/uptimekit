@@ -348,7 +348,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					WHERE monitor_id = ${query.monitorId}
 						AND timestamp >= ${query.since}
 						AND location = ANY(${query.locations as string[]})
-					ORDER BY timestamp ASC
+					ORDER BY timestamp DESC
 					${limitClause}
 				`
 			: await sql<
@@ -368,20 +368,24 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					FROM monitor_events
 					WHERE monitor_id = ${query.monitorId}
 						AND timestamp >= ${query.since}
-					ORDER BY timestamp ASC
+					ORDER BY timestamp DESC
 					${limitClause}
 				`;
 
-		return rows.map((r) => ({
-			timestamp: r.timestamp,
-			location: r.location ?? null,
-			latency: Number(r.latency) || 0,
-			dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
-			tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
-			tlsHandshake: r.tls_handshake != null ? Number(r.tls_handshake) : null,
-			ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-			transfer: r.transfer != null ? Number(r.transfer) : null,
-		}));
+		// Fetched newest-first so the LIMIT keeps the most recent rows, not the
+		// oldest; reverse to return ascending order.
+		return rows
+			.map((r) => ({
+				timestamp: r.timestamp,
+				location: r.location ?? null,
+				latency: Number(r.latency) || 0,
+				dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
+				tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
+				tlsHandshake: r.tls_handshake != null ? Number(r.tls_handshake) : null,
+				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+				transfer: r.transfer != null ? Number(r.transfer) : null,
+			}))
+			.reverse();
 	}
 
 	async getRecentLatenciesByMonitor(

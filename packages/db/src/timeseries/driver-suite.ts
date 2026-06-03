@@ -476,6 +476,124 @@ export function defineDriverTests(
 				expect(capped).toHaveLength(1);
 				expect(uncapped).toHaveLength(3);
 			});
+
+			it("keeps the most recent events when the limit caps the result", async () => {
+				const driver = getDriver();
+				const monitorId = uid("response-recent");
+				const now = new Date();
+
+				await driver.insertMonitorEvents([
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 100,
+						timestamp: new Date(now.getTime() - 120_000),
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 150,
+						timestamp: new Date(now.getTime() - 60_000),
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 200,
+						timestamp: now,
+					},
+				]);
+
+				const capped = await driver.getResponseTimes({
+					monitorId,
+					since: new Date(now.getTime() - 180_000),
+					limit: 2,
+				});
+
+				expect(capped.map((point) => point.latency)).toEqual([150, 200]);
+			});
+
+			it("keeps the most recent events per location when filtered and capped", async () => {
+				const driver = getDriver();
+				const monitorId = uid("response-recent-locations");
+				const now = new Date();
+
+				await driver.insertMonitorEvents([
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 10,
+						timestamp: new Date(now.getTime() - 250_000),
+						location: "worker-a",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 20,
+						timestamp: new Date(now.getTime() - 200_000),
+						location: "worker-b",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 30,
+						timestamp: new Date(now.getTime() - 150_000),
+						location: "worker-a",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 40,
+						timestamp: new Date(now.getTime() - 100_000),
+						location: "worker-b",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 50,
+						timestamp: new Date(now.getTime() - 50_000),
+						location: "worker-a",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 60,
+						timestamp: new Date(now.getTime() - 30_000),
+						location: "worker-b",
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 999,
+						timestamp: now,
+						location: "worker-c",
+					},
+				]);
+
+				const capped = await driver.getResponseTimes({
+					monitorId,
+					since: new Date(now.getTime() - 300_000),
+					locations: ["worker-a", "worker-b"],
+					limit: 4,
+				});
+
+				expect(capped.map((point) => point.latency)).toEqual([30, 40, 50, 60]);
+				expect(capped.map((point) => point.location)).toEqual([
+					"worker-a",
+					"worker-b",
+					"worker-a",
+					"worker-b",
+				]);
+			});
 		});
 
 		describe("worker status snapshots", () => {

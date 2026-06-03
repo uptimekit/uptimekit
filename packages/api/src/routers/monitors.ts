@@ -37,9 +37,13 @@ import {
 	monitorTimingSchema,
 	withMonitorTimingRelations,
 } from "../lib/monitor-timing";
-import { enforceMonitorQuotaOrThrow } from "../lib/organization-limits";
+import {
+	enforceMonitorQuotaOrThrow,
+	getOrganizationQuotaState,
+} from "../lib/organization-limits";
 
 const RESPONSE_TIME_RANGE_VALUES = [
+	"3h",
 	"24h",
 	"7d",
 	"30d",
@@ -88,6 +92,9 @@ function getResponseTimeRangeStart(
 	const startDate = new Date();
 
 	switch (range) {
+		case "3h":
+			startDate.setHours(startDate.getHours() - 3);
+			return startDate;
 		case "24h":
 			startDate.setHours(startDate.getHours() - 24);
 			return startDate;
@@ -952,6 +959,116 @@ export const monitorsRouter = {
 			return { success: true };
 		}),
 
+	bulkAssignWorkers: writeProcedure
+		.route({
+			method: "POST",
+			path: "/monitors/bulk-assign-workers",
+			tags: ["Monitor Management"],
+			summary: "Bulk assign workers to monitors",
+			description:
+				"Add or replace one or more workers across multiple monitors in one operation.",
+		})
+		.input(
+			z.object({
+				monitorIds: z.array(z.string()).min(1),
+				workerIds: z.array(z.string()).min(1),
+				mode: z.enum(["add", "replace"]),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const organizationId = context.session.session.activeOrganizationId!;
+			const monitorIds = [...new Set(input.monitorIds)];
+			const selectedWorkerIds = [...new Set(input.workerIds)];
+
+			await getWorkersForMonitorAssignments({
+				workerIds: selectedWorkerIds,
+				options: { activeOnly: true, requireAll: true },
+			});
+
+			const monitors = await db
+				.select({
+					id: monitor.id,
+					workerIds: monitor.workerIds,
+				})
+				.from(monitor)
+				.where(
+					and(
+						eq(monitor.organizationId, organizationId),
+						inArray(monitor.id, monitorIds),
+					),
+				);
+
+			if (monitors.length !== monitorIds.length) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "One or more selected monitors could not be found.",
+				});
+			}
+
+			const nextWorkerIdsByMonitor = new Map<string, string[]>();
+			for (const monitorRecord of monitors) {
+				const existingWorkerIds =
+					(monitorRecord.workerIds as string[] | null) ?? [];
+				const nextWorkerIds =
+					input.mode === "replace"
+						? selectedWorkerIds
+						: [...new Set([...existingWorkerIds, ...selectedWorkerIds])];
+				nextWorkerIdsByMonitor.set(monitorRecord.id, nextWorkerIds);
+			}
+
+			const quotaState = await getOrganizationQuotaState(organizationId);
+			if (quotaState.regionsPerMonitorLimit !== null) {
+				const regionLimit = quotaState.regionsPerMonitorLimit;
+				const overflowCount = monitors.filter(
+					(monitorRecord) =>
+						(nextWorkerIdsByMonitor.get(monitorRecord.id)?.length ?? 0) >
+						regionLimit,
+				).length;
+
+				if (overflowCount > 0) {
+					throw new ORPCError("FORBIDDEN", {
+						message: `This change would exceed the limit of ${regionLimit} worker(s) per monitor on ${overflowCount} monitor(s). No monitors were updated.`,
+					});
+				}
+			}
+
+			const allWorkerIds = [
+				...new Set([...nextWorkerIdsByMonitor.values()].flat()),
+			];
+			const workerRows = await db
+				.select({ id: worker.id, location: worker.location })
+				.from(worker)
+				.where(inArray(worker.id, allWorkerIds));
+			const locationByWorkerId = new Map(
+				workerRows.map((workerRow) => [workerRow.id, workerRow.location]),
+			);
+
+			await db.transaction(async (tx) => {
+				for (const monitorRecord of monitors) {
+					const nextWorkerIds =
+						nextWorkerIdsByMonitor.get(monitorRecord.id) ?? [];
+					const nextLocations = [
+						...new Set(
+							nextWorkerIds
+								.map((workerId) => locationByWorkerId.get(workerId))
+								.filter(
+									(location): location is string => location !== undefined,
+								),
+						),
+					];
+
+					await tx
+						.update(monitor)
+						.set({
+							workerIds: nextWorkerIds,
+							locations: nextLocations,
+						})
+						.where(eq(monitor.id, monitorRecord.id));
+				}
+			});
+
+			return { updatedCount: monitors.length };
+		}),
+
 	get: protectedProcedure
 		.route({
 			method: "GET",
@@ -1210,11 +1327,16 @@ export const monitorsRouter = {
 					? input.workerIds
 					: undefined;
 
+			// Scale the cap by worker count; a single shared cap would shrink the
+			// visible time window as more workers compete for the same row budget.
+			const workerCount = Math.max(filterLocations?.length ?? 1, 1);
+			const limit = input.allChecks ? null : 2000 * workerCount;
+
 			const events = await timeseries.getResponseTimes({
 				monitorId: input.monitorId,
 				since: startDate,
 				locations: filterLocations,
-				limit: input.allChecks ? null : 2000,
+				limit,
 			});
 
 			return events.map((e) => ({

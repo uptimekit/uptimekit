@@ -85,7 +85,16 @@ const TIMING_KEYS = [
 	"transfer",
 ] as const;
 const QUANTILE_VALUES = ["p50", "p90", "p99"] as const;
-const RANGE_VALUES = ["24h", "7d", "30d", "3mo", "6mo", "1y", "all"] as const;
+const RANGE_VALUES = [
+	"3h",
+	"24h",
+	"7d",
+	"30d",
+	"3mo",
+	"6mo",
+	"1y",
+	"all",
+] as const;
 const LATENCY_RESOLUTION_VALUES = ["1", "5", "15", "30", "60", "all"] as const;
 const REGION_VIEW_VALUES = ["table", "chart"] as const;
 const ROWS_PER_PAGE_VALUES = ["10", "20", "50"] as const;
@@ -131,6 +140,7 @@ const QUANTILE_OPTIONS = [
 ] as const;
 
 const RANGE_OPTIONS = [
+	{ label: "Last 3 hours", value: "3h" },
 	{ label: "Last day", value: "24h" },
 	{ label: "Last week", value: "7d" },
 	{ label: "Last month", value: "30d" },
@@ -247,9 +257,11 @@ const getBucketStart = (timestamp: string, resolutionMinutes: number) => {
 	return new Date(Math.floor(time / bucketSize) * bucketSize).toISOString();
 };
 
+const getRegionBucketMinutes = (range: RangeKey) => (range === "3h" ? 5 : 15);
+
 const formatChartTimestamp = (timestamp: string, range: RangeKey) => {
 	const date = new Date(timestamp);
-	if (range === "24h" || range === "7d") {
+	if (range === "3h" || range === "24h" || range === "7d") {
 		return format(date, "MMM d 'at' h:mm a");
 	}
 	if (range === "1y" || range === "all") {
@@ -260,7 +272,7 @@ const formatChartTimestamp = (timestamp: string, range: RangeKey) => {
 
 const formatCheckTimestamp = (timestamp: string, range: RangeKey) => {
 	const date = new Date(timestamp);
-	if (range === "24h" || range === "7d") {
+	if (range === "3h" || range === "24h" || range === "7d") {
 		return format(date, "MMM d 'at' h:mm:ss a");
 	}
 	return format(date, "MMM d, yyyy 'at' h:mm:ss a");
@@ -535,7 +547,10 @@ export function ResponseTimeChart({
 				);
 				const groupedTrend = regionPoints.reduce(
 					(acc, point) => {
-						const bucketStart = getBucketStart(point.timestamp, 15);
+						const bucketStart = getBucketStart(
+							point.timestamp,
+							getRegionBucketMinutes(regionRange),
+						);
 						if (!acc[bucketStart]) {
 							acc[bucketStart] = [];
 						}
@@ -588,7 +603,10 @@ export function ResponseTimeChart({
 
 		const grouped = regionRawData.reduce(
 			(acc, point) => {
-				const bucketStart = getBucketStart(point.timestamp, 15);
+				const bucketStart = getBucketStart(
+					point.timestamp,
+					getRegionBucketMinutes(regionRange),
+				);
 				if (!acc[bucketStart]) {
 					acc[bucketStart] = [];
 				}

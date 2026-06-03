@@ -425,22 +425,26 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				WHERE monitorId = {monitorId:String}
 					AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
 					${locationFilter}
-				ORDER BY timestamp ASC
+				ORDER BY timestamp DESC
 				${limitClause}
 			`,
 			params,
 		);
 
-		return rows.map((r) => ({
-			timestamp: parseTimestamp(r.timestamp),
-			location: r.location ?? null,
-			latency: Number(r.latency) || 0,
-			dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
-			tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
-			tlsHandshake: r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
-			ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-			transfer: r.transfer != null ? Number(r.transfer) : null,
-		}));
+		// Fetched newest-first so the LIMIT keeps the most recent rows, not the
+		// oldest; reverse to return ascending order.
+		return rows
+			.map((r) => ({
+				timestamp: parseTimestamp(r.timestamp),
+				location: r.location ?? null,
+				latency: Number(r.latency) || 0,
+				dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
+				tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
+				tlsHandshake: r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
+				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+				transfer: r.transfer != null ? Number(r.transfer) : null,
+			}))
+			.reverse();
 	}
 
 	async getRecentLatenciesByMonitor(
