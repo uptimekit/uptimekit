@@ -83,21 +83,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
 	const router = useRouter(); // Use useRouter from next/navigation
 	const [showCreateOrgModal, setShowCreateOrgModal] = React.useState(false);
+	const [isMounted, setIsMounted] = React.useState(false);
 
 	const { data: organizations, isPending: isLoadingOrgs } =
 		authClient.useListOrganizations();
 	const { data: activeOrg } = authClient.useActiveOrganization();
 	const { data: session } = authClient.useSession();
-	const isGlobalAdmin = session?.user?.role === "admin";
-	const organizationSettingsUrl = activeOrg?.id
-		? `/organization/${activeOrg.id}/settings`
+
+	React.useEffect(() => {
+		setIsMounted(true);
+	}, []);
+
+	const displayedOrganizations = isMounted ? organizations : undefined;
+	const displayedActiveOrg = isMounted ? activeOrg : undefined;
+	const displayedSession = isMounted ? session : undefined;
+	const isGlobalAdmin = displayedSession?.user?.role === "admin";
+	const organizationSettingsUrl = displayedActiveOrg?.id
+		? `/organization/${displayedActiveOrg.id}/settings`
 		: "/settings";
 	const { data: appVersion } = useQuery(orpc.getVersion.queryOptions());
 	const hasUpdate = appVersion?.isLatest === false;
 
 	// Use organization info safely
 	// Note: Better-auth might return null/undefined while loading
-	const currentOrgName = activeOrg?.name || "Select Organization";
+	const currentOrgName = displayedActiveOrg?.name || "Select Organization";
 
 	return (
 		<Sidebar collapsible="icon" {...props} variant="inset">
@@ -116,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								<div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
 									<Image
 										src={
-											activeOrg?.logo ||
+											displayedActiveOrg?.logo ||
 											"https://r2.uptimekit.dev/logos/uptimekit.svg"
 										}
 										alt={currentOrgName}
@@ -130,7 +139,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 										{currentOrgName}
 									</span>
 									<span className="truncate text-xs">
-										{activeOrg?.slug || "Organization"}
+										{displayedActiveOrg?.slug || "Organization"}
 									</span>
 								</div>
 								<ChevronDown className="ml-auto group-data-[collapsible=icon]:hidden" />
@@ -144,10 +153,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								<DropdownMenuLabel className="text-muted-foreground text-xs">
 									Organizations
 								</DropdownMenuLabel>
-								{isLoadingOrgs ? (
+								{!isMounted || isLoadingOrgs ? (
 									<DropdownMenuItem disabled>Loading...</DropdownMenuItem>
 								) : (
-									organizations?.map((org) => (
+									displayedOrganizations?.map((org) => (
 										<DropdownMenuItem
 											key={org.id}
 											onClick={() => {
@@ -179,7 +188,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 												/>
 											</div>
 											{org.name}
-											{activeOrg?.id === org.id && (
+											{displayedActiveOrg?.id === org.id && (
 												<span className="ml-auto text-muted-foreground text-xs">
 													Active
 												</span>
@@ -216,9 +225,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							{mainNav
 								.filter((item) => {
 									if (item.title === "Notifications") {
-										const members = activeOrg?.members;
+										const members = displayedActiveOrg?.members;
 										const role = members?.find(
-											(m) => m.userId === session?.user?.id,
+											(m) => m.userId === displayedSession?.user?.id,
 										)?.role;
 										return role === "owner" || role === "admin";
 									}
@@ -253,7 +262,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							{configNav
 								.filter(
 									(item) =>
-										item.title !== "Admin" || session?.user?.role === "admin",
+										item.title !== "Admin" ||
+										displayedSession?.user?.role === "admin",
 								)
 								.map((item) => (
 									<SidebarMenuItem key={item.title}>
@@ -322,9 +332,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function UserMenuComponent() {
 	const router = useRouter();
+	const [isMounted, setIsMounted] = React.useState(false);
 	const { data: session, isPending } = authClient.useSession();
 
-	if (isPending) return <Skeleton className="h-12 w-full rounded-lg" />;
+	React.useEffect(() => {
+		setIsMounted(true);
+	}, []);
+
+	if (!isMounted || isPending) {
+		return <Skeleton className="h-12 w-full rounded-lg" />;
+	}
+
 	if (!session) return null; // Should not happen in dashboard
 
 	return (

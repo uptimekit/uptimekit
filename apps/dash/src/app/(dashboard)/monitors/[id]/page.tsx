@@ -167,6 +167,7 @@ export default function MonitorDetailsPage() {
 				return config.url;
 		}
 	};
+	const monitorTarget = getMonitorTarget();
 	const statusReason = (monitor as any).statusReason as string | null;
 
 	return (
@@ -207,7 +208,13 @@ export default function MonitorDetailsPage() {
 					</div>
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<Globe className="h-3.5 w-3.5" />
-						<span className="font-mono">{getMonitorTarget()}</span>
+						{monitor.type === "http" ? (
+							<a href={monitorTarget} className="font-mono hover:underline">
+								{monitorTarget}
+							</a>
+						) : (
+							<span className="font-mono">{monitorTarget}</span>
+						)}
 						<span className="select-none">·</span>
 						<Clock className="h-3.5 w-3.5" />
 						<span className="select-none">

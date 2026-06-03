@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
+import { useEffect, useState } from "react";
 import {
 	BarChart3,
 	ChevronLeft,
@@ -125,9 +126,17 @@ export function AdminSidebar({
 }
 
 function AdminUserMenu() {
+	const [isMounted, setIsMounted] = useState(false);
 	const { data: session, isPending } = authClient.useSession();
 
-	if (isPending) return <Skeleton className="h-12 w-full rounded-lg" />;
+	useEffect(() => {
+		setIsMounted(true);
+	}, []);
+
+	if (!isMounted || isPending) {
+		return <Skeleton className="h-12 w-full rounded-lg" />;
+	}
+
 	if (!session) return null;
 
 	return (

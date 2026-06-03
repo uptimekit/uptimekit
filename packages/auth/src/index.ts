@@ -121,12 +121,21 @@ const organizationRoles = {
 	}),
 };
 
+const authBaseUrl =
+	process.env.BETTER_AUTH_URL ||
+	process.env.APP_URL ||
+	process.env.NEXT_PUBLIC_URL;
+const trustedOrigins = Array.from(
+	new Set([authBaseUrl, process.env.NEXT_PUBLIC_URL].filter(Boolean)),
+) as string[];
+
 const authConfig: BetterAuthOptions = {
+	baseURL: authBaseUrl,
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema: schema,
 	}),
-	trustedOrigins: [process.env.NEXT_PUBLIC_URL || ""],
+	trustedOrigins,
 	emailAndPassword: {
 		enabled: true,
 	},

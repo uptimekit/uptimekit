@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -14,9 +15,14 @@ import { authClient } from "@/lib/auth-client";
 
 export default function UserMenu() {
 	const router = useRouter();
+	const [isMounted, setIsMounted] = useState(false);
 	const { data: session, isPending } = authClient.useSession();
 
-	if (isPending) {
+	useEffect(() => {
+		setIsMounted(true);
+	}, []);
+
+	if (!isMounted || isPending) {
 		return <Skeleton className="h-9 w-24" />;
 	}
 
