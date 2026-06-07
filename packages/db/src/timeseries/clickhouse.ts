@@ -540,16 +540,13 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 			count: number | string;
 		}>(
 			`
-				SELECT code AS statusCode, count() AS count
-				FROM (
-					SELECT assumeNotNull(statusCode) AS code
-					FROM uptimekit.monitor_events
-					WHERE monitorId = {monitorId:String}
-						AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
-						AND statusCode IS NOT NULL
-				)
-				GROUP BY code
-				ORDER BY code ASC
+				SELECT statusCode, count() AS count
+				FROM uptimekit.monitor_events
+				WHERE monitorId = {monitorId:String}
+					AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
+					AND statusCode IS NOT NULL
+				GROUP BY statusCode
+				ORDER BY statusCode ASC
 			`,
 			{ monitorId: query.monitorId, startDate: query.since.getTime() },
 		);
