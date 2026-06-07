@@ -2,6 +2,7 @@ import { apiKeyClient } from "@better-auth/api-key/client";
 import type { BetterAuthClientPlugin } from "better-auth/client";
 import {
 	adminClient,
+	genericOAuthClient,
 	organizationClient,
 	twoFactorClient,
 } from "better-auth/client/plugins";
@@ -12,6 +13,7 @@ const apiKeyPlugin = apiKeyClient() as unknown as BetterAuthClientPlugin;
 const authClientPlugins = [
 	apiKeyPlugin,
 	adminClient(),
+	genericOAuthClient(),
 	organizationClient(),
 	twoFactorClient({
 		onTwoFactorRedirect: () => {

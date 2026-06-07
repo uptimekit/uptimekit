@@ -12,6 +12,7 @@ import { Loader2 } from "@/components/icons";
 import { ApiKeySettings } from "@/components/settings/api-key-settings";
 import { GroupSettings } from "@/components/settings/group-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
+import { OidcSettings } from "@/components/settings/oidc-settings";
 import { TagSettings } from "@/components/settings/tag-settings";
 import { TeamSettings } from "@/components/settings/team-settings";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,7 @@ function OrganizationSettingsPageContent({
 		parseAsStringEnum([
 			"general",
 			"team",
+			"sso",
 			"api-keys",
 			"groups",
 			"tags",
@@ -174,7 +176,10 @@ function OrganizationSettingsPageContent({
 	}, [activeOrg, form, getFormValuesFromActiveOrg]);
 
 	useEffect(() => {
-		if (!canManageOrganization && activeTab === "api-keys") {
+		if (
+			!canManageOrganization &&
+			(activeTab === "api-keys" || activeTab === "sso")
+		) {
 			void setActiveTab("general");
 		}
 	}, [activeTab, canManageOrganization, setActiveTab]);
@@ -273,7 +278,10 @@ function OrganizationSettingsPageContent({
 						<TabsTab value="general">General</TabsTab>
 						<TabsTab value="team">Team</TabsTab>
 						{canManageOrganization && (
-							<TabsTab value="api-keys">API Keys</TabsTab>
+							<>
+								<TabsTab value="sso">SSO</TabsTab>
+								<TabsTab value="api-keys">API Keys</TabsTab>
+							</>
 						)}
 						<TabsTab value="groups">Groups</TabsTab>
 						<TabsTab value="tags">Tags</TabsTab>
@@ -423,6 +431,12 @@ function OrganizationSettingsPageContent({
 					<TabsPanel value="team">
 						<TeamSettings canManageMembers={canManageOrganization} />
 					</TabsPanel>
+
+					{canManageOrganization && (
+						<TabsPanel value="sso">
+							<OidcSettings />
+						</TabsPanel>
+					)}
 
 					{canManageOrganization && (
 						<TabsPanel value="api-keys">

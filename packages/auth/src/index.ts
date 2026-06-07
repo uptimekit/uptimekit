@@ -6,9 +6,20 @@ import type { Auth, BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { type BetterAuthOptions, betterAuth } from "better-auth/minimal";
 import { nextCookies } from "better-auth/next-js";
-import { admin, organization, twoFactor } from "better-auth/plugins";
+import {
+	admin,
+	genericOAuth,
+	organization,
+	twoFactor,
+} from "better-auth/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { eq } from "drizzle-orm";
+import {
+	ensureOrganizationOidcMembership,
+	getOrganizationIdFromOidcContext,
+	organizationOidcOAuthConfigs,
+	organizationOidcPlugin,
+} from "./organization-oidc";
 
 export const API_KEY_HEADER = "x-api-key";
 export const API_KEY_ORGANIZATION_HEADER = "x-organization-id";
@@ -167,6 +178,10 @@ const authConfig: BetterAuthOptions = {
 		twoFactor({
 			issuer: "UptimeKit",
 		}),
+		genericOAuth({
+			config: organizationOidcOAuthConfigs,
+		}),
+		organizationOidcPlugin(),
 		apiKey({
 			customAPIKeyGetter: (ctx) => getApiKeyFromHeaders(ctx.headers),
 			defaultPrefix: "uk_api_",
@@ -200,6 +215,10 @@ const authConfig: BetterAuthOptions = {
 		user: {
 			create: {
 				before: async (user, ctx) => {
+					if (await getOrganizationIdFromOidcContext(ctx)) {
+						return;
+					}
+
 					const [invite] = await db
 						.select()
 						.from(schema.invitation)
@@ -227,12 +246,19 @@ const authConfig: BetterAuthOptions = {
 						throw new Error("Registration is disabled on this instance.");
 					}
 				},
-				after: async (user) => {
+				after: async (user, ctx) => {
 					const users = await db
 						.select({ id: schema.user.id })
 						.from(schema.user)
 						.limit(2);
 					const isFirstUser = users.length === 1;
+					const oidcOrganizationId =
+						await getOrganizationIdFromOidcContext(ctx);
+
+					if (oidcOrganizationId) {
+						await ensureOrganizationOidcMembership(user.id, oidcOrganizationId);
+						return;
+					}
 
 					if (isFirstUser) {
 						await db
@@ -265,7 +291,22 @@ const authConfig: BetterAuthOptions = {
 		},
 		session: {
 			create: {
-				after: async (session) => {
+				after: async (session, ctx) => {
+					const oidcOrganizationId =
+						await getOrganizationIdFromOidcContext(ctx);
+
+					if (oidcOrganizationId) {
+						await ensureOrganizationOidcMembership(
+							session.userId,
+							oidcOrganizationId,
+						);
+						await db
+							.update(schema.session)
+							.set({ activeOrganizationId: oidcOrganizationId })
+							.where(eq(schema.session.id, session.id));
+						return;
+					}
+
 					if (!session.activeOrganizationId) {
 						const membership = await db
 							.select({ organizationId: schema.member.organizationId })

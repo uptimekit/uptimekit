@@ -1,16 +1,25 @@
+import { randomUUID } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import { auth } from "@uptimekit/auth";
+import {
+	getOidcDiscoveryUrl,
+	getOrganizationOidcProviderId,
+	normalizeOidcDomains,
+	normalizeOidcIssuer,
+	normalizeOidcScopes,
+} from "@uptimekit/auth/organization-oidc";
 import { db } from "@uptimekit/db";
 import {
 	session as authSession,
 	member,
 	organization,
+	organizationOidcProvider,
 	user,
 } from "@uptimekit/db/schema/auth";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { adminProcedure, protectedProcedure } from "../index";
+import { adminProcedure, protectedProcedure, writeProcedure } from "../index";
 import {
 	applyOrganizationLimitChanges,
 	getOrganizationQuotaState,
@@ -32,6 +41,38 @@ const organizationSlugSchema = z
 		message:
 			"Slug must use lowercase letters, numbers, and single hyphens between words.",
 	});
+
+const oidcDomainSchema = z
+	.string()
+	.trim()
+	.toLowerCase()
+	.transform((domain) => domain.replace(/^@/, ""))
+	.refine(
+		(domain) =>
+			/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(
+				domain,
+			),
+		{
+			message: "Enter a valid email domain, for example example.com.",
+		},
+	);
+
+const oidcProviderInputSchema = z.object({
+	name: z.string().trim().min(2).max(80),
+	enabled: z.boolean(),
+	issuer: z.string().trim().url(),
+	discoveryUrl: z.string().trim().url().nullable().optional(),
+	clientId: z.string().trim().min(1),
+	clientSecret: z
+		.string()
+		.optional()
+		.transform((secret) => {
+			const trimmedSecret = secret?.trim();
+			return trimmedSecret || undefined;
+		}),
+	domains: z.array(oidcDomainSchema).min(1).transform(normalizeOidcDomains),
+	scopes: z.array(z.string().trim().min(1)).min(1),
+});
 
 async function getOrganizationOrThrow(id: string) {
 	const [org] = await db
@@ -71,6 +112,37 @@ async function getOwnerUserId(ownerEmail: string) {
 	}
 
 	return owner.id;
+}
+
+function getActiveOrganizationIdOrThrow(
+	session: { activeOrganizationId?: string | null } | null | undefined,
+) {
+	if (!session?.activeOrganizationId) {
+		throw new ORPCError("UNAUTHORIZED", { message: "No active organization" });
+	}
+
+	return session.activeOrganizationId;
+}
+
+function toOidcProviderResponse(
+	provider: typeof organizationOidcProvider.$inferSelect,
+) {
+	return {
+		id: provider.id,
+		name: provider.name,
+		enabled: provider.enabled,
+		issuer: provider.issuer,
+		discoveryUrl: provider.discoveryUrl,
+		clientId: provider.clientId,
+		clientSecretConfigured: provider.clientSecret.length > 0,
+		domains: provider.domains,
+		scopes: provider.scopes,
+		callbackPath: `/api/auth/oauth2/callback/${getOrganizationOidcProviderId(
+			provider.id,
+		)}`,
+		createdAt: provider.createdAt,
+		updatedAt: provider.updatedAt,
+	};
 }
 
 export const organizationsRouter = {
@@ -351,5 +423,121 @@ export const organizationsRouter = {
 			}
 
 			return getOrganizationQuotaState(organizationId);
+		}),
+
+	getActiveOidcProvider: writeProcedure
+		.route({
+			method: "GET",
+			path: "/organizations/active/oidc-provider",
+			tags: ["Organizations"],
+			summary: "Get active organization OIDC provider",
+			description:
+				"Return the active organization's OIDC single sign-on provider settings.",
+		})
+		.handler(async ({ context }) => {
+			const organizationId = getActiveOrganizationIdOrThrow(
+				context.session.session,
+			);
+
+			const [provider] = await db
+				.select()
+				.from(organizationOidcProvider)
+				.where(eq(organizationOidcProvider.organizationId, organizationId))
+				.limit(1);
+
+			return provider ? toOidcProviderResponse(provider) : null;
+		}),
+
+	upsertActiveOidcProvider: writeProcedure
+		.route({
+			method: "PUT",
+			path: "/organizations/active/oidc-provider",
+			tags: ["Organizations"],
+			summary: "Update active organization OIDC provider",
+			description:
+				"Create or update the active organization's OIDC single sign-on provider settings.",
+		})
+		.input(oidcProviderInputSchema)
+		.handler(async ({ context, input }) => {
+			const organizationId = getActiveOrganizationIdOrThrow(
+				context.session.session,
+			);
+			const [existingProvider] = await db
+				.select()
+				.from(organizationOidcProvider)
+				.where(eq(organizationOidcProvider.organizationId, organizationId))
+				.limit(1);
+			const clientSecret = input.clientSecret ?? existingProvider?.clientSecret;
+
+			if (!clientSecret) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Client secret is required before enabling OIDC sign-in.",
+				});
+			}
+
+			const values = {
+				name: input.name,
+				enabled: input.enabled,
+				issuer: normalizeOidcIssuer(input.issuer),
+				discoveryUrl: getOidcDiscoveryUrl(input.issuer, input.discoveryUrl),
+				clientId: input.clientId,
+				clientSecret,
+				domains: input.domains,
+				scopes: normalizeOidcScopes(input.scopes),
+			};
+
+			if (existingProvider) {
+				const [updatedProvider] = await db
+					.update(organizationOidcProvider)
+					.set(values)
+					.where(eq(organizationOidcProvider.id, existingProvider.id))
+					.returning();
+
+				if (!updatedProvider) {
+					throw new ORPCError("NOT_FOUND", {
+						message: "OIDC provider not found",
+					});
+				}
+
+				return toOidcProviderResponse(updatedProvider);
+			}
+
+			const [createdProvider] = await db
+				.insert(organizationOidcProvider)
+				.values({
+					id: randomUUID(),
+					organizationId,
+					...values,
+				})
+				.returning();
+
+			if (!createdProvider) {
+				throw new ORPCError("INTERNAL_SERVER_ERROR", {
+					message: "Failed to create OIDC provider",
+				});
+			}
+
+			return toOidcProviderResponse(createdProvider);
+		}),
+
+	deleteActiveOidcProvider: writeProcedure
+		.route({
+			method: "DELETE",
+			path: "/organizations/active/oidc-provider",
+			tags: ["Organizations"],
+			summary: "Delete active organization OIDC provider",
+			description:
+				"Remove the active organization's OIDC single sign-on provider settings.",
+		})
+		.handler(async ({ context }) => {
+			const organizationId = getActiveOrganizationIdOrThrow(
+				context.session.session,
+			);
+
+			await db
+				.delete(organizationOidcProvider)
+				.where(eq(organizationOidcProvider.organizationId, organizationId));
+
+			return { success: true };
 		}),
 };

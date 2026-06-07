@@ -3,6 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { sileo } from "sileo";
 import z from "zod";
 import { AuthDivider } from "@/components/auth/auth-divider";
@@ -16,6 +17,32 @@ import {
 } from "@/components/ui/input-group";
 import { authClient } from "@/lib/auth-client";
 import Loader from "../common/loader";
+
+type OidcLookupResponse =
+	| { hasProvider: false }
+	| {
+			hasProvider: true;
+			organizationName: string;
+			providerId: string;
+			providerName: string;
+	  };
+
+async function lookupOrganizationOidcProvider(email: string) {
+	const response = await fetch("/api/auth/organization-oidc/lookup", {
+		method: "POST",
+		headers: {
+			"content-type": "application/json",
+		},
+		credentials: "include",
+		body: JSON.stringify({ email }),
+	});
+
+	if (!response.ok) {
+		throw new Error("Unable to check organization sign-in settings");
+	}
+
+	return (await response.json()) as OidcLookupResponse;
+}
 
 export default function SignInForm({
 	showRegister = true,
@@ -36,6 +63,7 @@ export default function SignInForm({
 }) {
 	const router = useRouter();
 	const { isPending } = authClient.useSession();
+	const [isPasswordStep, setIsPasswordStep] = useState(false);
 
 	const handleSocialSignIn = async (provider: "discord" | "github") => {
 		await authClient.signIn.social({
@@ -44,15 +72,71 @@ export default function SignInForm({
 		});
 	};
 
+	const getCallbackURL = () => {
+		if (onSuccess && typeof window !== "undefined") {
+			return `${window.location.pathname}${window.location.search}`;
+		}
+
+		return "/";
+	};
+
 	const form = useForm({
 		defaultValues: {
 			email: email || "",
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
+			const normalizedEmail = value.email.trim().toLowerCase();
+
+			if (!isPasswordStep) {
+				try {
+					const oidcLookup =
+						await lookupOrganizationOidcProvider(normalizedEmail);
+
+					if (oidcLookup.hasProvider) {
+						await authClient.signIn.oauth2(
+							{
+								providerId: oidcLookup.providerId,
+								callbackURL: getCallbackURL(),
+								errorCallbackURL: "/login",
+								additionalData: {
+									email: normalizedEmail,
+								},
+							},
+							{
+								onError: (error) => {
+									sileo.error({
+										title:
+											error.error.message ||
+											`Unable to start ${oidcLookup.providerName} sign-in`,
+									});
+								},
+							},
+						);
+						return;
+					}
+
+					setIsPasswordStep(true);
+					return;
+				} catch (error) {
+					sileo.error({
+						title:
+							error instanceof Error
+								? error.message
+								: "Unable to check organization sign-in settings",
+					});
+					return;
+				}
+			}
+
+			if (value.password.length < 8) {
+				sileo.error({ title: "Password must be at least 8 characters" });
+				return;
+			}
+
 			await authClient.signIn.email(
 				{
-					email: value.email,
+					email: normalizedEmail,
 					password: value.password,
 				},
 				{
@@ -80,7 +164,7 @@ export default function SignInForm({
 		validators: {
 			onSubmit: z.object({
 				email: z.email("Invalid email address"),
-				password: z.string().min(8, "Password must be at least 8 characters"),
+				password: z.string(),
 			}),
 		},
 	});
@@ -100,7 +184,9 @@ export default function SignInForm({
 			<div className="flex flex-col gap-1">
 				<h1 className="font-bold text-2xl tracking-wide">Welcome Back</h1>
 				<p className="text-base text-muted-foreground">
-					Enter your credentials to access your account.
+					{isPasswordStep
+						? "Enter your password to access your account."
+						: "Enter your email to continue."}
 				</p>
 			</div>
 			<form
@@ -125,7 +211,10 @@ export default function SignInForm({
 										type="email"
 										value={field.state.value}
 										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
+										onChange={(e) => {
+											field.handleChange(e.target.value);
+											setIsPasswordStep(false);
+										}}
 										placeholder="your.email@example.com"
 										disabled={emailReadOnly}
 										aria-invalid={showErrors || undefined}
@@ -148,41 +237,44 @@ export default function SignInForm({
 					}}
 				</form.Field>
 
-				<form.Field name="password">
-					{(field) => {
-						const showErrors =
-							field.state.meta.isTouched && field.state.meta.errors.length > 0;
+				{isPasswordStep && (
+					<form.Field name="password">
+						{(field) => {
+							const showErrors =
+								field.state.meta.isTouched &&
+								field.state.meta.errors.length > 0;
 
-						return (
-							<div className="flex flex-col gap-1.5">
-								<InputGroup>
-									<InputGroupInput
-										id={field.name}
-										name={field.name}
-										type="password"
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
-										placeholder="Password"
-										aria-invalid={showErrors || undefined}
-									/>
-									<InputGroupAddon align="inline-start">
-										<LockKeyholeIcon />
-									</InputGroupAddon>
-								</InputGroup>
-								{showErrors &&
-									field.state.meta.errors.map((error) => (
-										<p
-											key={error?.message}
-											className="font-medium text-destructive text-sm"
-										>
-											{error?.message}
-										</p>
-									))}
-							</div>
-						);
-					}}
-				</form.Field>
+							return (
+								<div className="flex flex-col gap-1.5">
+									<InputGroup>
+										<InputGroupInput
+											id={field.name}
+											name={field.name}
+											type="password"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											placeholder="Password"
+											aria-invalid={showErrors || undefined}
+										/>
+										<InputGroupAddon align="inline-start">
+											<LockKeyholeIcon />
+										</InputGroupAddon>
+									</InputGroup>
+									{showErrors &&
+										field.state.meta.errors.map((error) => (
+											<p
+												key={error?.message}
+												className="font-medium text-destructive text-sm"
+											>
+												{error?.message}
+											</p>
+										))}
+								</div>
+							);
+						}}
+					</form.Field>
+				)}
 
 				<form.Subscribe>
 					{(state) => (
@@ -192,7 +284,13 @@ export default function SignInForm({
 							size="sm"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
-							{state.isSubmitting ? "Signing In..." : "Sign In"}
+							{state.isSubmitting
+								? isPasswordStep
+									? "Signing In..."
+									: "Continuing..."
+								: isPasswordStep
+									? "Sign In"
+									: "Continue"}
 						</Button>
 					)}
 				</form.Subscribe>

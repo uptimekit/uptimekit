@@ -3,6 +3,7 @@ import {
 	boolean,
 	index,
 	integer,
+	json,
 	pgTable,
 	text,
 	timestamp,
@@ -147,6 +148,35 @@ export const organization = pgTable("organization", {
 	metadata: text("metadata"),
 });
 
+export const organizationOidcProvider = pgTable(
+	"organization_oidc_provider",
+	{
+		id: text("id").primaryKey(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		name: text("name").notNull(),
+		enabled: boolean("enabled").default(false).notNull(),
+		issuer: text("issuer").notNull(),
+		discoveryUrl: text("discovery_url").notNull(),
+		clientId: text("client_id").notNull(),
+		clientSecret: text("client_secret").notNull(),
+		domains: json("domains").$type<string[]>().notNull(),
+		scopes: json("scopes").$type<string[]>().notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at")
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
+	},
+	(table) => [
+		index("organization_oidc_provider_organization_idx").on(
+			table.organizationId,
+		),
+		index("organization_oidc_provider_enabled_idx").on(table.enabled),
+	],
+);
+
 export const member = pgTable(
 	"member",
 	{
@@ -221,7 +251,18 @@ export const organizationRelations = relations(organization, ({ many }) => ({
 	apikeys: many(apikey),
 	members: many(member),
 	invitations: many(invitation),
+	oidcProviders: many(organizationOidcProvider),
 }));
+
+export const organizationOidcProviderRelations = relations(
+	organizationOidcProvider,
+	({ one }) => ({
+		organization: one(organization, {
+			fields: [organizationOidcProvider.organizationId],
+			references: [organization.id],
+		}),
+	}),
+);
 
 export const memberRelations = relations(member, ({ one }) => ({
 	organization: one(organization, {
