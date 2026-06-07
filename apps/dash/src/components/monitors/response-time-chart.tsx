@@ -418,6 +418,31 @@ const getGapBands = (
 			: [];
 	});
 
+const getStatusSeverity = (status: string) => {
+	switch (status) {
+		case "down":
+			return 2;
+		case "degraded":
+			return 1;
+		default:
+			return 0;
+	}
+};
+
+const setWorstLocationStatus = (
+	statusesByLocation: Map<string, string>,
+	location: string,
+	status: string,
+) => {
+	const currentStatus = statusesByLocation.get(location);
+	if (
+		!currentStatus ||
+		getStatusSeverity(status) > getStatusSeverity(currentStatus)
+	) {
+		statusesByLocation.set(location, status);
+	}
+};
+
 const createNullChartPoint = <
 	T extends { timestamp: string; timestampMs: number; label: string },
 >(
@@ -483,7 +508,11 @@ const getStatusBands = (
 			statusesByLocation: new Map<string, string>(),
 		};
 		if (point.location) {
-			bucket.statusesByLocation.set(point.location, point.status);
+			setWorstLocationStatus(
+				bucket.statusesByLocation,
+				point.location,
+				point.status,
+			);
 		} else {
 			bucket.aggregateStatuses.push(point.status);
 		}
