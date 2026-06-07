@@ -153,7 +153,21 @@ function getMergedIncidentStatus(
 
 	const targetStatus = parseIncidentStatus(target.status);
 	if (!target.endedAt && targetStatus !== "resolved") {
-		return targetStatus;
+		const allOpenStatuses = items
+			.filter((item) => !item.endedAt)
+			.map((item) => parseIncidentStatus(item.status))
+			.filter(
+				(status): status is Exclude<IncidentStatus, "resolved"> =>
+					status !== "resolved",
+			);
+
+		return allOpenStatuses.reduce<Exclude<IncidentStatus, "resolved">>(
+			(highest, status) =>
+				openIncidentStatusRank[status] > openIncidentStatusRank[highest]
+					? status
+					: highest,
+			targetStatus as Exclude<IncidentStatus, "resolved">,
+		);
 	}
 
 	const openStatuses = items
