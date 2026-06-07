@@ -23,6 +23,7 @@ import {
 	HelpCircle,
 	Loader2,
 	MoreHorizontal,
+	Network,
 	Plus,
 	Search,
 	ShieldAlert,
@@ -41,7 +42,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogPanel,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -56,6 +65,7 @@ import {
 	PaginationEllipsis,
 	PaginationItem,
 } from "@/components/ui/pagination";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
 	Select,
 	SelectContent,
@@ -182,6 +192,10 @@ export function IncidentsTable() {
 	const [selectedIncidentIds, setSelectedIncidentIds] = useState<Set<string>>(
 		() => new Set(),
 	);
+	const [mergeOpen, setMergeOpen] = useState(false);
+	const [mergePrimaryIncidentId, setMergePrimaryIncidentId] = useState<
+		string | null
+	>(null);
 	const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
 	const [incidentToDelete, setIncidentToDelete] = useState<{
 		id: string;
@@ -246,7 +260,6 @@ export function IncidentsTable() {
 		.filter((incident) => !incident.endedAt && !incident.acknowledgedAt)
 		.map((incident) => incident.id);
 	const selectedCount = selectedIds.length;
-	const selectedActionableCount = selectedOpenIds.length;
 	const visibleStart =
 		total === 0 ? 0 : Math.min((page - 1) * pageSize + 1, total);
 	const visibleEnd = total === 0 ? 0 : Math.min(page * pageSize, total);
@@ -362,6 +375,25 @@ export function IncidentsTable() {
 		},
 	});
 
+	const mergeIncidents = useMutation({
+		mutationFn: (input: {
+			targetIncidentId: string;
+			sourceIncidentIds: string[];
+		}) => client.incidents.merge(input),
+		onSuccess: (_data, input) => {
+			sileo.success({
+				title: `${formatIncidentCount(input.sourceIncidentIds.length)} merged`,
+			});
+			queryClient.invalidateQueries({ queryKey: orpc.incidents.list.key() });
+			setSelectedIncidentIds(new Set());
+			setMergePrimaryIncidentId(null);
+			setMergeOpen(false);
+		},
+		onError: (err) => {
+			sileo.error({ title: `Failed to merge incidents: ${err.message}` });
+		},
+	});
+
 	useEffect(() => {
 		if (!incidents) {
 			return;
@@ -378,6 +410,7 @@ export function IncidentsTable() {
 		});
 	}, [incidents]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: selection should reset when table query inputs change.
 	useEffect(() => {
 		setSelectedIncidentIds(new Set());
 	}, [
@@ -455,6 +488,37 @@ export function IncidentsTable() {
 		bulkIncidentAction.mutate({ action, ids });
 	};
 
+	const openMergeDialog = () => {
+		if (selectedIncidents.length < 2) {
+			return;
+		}
+
+		setMergePrimaryIncidentId(
+			selectedIncidents.find((incident) => !incident.endedAt)?.id ??
+				selectedIncidents[0].id,
+		);
+		setMergeOpen(true);
+	};
+
+	const runMergeAction = () => {
+		if (!mergePrimaryIncidentId) {
+			return;
+		}
+
+		const sourceIncidentIds = selectedIds.filter(
+			(id) => id !== mergePrimaryIncidentId,
+		);
+
+		if (sourceIncidentIds.length === 0) {
+			return;
+		}
+
+		mergeIncidents.mutate({
+			targetIncidentId: mergePrimaryIncidentId,
+			sourceIncidentIds,
+		});
+	};
+
 	const clearFilters = () => {
 		setSearchInput("");
 		void setFilters({
@@ -479,6 +543,89 @@ export function IncidentsTable() {
 
 	return (
 		<div className="mx-auto w-full max-w-6xl space-y-4">
+			<Dialog
+				open={mergeOpen}
+				onOpenChange={(open) => {
+					if (!mergeIncidents.isPending) {
+						setMergeOpen(open);
+					}
+				}}
+			>
+				<DialogContent className="sm:max-w-[560px]">
+					<DialogHeader>
+						<DialogTitle>Merge incidents</DialogTitle>
+						<DialogDescription>
+							Choose the incident that should remain. The other selected
+							incidents will be folded into it.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogPanel className="space-y-3">
+						<RadioGroup
+							value={mergePrimaryIncidentId ?? ""}
+							onValueChange={setMergePrimaryIncidentId}
+						>
+							{selectedIncidents.map((incident) => (
+								<label
+									key={incident.id}
+									htmlFor={`merge-primary-${incident.id}`}
+									className={cn(
+										"flex cursor-pointer items-start gap-3 rounded-lg border bg-popover p-3 transition-colors hover:bg-accent/50",
+										mergePrimaryIncidentId === incident.id &&
+											"border-primary bg-primary/5",
+									)}
+								>
+									<RadioGroupItem
+										id={`merge-primary-${incident.id}`}
+										value={incident.id}
+										className="mt-1"
+									/>
+									<div className="min-w-0 flex-1 space-y-1">
+										<div className="truncate font-medium text-sm">
+											{incident.title}
+										</div>
+										<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+											<span>
+												Started{" "}
+												{formatDistanceToNow(new Date(incident.startedAt), {
+													addSuffix: true,
+												})}
+											</span>
+											<Badge variant="outline" className="h-5 capitalize">
+												{incident.status}
+											</Badge>
+											<Badge variant="outline" className="h-5 capitalize">
+												{incident.severity}
+											</Badge>
+										</div>
+									</div>
+								</label>
+							))}
+						</RadioGroup>
+					</DialogPanel>
+					<DialogFooter>
+						<Button
+							variant="ghost"
+							onClick={() => setMergeOpen(false)}
+							disabled={mergeIncidents.isPending}
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={runMergeAction}
+							disabled={!mergePrimaryIncidentId || mergeIncidents.isPending}
+						>
+							{mergeIncidents.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Merging...
+								</>
+							) : (
+								"Merge incidents"
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 			<Dialog open={searchOpen} onOpenChange={setSearchOpen}>
 				<DialogContent className="flex items-center justify-center border-none bg-transparent p-0 shadow-none sm:max-w-[425px]">
 					<DialogTitle className="sr-only">Search</DialogTitle>
@@ -845,6 +992,19 @@ export function IncidentsTable() {
 										? ` (${selectedOpenIds.length})`
 										: ""}
 								</span>
+							</Button>
+							<Button
+								variant="outline"
+								size="xs"
+								onClick={openMergeDialog}
+								disabled={
+									bulkIncidentAction.isPending ||
+									mergeIncidents.isPending ||
+									selectedCount < 2
+								}
+							>
+								<Network className="h-4 w-4" />
+								<span className="hidden sm:inline">Merge</span>
 							</Button>
 							<Button
 								variant="destructive-outline"

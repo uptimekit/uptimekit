@@ -56,7 +56,6 @@ describe("notification outbox processor", () => {
 		);
 		await cleanupAppEventOutbox({
 			sql,
-			now: new Date("2026-06-01T10:00:00.000Z"),
 		});
 
 		for (const call of sql.mock.calls) {

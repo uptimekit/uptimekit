@@ -34,6 +34,14 @@ export interface AppEvents {
 		severity: "minor" | "major" | "critical";
 		userId?: string | null;
 	};
+	"incident.merged": {
+		incidentId: string;
+		organizationId: string;
+		title: string;
+		description?: string | null;
+		severity: "minor" | "major" | "critical";
+		sourceIncidentIds: string[];
+	};
 	"incident.deleted": {
 		incidentId: string;
 		organizationId: string;

@@ -22,17 +22,61 @@ const incidentStatusSchema = z.enum([
 	"monitoring",
 	"resolved",
 ]);
+const incidentSeveritySchema = z.enum(["minor", "major", "critical"]);
+
+type IncidentStatus = z.infer<typeof incidentStatusSchema>;
+type IncidentSeverity = z.infer<typeof incidentSeveritySchema>;
+
+const incidentSeverityRank: Record<IncidentSeverity, number> = {
+	minor: 0,
+	major: 1,
+	critical: 2,
+};
+
+const openIncidentStatusRank: Record<
+	Exclude<IncidentStatus, "resolved">,
+	number
+> = {
+	investigating: 0,
+	identified: 1,
+	monitoring: 2,
+};
 
 const incidentUpdateInputSchema = z.object({
 	id: z.string(),
 	title: z.string().min(1),
 	description: z.string().optional(),
-	severity: z.enum(["minor", "major", "critical"]),
+	severity: incidentSeveritySchema,
 	startedAt: incidentTimestampSchema,
 	endedAt: incidentTimestampSchema.nullable().optional(),
 	monitorIds: z.array(z.string()).default([]),
 	statusPageIds: z.array(z.string()).default([]),
 });
+
+const mergeIncidentsInputSchema = z
+	.object({
+		targetIncidentId: z.string(),
+		sourceIncidentIds: z.array(z.string()).min(1).max(25),
+	})
+	.superRefine((value, ctx) => {
+		const uniqueSourceIds = new Set(value.sourceIncidentIds);
+
+		if (uniqueSourceIds.size !== value.sourceIncidentIds.length) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Source incidents must be unique",
+				path: ["sourceIncidentIds"],
+			});
+		}
+
+		if (uniqueSourceIds.has(value.targetIncidentId)) {
+			ctx.addIssue({
+				code: "custom",
+				message: "Target incident cannot also be a source incident",
+				path: ["targetIncidentId"],
+			});
+		}
+	});
 
 function getActiveOrganizationId(
 	activeOrganizationId: string | null | undefined,
@@ -78,6 +122,82 @@ function deriveStatusForEndedAt(
 	}
 
 	return existingStatus as z.infer<typeof incidentStatusSchema>;
+}
+
+function parseIncidentStatus(status: string): IncidentStatus {
+	return incidentStatusSchema.catch("investigating").parse(status);
+}
+
+function parseIncidentSeverity(severity: string): IncidentSeverity {
+	return incidentSeveritySchema.catch("major").parse(severity);
+}
+
+function getHighestSeverity(items: { severity: string }[]) {
+	return items.reduce<IncidentSeverity>((highest, item) => {
+		const severity = parseIncidentSeverity(item.severity);
+
+		return incidentSeverityRank[severity] > incidentSeverityRank[highest]
+			? severity
+			: highest;
+	}, "minor");
+}
+
+function getMergedIncidentStatus(
+	target: { endedAt: Date | null; status: string },
+	items: { endedAt: Date | null; status: string }[],
+	endedAt: Date | null,
+) {
+	if (endedAt) {
+		return "resolved";
+	}
+
+	const targetStatus = parseIncidentStatus(target.status);
+	if (!target.endedAt && targetStatus !== "resolved") {
+		return targetStatus;
+	}
+
+	const openStatuses = items
+		.filter((item) => !item.endedAt)
+		.map((item) => parseIncidentStatus(item.status))
+		.filter(
+			(status): status is Exclude<IncidentStatus, "resolved"> =>
+				status !== "resolved",
+		);
+
+	return openStatuses.reduce<Exclude<IncidentStatus, "resolved">>(
+		(highest, status) =>
+			openIncidentStatusRank[status] > openIncidentStatusRank[highest]
+				? status
+				: highest,
+		"investigating",
+	);
+}
+
+function getMergedStartedAt(items: { startedAt: Date }[]) {
+	return new Date(Math.min(...items.map((item) => item.startedAt.getTime())));
+}
+
+function getMergedEndedAt(items: { endedAt: Date | null }[]) {
+	if (items.some((item) => !item.endedAt)) {
+		return null;
+	}
+
+	return new Date(
+		Math.max(...items.map((item) => item.endedAt?.getTime() ?? 0)),
+	);
+}
+
+function getMissingIncidentLinkIds(targetIds: string[], allIds: string[]) {
+	const targetIdSet = new Set(targetIds);
+	const idsToInsert = new Set<string>();
+
+	for (const id of allIds) {
+		if (!targetIdSet.has(id)) {
+			idsToInsert.add(id);
+		}
+	}
+
+	return Array.from(idsToInsert);
 }
 
 async function assertOrganizationResources(
@@ -288,7 +408,7 @@ export const incidentsRouter = {
 			z.object({
 				title: z.string().min(1),
 				description: z.string().optional(),
-				severity: z.enum(["minor", "major", "critical"]),
+				severity: incidentSeveritySchema,
 				monitorIds: z.array(z.string()).default([]),
 				statusPageIds: z.array(z.string()).default([]),
 				startedAt: incidentTimestampSchema.optional(),
@@ -689,6 +809,155 @@ export const incidentsRouter = {
 			await processPendingNotifications("incident-resolved");
 
 			return { success: true };
+		}),
+
+	merge: writeProcedure
+		.route({
+			method: "POST",
+			path: "/incidents/{targetIncidentId}/merge",
+			tags: ["Incident Management"],
+			summary: "Merge incidents",
+			description:
+				"Merge one or more incidents into a target incident and remove the merged source incidents.",
+		})
+		.input(mergeIncidentsInputSchema)
+		.handler(async ({ input, context }) => {
+			const organizationId = getActiveOrganizationId(
+				context.session.session.activeOrganizationId,
+			);
+			const incidentIds = [input.targetIncidentId, ...input.sourceIncidentIds];
+			const incidents = await db.query.incident.findMany({
+				where: and(
+					eq(incident.organizationId, organizationId),
+					inArray(incident.id, incidentIds),
+				),
+				with: {
+					monitors: true,
+					statusPages: true,
+				},
+			});
+
+			if (incidents.length !== incidentIds.length) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "One or more incidents were not found",
+				});
+			}
+
+			const incidentsById = new Map(incidents.map((item) => [item.id, item]));
+			const target = incidentsById.get(input.targetIncidentId);
+			if (!target) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Target incident not found",
+				});
+			}
+
+			const sourceIncidents = input.sourceIncidentIds.map((id) =>
+				incidentsById.get(id),
+			);
+			if (sourceIncidents.some((item) => !item)) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "One or more source incidents were not found",
+				});
+			}
+
+			const sources = sourceIncidents as NonNullable<
+				(typeof sourceIncidents)[number]
+			>[];
+			const mergedIncidents = [target, ...sources];
+			const startedAt = getMergedStartedAt(mergedIncidents);
+			const endedAt = getMergedEndedAt(mergedIncidents);
+			const severity = getHighestSeverity(mergedIncidents);
+			const status = getMergedIncidentStatus(target, mergedIncidents, endedAt);
+			const now = new Date();
+			const targetMonitorIds = target.monitors.map((item) => item.monitorId);
+			const allMonitorIds = mergedIncidents.flatMap((item) =>
+				item.monitors.map((monitorLink) => monitorLink.monitorId),
+			);
+			const targetStatusPageIds = target.statusPages.map(
+				(item) => item.statusPageId,
+			);
+			const allStatusPageIds = mergedIncidents.flatMap((item) =>
+				item.statusPages.map((statusPageLink) => statusPageLink.statusPageId),
+			);
+			const monitorLinksToInsert = getMissingIncidentLinkIds(
+				targetMonitorIds,
+				allMonitorIds,
+			).map((monitorId) => ({
+				incidentId: target.id,
+				monitorId,
+			}));
+			const statusPageLinksToInsert = getMissingIncidentLinkIds(
+				targetStatusPageIds,
+				allStatusPageIds,
+			).map((statusPageId) => ({
+				incidentId: target.id,
+				statusPageId,
+			}));
+			const sourceTitles = sources
+				.map((source) => source.title)
+				.sort((a, b) => a.localeCompare(b));
+			const mergedCount = sources.length;
+
+			await db.transaction(async (tx) => {
+				await tx
+					.update(incident)
+					.set({
+						startedAt,
+						endedAt,
+						status,
+						severity,
+						resolvedAt: endedAt,
+						updatedAt: now,
+					})
+					.where(eq(incident.id, target.id));
+
+				if (monitorLinksToInsert.length > 0) {
+					await tx.insert(incidentMonitor).values(monitorLinksToInsert);
+				}
+
+				if (statusPageLinksToInsert.length > 0) {
+					await tx.insert(incidentStatusPage).values(statusPageLinksToInsert);
+				}
+
+				await tx
+					.update(incidentActivity)
+					.set({
+						incidentId: target.id,
+					})
+					.where(inArray(incidentActivity.incidentId, input.sourceIncidentIds));
+
+				await tx.insert(incidentActivity).values({
+					id: crypto.randomUUID(),
+					incidentId: target.id,
+					message: `Merged ${mergedCount} incident${mergedCount === 1 ? "" : "s"} into this incident: ${sourceTitles.join(", ")}`,
+					type: "event",
+					createdAt: now,
+					userId: context.session.user.id,
+				});
+
+				await tx
+					.delete(incident)
+					.where(inArray(incident.id, input.sourceIncidentIds));
+
+				await publishAppEvent(
+					"incident.merged",
+					{
+						incidentId: target.id,
+						organizationId,
+						title: target.title,
+						description: target.description,
+						severity,
+						sourceIncidentIds: input.sourceIncidentIds,
+					},
+					{ tx },
+				);
+			});
+			await processPendingNotifications("incident-merged");
+
+			return {
+				id: target.id,
+				mergedIncidentIds: input.sourceIncidentIds,
+			};
 		}),
 
 	addComment: writeProcedure
