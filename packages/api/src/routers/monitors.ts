@@ -1376,6 +1376,50 @@ export const monitorsRouter = {
 			}));
 		}),
 
+	getStatusCodeDistribution: protectedProcedure
+		.route({
+			method: "GET",
+			path: "/monitors/{monitorId}/status-codes",
+			tags: ["monitors"],
+			summary: "Get status code distribution",
+			description: "Retrieve historical HTTP status code counts for a monitor.",
+		})
+		.input(
+			z.object({
+				monitorId: z.string(),
+				range: responseTimeRangeSchema,
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const { session } = context.session;
+			const mon = await db.query.monitor.findFirst({
+				where: (t, { eq, and }) =>
+					and(
+						eq(t.id, input.monitorId),
+						eq(t.organizationId, session.activeOrganizationId!),
+					),
+			});
+
+			if (!mon) {
+				throw new ORPCError("NOT_FOUND", { message: "Monitor not found" });
+			}
+
+			if (!URL_MONITOR_TYPES.has(mon.type)) {
+				return [];
+			}
+
+			const startDate = getResponseTimeRangeStart(input.range, mon.createdAt);
+			const statusCodes = await timeseries.getStatusCodeDistribution({
+				monitorId: input.monitorId,
+				since: startDate,
+			});
+
+			return statusCodes.map((row) => ({
+				statusCode: row.statusCode,
+				count: row.count,
+			}));
+		}),
+
 	getAvailability: protectedProcedure
 		.route({
 			method: "GET",

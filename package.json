@@ -23,6 +23,8 @@
 		"db:studio": "turbo -F @uptimekit/db db:studio",
 		"db:generate": "turbo -F @uptimekit/db db:generate",
 		"db:migrate": "turbo -F @uptimekit/db db:migrate",
+		"db:seed": "tsx scripts/seed-db.ts",
+		"db:seed:timescale": "TIMESERIES_BACKEND=timescale tsx scripts/seed-db.ts",
 		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
 	},
 	"dependencies": {

@@ -191,6 +191,114 @@ export const workersRouter = {
 			},
 		),
 
+	update: protectedProcedure
+		.route({
+			method: "PATCH",
+			path: "/workers/{id}",
+			tags: ["Worker Management"],
+			summary: "Update worker",
+			description: "Update a monitoring worker's name and location.",
+		})
+		.input(
+			z.object({
+				id: z.string(),
+				name: z.string().trim().min(1),
+				location: z.string().trim().min(1),
+			}),
+		)
+		.handler(async ({ input, context }): Promise<Worker> => {
+			requireInstanceAdmin(context);
+
+			const updatedWorker = await db.transaction(async (tx) => {
+				const [existingWorker] = await tx
+					.select()
+					.from(worker)
+					.where(eq(worker.id, input.id))
+					.limit(1);
+
+				if (!existingWorker) {
+					throw new ORPCError("NOT_FOUND");
+				}
+
+				const [nextWorker] = await tx
+					.update(worker)
+					.set({
+						name: input.name,
+						location: input.location,
+					})
+					.where(eq(worker.id, input.id))
+					.returning();
+
+				if (!nextWorker) {
+					throw new ORPCError("INTERNAL_SERVER_ERROR");
+				}
+
+				if (existingWorker.location !== input.location) {
+					const affectedMonitors = await tx
+						.select({
+							id: monitor.id,
+							workerIds: monitor.workerIds,
+						})
+						.from(monitor)
+						.where(
+							sql`${monitor.workerIds}::jsonb @> ${JSON.stringify([input.id])}::jsonb`,
+						);
+
+					const assignedWorkerIds = [
+						...new Set(
+							affectedMonitors.flatMap(
+								(monitorRecord) =>
+									(monitorRecord.workerIds as string[] | null) ?? [],
+							),
+						),
+					];
+
+					const assignedWorkers =
+						assignedWorkerIds.length > 0
+							? await tx
+									.select({
+										id: worker.id,
+										location: worker.location,
+									})
+									.from(worker)
+									.where(inArray(worker.id, assignedWorkerIds))
+							: [];
+
+					const locationByWorkerId = new Map(
+						assignedWorkers.map((workerRecord) => [
+							workerRecord.id,
+							workerRecord.location,
+						]),
+					);
+
+					for (const monitorRecord of affectedMonitors) {
+						const nextLocations = [
+							...new Set(
+								((monitorRecord.workerIds as string[] | null) ?? [])
+									.map((workerId) => locationByWorkerId.get(workerId))
+									.filter(
+										(location): location is string => location !== undefined,
+									),
+							),
+						];
+
+						await tx
+							.update(monitor)
+							.set({
+								locations: nextLocations,
+							})
+							.where(eq(monitor.id, monitorRecord.id));
+					}
+				}
+
+				return nextWorker;
+			});
+
+			logger.info(`Updated worker ${updatedWorker.name}`);
+
+			return updatedWorker;
+		}),
+
 	rotateKey: protectedProcedure
 		.route({
 			method: "POST",

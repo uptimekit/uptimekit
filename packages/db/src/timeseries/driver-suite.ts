@@ -311,6 +311,65 @@ export function defineDriverTests(
 				expect(Math.round(avg)).toBe(50);
 			});
 
+			it("counts status codes over a time window", async () => {
+				const driver = getDriver();
+				const monitorId = uid("status-codes");
+				const now = new Date();
+
+				await driver.insertMonitorEvents([
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 100,
+						timestamp: new Date(now.getTime() - 120_000),
+						statusCode: 404,
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 100,
+						timestamp: new Date(now.getTime() - 45_000),
+						statusCode: 200,
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "up",
+						latency: 120,
+						timestamp: new Date(now.getTime() - 30_000),
+						statusCode: 200,
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "down",
+						latency: 0,
+						timestamp: new Date(now.getTime() - 15_000),
+						statusCode: 500,
+					},
+					{
+						id: crypto.randomUUID(),
+						monitorId,
+						status: "down",
+						latency: 0,
+						timestamp: now,
+						statusCode: null,
+					},
+				]);
+
+				const statusCodes = await driver.getStatusCodeDistribution({
+					monitorId,
+					since: new Date(now.getTime() - 60_000),
+				});
+
+				expect(statusCodes).toEqual([
+					{ statusCode: 200, count: 2 },
+					{ statusCode: 500, count: 1 },
+				]);
+			});
+
 			it("buckets hourly uptime stats", async () => {
 				const driver = getDriver();
 				const monitorId = uid("hourly");

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WorkerApiKeyManager } from "@/components/admin/worker-api-key-manager";
+import { WorkerGeneralInfoForm } from "@/components/admin/worker-general-info-form";
 import { ChevronLeft } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +15,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 // Disable prerendering - this page needs database access at runtime
@@ -67,28 +66,13 @@ export default async function EditWorkerPage({
 			</div>
 
 			<div className="grid gap-6 md:grid-cols-2">
-				<Card>
-					<CardHeader>
-						<CardTitle>General Information</CardTitle>
-						<CardDescription>Update worker details.</CardDescription>
-					</CardHeader>
-					<CardContent className="grid gap-4">
-						<div className="grid gap-2">
-							<Label>Name</Label>
-							<Input defaultValue={w.name} disabled />
-							<p className="text-[0.8rem] text-muted-foreground">
-								Editing name is currently disabled.
-							</p>
-						</div>
-						<div className="grid gap-2">
-							<Label>Location</Label>
-							<Input defaultValue={w.location} disabled />
-							<p className="text-[0.8rem] text-muted-foreground">
-								Location cannot be changed after creation.
-							</p>
-						</div>
-					</CardContent>
-				</Card>
+				<WorkerGeneralInfoForm
+					worker={{
+						id: w.id,
+						name: w.name,
+						location: w.location,
+					}}
+				/>
 
 				<Card>
 					<CardHeader>

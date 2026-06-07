@@ -14,6 +14,8 @@ import type {
 	SingleLatestChange,
 	SingleLatestEvent,
 	SparklinePoint,
+	StatusCodeDistributionPoint,
+	StatusCodeDistributionQuery,
 	WorkerStatus,
 } from "./types";
 
@@ -564,6 +566,28 @@ export class TimescaleDriver implements TimeSeriesDriver {
 				transfer: r.transfer != null ? Number(r.transfer) : null,
 			}))
 			.reverse();
+	}
+
+	async getStatusCodeDistribution(
+		query: StatusCodeDistributionQuery,
+	): Promise<StatusCodeDistributionPoint[]> {
+		await this.ensureSchema();
+
+		const sql = this.getClient();
+		const rows = await sql<{ status_code: number; count: number | string }[]>`
+			SELECT status_code, COUNT(*) AS count
+			FROM monitor_events
+			WHERE monitor_id = ${query.monitorId}
+				AND timestamp >= ${query.since}
+				AND status_code IS NOT NULL
+			GROUP BY status_code
+			ORDER BY status_code ASC
+		`;
+
+		return rows.map((row) => ({
+			statusCode: Number(row.status_code),
+			count: Number(row.count),
+		}));
 	}
 
 	async getRecentLatenciesByMonitor(

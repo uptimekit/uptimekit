@@ -77,6 +77,11 @@ export interface SparklinePoint {
 	timestamp: Date;
 }
 
+export interface StatusCodeDistributionPoint {
+	statusCode: number;
+	count: number;
+}
+
 export interface HourlyUptimeStat {
 	dateHour: string;
 	totalChecks: number;
@@ -92,6 +97,11 @@ export interface ResponseTimesQuery {
 	bucketSeconds?: number;
 	bucketQuantile?: number;
 	groupByLocation?: boolean;
+}
+
+export interface StatusCodeDistributionQuery {
+	monitorId: string;
+	since: Date;
 }
 
 export interface ChangeTimelineQuery {

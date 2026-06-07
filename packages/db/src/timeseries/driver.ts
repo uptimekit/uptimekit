@@ -12,6 +12,8 @@ import type {
 	SingleLatestChange,
 	SingleLatestEvent,
 	SparklinePoint,
+	StatusCodeDistributionPoint,
+	StatusCodeDistributionQuery,
 	WorkerStatus,
 } from "./types";
 
@@ -39,6 +41,9 @@ export interface TimeSeriesDriver {
 
 	getChangeTimeline(query: ChangeTimelineQuery): Promise<ChangeTimelineItem[]>;
 	getResponseTimes(query: ResponseTimesQuery): Promise<ResponseTimePoint[]>;
+	getStatusCodeDistribution(
+		query: StatusCodeDistributionQuery,
+	): Promise<StatusCodeDistributionPoint[]>;
 
 	getRecentLatenciesByMonitor(
 		monitorIds: string[],

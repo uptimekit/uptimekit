@@ -14,6 +14,8 @@ import type {
 	SingleLatestChange,
 	SingleLatestEvent,
 	SparklinePoint,
+	StatusCodeDistributionPoint,
+	StatusCodeDistributionQuery,
 	WorkerStatus,
 } from "./types";
 
@@ -528,6 +530,34 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				transfer: r.transfer != null ? Number(r.transfer) : null,
 			}))
 			.reverse();
+	}
+
+	async getStatusCodeDistribution(
+		query: StatusCodeDistributionQuery,
+	): Promise<StatusCodeDistributionPoint[]> {
+		const rows = await this.queryJson<{
+			statusCode: number | string;
+			count: number | string;
+		}>(
+			`
+				SELECT code AS statusCode, count() AS count
+				FROM (
+					SELECT assumeNotNull(statusCode) AS code
+					FROM uptimekit.monitor_events
+					WHERE monitorId = {monitorId:String}
+						AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
+						AND statusCode IS NOT NULL
+				)
+				GROUP BY code
+				ORDER BY code ASC
+			`,
+			{ monitorId: query.monitorId, startDate: query.since.getTime() },
+		);
+
+		return rows.map((row) => ({
+			statusCode: Number(row.statusCode),
+			count: Number(row.count),
+		}));
 	}
 
 	async getRecentLatenciesByMonitor(

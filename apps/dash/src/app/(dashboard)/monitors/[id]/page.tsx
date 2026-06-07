@@ -17,11 +17,14 @@ import {
 import { AvailabilityTable } from "@/components/monitors/availability-table";
 import { MonitorCards } from "@/components/monitors/monitor-cards";
 import { ResponseTimeChart } from "@/components/monitors/response-time-chart";
+import { StatusCodePieChart } from "@/components/monitors/status-code-pie-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
+
+const STATUS_CODE_MONITOR_TYPES = new Set(["http", "http-json", "keyword"]);
 
 function getPauseDescription(pauseReason?: string | null) {
 	switch (pauseReason) {
@@ -189,6 +192,7 @@ export default function MonitorDetailsPage() {
 	const monitorHref =
 		monitor.type === "http" ? getSafeHttpHref(monitorTarget) : null;
 	const statusReason = (monitor as any).statusReason as string | null;
+	const showStatusCodeChart = STATUS_CODE_MONITOR_TYPES.has(monitor.type);
 
 	return (
 		<div className="flex flex-col gap-6 p-6">
@@ -286,6 +290,8 @@ export default function MonitorDetailsPage() {
 				monitorType={monitor.type}
 				workers={monitor.workers || []}
 			/>
+
+			{showStatusCodeChart && <StatusCodePieChart monitorId={id} />}
 
 			{/* Availability Stats Table */}
 			<div className="space-y-4">
