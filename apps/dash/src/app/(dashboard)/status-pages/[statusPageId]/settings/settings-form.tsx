@@ -40,6 +40,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getStatusPageBaseDomain } from "@/lib/status-page-url";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,8 @@ const settingsSchema = z.object({
 	barStyle: z.enum(["normal", "length", "signal"]),
 	barDays: z.enum(["30", "60", "90"]),
 	percentDigits: z.number().int().min(2).max(6),
+	defaultSectionCollapsible: z.boolean(),
+	defaultSectionCollapsed: z.boolean(),
 	customCss: z.string().max(50_000, "Custom CSS is too long").optional(),
 	customDomain: z.string().optional().or(z.literal("")),
 	isPrivate: z.boolean(),
@@ -117,6 +120,8 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 			barStyle: "normal",
 			barDays: "90",
 			percentDigits: 2,
+			defaultSectionCollapsible: true,
+			defaultSectionCollapsed: false,
 			customCss: "",
 			customDomain: "",
 			isPrivate: false,
@@ -145,6 +150,11 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 					: "normal",
 			barDays: String(design.barDays || 90) as "30" | "60" | "90",
 			percentDigits: Number(design.percentDigits ?? 2),
+			defaultSectionCollapsible: design.defaultSectionCollapsible !== false,
+			defaultSectionCollapsed: Boolean(
+				design.defaultSectionCollapsible !== false &&
+					design.defaultSectionCollapsed,
+			),
 			customCss: design.customCss || "",
 			customDomain: statusPage?.domain || "",
 			isPrivate: statusPage ? !statusPage.public : false,
@@ -187,6 +197,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 				barStyle: data.barStyle,
 				barDays: Number(data.barDays) as 30 | 60 | 90,
 				percentDigits: data.percentDigits,
+				defaultSectionCollapsible: data.defaultSectionCollapsible,
+				defaultSectionCollapsed: data.defaultSectionCollapsible
+					? data.defaultSectionCollapsed
+					: false,
 				customCss: data.customCss || "",
 			},
 		});
@@ -250,6 +264,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 	const optionCardClassName =
 		"flex h-full min-h-24 w-full cursor-pointer items-center rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground";
 	const statusPageBaseDomain = getStatusPageBaseDomain();
+	const defaultSectionCollapsible = form.watch("defaultSectionCollapsible");
 
 	return (
 		<Form {...form}>
@@ -593,6 +608,61 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												percentages
 											</FormDescription>
 											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<FormField
+									control={form.control}
+									name="defaultSectionCollapsible"
+									render={({ field }) => (
+										<FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
+											<div className="space-y-0.5">
+												<FormLabel className="text-base">
+													Sections are collapsible by default
+												</FormLabel>
+												<FormDescription>
+													Status page sections can be expanded and collapsed by
+													visitors unless a section overrides it.
+												</FormDescription>
+											</div>
+											<FormControl>
+												<Switch
+													checked={field.value}
+													onCheckedChange={(checked) => {
+														field.onChange(checked);
+														if (!checked) {
+															form.setValue("defaultSectionCollapsed", false);
+														}
+													}}
+												/>
+											</FormControl>
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="defaultSectionCollapsed"
+									render={({ field }) => (
+										<FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
+											<div className="space-y-0.5">
+												<FormLabel className="text-base">
+													Start new sections collapsed
+												</FormLabel>
+												<FormDescription>
+													New collapsible sections hide their services until a
+													visitor opens them.
+												</FormDescription>
+											</div>
+											<FormControl>
+												<Switch
+													checked={field.value}
+													disabled={!defaultSectionCollapsible}
+													onCheckedChange={field.onChange}
+												/>
+											</FormControl>
 										</FormItem>
 									)}
 								/>

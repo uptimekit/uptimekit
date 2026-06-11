@@ -2,8 +2,9 @@
 
 import { memo, useState } from "react";
 import { ChevronDown } from "@/components/icons";
+import { getSectionStatus, getSectionStatusText } from "@/lib/section-status";
 import { cn } from "@/lib/utils";
-import type { GroupedMonitors, StatusType } from "../../types";
+import type { GroupedMonitors } from "../../types";
 import { MonitorListItem } from "./monitor-list-item";
 import { StatusDot } from "./status-indicator";
 
@@ -14,64 +15,35 @@ interface MonitorGroupsProps {
 	toFixed?: number;
 }
 
-import { calculateAggregateStatus } from "@/lib/status-utils";
-
-function getGroupStatusText(
-	status: StatusType,
-	totalMonitors: number,
-	operationalCount: number,
-): string {
-	if (status === "operational") {
-		return "All systems operational";
-	}
-	if (status === "major_outage") {
-		return "All systems down";
-	}
-	if (status === "maintenance_scheduled") {
-		return "Scheduled maintenance";
-	}
-	if (status === "unknown") {
-		return totalMonitors === 0 ? "No monitors" : "Status unknown";
-	}
-	return `${operationalCount}/${totalMonitors} operational`;
-}
-
 const MonitorGroupItem = memo(
 	({
 		group,
-		isDefaultExpanded,
 		isGrid,
 		barStyle,
 		toFixed,
 	}: {
 		group: GroupedMonitors;
-		isDefaultExpanded: boolean;
 		isGrid: boolean;
 		barStyle: "normal" | "length" | "signal";
 		toFixed: number;
 	}) => {
 		const isUngrouped = !group.group;
+		const isCollapsible = group.group
+			? group.group.collapsible !== false
+			: false;
 		const [isExpanded, setIsExpanded] = useState(
-			isUngrouped || isDefaultExpanded,
+			isUngrouped || !isCollapsible || !group.group?.defaultCollapsed,
 		);
 
-		const groupStatus = calculateAggregateStatus(
-			group.monitors.map((m) => m.currentStatus),
-		);
-		const operationalCount = group.monitors.filter(
-			(m) => m.currentStatus === "operational",
-		).length;
-		const statusText = getGroupStatusText(
-			groupStatus,
-			group.monitors.length,
-			operationalCount,
-		);
+		const groupStatus = getSectionStatus(group.monitors);
+		const statusText = getSectionStatusText(groupStatus, group.monitors.length);
 
 		return (
 			<div className="rounded-xl border border-border bg-white">
-				{group.group && (
+				{group.group && isCollapsible ? (
 					<button
 						type="button"
+						aria-expanded={isExpanded}
 						onClick={() => setIsExpanded(!isExpanded)}
 						className={cn(
 							"flex w-full cursor-pointer items-center justify-between rounded-xl px-6 py-4 text-left transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-700!",
@@ -96,7 +68,19 @@ const MonitorGroupItem = memo(
 							<StatusDot status={groupStatus} />
 						</div>
 					</button>
-				)}
+				) : group.group ? (
+					<div className="flex items-center justify-between gap-4 px-6 py-4">
+						<h3 className="font-semibold text-base text-foreground">
+							{group.group.name}
+						</h3>
+						<div className="flex items-center gap-2.5">
+							<span className="text-muted-foreground text-xs">
+								{statusText}
+							</span>
+							<StatusDot status={groupStatus} />
+						</div>
+					</div>
+				) : null}
 				<div
 					className={cn(
 						"grid transition-all duration-300 ease-in-out",
@@ -105,7 +89,7 @@ const MonitorGroupItem = memo(
 							: "pointer-events-none grid-rows-[0fr] opacity-0",
 					)}
 				>
-					<div className="min-h-0">
+					<div className="min-h-0 overflow-hidden">
 						<div
 							className={cn(
 								isGrid
@@ -152,7 +136,6 @@ export function MonitorGroups({
 				<MonitorGroupItem
 					key={group.group?.id || `ungrouped-${index}`}
 					group={group}
-					isDefaultExpanded={index === 0}
 					isGrid={isGrid}
 					barStyle={barStyle}
 					toFixed={toFixed}

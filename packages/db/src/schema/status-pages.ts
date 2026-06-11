@@ -47,6 +47,8 @@ export const statusPageGroup = pgTable(
 			.references(() => statusPage.id, { onDelete: "cascade" }),
 		name: text("name").notNull(),
 		order: integer("order").default(0).notNull(),
+		collapsible: boolean("collapsible").default(true).notNull(),
+		defaultCollapsed: boolean("default_collapsed").default(false).notNull(),
 	},
 	(table) => [index("status_page_group_pageId_idx").on(table.statusPageId)],
 );

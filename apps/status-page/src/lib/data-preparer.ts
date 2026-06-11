@@ -390,6 +390,11 @@ export async function prepareStatusPageData(
 				barStyle: design.barStyle || "normal",
 				barDays,
 				percentDigits,
+				defaultSectionCollapsible: design.defaultSectionCollapsible !== false,
+				defaultSectionCollapsed: Boolean(
+					design.defaultSectionCollapsible !== false &&
+						design.defaultSectionCollapsed,
+				),
 			},
 		},
 		overallStatus: worstStatus,

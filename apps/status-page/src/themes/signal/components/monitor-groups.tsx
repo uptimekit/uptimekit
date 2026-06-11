@@ -7,8 +7,10 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getSectionStatus, getSectionStatusText } from "@/lib/section-status";
 import { cn } from "@/lib/utils";
 import type { GroupedMonitors, Monitor } from "../../types";
+import { StatusDot } from "./status-indicator";
 import { UptimeBar } from "./uptime-bar";
 
 interface MonitorGroupsProps {
@@ -122,15 +124,86 @@ export function MonitorGroups({
 	return (
 		<section className="space-y-8">
 			{monitorGroups.map((group, groupIndex) => (
-				<div
+				<MonitorGroupSection
 					key={group.group?.id || `ungrouped-${groupIndex}`}
-					className="space-y-4"
+					group={group}
+					groupIndex={groupIndex}
+					isGrid={isGrid}
+					barStyle={barStyle}
+					toFixed={toFixed}
+				/>
+			))}
+		</section>
+	);
+}
+
+function MonitorGroupSection({
+	group,
+	groupIndex,
+	isGrid,
+	barStyle,
+	toFixed,
+}: {
+	group: GroupedMonitors;
+	groupIndex: number;
+	isGrid: boolean;
+	barStyle: "normal" | "length" | "signal";
+	toFixed: number;
+}) {
+	const isCollapsible = group.group ? group.group.collapsible !== false : false;
+	const [isExpanded, setIsExpanded] = useState(
+		!isCollapsible || !group.group?.defaultCollapsed,
+	);
+	const sectionStatus = getSectionStatus(group.monitors);
+	const statusText = getSectionStatusText(sectionStatus, group.monitors.length);
+
+	return (
+		<div className="space-y-4">
+			{group.group && isCollapsible ? (
+				<button
+					type="button"
+					aria-expanded={isExpanded}
+					onClick={() => setIsExpanded((current) => !current)}
+					className="signal-panel flex w-full items-center justify-between gap-4 rounded-2xl border border-border px-4 py-3 text-left sm:px-5"
 				>
-					{group.group ? (
-						<div className="px-1 font-medium text-muted-foreground text-sm">
+					<div className="flex min-w-0 items-center gap-3">
+						<ChevronDown
+							className={cn(
+								"h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+								!isExpanded && "-rotate-90",
+							)}
+						/>
+						<div className="truncate font-medium text-muted-foreground text-sm">
 							{group.group.name}
 						</div>
-					) : null}
+					</div>
+					<div className="flex shrink-0 items-center gap-2.5">
+						<span className="hidden text-muted-foreground text-xs sm:inline">
+							{statusText}
+						</span>
+						<StatusDot status={sectionStatus} />
+					</div>
+				</button>
+			) : group.group ? (
+				<div className="flex items-center justify-between gap-4 px-1">
+					<div className="font-medium text-muted-foreground text-sm">
+						{group.group.name}
+					</div>
+					<div className="flex items-center gap-2.5">
+						<span className="text-muted-foreground text-xs">{statusText}</span>
+						<StatusDot status={sectionStatus} />
+					</div>
+				</div>
+			) : null}
+			<div
+				className={cn(
+					"grid transition-all duration-300 ease-in-out",
+					isExpanded
+						? "grid-rows-[1fr] opacity-100"
+						: "pointer-events-none grid-rows-[0fr] opacity-0",
+				)}
+			>
+				<div className="min-h-0 overflow-hidden">
 					<div
 						className={cn(
 							isGrid ? "grid grid-cols-1 gap-4 md:grid-cols-2" : "space-y-4",
@@ -147,7 +220,7 @@ export function MonitorGroups({
 						))}
 					</div>
 				</div>
-			))}
-		</section>
+			</div>
+		</div>
 	);
 }

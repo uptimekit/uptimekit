@@ -1,0 +1,27 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.27.1-pg18
+    container_name: uptimekit-dev-timescaledb
+    ports:
+      - "${DEV_DB_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${DEV_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DEV_DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DEV_DB_NAME:-uptimekit}
+      TIMESCALEDB_TELEMETRY: "off"
+    volumes:
+      - dev_timescaledb_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  dev_timescaledb_data:

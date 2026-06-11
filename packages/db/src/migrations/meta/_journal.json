@@ -176,6 +176,13 @@
 			"when": 1780856140916,
 			"tag": "0024_charming_dragon_man",
 			"breakpoints": true
+		},
+		{
+			"idx": 25,
+			"version": "7",
+			"when": 1781193400205,
+			"tag": "0025_bent_wilson_fisk",
+			"breakpoints": true
 		}
 	]
 }

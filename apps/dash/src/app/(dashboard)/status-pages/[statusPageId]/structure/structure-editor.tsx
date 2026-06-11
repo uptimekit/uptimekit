@@ -66,6 +66,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Tooltip,
@@ -95,6 +96,8 @@ interface MonitorItem {
 interface GroupItem {
 	id: string;
 	name: string;
+	collapsible: boolean;
+	defaultCollapsed: boolean;
 	monitors: MonitorItem[];
 }
 
@@ -151,6 +154,8 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 				structure.groups.map((g) => ({
 					id: g.id,
 					name: g.name,
+					collapsible: g.collapsible,
+					defaultCollapsed: g.defaultCollapsed,
 					monitors: g.monitors.map((m) => ({
 						instanceId: generateId(),
 						id: m.id,
@@ -164,9 +169,15 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	}, [structure]);
 
 	const [layout] = useState<"vertical" | "horizontal">("vertical");
-	const barStyle =
-		(statusPage?.design as { barStyle?: BarStyle } | undefined)?.barStyle ||
-		"normal";
+	const statusPageDesign =
+		(statusPage?.design as
+			| {
+					barStyle?: BarStyle;
+					defaultSectionCollapsible?: boolean;
+					defaultSectionCollapsed?: boolean;
+			  }
+			| undefined) || {};
+	const barStyle = statusPageDesign.barStyle || "normal";
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -299,9 +310,18 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	};
 
 	const addGroup = () => {
+		const collapsible = statusPageDesign.defaultSectionCollapsible !== false;
 		setGroups([
 			...groups,
-			{ id: `temp-${generateId()}`, name: "", monitors: [] },
+			{
+				id: `temp-${generateId()}`,
+				name: "",
+				collapsible,
+				defaultCollapsed: collapsible
+					? Boolean(statusPageDesign.defaultSectionCollapsed)
+					: false,
+				monitors: [],
+			},
 		]);
 	};
 
@@ -311,6 +331,24 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 
 	const updateGroupName = (id: string, name: string) => {
 		setGroups(groups.map((g) => (g.id === id ? { ...g, name } : g)));
+	};
+
+	const updateGroupCollapseSettings = (
+		id: string,
+		updates: Partial<Pick<GroupItem, "collapsible" | "defaultCollapsed">>,
+	) => {
+		setGroups(
+			groups.map((g) => {
+				if (g.id !== id) return g;
+
+				const next = { ...g, ...updates };
+				if (!next.collapsible) {
+					next.defaultCollapsed = false;
+				}
+
+				return next;
+			}),
+		);
 	};
 
 	const addMonitorToGroup = (
@@ -381,6 +419,8 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 			groups: groups.map((g) => ({
 				id: g.id.startsWith("temp-") ? undefined : g.id,
 				name: g.name || "Untitled Section",
+				collapsible: g.collapsible,
+				defaultCollapsed: g.collapsible ? g.defaultCollapsed : false,
 				monitors: g.monitors.map((m) => ({
 					id: m.id,
 					style: m.style,
@@ -449,6 +489,9 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 											allMonitors={allMonitors || []}
 											onRemove={() => removeGroup(group.id)}
 											onUpdateName={(name) => updateGroupName(group.id, name)}
+											onUpdateCollapseSettings={(updates) =>
+												updateGroupCollapseSettings(group.id, updates)
+											}
 											onAddMonitor={(m) => addMonitorToGroup(group.id, m)}
 											onRemoveMonitor={(m) =>
 												removeMonitor(group.id, m.instanceId)
@@ -522,6 +565,7 @@ function SortableGroup({
 	allMonitors,
 	onRemove,
 	onUpdateName,
+	onUpdateCollapseSettings,
 	onAddMonitor,
 	onRemoveMonitor,
 	onConfigChange,
@@ -532,6 +576,9 @@ function SortableGroup({
 	allMonitors: { id: string; name: string }[];
 	onRemove: () => void;
 	onUpdateName: (val: string) => void;
+	onUpdateCollapseSettings: (
+		updates: Partial<Pick<GroupItem, "collapsible" | "defaultCollapsed">>,
+	) => void;
 	onAddMonitor: (m: { id: string; name: string }) => void;
 	onRemoveMonitor: (m: MonitorItem) => void;
 	onConfigChange: (m: MonitorItem, updates: Partial<MonitorItem>) => void;
@@ -569,6 +616,7 @@ function SortableGroup({
 				allMonitors={allMonitors}
 				onRemove={onRemove}
 				onUpdateName={onUpdateName}
+				onUpdateCollapseSettings={onUpdateCollapseSettings}
 				onAddMonitor={onAddMonitor}
 				onRemoveMonitor={onRemoveMonitor}
 				onConfigChange={onConfigChange}
@@ -586,6 +634,7 @@ function GroupCard({
 	allMonitors,
 	onRemove,
 	onUpdateName,
+	onUpdateCollapseSettings,
 	onAddMonitor,
 	onRemoveMonitor,
 	onConfigChange,
@@ -634,6 +683,46 @@ function GroupCard({
 							className="border-input/50 bg-muted/30"
 							onPointerDown={(e) => e.stopPropagation()}
 						/>
+					</div>
+
+					<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+						<div
+							className="flex items-center justify-between gap-3 rounded-md bg-muted/40 p-3"
+							onPointerDown={(e) => e.stopPropagation()}
+						>
+							<div className="space-y-0.5">
+								<Label className="font-normal text-sm">Collapsible</Label>
+								<p className="text-muted-foreground text-xs">
+									Visitors can hide this section.
+								</p>
+							</div>
+							<Switch
+								checked={group.collapsible}
+								onCheckedChange={(checked) =>
+									onUpdateCollapseSettings?.({ collapsible: checked })
+								}
+							/>
+						</div>
+						<div
+							className="flex items-center justify-between gap-3 rounded-md bg-muted/40 p-3"
+							onPointerDown={(e) => e.stopPropagation()}
+						>
+							<div className="space-y-0.5">
+								<Label className="font-normal text-sm">
+									Collapsed by default
+								</Label>
+								<p className="text-muted-foreground text-xs">
+									Start hidden on page load.
+								</p>
+							</div>
+							<Switch
+								checked={group.defaultCollapsed}
+								disabled={!group.collapsible}
+								onCheckedChange={(checked) =>
+									onUpdateCollapseSettings?.({ defaultCollapsed: checked })
+								}
+							/>
+						</div>
 					</div>
 
 					{/* Resources Input (Search to add) */}

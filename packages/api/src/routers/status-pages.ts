@@ -201,6 +201,8 @@ export const statusPagesRouter = {
 							.union([z.literal(30), z.literal(60), z.literal(90)])
 							.optional(),
 						percentDigits: z.number().optional().default(2),
+						defaultSectionCollapsible: z.boolean().optional(),
+						defaultSectionCollapsed: z.boolean().optional(),
 						faviconUrl: z.string().optional(),
 						customCss: z.string().max(50_000).optional(),
 					})
@@ -271,6 +273,9 @@ export const statusPagesRouter = {
 			const newDesign = input.design
 				? { ...currentDesign, ...input.design }
 				: currentDesign;
+			if (!newDesign.defaultSectionCollapsible) {
+				newDesign.defaultSectionCollapsed = false;
+			}
 
 			// Handle password: hash if provided, clear if page is public
 			let passwordHash: string | null | undefined;
@@ -356,6 +361,8 @@ export const statusPagesRouter = {
 				groups: groups.map((g) => ({
 					id: g.id,
 					name: g.name,
+					collapsible: g.collapsible,
+					defaultCollapsed: g.defaultCollapsed,
 					monitors: g.monitors.map((m) => ({
 						id: m.monitor.id,
 						name: m.monitor.name,
@@ -381,6 +388,8 @@ export const statusPagesRouter = {
 					z.object({
 						id: z.string().optional(),
 						name: z.string(),
+						collapsible: z.boolean().optional().default(true),
+						defaultCollapsed: z.boolean().optional().default(false),
 						monitors: z.array(
 							z.object({
 								id: z.string(),
@@ -421,6 +430,10 @@ export const statusPagesRouter = {
 						statusPageId: input.id,
 						name: group.name,
 						order: gIndex,
+						collapsible: group.collapsible,
+						defaultCollapsed: group.collapsible
+							? group.defaultCollapsed
+							: false,
 					});
 
 					if (group.monitors.length > 0) {

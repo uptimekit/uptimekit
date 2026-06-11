@@ -33,12 +33,16 @@ export interface StatusPageDesign {
 	barStyle?: "normal" | "length" | "signal";
 	barDays?: 30 | 60 | 90;
 	percentDigits?: number;
+	defaultSectionCollapsible?: boolean;
+	defaultSectionCollapsed?: boolean;
 }
 
 export interface MonitorGroup {
 	id: string;
 	name: string;
 	order: number;
+	collapsible: boolean;
+	defaultCollapsed: boolean;
 }
 
 export interface Monitor {
