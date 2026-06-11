@@ -196,6 +196,8 @@ function MonitorGroupSection({
 				</div>
 			) : null}
 			<div
+				aria-hidden={!isExpanded}
+				inert={!isExpanded}
 				className={cn(
 					"grid transition-all duration-300 ease-in-out",
 					isExpanded
@@ -203,7 +205,12 @@ function MonitorGroupSection({
 						: "pointer-events-none grid-rows-[0fr] opacity-0",
 				)}
 			>
-				<div className="min-h-0 overflow-hidden">
+				<div
+					className={cn(
+						"min-h-0",
+						isExpanded ? "overflow-visible" : "overflow-hidden",
+					)}
+				>
 					<div
 						className={cn(
 							isGrid ? "grid grid-cols-1 gap-4 md:grid-cols-2" : "space-y-4",

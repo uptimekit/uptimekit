@@ -273,7 +273,7 @@ export const statusPagesRouter = {
 			const newDesign = input.design
 				? { ...currentDesign, ...input.design }
 				: currentDesign;
-			if (!newDesign.defaultSectionCollapsible) {
+			if (newDesign.defaultSectionCollapsible === false) {
 				newDesign.defaultSectionCollapsed = false;
 			}
 
