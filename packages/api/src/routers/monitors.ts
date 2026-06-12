@@ -41,6 +41,7 @@ import {
 	enforceMonitorQuotaOrThrow,
 	getOrganizationQuotaState,
 } from "../lib/organization-limits";
+import { assertSafePublicHttpUrl } from "../lib/safe-url";
 
 const RESPONSE_TIME_RANGE_VALUES = [
 	"3h",
@@ -146,6 +147,32 @@ function assertExternalMonitorConfig(
 	}
 }
 
+async function assertSafeExternalMonitorUrlConfig(
+	type: string,
+	config: Record<string, unknown>,
+) {
+	if (type !== "instatus" || typeof config.url !== "string") {
+		return;
+	}
+
+	await assertSafeExternalStatusPageUrl(config.url);
+}
+
+async function assertSafeExternalStatusPageUrl(statusPageUrl: string) {
+	try {
+		await assertSafePublicHttpUrl(statusPageUrl, {
+			label: "Status page URL",
+		});
+	} catch (error) {
+		throw new ORPCError("BAD_REQUEST", {
+			message:
+				error instanceof Error
+					? error.message
+					: "Status page URL must target a public HTTP or HTTPS address.",
+		});
+	}
+}
+
 function hasRequiredWorkers(input: { type: string; workerIds: string[] }) {
 	return input.type === "instatus" || input.workerIds.length > 0;
 }
@@ -191,11 +218,7 @@ function toExternalComponentOption(
 }
 
 async function listInstatusComponents(statusPageUrl: string) {
-	if (!isHttpUrl(statusPageUrl)) {
-		throw new ORPCError("BAD_REQUEST", {
-			message: "Status page URL must use HTTP or HTTPS.",
-		});
-	}
+	await assertSafeExternalStatusPageUrl(statusPageUrl);
 
 	const componentsUrl = getInstatusComponentsUrl(statusPageUrl);
 	const now = Date.now();
@@ -205,6 +228,7 @@ async function listInstatusComponents(statusPageUrl: string) {
 	}
 
 	const response = await fetch(componentsUrl, {
+		redirect: "error",
 		signal: AbortSignal.timeout(10_000),
 	});
 
@@ -832,6 +856,7 @@ export const monitorsRouter = {
 			const organizationId = context.session.session.activeOrganizationId!;
 			assertSafeMonitorUrlConfig(input.type, input.config);
 			assertExternalMonitorConfig(input.type, input.config);
+			await assertSafeExternalMonitorUrlConfig(input.type, input.config);
 
 			if (input.groupId) {
 				await assertGroupForOrganization({
@@ -1041,6 +1066,7 @@ export const monitorsRouter = {
 		.handler(async ({ input, context }) => {
 			assertSafeMonitorUrlConfig(input.type, input.config);
 			assertExternalMonitorConfig(input.type, input.config);
+			await assertSafeExternalMonitorUrlConfig(input.type, input.config);
 
 			const existing = await db.query.monitor.findFirst({
 				where: eq(monitor.id, input.id),

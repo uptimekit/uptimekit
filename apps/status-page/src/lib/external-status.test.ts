@@ -6,7 +6,16 @@ import {
 	mapExternalComponentStatus,
 } from "./external-status";
 
+const dnsLookupMock = vi.hoisted(() => vi.fn());
+
+vi.mock("node:dns/promises", () => ({
+	default: {
+		lookup: dnsLookupMock,
+	},
+}));
+
 afterEach(() => {
+	dnsLookupMock.mockReset();
 	vi.unstubAllGlobals();
 });
 
@@ -29,6 +38,8 @@ describe("external status helpers", () => {
 	});
 
 	it("matches components by id before falling back to duplicate-prone names", async () => {
+		dnsLookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+
 		const fetchMock = vi.fn(async () => {
 			return new Response(
 				JSON.stringify({
@@ -63,7 +74,7 @@ describe("external status helpers", () => {
 		).resolves.toBe("maintenance");
 		expect(fetchMock).toHaveBeenCalledWith(
 			"https://status.example.com/v3/components.json",
-			{ next: { revalidate: 60 } },
+			{ next: { revalidate: 60 }, redirect: "error" },
 		);
 	});
 
@@ -83,5 +94,24 @@ describe("external status helpers", () => {
 			}),
 		).resolves.toBe("unknown");
 		expect(fetch).not.toHaveBeenCalled();
+	});
+
+	it("does not fetch unsafe saved status page URLs", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Response("{}", { status: 200 })),
+		);
+
+		await expect(
+			getExternalMonitorStatus({
+				type: "instatus",
+				config: {
+					url: "http://169.254.169.254/latest/meta-data",
+					componentId: "london-baremetal",
+				},
+			}),
+		).resolves.toBe("unknown");
+		expect(fetch).not.toHaveBeenCalled();
+		expect(dnsLookupMock).not.toHaveBeenCalled();
 	});
 });

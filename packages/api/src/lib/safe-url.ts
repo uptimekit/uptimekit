@@ -9,8 +9,10 @@ function isPrivateIpv4(ip: string) {
 		return false;
 	}
 
-	const a = parts[0]!;
-	const b = parts[1]!;
+	const [a, b] = parts;
+	if (a === undefined || b === undefined) {
+		return false;
+	}
 
 	return (
 		a === 0 ||
@@ -24,6 +26,10 @@ function isPrivateIpv4(ip: string) {
 
 function isPrivateIpv6(ip: string) {
 	const normalized = ip.toLowerCase();
+
+	if (normalized.startsWith("::ffff:")) {
+		return isPrivateIpv4(normalized.slice("::ffff:".length));
+	}
 
 	return (
 		normalized === "::1" ||
@@ -45,33 +51,55 @@ function isPrivateAddress(address: string) {
 	return false;
 }
 
-export async function assertSafeWebhookUrl(rawUrl: string) {
+function normalizeHostname(hostname: string) {
+	return hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
+}
+
+interface SafePublicHttpUrlOptions {
+	label?: string;
+}
+
+export async function assertSafePublicHttpUrl(
+	rawUrl: string,
+	options: SafePublicHttpUrlOptions = {},
+) {
+	const label = options.label ?? "URL";
 	const url = new URL(rawUrl);
 
 	if (!["http:", "https:"].includes(url.protocol)) {
-		throw new Error("Webhook URL must use HTTP or HTTPS");
+		throw new Error(`${label} must use HTTP or HTTPS`);
 	}
 
-	const hostname = url.hostname.toLowerCase();
+	const hostname = normalizeHostname(url.hostname);
 	if (
 		BLOCKED_HOSTNAMES.has(hostname) ||
 		hostname.endsWith(".localhost") ||
 		hostname.endsWith(".local") ||
 		hostname.endsWith(".internal")
 	) {
-		throw new Error("Webhook URL cannot target internal hosts");
+		throw new Error(`${label} cannot target internal hosts`);
 	}
 
 	if (net.isIP(hostname) && isPrivateAddress(hostname)) {
-		throw new Error("Webhook URL cannot target private IP addresses");
+		throw new Error(`${label} cannot target private IP addresses`);
 	}
 
-	const resolved = await dns.lookup(hostname, { all: true, verbatim: true });
+	let resolved: Array<{ address: string }>;
+	try {
+		resolved = await dns.lookup(hostname, { all: true, verbatim: true });
+	} catch {
+		throw new Error(`${label} hostname could not be resolved`);
+	}
+
 	if (resolved.length === 0) {
-		throw new Error("Webhook URL hostname could not be resolved");
+		throw new Error(`${label} hostname could not be resolved`);
 	}
 
 	if (resolved.some((entry) => isPrivateAddress(entry.address))) {
-		throw new Error("Webhook URL cannot resolve to a private IP address");
+		throw new Error(`${label} cannot resolve to a private IP address`);
 	}
+}
+
+export async function assertSafeWebhookUrl(rawUrl: string) {
+	await assertSafePublicHttpUrl(rawUrl, { label: "Webhook URL" });
 }

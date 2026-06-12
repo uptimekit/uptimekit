@@ -1,3 +1,4 @@
+import { assertSafePublicHttpUrl } from "@uptimekit/api/lib/safe-url";
 import type { StatusType } from "@/themes/types";
 import { calculateAggregateStatus } from "./status-utils";
 
@@ -123,8 +124,13 @@ export function mapExternalComponentStatus(status: unknown): StatusType {
 
 async function getInstatusComponents(statusPageUrl: string) {
 	try {
+		await assertSafePublicHttpUrl(statusPageUrl, {
+			label: "Status page URL",
+		});
+
 		const response = await fetch(getInstatusComponentsUrl(statusPageUrl), {
 			next: { revalidate: 60 },
+			redirect: "error",
 		});
 
 		if (!response.ok) {
