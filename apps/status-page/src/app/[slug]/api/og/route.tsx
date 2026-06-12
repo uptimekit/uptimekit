@@ -15,6 +15,10 @@ import {
 	getStatusPageBySlug,
 } from "@/lib/db-queries";
 import { withEvlog } from "@/lib/evlog";
+import {
+	getExternalMonitorStatus,
+	isExternalMonitor,
+} from "@/lib/external-status";
 import { privateImageResponse } from "@/lib/og-responses";
 
 const logger = createLogger("STATUS-PAGE");
@@ -46,6 +50,26 @@ const statusText: Record<StatusType, string> = {
 	maintenance: "Maintenance in progress",
 	unknown: "Status unknown",
 };
+
+function toOgStatus(
+	status: Awaited<ReturnType<typeof getExternalMonitorStatus>>,
+): StatusType {
+	switch (status) {
+		case "operational":
+		case "degraded":
+		case "partial_outage":
+		case "major_outage":
+		case "maintenance":
+		case "unknown":
+			return status;
+		case "maintenance_completed":
+			return "operational";
+		case "maintenance_scheduled":
+			return "maintenance";
+		default:
+			return "unknown";
+	}
+}
 
 function getSlugFromOgPath(pathname: string): string | undefined {
 	const segments = pathname.split("/").filter(Boolean);
@@ -151,9 +175,15 @@ async function handleGet(
 			}
 
 			// Check heartbeat
+			if (isExternalMonitor(pm.monitor)) {
+				return toOgStatus(await getExternalMonitorStatus(pm.monitor));
+			}
+
 			const lastCheck = await getMonitorStatus(pm.monitorId);
-			if (lastCheck && lastCheck.status === "down") {
-				return "major_outage";
+			if (lastCheck) {
+				if (lastCheck.status === "down") return "major_outage";
+				if (lastCheck.status === "degraded") return "degraded";
+				if (lastCheck.status === "maintenance") return "maintenance";
 			}
 
 			return "operational";

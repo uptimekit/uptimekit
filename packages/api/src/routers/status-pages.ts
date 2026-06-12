@@ -1,11 +1,12 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
+import { monitor } from "@uptimekit/db/schema/monitors";
 import {
 	statusPage,
 	statusPageGroup,
 	statusPageMonitor,
 } from "@uptimekit/db/schema/status-pages";
-import { and, asc, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { hashPassword } from "../lib/password";
@@ -366,6 +367,7 @@ export const statusPagesRouter = {
 					monitors: g.monitors.map((m) => ({
 						id: m.monitor.id,
 						name: m.monitor.name,
+						type: m.monitor.type,
 						style: (m.style as "history" | "status") || "history",
 						description: m.description,
 					})),
@@ -415,6 +417,30 @@ export const statusPagesRouter = {
 			});
 			if (!existing) throw new ORPCError("NOT_FOUND");
 
+			const monitorIds = [
+				...new Set(
+					input.groups.flatMap((group) => group.monitors.map((m) => m.id)),
+				),
+			];
+			const monitorTypes =
+				monitorIds.length > 0
+					? await db
+							.select({ id: monitor.id, type: monitor.type })
+							.from(monitor)
+							.where(
+								and(
+									eq(monitor.organizationId, existing.organizationId),
+									inArray(monitor.id, monitorIds),
+								),
+							)
+					: [];
+			const monitorTypeById = new Map(
+				monitorTypes.map((monitorRecord) => [
+					monitorRecord.id,
+					monitorRecord.type,
+				]),
+			);
+
 			await db.transaction(async (tx) => {
 				await tx
 					.delete(statusPageGroup)
@@ -443,7 +469,8 @@ export const statusPagesRouter = {
 								monitorId: m.id,
 								groupId: groupId,
 								order: mIndex,
-								style: m.style,
+								style:
+									monitorTypeById.get(m.id) === "instatus" ? "status" : m.style,
 								description: m.description || null,
 							})),
 						);

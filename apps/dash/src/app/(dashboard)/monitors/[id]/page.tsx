@@ -99,6 +99,8 @@ export default function MonitorDetailsPage() {
 		);
 	}
 
+	const isExternal = monitor.type === "instatus";
+
 	const getStatusIcon = (status: string) => {
 		switch (status) {
 			case "up":
@@ -212,23 +214,29 @@ export default function MonitorDetailsPage() {
 						<h1 className="font-bold text-2xl tracking-tight">
 							{monitor.name}
 						</h1>
-						{!monitor.active && (
-							<Badge variant="outline" className="text-zinc-500">
-								{monitor.pauseReason ? "Paused by quota" : "Paused"}
-							</Badge>
+						{!isExternal ? (
+							<>
+								{!monitor.active && (
+									<Badge variant="outline" className="text-zinc-500">
+										{monitor.pauseReason ? "Paused by quota" : "Paused"}
+									</Badge>
+								)}
+								<Badge
+									variant="secondary"
+									className={cn(
+										getStatusColor(monitor.status as string),
+										!monitor.active && "opacity-50",
+									)}
+								>
+									{getStatusIcon(monitor.status as string)}
+									<span className="ml-1.5 capitalize">
+										{getStatusText(monitor.status as string)}
+									</span>
+								</Badge>
+							</>
+						) : (
+							""
 						)}
-						<Badge
-							variant="secondary"
-							className={cn(
-								getStatusColor(monitor.status as string),
-								!monitor.active && "opacity-50",
-							)}
-						>
-							{getStatusIcon(monitor.status as string)}
-							<span className="ml-1.5 capitalize">
-								{getStatusText(monitor.status as string)}
-							</span>
-						</Badge>
 					</div>
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
 						<Globe className="h-3.5 w-3.5" />
@@ -239,11 +247,15 @@ export default function MonitorDetailsPage() {
 						) : (
 							<span className="font-mono">{monitorTarget}</span>
 						)}
-						<span className="select-none">·</span>
-						<Clock className="h-3.5 w-3.5" />
-						<span className="select-none">
-							Checked every {monitor.interval}s
-						</span>
+						{!isExternal && (
+							<>
+								<span className="select-none">·</span>
+								<Clock className="h-3.5 w-3.5" />
+								<span className="select-none">
+									Checked every {monitor.interval}s
+								</span>
+							</>
+						)}
 					</div>
 					{!monitor.active && monitor.pauseReason && (
 						<p className="text-amber-600 text-sm dark:text-amber-400">
@@ -275,31 +287,39 @@ export default function MonitorDetailsPage() {
 				</div>
 			</div>
 
-			{/* Monitor Cards */}
-			<MonitorCards
-				status={monitor.status}
-				lastCheck={monitor.lastCheck}
-				currentStatusDuration={currentStatusDuration}
-				incidentCount={availability?.today?.incidentCount || 0}
-			/>
+			{!isExternal ? (
+				<>
+					{/* Monitor Cards */}
+					<MonitorCards
+						status={monitor.status}
+						lastCheck={monitor.lastCheck}
+						currentStatusDuration={currentStatusDuration}
+						incidentCount={availability?.today?.incidentCount || 0}
+					/>
 
-			{/* Response Time Chart */}
-			<ResponseTimeChart
-				monitorId={id}
-				workerIds={(monitor.workerIds as string[]) || []}
-				monitorType={monitor.type}
-				workers={monitor.workers || []}
-			/>
+					{/* Response Time Chart */}
+					<ResponseTimeChart
+						monitorId={id}
+						workerIds={(monitor.workerIds as string[]) || []}
+						monitorType={monitor.type}
+						workers={monitor.workers || []}
+					/>
 
-			{showStatusCodeChart && <StatusCodePieChart monitorId={id} />}
+					{showStatusCodeChart && <StatusCodePieChart monitorId={id} />}
 
-			{/* Availability Stats Table */}
-			<div className="space-y-4">
-				<AvailabilityTable
-					data={availability}
-					isLoading={loadingAvailability}
-				/>
-			</div>
+					{/* Availability Stats Table */}
+					<div className="space-y-4">
+						<AvailabilityTable
+							data={availability}
+							isLoading={loadingAvailability}
+						/>
+					</div>
+				</>
+			) : (
+				<p className="flex items-center justify-center text-xl">
+					External monitors dont have this available
+				</p>
+			)}
 		</div>
 	);
 }

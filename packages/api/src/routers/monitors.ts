@@ -58,7 +58,47 @@ const RESPONSE_TIME_QUANTILE_VALUES = ["p50", "p90", "p99"] as const;
 const responseTimeQuantileSchema = z.enum(RESPONSE_TIME_QUANTILE_VALUES);
 type ResponseTimeQuantile = (typeof RESPONSE_TIME_QUANTILE_VALUES)[number];
 
-const URL_MONITOR_TYPES = new Set(["http", "http-json", "keyword"]);
+const MONITOR_TYPES = [
+	"http",
+	"http-json",
+	"tcp",
+	"ping",
+	"dns",
+	"keyword",
+	"instatus",
+] as const;
+const URL_MONITOR_TYPES = new Set(["http", "http-json", "keyword", "instatus"]);
+const EXTERNAL_COMPONENTS_CACHE_TTL_MS = 60_000;
+
+interface InstatusComponentResponse {
+	components?: Array<{
+		id?: unknown;
+		name?: unknown;
+		description?: unknown;
+		status?: unknown;
+		group?: {
+			id?: unknown;
+			name?: unknown;
+			description?: unknown;
+		} | null;
+	}>;
+}
+
+export interface ExternalComponentOption {
+	id: string;
+	name: string;
+	description: string;
+	status: string;
+	group: {
+		id: string;
+		name: string;
+		description: string;
+	} | null;
+}
+
+let externalComponentsCache:
+	| Map<string, { expiresAt: number; components: ExternalComponentOption[] }>
+	| undefined;
 
 function isHttpUrl(value: unknown) {
 	if (typeof value !== "string") {
@@ -86,6 +126,114 @@ function assertSafeMonitorUrlConfig(
 			message: "Monitor URL must use HTTP or HTTPS.",
 		});
 	}
+}
+
+function assertExternalMonitorConfig(
+	type: string,
+	config: Record<string, unknown>,
+) {
+	if (type !== "instatus") {
+		return;
+	}
+
+	if (
+		typeof config.componentId !== "string" ||
+		config.componentId.trim().length === 0
+	) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Select a status component for this external monitor.",
+		});
+	}
+}
+
+function hasRequiredWorkers(input: { type: string; workerIds: string[] }) {
+	return input.type === "instatus" || input.workerIds.length > 0;
+}
+
+function getInstatusComponentsUrl(statusPageUrl: string) {
+	const url = new URL(statusPageUrl);
+	url.pathname = "/v3/components.json";
+	url.search = "";
+	url.hash = "";
+
+	return url.toString();
+}
+
+function toExternalComponentOption(
+	component: NonNullable<InstatusComponentResponse["components"]>[number],
+): ExternalComponentOption | null {
+	if (typeof component.id !== "string" || typeof component.name !== "string") {
+		return null;
+	}
+
+	const group =
+		component.group &&
+		typeof component.group.id === "string" &&
+		typeof component.group.name === "string"
+			? {
+					id: component.group.id,
+					name: component.group.name,
+					description:
+						typeof component.group.description === "string"
+							? component.group.description
+							: "",
+				}
+			: null;
+
+	return {
+		id: component.id,
+		name: component.name,
+		description:
+			typeof component.description === "string" ? component.description : "",
+		status: typeof component.status === "string" ? component.status : "UNKNOWN",
+		group,
+	};
+}
+
+async function listInstatusComponents(statusPageUrl: string) {
+	if (!isHttpUrl(statusPageUrl)) {
+		throw new ORPCError("BAD_REQUEST", {
+			message: "Status page URL must use HTTP or HTTPS.",
+		});
+	}
+
+	const componentsUrl = getInstatusComponentsUrl(statusPageUrl);
+	const now = Date.now();
+	const cached = externalComponentsCache?.get(componentsUrl);
+	if (cached && cached.expiresAt > now) {
+		return cached.components;
+	}
+
+	const response = await fetch(componentsUrl, {
+		signal: AbortSignal.timeout(10_000),
+	});
+
+	if (!response.ok) {
+		throw new ORPCError("BAD_GATEWAY", {
+			message: `Failed to fetch status components (${response.status}).`,
+		});
+	}
+
+	const payload = (await response.json()) as InstatusComponentResponse;
+	const components = (payload.components ?? [])
+		.map(toExternalComponentOption)
+		.filter((component) => component !== null)
+		.sort((a, b) => {
+			const groupCompare = (a.group?.name ?? "").localeCompare(
+				b.group?.name ?? "",
+			);
+			return (
+				groupCompare || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)
+			);
+		});
+
+	externalComponentsCache ??= new Map();
+	externalComponentsCache.set(componentsUrl, {
+		expiresAt: now + EXTERNAL_COMPONENTS_CACHE_TTL_MS,
+		components,
+	});
+
+	return components;
 }
 
 function getResponseTimeRangeStart(
@@ -341,9 +489,7 @@ export const monitorsRouter = {
 				.object({
 					q: z.string().optional(),
 					active: z.boolean().optional(),
-					type: z
-						.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"])
-						.optional(),
+					type: z.enum(MONITOR_TYPES).optional(),
 					status: z
 						.enum(["up", "down", "degraded", "maintenance", "pending"])
 						.optional(),
@@ -585,6 +731,20 @@ export const monitorsRouter = {
 			};
 		}),
 
+	listExternalComponents: protectedProcedure
+		.route({
+			method: "GET",
+			path: "/monitors/external-components",
+			tags: ["Monitor Management"],
+			summary: "List external monitor components",
+			description:
+				"Retrieve selectable components from an external status provider.",
+		})
+		.input(z.object({ type: z.literal("instatus"), url: z.string().url() }))
+		.handler(async ({ input }) => {
+			return listInstatusComponents(input.url);
+		}),
+
 	listGroups: protectedProcedure
 		.route({
 			method: "GET",
@@ -652,22 +812,26 @@ export const monitorsRouter = {
 			withMonitorTimingRelations(
 				z.object({
 					name: z.string().min(1),
-					type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
+					type: z.enum(MONITOR_TYPES),
 					...monitorTimingSchema,
 					groupId: z.string().nullish(),
 					tags: z.array(z.string()).optional(),
 					config: z.record(z.any(), z.any()),
-					workerIds: z.array(z.string()).min(1),
+					workerIds: z.array(z.string()),
 					notificationIds: z.array(z.string()).optional(),
 					incidentPendingDuration: z.number().min(0).default(0),
 					incidentRecoveryDuration: z.number().min(0).default(0),
 					publishIncidentToStatusPage: z.boolean().default(false),
 				}),
-			),
+			).refine(hasRequiredWorkers, {
+				message: "At least one worker must be selected.",
+				path: ["workerIds"],
+			}),
 		)
 		.handler(async ({ input, context }) => {
 			const organizationId = context.session.session.activeOrganizationId!;
 			assertSafeMonitorUrlConfig(input.type, input.config);
+			assertExternalMonitorConfig(input.type, input.config);
 
 			if (input.groupId) {
 				await assertGroupForOrganization({
@@ -818,7 +982,7 @@ export const monitorsRouter = {
 			if (input.active) {
 				const existingWorkerIds = (existing.workerIds as string[] | null) ?? [];
 
-				if (existingWorkerIds.length === 0) {
+				if (existing.type !== "instatus" && existingWorkerIds.length === 0) {
 					throw new ORPCError("BAD_REQUEST", {
 						message:
 							"Monitor has no assigned workers. Select at least one worker before re-enabling it.",
@@ -857,22 +1021,26 @@ export const monitorsRouter = {
 				z.object({
 					id: z.string(),
 					name: z.string().min(1),
-					type: z.enum(["http", "http-json", "tcp", "ping", "dns", "keyword"]),
+					type: z.enum(MONITOR_TYPES),
 					...monitorTimingSchema,
 					groupId: z.string().nullish(),
 					tags: z.array(z.string()).optional(),
 					config: z.record(z.any(), z.any()),
-					workerIds: z.array(z.string()).min(1),
+					workerIds: z.array(z.string()),
 					notificationIds: z.array(z.string()).optional(),
 					incidentPendingDuration: z.number().min(0).default(0),
 					incidentRecoveryDuration: z.number().min(0).default(0),
 					publishIncidentToStatusPage: z.boolean().default(false),
 					active: z.boolean().default(true),
 				}),
-			),
+			).refine(hasRequiredWorkers, {
+				message: "At least one worker must be selected.",
+				path: ["workerIds"],
+			}),
 		)
 		.handler(async ({ input, context }) => {
 			assertSafeMonitorUrlConfig(input.type, input.config);
+			assertExternalMonitorConfig(input.type, input.config);
 
 			const existing = await db.query.monitor.findFirst({
 				where: eq(monitor.id, input.id),

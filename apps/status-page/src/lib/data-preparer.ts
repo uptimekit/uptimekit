@@ -15,6 +15,7 @@ import {
 	getStatusPageEvents,
 	getStatusPageReports,
 } from "./db-queries";
+import { getExternalMonitorStatus, isExternalMonitor } from "./external-status";
 import { buildPath } from "./route-utils";
 import { calculateAggregateStatus } from "./status-utils";
 
@@ -193,12 +194,17 @@ export async function prepareStatusPageData(
 			}
 
 			if (currentStatus === "operational") {
-				const lastCheck = await getMonitorStatus(pm.monitorId);
-				if (lastCheck) {
-					if (lastCheck.status === "down") currentStatus = "major_outage";
-					if (lastCheck.status === "degraded") currentStatus = "degraded";
-					if (lastCheck.status === "maintenance")
-						currentStatus = "maintenance" as any;
+				if (isExternalMonitor(pm.monitor)) {
+					currentStatus =
+						(await getExternalMonitorStatus(pm.monitor)) ?? "unknown";
+				} else {
+					const lastCheck = await getMonitorStatus(pm.monitorId);
+					if (lastCheck) {
+						if (lastCheck.status === "down") currentStatus = "major_outage";
+						if (lastCheck.status === "degraded") currentStatus = "degraded";
+						if (lastCheck.status === "maintenance")
+							currentStatus = "maintenance" as any;
+					}
 				}
 			}
 
@@ -314,7 +320,9 @@ export async function prepareStatusPageData(
 				avgUptime,
 				currentStatus,
 				group: pm.group,
-				displayStyle: pm.style || "history",
+				displayStyle: isExternalMonitor(pm.monitor)
+					? "status"
+					: pm.style || "history",
 				description: pm.description,
 			};
 		}),

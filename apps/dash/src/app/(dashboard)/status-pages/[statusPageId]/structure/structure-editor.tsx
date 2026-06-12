@@ -89,6 +89,7 @@ interface MonitorItem {
 	instanceId: string;
 	id: string; // real monitor id
 	name: string;
+	type?: string;
 	style: MonitorStyle;
 	description?: string | null;
 }
@@ -106,6 +107,14 @@ interface StructureEditorProps {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+function isExternalMonitor(monitor: { type?: string }) {
+	return monitor.type === "instatus";
+}
+
+function getMonitorStyle(monitor: { type?: string; style: MonitorStyle }) {
+	return isExternalMonitor(monitor) ? "status" : monitor.style;
+}
 
 /**
  * Render a drag-and-drop editor for configuring a status page's groups and monitors.
@@ -160,7 +169,11 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 						instanceId: generateId(),
 						id: m.id,
 						name: m.name,
-						style: m.style as MonitorStyle,
+						type: m.type,
+						style: getMonitorStyle({
+							type: m.type,
+							style: m.style as MonitorStyle,
+						}),
 						description: m.description,
 					})),
 				})),
@@ -353,7 +366,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 
 	const addMonitorToGroup = (
 		groupId: string,
-		monitor: { id: string; name: string },
+		monitor: { id: string; name: string; type?: string },
 	) => {
 		setGroups(
 			groups.map((g) => {
@@ -369,7 +382,8 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 								instanceId: generateId(),
 								id: monitor.id,
 								name: monitor.name,
-								style: "history",
+								type: monitor.type,
+								style: monitor.type === "instatus" ? "status" : "history",
 							},
 						],
 					};
@@ -404,7 +418,15 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 					return {
 						...g,
 						monitors: g.monitors.map((m) =>
-							m.instanceId === instanceId ? { ...m, ...updates } : m,
+							m.instanceId === instanceId
+								? {
+										...m,
+										...updates,
+										style: isExternalMonitor(m)
+											? "status"
+											: (updates.style ?? m.style),
+									}
+								: m,
 						),
 					};
 				}
@@ -423,7 +445,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 				defaultCollapsed: g.collapsible ? g.defaultCollapsed : false,
 				monitors: g.monitors.map((m) => ({
 					id: m.id,
-					style: m.style,
+					style: getMonitorStyle(m),
 					description: m.description,
 				})),
 			})),
@@ -573,7 +595,7 @@ function SortableGroup({
 }: {
 	group: GroupItem;
 	barStyle: BarStyle;
-	allMonitors: { id: string; name: string }[];
+	allMonitors: MonitorOption[];
 	onRemove: () => void;
 	onUpdateName: (val: string) => void;
 	onUpdateCollapseSettings: (
@@ -765,6 +787,7 @@ function GroupCard({
 interface MonitorOption {
 	id: string;
 	name: string;
+	type?: string;
 	group?: {
 		id: string;
 		name: string;
@@ -982,6 +1005,12 @@ function MonitorConfigModal({
 	onOpenChange: (open: boolean) => void;
 	onConfigChange?: (updates: Partial<MonitorItem>) => void;
 }) {
+	const isStatusOnly = isExternalMonitor(monitor);
+	const displayStyleOptions = isStatusOnly
+		? monitorStyleOptions.filter((option) => option.value === "status")
+		: monitorStyleOptions;
+	const selectedStyle = getMonitorStyle(monitor);
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-lg">
@@ -996,12 +1025,12 @@ function MonitorConfigModal({
 					{/* Preview */}
 					<div className="space-y-2">
 						<Label className="font-normal text-muted-foreground text-xs">
-							Preview
+							Preview{" "}
 						</Label>
 						<div className="rounded-2xl border border-border bg-card p-6">
 							<MonitorPreview
 								name={monitor.name}
-								style={monitor.style}
+								style={selectedStyle}
 								barStyle={barStyle}
 								description={monitor.description}
 							/>
@@ -1010,11 +1039,16 @@ function MonitorConfigModal({
 
 					{/* Display Style Select */}
 					<div className="space-y-2">
-						<Label className="font-normal text-muted-foreground text-xs">
-							Display Type
+						<Label className="flex justify-between font-normal text-muted-foreground text-xs">
+							<span>Display Type</span>
+							<span className="text-xs">
+								{isStatusOnly &&
+									"This monitor is external, only Status Only is allowed"}
+							</span>
 						</Label>
 						<Select
-							value={monitor.style}
+							value={selectedStyle}
+							disabled={isStatusOnly}
 							onValueChange={(value) =>
 								onConfigChange?.({ style: value as MonitorStyle })
 							}
@@ -1022,14 +1056,14 @@ function MonitorConfigModal({
 							<SelectTrigger className="w-full">
 								<SelectValue>
 									{
-										monitorStyleOptions.find(
-											(option) => option.value === monitor.style,
+										displayStyleOptions.find(
+											(option) => option.value === selectedStyle,
 										)?.label
 									}
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
-								{monitorStyleOptions.map(({ label, value }) => (
+								{displayStyleOptions.map(({ label, value }) => (
 									<SelectItem key={value} value={value}>
 										{label}
 									</SelectItem>
