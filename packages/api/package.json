@@ -23,6 +23,12 @@
 		"./pkg/integrations/definitions/webhook-meta": {
 			"default": "./src/pkg/integrations/definitions/webhook-meta.ts"
 		},
+		"./pkg/integrations/definitions/smtp-meta": {
+			"default": "./src/pkg/integrations/definitions/smtp-meta.ts"
+		},
+		"./pkg/integrations/definitions/smtp": {
+			"default": "./src/pkg/integrations/definitions/smtp.ts"
+		},
 		"./pkg/integrations/definitions/alertmanager-meta": {
 			"default": "./src/pkg/integrations/definitions/alertmanager-meta.ts"
 		},

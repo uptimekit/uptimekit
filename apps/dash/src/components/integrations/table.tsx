@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { alertManagerIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { appriseIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/apprise-meta";
 import { discordIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/discord-meta";
+import { smtpIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/smtp-meta";
 import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/telegram-meta";
 import { webhookIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/webhook-meta";
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
@@ -25,6 +26,7 @@ import {
 	ChevronRightIcon,
 	Filter,
 	Loader2,
+	Mail,
 	MoreHorizontal,
 	Plus,
 	Search,
@@ -113,6 +115,10 @@ const frontendRegistry = {
 		...telegramIntegrationMeta,
 		handler: async () => {},
 	} as IntegrationDefinition,
+	smtp: {
+		...smtpIntegrationMeta,
+		handler: async () => {},
+	} as IntegrationDefinition,
 	alertmanager: {
 		...alertManagerIntegrationMeta,
 		handler: async () => {},
@@ -166,7 +172,12 @@ function IntegrationIcon({
 		);
 	}
 
-	const Icon = integration.id === "webhook" ? Webhook : Settings2;
+	const Icon =
+		integration.id === "webhook"
+			? Webhook
+			: integration.id === "smtp"
+				? Mail
+				: Settings2;
 
 	return (
 		<div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">
