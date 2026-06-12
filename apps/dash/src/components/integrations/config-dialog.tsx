@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
 import { AlertManagerConfig } from "@/components/integrations/alertmanager-config";
+import { SmtpConfig } from "@/components/integrations/smtp-config";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -185,12 +186,15 @@ export function ConfigDialog({
 								configId={configId}
 								onChange={setConfig}
 							/>
+						) : integration.id === "smtp" ? (
+							<SmtpConfig config={config} onChange={setConfig} />
 						) : (
 							fields.map((field) => {
 								// Detect type if possible, default to text
 								const isSecret =
 									field.toLowerCase().includes("secret") ||
-									field.toLowerCase().includes("token");
+									field.toLowerCase().includes("token") ||
+									field.toLowerCase().includes("password");
 
 								return (
 									<div key={field} className="grid w-full items-center gap-1.5">

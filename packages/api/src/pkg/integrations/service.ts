@@ -14,6 +14,7 @@ import { createLogger } from "../../lib/logger";
 import { alertManagerIntegration } from "./definitions/alertmanager";
 import { appriseIntegration } from "./definitions/apprise";
 import { discordIntegration } from "./definitions/discord";
+import { smtpIntegration } from "./definitions/smtp";
 import { telegramIntegration } from "./definitions/telegram";
 import { webhookIntegration } from "./definitions/webhook";
 import { integrationRegistry } from "./registry";
@@ -22,6 +23,7 @@ import { integrationRegistry } from "./registry";
 integrationRegistry.register(webhookIntegration);
 integrationRegistry.register(discordIntegration);
 integrationRegistry.register(telegramIntegration);
+integrationRegistry.register(smtpIntegration);
 integrationRegistry.register(alertManagerIntegration);
 integrationRegistry.register(appriseIntegration);
 

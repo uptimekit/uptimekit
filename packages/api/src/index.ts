@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { type EvlogOrpcContext, evlog as evlogProcedure } from "evlog/orpc";
 
 export * from "./pkg/integrations/definitions/discord";
+export * from "./pkg/integrations/definitions/smtp";
 export * from "./pkg/integrations/definitions/webhook";
 export * from "./pkg/integrations/registry";
 
