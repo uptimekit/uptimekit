@@ -425,16 +425,6 @@ export function isAutomaticIncidentOpenEligible(input: {
 		workerLabels: input.workerLabels,
 	});
 
-	if (aggregateStatus.status === "degraded") {
-		return {
-			eligible: true,
-			allWorkersDownSince: null,
-			triggerStatus: "degraded",
-			startedAt: input.eventTime,
-			reason: aggregateStatus.statusReason,
-		};
-	}
-
 	if (
 		aggregateStatus.status !== "down" ||
 		!aggregateStatus.allWorkersDownSince

@@ -35,7 +35,7 @@ describe("worker automatic incident gating", () => {
 		);
 	});
 
-	it("opens a degraded incident when only some assigned workers are down", () => {
+	it("does not open an incident when only some assigned workers are down", () => {
 		const workerStatusById = toMap([
 			[
 				"worker-a",
@@ -55,15 +55,15 @@ describe("worker automatic incident gating", () => {
 			incidentPendingDurationSeconds: 0,
 		});
 
-		expect(result.eligible).toBe(true);
-		expect(result.triggerStatus).toBe("degraded");
+		expect(result.eligible).toBe(false);
+		expect(result.triggerStatus).toBeNull();
 		expect(result.reason).toBe(
 			"worker-a is reporting down while worker-b is reporting up.",
 		);
 		expect(result.allWorkersDownSince).toBeNull();
 	});
 
-	it("opens degraded before every assigned worker is down", () => {
+	it("does not open before every assigned worker is down", () => {
 		const workerStatusById = toMap([
 			[
 				"worker-a",
@@ -87,8 +87,9 @@ describe("worker automatic incident gating", () => {
 			incidentPendingDurationSeconds: 0,
 		});
 
-		expect(beforeFinalFailure.eligible).toBe(true);
-		expect(beforeFinalFailure.triggerStatus).toBe("degraded");
+		expect(beforeFinalFailure.eligible).toBe(false);
+		expect(beforeFinalFailure.triggerStatus).toBeNull();
+		expect(beforeFinalFailure.allWorkersDownSince).toBeNull();
 
 		workerStatusById.set("worker-c", {
 			status: "down",
