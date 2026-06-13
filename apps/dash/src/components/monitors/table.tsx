@@ -384,13 +384,11 @@ export function MonitorsTable() {
 						<span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
 							{monitor.name}
 
-							{!monitor.active ||
-								monitor.type === "instatus" ||
-								(monitor && (
-									<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
-										{getPauseLabel(monitor.pauseReason)}
-									</span>
-								))}
+							{!monitor.active && (
+								<span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+									{getPauseLabel(monitor.pauseReason)}
+								</span>
+							)}
 
 							{monitor.tags && monitor.tags.length > 0 && (
 								<div className="flex items-center gap-1">
