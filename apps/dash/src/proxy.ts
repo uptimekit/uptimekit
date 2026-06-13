@@ -1,17 +1,9 @@
 import { auth } from "@uptimekit/auth";
-import { evlogMiddleware } from "evlog/next";
-import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
-const withEvlog = evlogMiddleware();
-
 export async function proxy(request: NextRequest) {
-	if (request.nextUrl.pathname.startsWith("/api/")) {
-		return withEvlog(request);
-	}
-
 	const session = await auth.api.getSession({
-		headers: await headers(),
+		headers: request.headers,
 	});
 
 	if (!session) {
@@ -22,5 +14,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ["/", "/api/:path*"],
+	matcher: [
+		"/((?!login|register|two-factor|api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|logos_uptimekit.svg).*)",
+	],
 };
