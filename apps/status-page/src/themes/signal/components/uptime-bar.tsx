@@ -1,7 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
+import {
+	getViewportTooltipPosition,
+	ViewportTooltip,
+	type ViewportTooltipPosition,
+} from "@/components/viewport-tooltip";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
 import type { StatusType, UptimeDay } from "../../types";
@@ -98,6 +103,20 @@ function formatDowntime(ms: number): string {
 	return `${seconds}s down`;
 }
 
+function isMaintenanceStatus(status: StatusType): boolean {
+	return status === "maintenance" || status === "maintenance_scheduled";
+}
+
+function formatMaintenanceDuration(day: UptimeDay): string {
+	const maintenanceMs = day.maintenanceMs ?? parseDuration(day.duration);
+
+	if (maintenanceMs <= 0) {
+		return "Maintenance excluded from uptime";
+	}
+
+	return `${formatDowntime(maintenanceMs).replace(/ down$/, "")} maintenance`;
+}
+
 function buildSegments(days: UptimeDay[]): UptimeSegment[] {
 	if (days.length === 0) {
 		return [];
@@ -145,7 +164,9 @@ function calculateSegments(day: UptimeDay): BarSegments {
 		segments.unknown = 100;
 		segments.uptime = 0;
 	} else {
-		const downtimeMs = day.downtimeMs || parseDuration(day.duration);
+		const downtimeMs = isMaintenanceStatus(day.status)
+			? (day.maintenanceMs ?? parseDuration(day.duration))
+			: (day.downtimeMs ?? parseDuration(day.duration));
 		const downtimePercent = Math.min(100, (downtimeMs / DAY_MS) * 100);
 
 		segments.uptime = Math.max(0, 100 - downtimePercent);
@@ -219,20 +240,36 @@ export function UptimeBar({
 	toFixed = 2,
 }: UptimeBarProps) {
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+	const [tooltipPosition, setTooltipPosition] =
+		useState<ViewportTooltipPosition | null>(null);
 	const segments = buildSegments(days);
 	const hoveredDay = hoveredIndex !== null ? days[hoveredIndex] : null;
 	const hoveredSegments =
 		style === "length" && hoveredDay ? calculateSegments(hoveredDay) : null;
+	const showHoveredUptimeSegment =
+		hoveredDay &&
+		hoveredSegments &&
+		!isMaintenanceStatus(hoveredDay.status) &&
+		hoveredSegments.uptime > 0 &&
+		hoveredSegments.uptime < 100;
 	const compactGapClassName =
 		days.length <= 30
 			? "gap-[3px]"
 			: days.length <= 60
 				? "gap-[2px]"
 				: "gap-px";
-	const tooltipLeft =
-		hoveredIndex !== null
-			? `${((hoveredIndex + 0.5) / days.length) * 100}%`
-			: "50%";
+	const handleDayMouseEnter = (
+		index: number,
+		event: MouseEvent<HTMLDivElement>,
+	) => {
+		setHoveredIndex(index);
+		setTooltipPosition(getViewportTooltipPosition(event.currentTarget));
+	};
+
+	const handleDayMouseLeave = () => {
+		setHoveredIndex(null);
+		setTooltipPosition(null);
+	};
 
 	return (
 		<div className={cn("relative pt-2", className)}>
@@ -270,14 +307,14 @@ export function UptimeBar({
 							style={{
 								gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
 							}}
-							onMouseLeave={() => setHoveredIndex(null)}
+							onMouseLeave={handleDayMouseLeave}
 						>
 							{days.map((day, index) => (
 								// biome-ignore lint/a11y/noStaticElementInteractions: visual hover target
 								<div
 									key={day.date}
 									className="relative h-full"
-									onMouseEnter={() => setHoveredIndex(index)}
+									onMouseEnter={(event) => handleDayMouseEnter(index, event)}
 								>
 									{hoveredIndex === index ? (
 										<div className="pointer-events-none absolute inset-x-0 top-4 bottom-0">
@@ -296,8 +333,8 @@ export function UptimeBar({
 						<div
 							key={day.date}
 							className="group relative flex-1 first:rounded-l-md last:rounded-r-md"
-							onMouseEnter={() => setHoveredIndex(index)}
-							onMouseLeave={() => setHoveredIndex(null)}
+							onMouseEnter={(event) => handleDayMouseEnter(index, event)}
+							onMouseLeave={handleDayMouseLeave}
 						>
 							{style === "length" ? (
 								<div className="h-full w-full rounded-[2px] transition-opacity hover:opacity-80">
@@ -317,30 +354,23 @@ export function UptimeBar({
 			)}
 
 			<AnimatePresence>
-				{hoveredDay ? (
-					<motion.div
-						initial={{ opacity: 0, y: 6, scale: 0.98 }}
-						animate={{
-							opacity: 1,
-							y: 0,
-							scale: 1,
-							left: tooltipLeft,
-						}}
-						exit={{ opacity: 0, y: 4, scale: 0.985 }}
-						transition={{
-							left: {
-								type: "spring",
-								stiffness: 380,
-								damping: 30,
-								mass: 0.45,
-							},
-							opacity: { duration: 0.14, ease: [0.2, 0, 0, 1] },
-							y: { duration: 0.14, ease: [0.2, 0, 0, 1] },
-							scale: { duration: 0.14, ease: [0.2, 0, 0, 1] },
-						}}
-						className="pointer-events-auto absolute bottom-[calc(100%+1px)] z-50 -translate-x-1/2"
-					>
-						<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+				{hoveredDay && tooltipPosition ? (
+					<ViewportTooltip position={tooltipPosition}>
+						<motion.div
+							initial={{ opacity: 0, y: 6, scale: 0.98 }}
+							animate={{
+								opacity: 1,
+								y: 0,
+								scale: 1,
+							}}
+							exit={{ opacity: 0, y: 4, scale: 0.985 }}
+							transition={{
+								opacity: { duration: 0.14, ease: [0.2, 0, 0, 1] },
+								y: { duration: 0.14, ease: [0.2, 0, 0, 1] },
+								scale: { duration: 0.14, ease: [0.2, 0, 0, 1] },
+							}}
+							className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+						>
 							<div
 								className={cn(
 									"px-4 py-3",
@@ -361,7 +391,11 @@ export function UptimeBar({
 								<div className="font-semibold text-[12px]">
 									{statusConfig[hoveredDay.status].label}
 								</div>
-								{hoveredDay.duration ? (
+								{isMaintenanceStatus(hoveredDay.status) ? (
+									<div className="mt-1 text-[12px] opacity-85">
+										{formatMaintenanceDuration(hoveredDay)}
+									</div>
+								) : hoveredDay.duration ? (
 									<div className="mt-1 text-[12px] opacity-85">
 										{hoveredDay.duration}
 									</div>
@@ -385,9 +419,7 @@ export function UptimeBar({
 							{style === "length" ? (
 								<div className="border-border border-t bg-muted/45 px-4 py-3">
 									<div className="space-y-1 text-[12px] text-foreground/80">
-										{hoveredSegments &&
-										hoveredSegments.uptime > 0 &&
-										hoveredSegments.uptime < 100 ? (
+										{showHoveredUptimeSegment ? (
 											<div>
 												{hoveredSegments.uptime.toFixed(toFixed)}% uptime
 											</div>
@@ -434,8 +466,8 @@ export function UptimeBar({
 									</div>
 								</div>
 							) : null}
-						</div>
-					</motion.div>
+						</motion.div>
+					</ViewportTooltip>
 				) : null}
 			</AnimatePresence>
 		</div>

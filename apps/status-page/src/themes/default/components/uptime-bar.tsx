@@ -1,6 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { type MouseEvent, useState } from "react";
+import {
+	getViewportTooltipPosition,
+	ViewportTooltip,
+	type ViewportTooltipPosition,
+} from "@/components/viewport-tooltip";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
 import type { StatusType, UptimeDay } from "../../types";
@@ -86,6 +91,20 @@ function parseDuration(durationStr: string | undefined): number {
 	}
 
 	return totalMs;
+}
+
+function isMaintenanceStatus(status: StatusType): boolean {
+	return status === "maintenance" || status === "maintenance_scheduled";
+}
+
+function formatMaintenanceDuration(day: UptimeDay): string {
+	const maintenanceMs = day.maintenanceMs ?? parseDuration(day.duration);
+
+	if (maintenanceMs <= 0) {
+		return "Maintenance excluded from uptime";
+	}
+
+	return `${formatDowntime(maintenanceMs).replace(/ down$/, "")} maintenance`;
 }
 
 interface UptimeBarProps {
@@ -179,7 +198,9 @@ function calculateSegments(day: UptimeDay): BarSegments {
 		segments.uptime = 0;
 	} else {
 		// Calculate actual downtime proportion - use downtimeMs or parse duration string
-		const downtimeMs = day.downtimeMs || parseDuration(day.duration);
+		const downtimeMs = isMaintenanceStatus(day.status)
+			? (day.maintenanceMs ?? parseDuration(day.duration))
+			: (day.downtimeMs ?? parseDuration(day.duration));
 		const downtimePercent = Math.min(100, (downtimeMs / DAY_MS) * 100);
 
 		// Uptime is what's left after downtime
@@ -205,10 +226,12 @@ function calculateSegments(day: UptimeDay): BarSegments {
 
 function SegmentTooltip({ day, toFixed }: { day: UptimeDay; toFixed: number }) {
 	const segs = calculateSegments(day);
+	const showUptimeSegment =
+		!isMaintenanceStatus(day.status) && segs.uptime > 0 && segs.uptime < 100;
 
 	return (
 		<div className="mt-2 space-y-1 border-t pt-2">
-			{segs.uptime > 0 && segs.uptime < 100 && (
+			{showUptimeSegment && (
 				<div className="flex items-center gap-2 text-xs">
 					<div className="h-2 w-2 rounded-full bg-green-500" />
 					<span className="text-muted-foreground">
@@ -314,7 +337,22 @@ export function UptimeBar({
 	toFixed = 2,
 }: UptimeBarProps) {
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+	const [tooltipPosition, setTooltipPosition] =
+		useState<ViewportTooltipPosition | null>(null);
 	const segments = buildSegments(days);
+
+	const handleDayMouseEnter = (
+		index: number,
+		event: MouseEvent<HTMLDivElement>,
+	) => {
+		setHoveredIndex(index);
+		setTooltipPosition(getViewportTooltipPosition(event.currentTarget));
+	};
+
+	const handleDayMouseLeave = () => {
+		setHoveredIndex(null);
+		setTooltipPosition(null);
+	};
 
 	return (
 		<div className={cn("relative w-full", className)}>
@@ -356,24 +394,28 @@ export function UptimeBar({
 								<div
 									key={day.date}
 									className="relative h-full"
-									onMouseEnter={() => setHoveredIndex(index)}
-									onMouseLeave={() => setHoveredIndex(null)}
+									onMouseEnter={(event) => handleDayMouseEnter(index, event)}
+									onMouseLeave={handleDayMouseLeave}
 								>
 									{hoveredIndex === index ? (
 										<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
 											<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
 										</div>
 									) : null}
-									{hoveredIndex === index ? (
-										<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
-											<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+									{hoveredIndex === index && tooltipPosition ? (
+										<ViewportTooltip position={tooltipPosition}>
+											<div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
 												<div className="font-semibold text-popover-foreground text-sm">
 													{day.annotation || statusConfig[day.status].label}
 												</div>
 												<div className="mt-1 text-muted-foreground text-xs">
 													{formatTooltipDate(day.date)}
 												</div>
-												{day.duration ? (
+												{isMaintenanceStatus(day.status) ? (
+													<div className="mt-1 text-muted-foreground text-xs">
+														{formatMaintenanceDuration(day)}
+													</div>
+												) : day.duration ? (
 													<div className="mt-1 text-muted-foreground text-xs">
 														Duration: {day.duration}
 													</div>
@@ -389,7 +431,7 @@ export function UptimeBar({
 												)}
 												<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
 											</div>
-										</div>
+										</ViewportTooltip>
 									) : null}
 								</div>
 							))}
@@ -406,8 +448,8 @@ export function UptimeBar({
 								<div
 									key={day.date}
 									className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
-									onMouseEnter={() => setHoveredIndex(index)}
-									onMouseLeave={() => setHoveredIndex(null)}
+									onMouseEnter={(event) => handleDayMouseEnter(index, event)}
+									onMouseLeave={handleDayMouseLeave}
 								>
 									{/* The visible bar segment */}
 									{style === "length" ? (
@@ -424,9 +466,9 @@ export function UptimeBar({
 									)}
 
 									{/* Tooltip */}
-									{hoveredIndex === index && (
-										<div className="absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap">
-											<div className="fade-in zoom-in-95 relative animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+									{hoveredIndex === index && tooltipPosition && (
+										<ViewportTooltip position={tooltipPosition}>
+											<div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
 												<div className="font-semibold text-popover-foreground text-sm">
 													{day.annotation || statusConfig[day.status].label}
 												</div>
@@ -436,7 +478,11 @@ export function UptimeBar({
 												{style === "length" && (
 													<SegmentTooltip day={day} toFixed={toFixed} />
 												)}
-												{day.duration ? (
+												{isMaintenanceStatus(day.status) ? (
+													<div className="mt-1 text-muted-foreground text-xs">
+														{formatMaintenanceDuration(day)}
+													</div>
+												) : day.duration ? (
 													<div className="mt-1 text-muted-foreground text-xs">
 														Duration: {day.duration}
 													</div>
@@ -454,7 +500,7 @@ export function UptimeBar({
 												{/* Arrow */}
 												<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
 											</div>
-										</div>
+										</ViewportTooltip>
 									)}
 								</div>
 							</>

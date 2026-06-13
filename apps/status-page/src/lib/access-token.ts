@@ -9,11 +9,13 @@ interface TokenPayload {
 
 function getSecret(): string {
 	const secret =
-		process.env.STATUS_PAGE_ACCESS_SECRET || process.env.BETTER_AUTH_SECRET;
+		process.env.STATUS_PAGE_ACCESS_SECRET ||
+		process.env.APP_SECRET ||
+		process.env.BETTER_AUTH_SECRET;
 
 	if (!secret) {
 		throw new Error(
-			"Missing required environment variable: STATUS_PAGE_ACCESS_SECRET or BETTER_AUTH_SECRET must be set",
+			"Missing required environment variable: STATUS_PAGE_ACCESS_SECRET, APP_SECRET, or BETTER_AUTH_SECRET must be set",
 		);
 	}
 

@@ -62,12 +62,17 @@ Follow these steps to get UptimeKit running locally on your machine.
 
 2. **Edit these variables in the .env**
   ```bash
-  BETTER_AUTH_SECRET=change_me_to_a_secure_secret
-  BETTER_AUTH_URL=http://localhost:3000
-  NEXT_PUBLIC_URL=http://localhost:3000
+  APP_SECRET=change_me_to_a_secure_secret
+  APP_URL=http://localhost:3000
+
+  # Backwards compatible: these older names still work too
+  # BETTER_AUTH_SECRET=change_me_to_a_secure_secret
+  # BETTER_AUTH_URL=http://localhost:3000
+  # NEXT_PUBLIC_URL=http://localhost:3000
 
   # Status Page Configuration (Optional)
-  NEXT_PUBLIC_STATUS_PAGE_DOMAIN=status.example.com
+  APP_STATUS_PAGE_DOMAIN=status.example.com
+  # NEXT_PUBLIC_STATUS_PAGE_DOMAIN=status.example.com
 
   # Optional ports to be exposed
   DASH_PORT=3000

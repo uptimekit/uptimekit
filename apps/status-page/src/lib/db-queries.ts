@@ -221,7 +221,11 @@ export const getStatusPageEvents = async (statusPageId: string, days = 90) => {
 					.where(
 						and(
 							eq(maintenanceStatusPage.statusPageId, statusPageId),
-							gte(maintenance.startAt, startDate),
+							or(
+								gte(maintenance.startAt, startDate),
+								gte(maintenance.endAt, startDate),
+								isNull(maintenance.endAt),
+							),
 						),
 					),
 			]);

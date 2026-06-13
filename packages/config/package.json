@@ -10,6 +10,8 @@
 		"./tsconfig.base.json": "./tsconfig.base.json"
 	},
 	"dependencies": {
-		"dotenv": "catalog:"
+		"@t3-oss/env-core": "^0.13.11",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
 	}
 }

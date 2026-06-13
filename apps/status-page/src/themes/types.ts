@@ -17,6 +17,8 @@ export interface UptimeDay {
 	status: StatusType;
 	uptime: number;
 	downtimeMs?: number;
+	maintenanceMs?: number;
+	monitoredMs?: number;
 	annotation?: string;
 	duration?: string;
 }

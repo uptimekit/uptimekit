@@ -19,6 +19,13 @@ import { getExternalMonitorStatus, isExternalMonitor } from "./external-status";
 import { buildPath } from "./route-utils";
 import { calculateAggregateStatus } from "./status-utils";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+interface TimeRange {
+	startMs: number;
+	endMs: number;
+}
+
 function buildOperationalHistory(days = 90, endDate?: string): UptimeDay[] {
 	const result: UptimeDay[] = [];
 	let now: Date;
@@ -58,6 +65,130 @@ function formatDuration(ms: number): string {
 		return `${minutes}m`;
 	}
 	return `${seconds}s`;
+}
+
+function getOverlapRange(
+	startAt: Date | string,
+	endAt: Date | string | null | undefined,
+	dayStart: Date,
+	dayEnd: Date,
+): TimeRange | null {
+	const startMs = new Date(startAt).getTime();
+	const endMs = endAt ? new Date(endAt).getTime() : Date.now();
+	const overlapStartMs = Math.max(startMs, dayStart.getTime());
+	const overlapEndMs = Math.min(endMs, dayEnd.getTime());
+
+	if (overlapEndMs <= overlapStartMs) {
+		return null;
+	}
+
+	return {
+		startMs: overlapStartMs,
+		endMs: overlapEndMs,
+	};
+}
+
+function mergeRanges(ranges: TimeRange[]): TimeRange[] {
+	if (ranges.length <= 1) {
+		return ranges.map((range) => ({ ...range }));
+	}
+
+	const sortedRanges = [...ranges].sort((a, b) => a.startMs - b.startMs);
+	const mergedRanges: TimeRange[] = [{ ...sortedRanges[0] }];
+
+	for (const range of sortedRanges.slice(1)) {
+		const lastRange = mergedRanges[mergedRanges.length - 1];
+
+		if (range.startMs <= lastRange.endMs) {
+			lastRange.endMs = Math.max(lastRange.endMs, range.endMs);
+			continue;
+		}
+
+		mergedRanges.push({ ...range });
+	}
+
+	return mergedRanges;
+}
+
+function sumRanges(ranges: TimeRange[]): number {
+	return ranges.reduce(
+		(total, range) => total + range.endMs - range.startMs,
+		0,
+	);
+}
+
+function subtractRanges(
+	ranges: TimeRange[],
+	exclusions: TimeRange[],
+): TimeRange[] {
+	let remainingRanges = mergeRanges(ranges);
+	const mergedExclusions = mergeRanges(exclusions);
+
+	for (const exclusion of mergedExclusions) {
+		remainingRanges = remainingRanges.flatMap((range) => {
+			if (
+				exclusion.endMs <= range.startMs ||
+				exclusion.startMs >= range.endMs
+			) {
+				return [range];
+			}
+
+			const nextRanges: TimeRange[] = [];
+
+			if (exclusion.startMs > range.startMs) {
+				nextRanges.push({
+					startMs: range.startMs,
+					endMs: Math.min(exclusion.startMs, range.endMs),
+				});
+			}
+
+			if (exclusion.endMs < range.endMs) {
+				nextRanges.push({
+					startMs: Math.max(exclusion.endMs, range.startMs),
+					endMs: range.endMs,
+				});
+			}
+
+			return nextRanges;
+		});
+	}
+
+	return remainingRanges;
+}
+
+function getIncidentStatus(severity: string): StatusType {
+	switch (severity) {
+		case "minor":
+		case "degraded":
+			return "degraded";
+		case "major":
+			return "partial_outage";
+		case "critical":
+			return "major_outage";
+		default:
+			return "major_outage";
+	}
+}
+
+function getWorstIncidentStatus(reports: any[]): StatusType {
+	const rank: Record<StatusType, number> = {
+		operational: 0,
+		degraded: 1,
+		partial_outage: 2,
+		major_outage: 3,
+		maintenance: 0,
+		maintenance_scheduled: 0,
+		maintenance_completed: 0,
+		unknown: 0,
+	};
+
+	return reports.reduce<StatusType>((worstStatus, report) => {
+		const currentStatus = getIncidentStatus(report.severity);
+
+		return rank[currentStatus] > rank[worstStatus]
+			? currentStatus
+			: worstStatus;
+	}, "operational");
 }
 
 function getBarDays(design: any): 30 | 60 | 90 {
@@ -216,103 +347,92 @@ export async function prepareStatusPageData(
 				const dayEnd = new Date(day.date);
 				dayEnd.setHours(23, 59, 59, 999);
 
-				const maintenance = events.maintenances.find((m: any) => {
+				const maintenanceRanges = events.maintenances.flatMap((m: any) => {
 					const affectsMonitor = m.monitors.some(
 						(mm: any) => mm.monitorId === pm.monitorId,
 					);
-					if (!affectsMonitor) return false;
+					if (!affectsMonitor) return [];
 
-					const start = new Date(m.startAt);
-					const end = m.endAt ? new Date(m.endAt) : new Date();
+					const range = getOverlapRange(m.startAt, m.endAt, dayStart, dayEnd);
 
-					return start <= dayEnd && end >= dayStart;
+					return range ? [range] : [];
 				});
+				const mergedMaintenanceRanges = mergeRanges(maintenanceRanges);
+				const maintenanceMs = sumRanges(mergedMaintenanceRanges);
+				const monitoredMs = Math.max(0, DAY_MS - maintenanceMs);
+				const reportRanges: TimeRange[] = [];
+				const reportsOutsideMaintenance: any[] = [];
 
-				if (maintenance) {
+				for (const r of events.reports) {
+					const affectsMonitor = r.affectedMonitors.some(
+						(am: any) => am.monitorId === pm.monitorId,
+					);
+					if (!affectsMonitor) continue;
+
+					const range = getOverlapRange(
+						r.startedAt,
+						r.endedAt,
+						dayStart,
+						dayEnd,
+					);
+					if (!range) continue;
+
+					const rangesOutsideMaintenance = subtractRanges(
+						[range],
+						mergedMaintenanceRanges,
+					);
+					if (rangesOutsideMaintenance.length === 0) continue;
+
+					reportRanges.push(...rangesOutsideMaintenance);
+					reportsOutsideMaintenance.push(r);
+				}
+
+				const totalIncidentMs = Math.min(
+					monitoredMs,
+					sumRanges(mergeRanges(reportRanges)),
+				);
+				const uptime =
+					monitoredMs > 0
+						? Math.max(0, ((monitoredMs - totalIncidentMs) / monitoredMs) * 100)
+						: 100;
+
+				if (totalIncidentMs > 0) {
+					return {
+						...day,
+						status: getWorstIncidentStatus(reportsOutsideMaintenance),
+						uptime,
+						downtimeMs: totalIncidentMs,
+						maintenanceMs,
+						monitoredMs,
+						duration: formatDuration(totalIncidentMs),
+					};
+				}
+
+				if (maintenanceMs > 0) {
 					return {
 						...day,
 						status: "maintenance" as any,
 						uptime: 100,
-						duration: undefined,
-					};
-				}
-
-				const relevantReports = events.reports.filter((r: any) => {
-					const affectsMonitor = r.affectedMonitors.some(
-						(am: any) => am.monitorId === pm.monitorId,
-					);
-					if (!affectsMonitor) return false;
-
-					const start = new Date(r.startedAt);
-					const end = r.endedAt ? new Date(r.endedAt) : new Date();
-
-					return start <= dayEnd && end >= dayStart;
-				});
-
-				if (relevantReports.length > 0) {
-					let totalDurationMs = 0;
-
-					for (const r of relevantReports) {
-						const start = new Date(r.startedAt);
-						const end = r.endedAt ? new Date(r.endedAt) : new Date();
-
-						const overlapStart = start > dayStart ? start : dayStart;
-						const overlapEnd = end < dayEnd ? end : dayEnd;
-
-						if (overlapEnd > overlapStart) {
-							totalDurationMs += overlapEnd.getTime() - overlapStart.getTime();
-						}
-					}
-
-					const totalDayMs = 86400000;
-					const lossRatio = Math.min(totalDurationMs / totalDayMs, 1);
-					const newUptime = (1 - lossRatio) * 100;
-
-					let worstSeverityStatus: StatusType = "operational";
-
-					for (const r of relevantReports) {
-						let currentStatusForReport: StatusType = "operational";
-						if (r.severity === "critical")
-							currentStatusForReport = "major_outage";
-						else if (r.severity === "major")
-							currentStatusForReport = "partial_outage";
-						else if (r.severity === "minor" || r.severity === "degraded")
-							currentStatusForReport = "degraded";
-						else currentStatusForReport = "major_outage";
-
-						if (worstSeverityStatus === "operational")
-							worstSeverityStatus = currentStatusForReport;
-						else if (
-							worstSeverityStatus === "degraded" &&
-							(currentStatusForReport === "partial_outage" ||
-								currentStatusForReport === "major_outage")
-						)
-							worstSeverityStatus = currentStatusForReport;
-						else if (
-							worstSeverityStatus === "partial_outage" &&
-							currentStatusForReport === "major_outage"
-						)
-							worstSeverityStatus = currentStatusForReport;
-					}
-
-					return {
-						...day,
-						status: worstSeverityStatus,
-						uptime: newUptime,
-						duration: formatDuration(totalDurationMs),
+						maintenanceMs,
+						monitoredMs,
+						duration: formatDuration(maintenanceMs),
 					};
 				}
 
 				return day;
 			});
 
-			const knownDays = history.filter((d) => d.status !== "maintenance");
-
+			const totalMonitoredMs = history.reduce(
+				(total, day) => total + (day.monitoredMs ?? DAY_MS),
+				0,
+			);
+			const totalUptimeMs = history.reduce(
+				(total, day) =>
+					total + ((day.monitoredMs ?? DAY_MS) * day.uptime) / 100,
+				0,
+			);
 			const avgUptime =
-				knownDays.length > 0
-					? knownDays.reduce((acc, curr) => acc + curr.uptime, 0) /
-						knownDays.length
-					: 100;
+				totalMonitoredMs > 0 ? (totalUptimeMs / totalMonitoredMs) * 100 : 100;
 
 			return {
 				...pm.monitor,
