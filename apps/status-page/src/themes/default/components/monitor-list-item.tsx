@@ -1,4 +1,5 @@
-import { Info } from "@/components/icons";
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Tooltip,
 	TooltipContent,
@@ -54,7 +55,12 @@ export function MonitorListItem({
 						{description && (
 							<Tooltip>
 								<TooltipTrigger
-									render={<Info className="h-4 w-4 text-muted-foreground/60" />}
+									render={
+										<FontAwesomeIcon
+											icon={faCircleInfo}
+											className="h-4 w-4 text-muted-foreground/60"
+										/>
+									}
 								/>
 								<TooltipContent>
 									<p className="max-w-xs text-sm">{description}</p>
@@ -88,7 +94,12 @@ export function MonitorListItem({
 					{description && (
 						<Tooltip>
 							<TooltipTrigger
-								render={<Info className="h-4 w-4 text-muted-foreground/60" />}
+								render={
+									<FontAwesomeIcon
+										icon={faCircleInfo}
+										className="h-4 w-4 text-muted-foreground/60"
+									/>
+								}
 							/>
 							<TooltipContent>
 								<p className="max-w-xs text-sm">{description}</p>

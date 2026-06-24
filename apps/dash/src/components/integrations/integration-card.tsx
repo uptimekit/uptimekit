@@ -1,5 +1,6 @@
+import { faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
-import { Plus, Settings2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -52,12 +53,12 @@ export function IntegrationCard({
 						)}
 					>
 						{active ? "Active" : "Inactive"}
-						<Settings2 className="ml-2 h-3.5 w-3.5" />
+						<FontAwesomeIcon icon={faGear} className="ml-2 h-3.5 w-3.5" />
 					</Button>
 				) : (
 					<Button variant="default" size="sm" onClick={onConfigure}>
 						Add
-						<Plus className="ml-2 h-3.5 w-3.5" />
+						<FontAwesomeIcon icon={faPlus} className="ml-2 h-3.5 w-3.5" />
 					</Button>
 				)}
 			</div>

@@ -1,8 +1,9 @@
 "use client";
 
+import { faDesktop, faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Monitor, Moon, Sun } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export function ThemeToggle() {
@@ -36,7 +37,7 @@ export function ThemeToggle() {
 				)}
 				aria-label="Light mode"
 			>
-				<Sun className="h-4 w-4" />
+				<FontAwesomeIcon icon={faSun} className="h-4 w-4" />
 			</button>
 			<button
 				type="button"
@@ -49,7 +50,7 @@ export function ThemeToggle() {
 				)}
 				aria-label="Dark mode"
 			>
-				<Moon className="h-4 w-4" />
+				<FontAwesomeIcon icon={faMoon} className="h-4 w-4" />
 			</button>
 			<button
 				type="button"
@@ -62,7 +63,7 @@ export function ThemeToggle() {
 				)}
 				aria-label="System theme"
 			>
-				<Monitor className="h-4 w-4" />
+				<FontAwesomeIcon icon={faDesktop} className="h-4 w-4" />
 			</button>
 		</div>
 	);

@@ -1,10 +1,11 @@
 "use client";
 
+import { faCheck, faRotateRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sileo } from "sileo";
-import { Check, RefreshCw } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -30,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import {
 	ALL_REGIONS,
 	getRegionInfo,
+	isFontAwesomeRegionFlag,
 	REGIONS_BY_CONTINENT,
 } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
@@ -171,7 +173,14 @@ export function WorkerGeneralInfoForm({ worker }: WorkerGeneralInfoFormProps) {
 											<ComboboxGroupLabel>Current</ComboboxGroupLabel>
 											<ComboboxItem value={selectedRegion}>
 												<div className="flex items-center gap-2">
-													<selectedRegion.Flag className="size-4 shrink-0 rounded-sm" />
+													{isFontAwesomeRegionFlag(selectedRegion.Flag) ? (
+														<FontAwesomeIcon
+															icon={selectedRegion.Flag}
+															className="size-4 shrink-0 rounded-sm"
+														/>
+													) : (
+														<selectedRegion.Flag className="size-4 shrink-0 rounded-sm" />
+													)}
 													<span>{selectedRegion.label}</span>
 												</div>
 											</ComboboxItem>
@@ -180,14 +189,25 @@ export function WorkerGeneralInfoForm({ worker }: WorkerGeneralInfoFormProps) {
 									{REGIONS_BY_CONTINENT.map((group) => (
 										<ComboboxGroup key={group.continent}>
 											<ComboboxGroupLabel>{group.continent}</ComboboxGroupLabel>
-											{group.regions.map((region) => (
-												<ComboboxItem key={region.value} value={region}>
-													<div className="flex items-center gap-2">
-														<region.Flag className="size-4 shrink-0 rounded-sm" />
-														<span>{region.label}</span>
-													</div>
-												</ComboboxItem>
-											))}
+											{group.regions.map((region) => {
+												const Flag = region.Flag;
+
+												return (
+													<ComboboxItem key={region.value} value={region}>
+														<div className="flex items-center gap-2">
+															{isFontAwesomeRegionFlag(Flag) ? (
+																<FontAwesomeIcon
+																	icon={Flag}
+																	className="size-4 shrink-0 rounded-sm"
+																/>
+															) : (
+																<Flag className="size-4 shrink-0 rounded-sm" />
+															)}
+															<span>{region.label}</span>
+														</div>
+													</ComboboxItem>
+												);
+											})}
 										</ComboboxGroup>
 									))}
 								</ComboboxList>
@@ -205,7 +225,7 @@ export function WorkerGeneralInfoForm({ worker }: WorkerGeneralInfoFormProps) {
 						onClick={resetForm}
 						disabled={isPending || !hasChanges}
 					>
-						<RefreshCw className="h-4 w-4" />
+						<FontAwesomeIcon icon={faRotateRight} className="h-4 w-4" />
 						Reset
 					</Button>
 					<Button
@@ -213,7 +233,7 @@ export function WorkerGeneralInfoForm({ worker }: WorkerGeneralInfoFormProps) {
 						loading={isPending}
 						disabled={!hasChanges || !trimmedName}
 					>
-						<Check className="h-4 w-4" />
+						<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 						Save changes
 					</Button>
 				</CardFooter>

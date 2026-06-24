@@ -1,19 +1,24 @@
 "use client";
 
+import {
+	faChevronDown,
+	faGaugeHigh,
+	faGear,
+	faGrip,
+	faPlus,
+	faRightFromBracket,
+	faShieldHalved,
+	faSignal,
+	faTriangleExclamation,
+	faUpDown,
+	faUser,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
-import {
-	Activity,
-	AlertTriangle,
-	ChevronDown,
-	Grid2X2,
-	LayoutDashboard,
-	Plus,
-	Settings,
-	ShieldAlert,
-} from "@/components/icons";
 import { CreateOrganizationDialog } from "@/components/layout/create-organization-dialog";
 import {
 	DropdownMenu,
@@ -47,22 +52,22 @@ const mainNav = [
 	{
 		title: "Incidents",
 		url: "/",
-		icon: AlertTriangle,
+		icon: faTriangleExclamation,
 	},
 	{
 		title: "Monitors",
 		url: "/monitors",
-		icon: Activity,
+		icon: faSignal,
 	},
 	{
 		title: "Status Pages",
 		url: "/status-pages",
-		icon: LayoutDashboard,
+		icon: faGaugeHigh,
 	},
 	{
 		title: "Notifications",
 		url: "/integrations",
-		icon: Grid2X2,
+		icon: faGrip,
 	},
 ];
 
@@ -70,12 +75,12 @@ const configNav = [
 	{
 		title: "Settings",
 		url: "/settings",
-		icon: Settings,
+		icon: faGear,
 	},
 	{
 		title: "Admin",
 		url: "/admin",
-		icon: ShieldAlert,
+		icon: faShieldHalved,
 	},
 ];
 
@@ -142,7 +147,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 										{displayedActiveOrg?.slug || "Organization"}
 									</span>
 								</div>
-								<ChevronDown className="ml-auto group-data-[collapsible=icon]:hidden" />
+								<FontAwesomeIcon
+									icon={faChevronDown}
+									className="ml-auto group-data-[collapsible=icon]:hidden"
+								/>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
 								className="w-(--anchor-width) min-w-56 rounded-lg"
@@ -204,7 +212,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 											onSelect={() => setShowCreateOrgModal(true)}
 										>
 											<div className="flex size-6 items-center justify-center rounded-md border bg-background">
-												<Plus className="size-4" />
+												<FontAwesomeIcon icon={faPlus} className="size-4" />
 											</div>
 											<div className="font-medium text-muted-foreground">
 												Add Organization
@@ -244,7 +252,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 											tooltip={item.title}
 											render={
 												<Link href={item.url as any}>
-													<item.icon />
+													<FontAwesomeIcon icon={item.icon} />
 													<span>{item.title}</span>
 												</Link>
 											}
@@ -282,7 +290,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 															: item.url) as any
 													}
 												>
-													<item.icon />
+													<FontAwesomeIcon icon={item.icon} />
 													<span>{item.title}</span>
 												</Link>
 											}
@@ -325,8 +333,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 // The existing UserMenu returns a DropdownMenu directly. We want to style the trigger to look like a SidebarMenuButton.
 // Let's create a wrapper or modify UserMenu. For now, I'll create a local wrapper that uses the same logic.
 
-import Image from "next/image";
-import { ChevronsUpDown, LogOut, User } from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -365,7 +371,10 @@ function UserMenuComponent() {
 					<span className="truncate font-semibold">{session.user.name}</span>
 					<span className="truncate text-xs">{session.user.email}</span>
 				</div>
-				<ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+				<FontAwesomeIcon
+					icon={faUpDown}
+					className="ml-auto size-4 group-data-[collapsible=icon]:hidden"
+				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				className="w-(--anchor-width) min-w-56"
@@ -394,11 +403,11 @@ function UserMenuComponent() {
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem render={<Link href={"/settings" as any} />}>
-					<User className="mr-2 h-4 w-4" />
+					<FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
 					Settings
 				</DropdownMenuItem>
 				<DropdownMenuItem render={<Link href={"/organization" as any} />}>
-					<User className="mr-2 h-4 w-4" />
+					<FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
 					Organization
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
@@ -414,7 +423,7 @@ function UserMenuComponent() {
 						});
 					}}
 				>
-					<LogOut className="mr-2 h-4 w-4" />
+					<FontAwesomeIcon icon={faRightFromBracket} className="mr-2 h-4 w-4" />
 					Log out
 				</DropdownMenuItem>
 			</DropdownMenuContent>

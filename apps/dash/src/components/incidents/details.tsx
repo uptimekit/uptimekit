@@ -1,5 +1,14 @@
 "use client";
 
+import {
+	faArrowRight,
+	faCircleCheck,
+	faEllipsis,
+	faPencil,
+	faShieldHalved,
+	faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistance, formatDistanceToNow } from "date-fns";
@@ -9,14 +18,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import {
-	CheckCircle2,
-	CornerDownRight,
-	MoreHorizontal,
-	Pencil,
-	ShieldAlert,
-	Trash2,
-} from "@/components/icons";
 import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import {
 	AlertDialog,
@@ -198,9 +199,9 @@ export function IncidentDetails({ id }: { id: string }) {
 								)}
 							>
 								{isResolved ? (
-									<CheckCircle2 className="h-6 w-6" />
+									<FontAwesomeIcon icon={faCircleCheck} className="h-6 w-6" />
 								) : (
-									<ShieldAlert className="h-6 w-6" />
+									<FontAwesomeIcon icon={faShieldHalved} className="h-6 w-6" />
 								)}
 							</div>
 
@@ -256,7 +257,7 @@ export function IncidentDetails({ id }: { id: string }) {
 								</Button>
 							)}
 							<Button variant="outline" onClick={() => setEditOpen(true)}>
-								<Pencil className="mr-2 h-4 w-4" />
+								<FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
 								Edit
 							</Button>
 
@@ -264,7 +265,7 @@ export function IncidentDetails({ id }: { id: string }) {
 								<DropdownMenuTrigger
 									render={<Button variant="ghost" size="icon" />}
 								>
-									<MoreHorizontal className="h-4 w-4" />
+									<FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
 								</DropdownMenuTrigger>
 
 								<DropdownMenuContent align="end">
@@ -272,7 +273,7 @@ export function IncidentDetails({ id }: { id: string }) {
 										className="text-red-500"
 										onSelect={() => setShowDeleteDialog(true)}
 									>
-										<Trash2 className="mr-2 h-4 w-4" />
+										<FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
 										Delete incident
 									</DropdownMenuItem>
 								</DropdownMenuContent>
@@ -351,7 +352,7 @@ export function IncidentDetails({ id }: { id: string }) {
 										}}
 										disabled={!comment.trim() || submitComment.isPending}
 									>
-										<CornerDownRight className="h-4 w-4" />
+										<FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
 									</Button>
 								</div>
 

@@ -1,11 +1,12 @@
 "use client";
 
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { Check, Copy } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -510,7 +511,10 @@ function TwoFactorSettings({ session }: { session: any }) {
 					<div className="flex items-center justify-between">
 						{session.user.twoFactorEnabled ? (
 							<div className="flex items-center gap-2">
-								<Check className="h-4 w-4 text-green-500" />
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="h-4 w-4 text-green-500"
+								/>
 								<span className="font-medium">
 									Two-factor authentication is enabled.
 								</span>
@@ -623,7 +627,11 @@ function TwoFactorSettings({ session }: { session: any }) {
 														sileo.success({ title: "Copied to clipboard" });
 													}}
 												>
-													<Copy className="mr-2 h-4 w-4" /> Copy Codes
+													<FontAwesomeIcon
+														icon={faCopy}
+														className="mr-2 h-4 w-4"
+													/>{" "}
+													Copy Codes
 												</Button>
 											</div>
 										)}

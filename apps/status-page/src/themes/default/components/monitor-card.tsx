@@ -1,4 +1,5 @@
-import { ExternalLink } from "@/components/icons";
+import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cn } from "@/lib/utils";
 import type { StatusType, UptimeDay } from "../../types";
 import { StatusDot } from "./status-indicator";
@@ -57,7 +58,10 @@ export function MonitorCard({
 										return url;
 									}
 								})()}
-								<ExternalLink className="h-3 w-3" />
+								<FontAwesomeIcon
+									icon={faUpRightFromSquare}
+									className="h-3 w-3"
+								/>
 							</a>
 						)}
 					</div>

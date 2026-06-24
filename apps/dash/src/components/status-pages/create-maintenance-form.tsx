@@ -1,11 +1,12 @@
 "use client";
 
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { X } from "@/components/icons";
 
 import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Badge } from "@/components/ui/badge";
@@ -185,7 +186,10 @@ export function CreateMaintenanceForm({
 																);
 															}}
 														>
-															<X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+															<FontAwesomeIcon
+																icon={faXmark}
+																className="h-3 w-3 text-muted-foreground hover:text-foreground"
+															/>
 														</button>
 													</Badge>
 												);

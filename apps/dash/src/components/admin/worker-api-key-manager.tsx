@@ -1,10 +1,11 @@
 "use client";
 
+import { faCheck, faCopy, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { sileo } from "sileo";
-import { Check, Copy, Loader2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -68,7 +69,12 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 				onClick={() => setShowConfirm(true)}
 				disabled={isPending}
 			>
-				{isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+				{isPending ? (
+					<FontAwesomeIcon
+						icon={faSpinner}
+						className="mr-2 h-4 w-4 animate-spin"
+					/>
+				) : null}
 				Rotate API Key
 			</Button>
 			<p className="text-[0.8rem] text-muted-foreground">
@@ -131,9 +137,9 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
 							>
 								<span className="sr-only">Copy</span>
 								{isRevealed ? (
-									<Check className="h-4 w-4" />
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 								) : (
-									<Copy className="h-4 w-4" />
+									<FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
 								)}
 							</Button>
 						</div>

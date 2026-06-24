@@ -2,8 +2,13 @@
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { Menubar as MenubarPrimitive } from "@base-ui/react/menubar";
+import {
+	faCheck,
+	faChevronRight,
+	faCircle,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 type MenubarContentProps = MenuPrimitive.Popup.Props & {
@@ -150,7 +155,7 @@ function MenubarCheckboxItem({
 			{...props}
 		>
 			<MenuPrimitive.CheckboxItemIndicator className="col-start-1 -ms-0.5">
-				<CheckIcon />
+				<FontAwesomeIcon icon={faCheck} />
 			</MenuPrimitive.CheckboxItemIndicator>
 			<span className="col-start-2">{children}</span>
 		</MenuPrimitive.CheckboxItem>
@@ -172,7 +177,7 @@ function MenubarRadioItem({
 			{...props}
 		>
 			<MenuPrimitive.RadioItemIndicator className="col-start-1 -ms-0.5">
-				<CircleIcon className="size-2 fill-current" />
+				<FontAwesomeIcon icon={faCircle} className="size-2 fill-current" />
 			</MenuPrimitive.RadioItemIndicator>
 			<span className="col-start-2">{children}</span>
 		</MenuPrimitive.RadioItem>
@@ -253,7 +258,10 @@ function MenubarSubTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="ms-auto -me-0.5 opacity-80" />
+			<FontAwesomeIcon
+				icon={faChevronRight}
+				className="ms-auto -me-0.5 opacity-80"
+			/>
 		</MenuPrimitive.SubmenuTrigger>
 	);
 }

@@ -1,12 +1,13 @@
 "use client";
 
+import {
+	faChevronLeft,
+	faChevronRight,
+	faUpDown,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
 import { DayPicker } from "react-day-picker";
-import {
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	ChevronsUpDownIcon,
-} from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 const buttonClassNames =
@@ -81,7 +82,8 @@ export function Calendar({
 		}): React.ReactElement => {
 			if (orientation === "left") {
 				return (
-					<ChevronLeftIcon
+					<FontAwesomeIcon
+						icon={faChevronLeft}
 						className={cn(className, "rtl:rotate-180")}
 						{...props}
 						aria-hidden="true"
@@ -91,7 +93,8 @@ export function Calendar({
 
 			if (orientation === "right") {
 				return (
-					<ChevronRightIcon
+					<FontAwesomeIcon
+						icon={faChevronRight}
 						className={cn(className, "rtl:rotate-180")}
 						{...props}
 						aria-hidden="true"
@@ -100,7 +103,8 @@ export function Calendar({
 			}
 
 			return (
-				<ChevronsUpDownIcon
+				<FontAwesomeIcon
+					icon={faUpDown}
 					className={className}
 					{...props}
 					aria-hidden="true"

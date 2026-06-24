@@ -1,9 +1,10 @@
 "use client";
 
+import { faShieldHalved, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { sileo } from "sileo";
-import { Loader2, Shield } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -126,7 +127,10 @@ export function OidcSettings() {
 	if (isLoading) {
 		return (
 			<div className="flex min-h-64 items-center justify-center text-muted-foreground">
-				<Loader2 className="mr-2 size-4 animate-spin" />
+				<FontAwesomeIcon
+					icon={faSpinner}
+					className="mr-2 size-4 animate-spin"
+				/>
 				Loading single sign-on...
 			</div>
 		);
@@ -136,7 +140,10 @@ export function OidcSettings() {
 		<div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
 			<div className="space-y-2">
 				<div className="flex items-center gap-2">
-					<Shield className="size-5 text-muted-foreground" />
+					<FontAwesomeIcon
+						icon={faShieldHalved}
+						className="size-5 text-muted-foreground"
+					/>
 					<h2 className="font-semibold text-lg leading-none tracking-tight">
 						Single Sign-On
 					</h2>
@@ -294,7 +301,10 @@ export function OidcSettings() {
 								disabled={deleteMutation.isPending || upsertMutation.isPending}
 							>
 								{deleteMutation.isPending && (
-									<Loader2 className="mr-2 size-4 animate-spin" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mr-2 size-4 animate-spin"
+									/>
 								)}
 								Delete
 							</Button>
@@ -305,7 +315,10 @@ export function OidcSettings() {
 							disabled={!canSave || upsertMutation.isPending}
 						>
 							{upsertMutation.isPending && (
-								<Loader2 className="mr-2 size-4 animate-spin" />
+								<FontAwesomeIcon
+									icon={faSpinner}
+									className="mr-2 size-4 animate-spin"
+								/>
 							)}
 							Save
 						</Button>

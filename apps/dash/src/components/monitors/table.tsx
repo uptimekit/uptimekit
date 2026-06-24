@@ -1,5 +1,28 @@
 "use client";
 
+import {
+	faArrowRight,
+	faBomb,
+	faCheck,
+	faChevronDown,
+	faChevronRight,
+	faCirclePlay,
+	faEdit,
+	faEllipsis,
+	faEye,
+	faFilter,
+	faFolder,
+	faMagnifyingGlass,
+	faPause,
+	faPlay,
+	faPlus,
+	faServer,
+	faShieldHalved,
+	faSpinner,
+	faTrash,
+	faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -11,22 +34,6 @@ import {
 } from "nuqs";
 import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { sileo } from "sileo";
-import {
-	ArrowRight,
-	Check,
-	ChevronDown,
-	ChevronRight,
-	Filter,
-	Folder,
-	Loader2,
-	MoreHorizontal,
-	PlayCircle,
-	Plus,
-	Search,
-	Server,
-	ShieldAlert,
-	X,
-} from "@/components/icons";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -51,13 +58,16 @@ import {
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuGroupLabel,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { getRegionInfo } from "@/lib/regions";
+import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 import { GroupCreationDialog } from "./group-creation-dialog";
@@ -454,9 +464,12 @@ export function MonitorsTable() {
 
 				{monitor.hasIncident && (
 					<div className="pointer-events-none relative z-10 inline-flex items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2.5 py-1 font-medium text-red-500 text-xs">
-						<ShieldAlert className="h-3.5 w-3.5" />
+						<FontAwesomeIcon icon={faShieldHalved} className="h-3.5 w-3.5" />
 						Ongoing Incident
-						<ChevronRight className="ml-1 h-3 w-3 opacity-50" />
+						<FontAwesomeIcon
+							icon={faChevronRight}
+							className="ml-1 h-3 w-3 opacity-50"
+						/>
 					</div>
 				)}
 			</TableCell>
@@ -472,7 +485,7 @@ export function MonitorsTable() {
 				/>
 
 				<div className="pointer-events-none relative z-10 flex items-center gap-2">
-					<PlayCircle className="h-4 w-4 opacity-50" />
+					<FontAwesomeIcon icon={faCirclePlay} className="h-4 w-4 opacity-50" />
 					{monitor.frequency}
 				</div>
 			</TableCell>
@@ -519,13 +532,17 @@ export function MonitorsTable() {
 						className="flex select-none items-center gap-2 font-medium text-sm"
 						style={{ marginLeft: node.depth * 16 }}
 					>
-						<ChevronRight
+						<FontAwesomeIcon
+							icon={faChevronRight}
 							className={cn(
 								"h-4 w-4 transition-transform",
 								isExpanded && "rotate-90",
 							)}
 						/>
-						<Folder className="h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faFolder}
+							className="h-4 w-4 text-muted-foreground"
+						/>
 						<span>{node.group.name}</span>
 						<span className="text-muted-foreground text-xs">
 							({subtreeCount})
@@ -590,7 +607,7 @@ export function MonitorsTable() {
 							className="absolute top-1 right-1 h-10 w-10 rounded-full"
 							onClick={() => setSearchOpen(false)}
 						>
-							<ArrowRight className="h-4 w-4" />
+							<FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
 						</Button>
 					</div>
 				</DialogContent>
@@ -599,7 +616,10 @@ export function MonitorsTable() {
 				<h1 className="font-bold text-2xl tracking-tight">Monitors</h1>
 				<div className="flex items-center gap-2">
 					<div className="relative hidden w-64 md:block">
-						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faMagnifyingGlass}
+							className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+						/>
 						<Input
 							placeholder="Search monitors..."
 							className="pl-8"
@@ -613,7 +633,7 @@ export function MonitorsTable() {
 						className="relative md:hidden"
 						onClick={() => setSearchOpen(true)}
 					>
-						<Search className="h-4 w-4" />
+						<FontAwesomeIcon icon={faMagnifyingGlass} className="h-4 w-4" />
 						{search && (
 							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
@@ -624,7 +644,7 @@ export function MonitorsTable() {
 								<Button variant="outline" size="icon" className="relative" />
 							}
 						>
-							<Filter className="h-4 w-4" />
+							<FontAwesomeIcon icon={faFilter} className="h-4 w-4" />
 							{activeFilterCount > 0 && (
 								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
 									<div className="-mt-px">{activeFilterCount}</div>
@@ -642,7 +662,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								All Statuses
-								{!statusFilter && <Check className="h-4 w-4" />}
+								{!statusFilter && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -651,7 +673,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Up
-								{statusFilter === "up" && <Check className="h-4 w-4" />}
+								{statusFilter === "up" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -660,7 +684,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Down
-								{statusFilter === "down" && <Check className="h-4 w-4" />}
+								{statusFilter === "down" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -669,7 +695,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Degraded
-								{statusFilter === "degraded" && <Check className="h-4 w-4" />}
+								{statusFilter === "degraded" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -679,7 +707,7 @@ export function MonitorsTable() {
 							>
 								Maintenance
 								{statusFilter === "maintenance" && (
-									<Check className="h-4 w-4" />
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 								)}
 							</DropdownMenuItem>
 
@@ -695,7 +723,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								All Types
-								{!typeFilter && <Check className="h-4 w-4" />}
+								{!typeFilter && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -704,7 +734,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								HTTP
-								{typeFilter === "http" && <Check className="h-4 w-4" />}
+								{typeFilter === "http" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -713,7 +745,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Ping
-								{typeFilter === "ping" && <Check className="h-4 w-4" />}
+								{typeFilter === "ping" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -722,7 +756,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								TCP
-								{typeFilter === "tcp" && <Check className="h-4 w-4" />}
+								{typeFilter === "tcp" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<DropdownMenuItem
@@ -732,7 +768,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								DNS
-								{typeFilter === "dns" && <Check className="h-4 w-4" />}
+								{typeFilter === "dns" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<DropdownMenuItem
@@ -742,7 +780,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Keyword
-								{typeFilter === "keyword" && <Check className="h-4 w-4" />}
+								{typeFilter === "keyword" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -757,7 +797,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								All
-								{activeFilter === null && <Check className="h-4 w-4" />}
+								{activeFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -766,7 +808,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Active
-								{activeFilter === true && <Check className="h-4 w-4" />}
+								{activeFilter === true && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -775,7 +819,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								Paused
-								{activeFilter === false && <Check className="h-4 w-4" />}
+								{activeFilter === false && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -792,7 +838,7 @@ export function MonitorsTable() {
 										setGroupsOpen(true);
 									}}
 								>
-									<Plus className="h-3 w-3" />
+									<FontAwesomeIcon icon={faPlus} className="h-3 w-3" />
 								</Button>
 							</div>
 							<DropdownMenuItem
@@ -802,7 +848,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								All Groups
-								{!groupFilter && <Check className="h-4 w-4" />}
+								{!groupFilter && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							{groupPaths.map(({ group, path, depth }) => (
 								<DropdownMenuItem
@@ -816,10 +864,15 @@ export function MonitorsTable() {
 										className="flex items-center gap-2"
 										style={{ paddingLeft: depth * 12 }}
 									>
-										<Folder className="h-3 w-3 text-muted-foreground" />
+										<FontAwesomeIcon
+											icon={faFolder}
+											className="h-3 w-3 text-muted-foreground"
+										/>
 										{path}
 									</div>
-									{groupFilter === group.id && <Check className="h-4 w-4" />}
+									{groupFilter === group.id && (
+										<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+									)}
 								</DropdownMenuItem>
 							))}
 
@@ -837,7 +890,7 @@ export function MonitorsTable() {
 										setTagsOpen(true);
 									}}
 								>
-									<Plus className="h-3 w-3" />
+									<FontAwesomeIcon icon={faPlus} className="h-3 w-3" />
 								</Button>
 							</div>
 							<DropdownMenuItem
@@ -847,7 +900,9 @@ export function MonitorsTable() {
 								className="flex justify-between"
 							>
 								All Tags
-								{!tagFilter && <Check className="h-4 w-4" />}
+								{!tagFilter && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							{tags?.map((tag) => (
 								<DropdownMenuItem
@@ -864,7 +919,9 @@ export function MonitorsTable() {
 										/>
 										{tag.name}
 									</div>
-									{tagFilter === tag.id && <Check className="h-4 w-4" />}
+									{tagFilter === tag.id && (
+										<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+									)}
 								</DropdownMenuItem>
 							))}
 
@@ -889,7 +946,7 @@ export function MonitorsTable() {
 						className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
 						render={
 							<Link href="/monitors/new">
-								<Plus className="h-4 w-4" />
+								<FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
 								<span className="hidden md:inline">Create monitor</span>
 							</Link>
 						}
@@ -910,7 +967,7 @@ export function MonitorsTable() {
 								onCheckedChange={(checked) => toggleSelectAll(checked === true)}
 							/>
 						) : (
-							<ChevronDown className="h-4 w-4" />
+							<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 						)}
 						<span>Monitors</span>
 					</div>
@@ -924,11 +981,11 @@ export function MonitorsTable() {
 									render={<Button variant="outline" size="xs" />}
 								>
 									Actions
-									<ChevronDown className="h-4 w-4" />
+									<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
 									<DropdownMenuItem onSelect={() => setAssignWorkerOpen(true)}>
-										<Server className="h-4 w-4" />
+										<FontAwesomeIcon icon={faServer} className="h-4 w-4" />
 										Assign worker
 									</DropdownMenuItem>
 								</DropdownMenuContent>
@@ -939,7 +996,7 @@ export function MonitorsTable() {
 								aria-label="Clear selection"
 								onClick={clearSelection}
 							>
-								<X className="h-4 w-4" />
+								<FontAwesomeIcon icon={faXmark} className="h-4 w-4" />
 							</Button>
 						</div>
 					)}
@@ -955,7 +1012,10 @@ export function MonitorsTable() {
 						{isLoading ? (
 							<TableRow>
 								<TableCell colSpan={6} className="h-24 text-center">
-									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
+									/>
 								</TableCell>
 							</TableRow>
 						) : !tableData || tableData.length === 0 ? (
@@ -963,7 +1023,10 @@ export function MonitorsTable() {
 								<TableCell colSpan={6} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
 										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-											<PlayCircle className="h-6 w-6 text-muted-foreground" />
+											<FontAwesomeIcon
+												icon={faCirclePlay}
+												className="h-6 w-6 text-muted-foreground"
+											/>
 										</div>
 										<p className="font-medium text-lg">No monitors found</p>
 										<p className="text-muted-foreground text-sm">
@@ -1002,13 +1065,17 @@ export function MonitorsTable() {
 										>
 											<TableCell colSpan={6} className="py-3">
 												<div className="flex select-none items-center gap-2 font-medium text-sm">
-													<ChevronRight
+													<FontAwesomeIcon
+														icon={faChevronRight}
 														className={cn(
 															"h-4 w-4 transition-transform",
 															(expandedGroups.ungrouped ?? true) && "rotate-90",
 														)}
 													/>
-													<Folder className="h-4 w-4 text-muted-foreground" />
+													<FontAwesomeIcon
+														icon={faFolder}
+														className="h-4 w-4 text-muted-foreground"
+													/>
 													<span>Ungrouped</span>
 													<span className="text-muted-foreground text-xs">
 														({ungroupedMonitors.length})
@@ -1189,7 +1256,14 @@ function BulkAssignWorkerDialog({
 												className="flex flex-1 cursor-pointer items-center gap-2 font-normal"
 											>
 												<span className="relative size-5 shrink-0 overflow-hidden shadow-sm">
-													<Flag className="h-full w-full" />
+													{isFontAwesomeRegionFlag(Flag) ? (
+														<FontAwesomeIcon
+															icon={Flag}
+															className="h-full w-full"
+														/>
+													) : (
+														<Flag className="h-full w-full" />
+													)}
 												</span>
 												<span className="min-w-0">
 													<span className="block truncate">
@@ -1335,25 +1409,39 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 						/>
 					}
 				>
-					<MoreHorizontal className="h-4 w-4" />
+					<FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
 					<span className="sr-only">Open menu</span>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-					<DropdownMenuItem render={<Link href={`/monitors/${monitor.id}`} />}>
-						View details
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onClick={(e) => {
-							e.stopPropagation();
-							toggleMonitor({ id: monitor.id, active: !monitor.active });
-						}}
-					>
-						{monitor.active
-							? "Pause monitoring"
-							: monitor.pauseReason
-								? "Resume monitoring (re-check limits)"
-								: "Resume monitoring"}
-					</DropdownMenuItem>
+					<DropdownMenuGroup>
+						<DropdownMenuGroupLabel>{monitor.name}</DropdownMenuGroupLabel>
+						<DropdownMenuItem
+							render={<Link href={`/monitors/${monitor.id}`} />}
+						>
+							<FontAwesomeIcon icon={faEye} />
+							View details
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							render={<Link href={`/monitors/${monitor.id}/edit`} />}
+						>
+							<FontAwesomeIcon icon={faEdit} />
+							Edit
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={(e) => {
+								e.stopPropagation();
+								toggleMonitor({ id: monitor.id, active: !monitor.active });
+							}}
+						>
+							<FontAwesomeIcon icon={monitor.active ? faPause : faPlay} />
+							{monitor.active
+								? "Pause monitoring"
+								: monitor.pauseReason
+									? "Resume monitoring (re-check limits)"
+									: "Resume monitoring"}
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						variant="destructive"
 						onClick={(e) => {
@@ -1361,6 +1449,7 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 							setNukeDialogOpen(true);
 						}}
 					>
+						<FontAwesomeIcon icon={faBomb} />
 						Nuke data
 					</DropdownMenuItem>
 					<DropdownMenuItem
@@ -1370,6 +1459,7 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
 							setDeleteDialogOpen(true);
 						}}
 					>
+						<FontAwesomeIcon icon={faTrash} />
 						Delete
 					</DropdownMenuItem>
 				</DropdownMenuContent>

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import {
-	Check,
-	ChevronDown,
-	Copy,
-	Eye,
-	EyeOff,
-	RefreshCw,
-} from "@/components/icons";
+	faCheck,
+	faChevronDown,
+	faCopy,
+	faEye,
+	faEyeSlash,
+	faRotateRight,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
@@ -133,9 +134,9 @@ route:
 						disabled={!configId}
 					>
 						{copied === "url" ? (
-							<Check className="h-4 w-4" />
+							<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 						) : (
-							<Copy className="h-4 w-4" />
+							<FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
 						)}
 					</Button>
 				</div>
@@ -170,9 +171,9 @@ route:
 							title="Copy token"
 						>
 							{copied === "token" ? (
-								<Check className="h-4 w-4" />
+								<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 							) : (
-								<Copy className="h-4 w-4" />
+								<FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
 							)}
 						</Button>
 					) : (
@@ -185,9 +186,9 @@ route:
 							title={tokenRevealed ? "Hide token" : "Reveal token"}
 						>
 							{tokenRevealed ? (
-								<EyeOff className="h-4 w-4" />
+								<FontAwesomeIcon icon={faEyeSlash} className="h-4 w-4" />
 							) : (
-								<Eye className="h-4 w-4" />
+								<FontAwesomeIcon icon={faEye} className="h-4 w-4" />
 							)}
 						</Button>
 					)}
@@ -198,7 +199,7 @@ route:
 						onClick={handleRegenerate}
 						title="Generate new token"
 					>
-						<RefreshCw className="h-4 w-4" />
+						<FontAwesomeIcon icon={faRotateRight} className="h-4 w-4" />
 					</Button>
 				</div>
 				<p className="text-muted-foreground text-sm">
@@ -243,7 +244,8 @@ route:
 					render={<Button variant="ghost" className="w-full justify-between" />}
 				>
 					Advanced Settings
-					<ChevronDown
+					<FontAwesomeIcon
+						icon={faChevronDown}
 						className={cn(
 							"h-4 w-4 transition-transform",
 							advancedOpen && "rotate-180",
@@ -310,9 +312,9 @@ route:
 							onClick={() => handleCopy(alertmanagerConfigCopy, "config")}
 						>
 							{copied === "config" ? (
-								<Check className="mr-2 h-4 w-4" />
+								<FontAwesomeIcon icon={faCheck} className="mr-2 h-4 w-4" />
 							) : (
-								<Copy className="mr-2 h-4 w-4" />
+								<FontAwesomeIcon icon={faCopy} className="mr-2 h-4 w-4" />
 							)}
 							{copied === "config" ? "Copied" : "Copy"}
 						</Button>
@@ -326,12 +328,12 @@ route:
 						>
 							{configRevealed ? (
 								<>
-									<EyeOff className="mr-2 h-4 w-4" />
+									<FontAwesomeIcon icon={faEyeSlash} className="mr-2 h-4 w-4" />
 									Hide
 								</>
 							) : (
 								<>
-									<Eye className="mr-2 h-4 w-4" />
+									<FontAwesomeIcon icon={faEye} className="mr-2 h-4 w-4" />
 									Reveal
 								</>
 							)}

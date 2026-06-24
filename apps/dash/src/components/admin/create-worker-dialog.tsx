@@ -1,10 +1,17 @@
 "use client";
 
+import {
+	faCopy,
+	faEye,
+	faEyeSlash,
+	faPlus,
+	faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { sileo } from "sileo";
-import { Copy, Eye, EyeOff, Loader2, Plus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
 	Combobox,
@@ -30,7 +37,11 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ALL_REGIONS, REGIONS_BY_CONTINENT } from "@/lib/regions";
+import {
+	ALL_REGIONS,
+	isFontAwesomeRegionFlag,
+	REGIONS_BY_CONTINENT,
+} from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
 
 export function CreateWorkerDialog() {
@@ -118,7 +129,7 @@ export function CreateWorkerDialog() {
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger render={<Button size="sm" className="h-8 gap-1" />}>
-				<Plus className="h-3.5 w-3.5" />
+				<FontAwesomeIcon icon={faPlus} className="h-3.5 w-3.5" />
 				<span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
 					Add Worker
 				</span>
@@ -159,7 +170,7 @@ export function CreateWorkerDialog() {
 										{isCopied ? (
 											<span className="text-xs">Copied!</span>
 										) : (
-											<Copy className="h-4 w-4" />
+											<FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
 										)}
 									</Button>
 								) : (
@@ -174,9 +185,9 @@ export function CreateWorkerDialog() {
 											{isRevealed ? "Hide" : "Show"} API Key
 										</span>
 										{isRevealed ? (
-											<EyeOff className="h-4 w-4" />
+											<FontAwesomeIcon icon={faEyeSlash} className="h-4 w-4" />
 										) : (
-											<Eye className="h-4 w-4" />
+											<FontAwesomeIcon icon={faEye} className="h-4 w-4" />
 										)}
 									</Button>
 								)}
@@ -247,14 +258,25 @@ export function CreateWorkerDialog() {
 													<ComboboxGroupLabel>
 														{group.continent}
 													</ComboboxGroupLabel>
-													{group.regions.map((region) => (
-														<ComboboxItem key={region.value} value={region}>
-															<div className="flex items-center gap-2">
-																<region.Flag className="size-4 shrink-0 rounded-sm" />
-																<span>{region.label}</span>
-															</div>
-														</ComboboxItem>
-													))}
+													{group.regions.map((region) => {
+														const Flag = region.Flag;
+
+														return (
+															<ComboboxItem key={region.value} value={region}>
+																<div className="flex items-center gap-2">
+																	{isFontAwesomeRegionFlag(Flag) ? (
+																		<FontAwesomeIcon
+																			icon={Flag}
+																			className="size-4 shrink-0 rounded-sm"
+																		/>
+																	) : (
+																		<Flag className="size-4 shrink-0 rounded-sm" />
+																	)}
+																	<span>{region.label}</span>
+																</div>
+															</ComboboxItem>
+														);
+													})}
 												</ComboboxGroup>
 											))}
 										</ComboboxList>
@@ -268,7 +290,12 @@ export function CreateWorkerDialog() {
 								Cancel
 							</DialogClose>
 							<Button type="submit" disabled={isPending}>
-								{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+								{isPending && (
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mr-2 h-4 w-4 animate-spin"
+									/>
+								)}
 								Create Worker
 							</Button>
 						</DialogFooter>

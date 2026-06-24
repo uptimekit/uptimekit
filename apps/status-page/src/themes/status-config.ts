@@ -1,11 +1,12 @@
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
-	AlertCircle,
-	AlertTriangle,
-	CheckCircle2,
-	HelpCircle,
-	Wrench,
-	XCircle,
-} from "@/components/icons";
+	faCircleCheck,
+	faCircleExclamation,
+	faCircleQuestion,
+	faCircleXmark,
+	faTriangleExclamation,
+	faWrench,
+} from "@fortawesome/free-solid-svg-icons";
 import type { StatusType } from "./types";
 
 export const statusConfig: Record<
@@ -14,55 +15,55 @@ export const statusConfig: Record<
 		label: string;
 		color: string;
 		bgColor: string;
-		icon: React.ComponentType<{ className?: string }>;
+		icon: IconDefinition;
 	}
 > = {
 	operational: {
 		label: "Operational",
 		color: "text-status-operational",
 		bgColor: "bg-status-operational",
-		icon: CheckCircle2,
+		icon: faCircleCheck,
 	},
 	degraded: {
 		label: "Degraded Performance",
 		color: "text-status-degraded",
 		bgColor: "bg-status-degraded",
-		icon: AlertTriangle,
+		icon: faTriangleExclamation,
 	},
 	partial_outage: {
 		label: "Partial Outage",
 		color: "text-status-partial-outage",
 		bgColor: "bg-status-partial-outage",
-		icon: AlertCircle,
+		icon: faCircleExclamation,
 	},
 	major_outage: {
 		label: "Outage",
 		color: "text-status-major-outage",
 		bgColor: "bg-status-major-outage",
-		icon: XCircle,
+		icon: faCircleXmark,
 	},
 	maintenance: {
 		label: "Under Maintenance",
 		color: "text-status-maintenance",
 		bgColor: "bg-status-maintenance",
-		icon: Wrench,
+		icon: faWrench,
 	},
 	maintenance_scheduled: {
 		label: "Scheduled Maintenance",
 		color: "text-status-partial-outage",
 		bgColor: "bg-status-partial-outage",
-		icon: Wrench,
+		icon: faWrench,
 	},
 	maintenance_completed: {
 		label: "Maintenance Completed",
 		color: "text-status-operational",
 		bgColor: "bg-status-operational",
-		icon: CheckCircle2,
+		icon: faCircleCheck,
 	},
 	unknown: {
 		label: "Unknown",
 		color: "text-status-unknown",
 		bgColor: "bg-status-unknown",
-		icon: HelpCircle,
+		icon: faCircleQuestion,
 	},
 };

@@ -1,10 +1,11 @@
 import {
-	AlertCircle,
-	AlertTriangle,
-	Check,
-	Wrench,
-	X,
-} from "@/components/icons";
+	faCheck,
+	faCircleExclamation,
+	faTriangleExclamation,
+	faWrench,
+	faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { StatusType } from "../../types";
 
 interface OverallStatusProps {
@@ -14,42 +15,42 @@ interface OverallStatusProps {
 
 const statusConfig = {
 	operational: {
-		icon: Check,
+		icon: faCheck,
 		bgColor: "bg-status-operational",
 		title: "All services are online",
 	},
 	degraded: {
-		icon: AlertTriangle,
+		icon: faTriangleExclamation,
 		bgColor: "bg-status-degraded",
 		title: "Degraded Performance",
 	},
 	partial_outage: {
-		icon: AlertCircle,
+		icon: faCircleExclamation,
 		bgColor: "bg-status-partial-outage",
 		title: "Partial System Outage",
 	},
 	major_outage: {
-		icon: X,
+		icon: faXmark,
 		bgColor: "bg-status-major-outage",
 		title: "Major System Outage",
 	},
 	maintenance: {
-		icon: Wrench,
+		icon: faWrench,
 		bgColor: "bg-status-maintenance",
 		title: "Ongoing Maintenance",
 	},
 	maintenance_scheduled: {
-		icon: Wrench,
+		icon: faWrench,
 		bgColor: "bg-status-maintenance",
 		title: "Maintenance Scheduled",
 	},
 	maintenance_completed: {
-		icon: Check,
+		icon: faCheck,
 		bgColor: "bg-status-operational",
 		title: "Maintenance Completed",
 	},
 	unknown: {
-		icon: AlertCircle,
+		icon: faCircleExclamation,
 		bgColor: "bg-status-unknown",
 		title: "Status Unknown",
 	},
@@ -84,7 +85,10 @@ export function OverallStatus({ status, lastUpdated }: OverallStatusProps) {
 						className={`relative flex h-12 w-12 items-center justify-center rounded-full ${config.bgColor}`}
 					>
 						{Icon && (
-							<Icon className="h-6 w-6 text-background" strokeWidth={2.5} />
+							<FontAwesomeIcon
+								icon={Icon}
+								className="h-6 w-6 text-background"
+							/>
 						)}
 					</div>
 				</div>

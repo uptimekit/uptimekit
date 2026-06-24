@@ -1,8 +1,13 @@
 "use client";
 
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
+import {
+	faCheck,
+	faChevronRight,
+	faCircle,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 type ContextMenuContentProps = ContextMenuPrimitive.Popup.Props & {
@@ -79,7 +84,10 @@ function ContextMenuSubTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="ms-auto -me-0.5 opacity-80" />
+			<FontAwesomeIcon
+				icon={faChevronRight}
+				className="ms-auto -me-0.5 opacity-80"
+			/>
 		</ContextMenuPrimitive.SubmenuTrigger>
 	);
 }
@@ -190,7 +198,7 @@ function ContextMenuCheckboxItem({
 			{...props}
 		>
 			<ContextMenuPrimitive.CheckboxItemIndicator className="col-start-1 -ms-0.5">
-				<CheckIcon />
+				<FontAwesomeIcon icon={faCheck} />
 			</ContextMenuPrimitive.CheckboxItemIndicator>
 			<span className="col-start-2">{children}</span>
 		</ContextMenuPrimitive.CheckboxItem>
@@ -212,7 +220,7 @@ function ContextMenuRadioItem({
 			{...props}
 		>
 			<ContextMenuPrimitive.RadioItemIndicator className="col-start-1 -ms-0.5">
-				<CircleIcon className="size-2 fill-current" />
+				<FontAwesomeIcon icon={faCircle} className="size-2 fill-current" />
 			</ContextMenuPrimitive.RadioItemIndicator>
 			<span className="col-start-2">{children}</span>
 		</ContextMenuPrimitive.RadioItem>

@@ -1,9 +1,10 @@
 "use client";
 
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useState } from "react";
 import { sileo } from "sileo";
-import { Loader2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -196,7 +197,10 @@ export function ConfigurationSettingsForm() {
 					<div className="flex items-center justify-start pt-2">
 						<Button type="submit" disabled={saveMutation.isPending}>
 							{saveMutation.isPending && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								<FontAwesomeIcon
+									icon={faSpinner}
+									className="mr-2 h-4 w-4 animate-spin"
+								/>
 							)}
 							Save Changes
 						</Button>

@@ -1,8 +1,9 @@
 "use client";
 
 import { NumberField as NumberFieldPrimitive } from "@base-ui/react/number-field";
+import { faMinus, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as React from "react";
-import { MinusIcon, PlusIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +66,7 @@ export function NumberFieldDecrement({
 			data-slot="number-field-decrement"
 			{...props}
 		>
-			<MinusIcon />
+			<FontAwesomeIcon icon={faMinus} />
 		</NumberFieldPrimitive.Decrement>
 	);
 }
@@ -83,7 +84,7 @@ export function NumberFieldIncrement({
 			data-slot="number-field-increment"
 			{...props}
 		>
-			<PlusIcon />
+			<FontAwesomeIcon icon={faPlus} />
 		</NumberFieldPrimitive.Increment>
 	);
 }

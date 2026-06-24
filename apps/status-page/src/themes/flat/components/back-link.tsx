@@ -1,5 +1,6 @@
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { ChevronLeft } from "@/components/icons";
 
 interface BackLinkProps {
 	href: string;
@@ -13,7 +14,7 @@ export function BackLink({ href, label = "Back to status" }: BackLinkProps) {
 				href={href as any}
 				className="inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
 			>
-				<ChevronLeft className="h-4 w-4" />
+				<FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
 				{label}
 			</Link>
 		</div>

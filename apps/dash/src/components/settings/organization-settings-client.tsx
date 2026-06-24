@@ -1,5 +1,7 @@
 "use client";
 
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -8,7 +10,6 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { Loader2 } from "@/components/icons";
 import { ApiKeySettings } from "@/components/settings/api-key-settings";
 import { GroupSettings } from "@/components/settings/group-settings";
 import { LogoEditor } from "@/components/settings/logo-editor";
@@ -59,7 +60,7 @@ function LoadingState({ label = "Loading organization settings..." }) {
 	return (
 		<div className="flex h-full min-h-80 w-full items-center justify-center">
 			<div className="flex items-center gap-2 text-muted-foreground">
-				<Loader2 className="size-4 animate-spin" />
+				<FontAwesomeIcon icon={faSpinner} className="size-4 animate-spin" />
 				{label}
 			</div>
 		</div>

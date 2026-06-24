@@ -1,5 +1,7 @@
 "use client";
 
+import { faAt, faLock, faUser } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,7 +9,6 @@ import { sileo } from "sileo";
 import z from "zod";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import Loader from "@/components/common/loader";
-import { AtSignIcon, LockKeyholeIcon, UserIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,7 +128,7 @@ export default function SignUpForm({
 										aria-invalid={showErrors || undefined}
 									/>
 									<InputGroupAddon align="inline-start">
-										<UserIcon />
+										<FontAwesomeIcon icon={faUser} />
 									</InputGroupAddon>
 								</InputGroup>
 								{showErrors &&
@@ -164,7 +165,7 @@ export default function SignUpForm({
 										aria-invalid={showErrors || undefined}
 									/>
 									<InputGroupAddon align="inline-start">
-										<AtSignIcon />
+										<FontAwesomeIcon icon={faAt} />
 									</InputGroupAddon>
 								</InputGroup>
 								{showErrors &&
@@ -200,7 +201,7 @@ export default function SignUpForm({
 										aria-invalid={showErrors || undefined}
 									/>
 									<InputGroupAddon align="inline-start">
-										<LockKeyholeIcon />
+										<FontAwesomeIcon icon={faLock} />
 									</InputGroupAddon>
 								</InputGroup>
 								{showErrors &&

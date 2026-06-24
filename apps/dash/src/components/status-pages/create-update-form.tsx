@@ -1,11 +1,12 @@
 "use client";
 
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import * as z from "zod";
-import { X } from "@/components/icons";
 
 import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Button } from "@/components/ui/button";
@@ -358,7 +359,10 @@ export function CreateStatusUpdateForm({
 																);
 															}}
 														>
-															<X className="h-4 w-4" />
+															<FontAwesomeIcon
+																icon={faXmark}
+																className="h-4 w-4"
+															/>
 														</Button>
 													</div>
 												</div>

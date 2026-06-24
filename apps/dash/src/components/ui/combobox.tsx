@@ -1,9 +1,10 @@
 "use client";
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
+import { faUpDown, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { parseAsString, useQueryState } from "nuqs";
 import * as React from "react";
-import { ChevronsUpDownIcon, XIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -302,7 +303,7 @@ export function ComboboxInput({
 					{...triggerProps}
 				>
 					<ComboboxPrimitive.Icon data-slot="combobox-icon">
-						<ChevronsUpDownIcon />
+						<FontAwesomeIcon icon={faUpDown} />
 					</ComboboxPrimitive.Icon>
 				</ComboboxTrigger>
 			)}
@@ -314,7 +315,7 @@ export function ComboboxInput({
 					)}
 					{...clearProps}
 				>
-					<XIcon />
+					<FontAwesomeIcon icon={faXmark} />
 				</ComboboxClear>
 			)}
 		</ComboboxPrimitive.InputGroup>
@@ -623,7 +624,7 @@ export function ComboboxChipRemove(
 			data-slot="combobox-chip-remove"
 			{...props}
 		>
-			<XIcon />
+			<FontAwesomeIcon icon={faXmark} />
 		</ComboboxPrimitive.ChipRemove>
 	);
 }

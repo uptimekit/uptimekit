@@ -3,8 +3,9 @@
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type React from "react";
-import { XIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -111,7 +112,7 @@ export function SheetPopup({
 							render={<Button size="icon" variant="ghost" />}
 							{...closeProps}
 						>
-							<XIcon />
+							<FontAwesomeIcon icon={faXmark} />
 						</SheetPrimitive.Close>
 					)}
 				</SheetPrimitive.Popup>

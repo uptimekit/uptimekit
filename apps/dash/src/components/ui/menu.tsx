@@ -1,8 +1,9 @@
 "use client";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
-import { ChevronRightIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 type MenuActivationEvent = React.MouseEvent<HTMLElement> & {
@@ -337,7 +338,10 @@ export function MenuSubTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="ms-auto -me-0.5 opacity-80" />
+			<FontAwesomeIcon
+				icon={faChevronRight}
+				className="ms-auto -me-0.5 opacity-80"
+			/>
 		</MenuPrimitive.SubmenuTrigger>
 	);
 }

@@ -1,9 +1,15 @@
 "use client";
 
+import {
+	faEllipsis,
+	faPencil,
+	faPlus,
+	faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { sileo } from "sileo";
-import { MoreHorizontal, Pencil, Plus, Trash2 } from "@/components/icons";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -135,7 +141,7 @@ export function TagsManager({
 				{!readOnly && (
 					<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 						<DialogTrigger render={<Button variant="outline" size="sm" />}>
-							<Plus className="mr-2 h-4 w-4" />
+							<FontAwesomeIcon icon={faPlus} className="mr-2 h-4 w-4" />
 							New Tag
 						</DialogTrigger>
 						<DialogPopup className="sm:max-w-[425px]">
@@ -220,7 +226,7 @@ export function TagsManager({
 											size="icon"
 											className="h-5 w-5 text-muted-foreground hover:text-foreground"
 										>
-											<MoreHorizontal className="h-3 w-3" />
+											<FontAwesomeIcon icon={faEllipsis} className="h-3 w-3" />
 										</Button>
 									}
 								/>
@@ -234,7 +240,7 @@ export function TagsManager({
 											setEditOpen(true);
 										}}
 									>
-										<Pencil className="mr-2 h-4 w-4" />
+										<FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
 										Edit
 									</DropdownMenuItem>
 									<AlertDialog>
@@ -246,7 +252,10 @@ export function TagsManager({
 												/>
 											}
 										>
-											<Trash2 className="mr-2 h-4 w-4" />
+											<FontAwesomeIcon
+												icon={faTrash}
+												className="mr-2 h-4 w-4"
+											/>
 											Delete
 										</AlertDialogTrigger>
 										<AlertDialogContent>

@@ -1,5 +1,24 @@
 "use client";
 
+import {
+	faArrowRight,
+	faCheck,
+	faChevronDown,
+	faChevronLeft,
+	faChevronRight,
+	faCircleCheck,
+	faCircleQuestion,
+	faEllipsis,
+	faFilter,
+	faMagnifyingGlass,
+	faNetworkWired,
+	faPlus,
+	faShieldHalved,
+	faSpinner,
+	faTrash,
+	faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -12,24 +31,6 @@ import {
 } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import { sileo } from "sileo";
-import {
-	ArrowRight,
-	Check,
-	CheckCircle2,
-	ChevronDown,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	Filter,
-	HelpCircle,
-	Loader2,
-	MoreHorizontal,
-	Network,
-	Plus,
-	Search,
-	ShieldAlert,
-	Trash2,
-	X,
-} from "@/components/icons";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -446,13 +447,28 @@ export function IncidentsTable() {
 	const getStatusIcon = (status: string) => {
 		switch (status) {
 			case "resolved":
-				return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleCheck}
+						className="h-5 w-5 text-emerald-500"
+					/>
+				);
 			case "investigating":
 			case "identified":
 			case "monitoring":
-				return <ShieldAlert className="h-5 w-5 text-red-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faShieldHalved}
+						className="h-5 w-5 text-red-500"
+					/>
+				);
 			default:
-				return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleQuestion}
+						className="h-5 w-5 text-muted-foreground"
+					/>
+				);
 		}
 	};
 
@@ -629,7 +645,10 @@ export function IncidentsTable() {
 						>
 							{mergeIncidents.isPending ? (
 								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mr-2 h-4 w-4 animate-spin"
+									/>
 									Merging...
 								</>
 							) : (
@@ -660,7 +679,7 @@ export function IncidentsTable() {
 							className="absolute top-1 right-1 h-10 w-10 rounded-full"
 							onClick={() => setSearchOpen(false)}
 						>
-							<ArrowRight className="h-4 w-4" />
+							<FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
 						</Button>
 					</div>
 				</DialogContent>
@@ -669,7 +688,10 @@ export function IncidentsTable() {
 				<h1 className="font-bold text-2xl tracking-tight">Incidents</h1>
 				<div className="flex items-center gap-2">
 					<div className="relative hidden w-64 md:block">
-						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faMagnifyingGlass}
+							className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+						/>
 						<Input
 							placeholder="Search incidents..."
 							className="pl-8"
@@ -683,7 +705,7 @@ export function IncidentsTable() {
 						className="relative md:hidden"
 						onClick={() => setSearchOpen(true)}
 					>
-						<Search className="h-4 w-4" />
+						<FontAwesomeIcon icon={faMagnifyingGlass} className="h-4 w-4" />
 						{search && (
 							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
@@ -694,7 +716,7 @@ export function IncidentsTable() {
 								<Button variant="outline" size="icon" className="relative" />
 							}
 						>
-							<Filter className="h-4 w-4" />
+							<FontAwesomeIcon icon={faFilter} className="h-4 w-4" />
 							{activeFilterCount > 0 && (
 								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
 									{activeFilterCount}
@@ -712,7 +734,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								All Statuses
-								{statusFilter === null && <Check className="h-4 w-4" />}
+								{statusFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -721,7 +745,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Open
-								{statusFilter === "open" && <Check className="h-4 w-4" />}
+								{statusFilter === "open" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -730,7 +756,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Resolved
-								{statusFilter === "resolved" && <Check className="h-4 w-4" />}
+								{statusFilter === "resolved" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -745,7 +773,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								All Severities
-								{!severityFilter && <Check className="h-4 w-4" />}
+								{!severityFilter && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -754,7 +784,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Minor
-								{severityFilter === "minor" && <Check className="h-4 w-4" />}
+								{severityFilter === "minor" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -763,7 +795,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Major
-								{severityFilter === "major" && <Check className="h-4 w-4" />}
+								{severityFilter === "major" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -772,7 +806,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Critical
-								{severityFilter === "critical" && <Check className="h-4 w-4" />}
+								{severityFilter === "critical" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -787,7 +823,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								All Types
-								{!typeFilter && <Check className="h-4 w-4" />}
+								{!typeFilter && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -796,7 +834,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Manual
-								{typeFilter === "manual" && <Check className="h-4 w-4" />}
+								{typeFilter === "manual" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -805,7 +845,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								Automatic
-								{typeFilter === "automatic" && <Check className="h-4 w-4" />}
+								{typeFilter === "automatic" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -820,7 +862,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								All Monitors
-								{monitorFilter === null && <Check className="h-4 w-4" />}
+								{monitorFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							{monitors.map((monitor) => (
 								<DropdownMenuItem
@@ -832,7 +876,7 @@ export function IncidentsTable() {
 								>
 									<span className="truncate">{monitor.name}</span>
 									{monitorFilter === monitor.id && (
-										<Check className="h-4 w-4" />
+										<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 									)}
 								</DropdownMenuItem>
 							))}
@@ -849,7 +893,9 @@ export function IncidentsTable() {
 								className="flex justify-between"
 							>
 								All Status Pages
-								{statusPageFilter === null && <Check className="h-4 w-4" />}
+								{statusPageFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							{statusPages.map((statusPage) => (
 								<DropdownMenuItem
@@ -864,7 +910,7 @@ export function IncidentsTable() {
 								>
 									<span className="truncate">{statusPage.name}</span>
 									{statusPageFilter === statusPage.id && (
-										<Check className="h-4 w-4" />
+										<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 									)}
 								</DropdownMenuItem>
 							))}
@@ -925,7 +971,7 @@ export function IncidentsTable() {
 						className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
 						render={
 							<Link href="/incidents/new">
-								<Plus className="h-4 w-4" />
+								<FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
 								<span className="hidden md:inline">Report a new incident</span>
 							</Link>
 						}
@@ -952,7 +998,7 @@ export function IncidentsTable() {
 								}
 							/>
 						) : (
-							<ChevronDown className="h-4 w-4" />
+							<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 						)}
 						<span>Incidents</span>
 						{total > 0 && (
@@ -982,7 +1028,7 @@ export function IncidentsTable() {
 									selectedUnacknowledgedOpenIds.length === 0
 								}
 							>
-								<Check className="h-4 w-4" />
+								<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 								<span className="hidden sm:inline">
 									Acknowledge
 									{selectedUnacknowledgedOpenIds.length > 0
@@ -998,7 +1044,7 @@ export function IncidentsTable() {
 									bulkIncidentAction.isPending || selectedOpenIds.length === 0
 								}
 							>
-								<CheckCircle2 className="h-4 w-4" />
+								<FontAwesomeIcon icon={faCircleCheck} className="h-4 w-4" />
 								<span className="hidden sm:inline">
 									Resolve
 									{selectedOpenIds.length > 0
@@ -1016,7 +1062,7 @@ export function IncidentsTable() {
 									selectedCount < 2
 								}
 							>
-								<Network className="h-4 w-4" />
+								<FontAwesomeIcon icon={faNetworkWired} className="h-4 w-4" />
 								<span className="hidden sm:inline">Merge</span>
 							</Button>
 							<Button
@@ -1025,7 +1071,7 @@ export function IncidentsTable() {
 								onClick={() => setBulkDeleteIds(selectedIds)}
 								disabled={bulkIncidentAction.isPending}
 							>
-								<Trash2 className="h-4 w-4" />
+								<FontAwesomeIcon icon={faTrash} className="h-4 w-4" />
 								<span className="hidden sm:inline">Delete</span>
 							</Button>
 							<Button
@@ -1035,7 +1081,7 @@ export function IncidentsTable() {
 								onClick={clearSelection}
 								disabled={bulkIncidentAction.isPending}
 							>
-								<X className="h-4 w-4" />
+								<FontAwesomeIcon icon={faXmark} className="h-4 w-4" />
 							</Button>
 						</div>
 					)}
@@ -1058,7 +1104,10 @@ export function IncidentsTable() {
 						{isLoading ? (
 							<TableRow>
 								<TableCell colSpan={5} className="h-24 text-center">
-									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
+									/>
 								</TableCell>
 							</TableRow>
 						) : !incidents || incidents.length === 0 ? (
@@ -1066,7 +1115,10 @@ export function IncidentsTable() {
 								<TableCell colSpan={5} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
 										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-											<ShieldAlert className="h-6 w-6 text-muted-foreground" />
+											<FontAwesomeIcon
+												icon={faShieldHalved}
+												className="h-6 w-6 text-muted-foreground"
+											/>
 										</div>
 										<p className="font-medium text-lg">No incidents found</p>
 										<p className="text-muted-foreground text-sm">
@@ -1233,7 +1285,10 @@ export function IncidentsTable() {
 														/>
 													}
 												>
-													<MoreHorizontal className="h-4 w-4" />
+													<FontAwesomeIcon
+														icon={faEllipsis}
+														className="h-4 w-4"
+													/>
 													<span className="sr-only">Open menu</span>
 												</DropdownMenuTrigger>
 												<DropdownMenuContent
@@ -1261,7 +1316,10 @@ export function IncidentsTable() {
 																runBulkAction("acknowledge", [incident.id]);
 															}}
 														>
-															<Check className="h-4 w-4" />
+															<FontAwesomeIcon
+																icon={faCheck}
+																className="h-4 w-4"
+															/>
 															Acknowledge
 														</DropdownMenuItem>
 													)}
@@ -1274,7 +1332,10 @@ export function IncidentsTable() {
 																runBulkAction("resolve", [incident.id]);
 															}}
 														>
-															<CheckCircle2 className="h-4 w-4" />
+															<FontAwesomeIcon
+																icon={faCircleCheck}
+																className="h-4 w-4"
+															/>
 															Resolve
 														</DropdownMenuItem>
 													)}
@@ -1313,7 +1374,7 @@ export function IncidentsTable() {
 										disabled={page === 1}
 										onClick={() => void setFilters({ page: page - 1 })}
 									>
-										<ChevronLeftIcon className="h-4 w-4" />
+										<FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
 									</Button>
 								</PaginationItem>
 								{Array.from({ length: totalPages }, (_, i) => i + 1).map(
@@ -1357,7 +1418,10 @@ export function IncidentsTable() {
 										onClick={() => void setFilters({ page: page + 1 })}
 										disabled={page === totalPages}
 									>
-										<ChevronRightIcon className="h-4 w-4" />
+										<FontAwesomeIcon
+											icon={faChevronRight}
+											className="h-4 w-4"
+										/>
 									</Button>
 								</PaginationItem>
 							</PaginationContent>
@@ -1395,7 +1459,10 @@ export function IncidentsTable() {
 						>
 							{bulkIncidentAction.isPending ? (
 								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mr-2 h-4 w-4 animate-spin"
+									/>
 									Deleting...
 								</>
 							) : (
@@ -1431,7 +1498,10 @@ export function IncidentsTable() {
 						>
 							{isDeleting ? (
 								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mr-2 h-4 w-4 animate-spin"
+									/>
 									Deleting...
 								</>
 							) : (

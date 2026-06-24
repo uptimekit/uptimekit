@@ -1,4 +1,8 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import {
+	faChevronLeft,
+	faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button } from "@/components/ui/button";
 import {
 	Pagination,
@@ -35,7 +39,7 @@ export function DataPagination({
 							disabled={page === 1}
 							onClick={() => setPage(page - 1)}
 						>
-							<ChevronLeftIcon className="h-4 w-4" />
+							<FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
 						</Button>
 					</PaginationItem>
 					{Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
@@ -75,7 +79,7 @@ export function DataPagination({
 							onClick={() => setPage(page + 1)}
 							disabled={page === totalPages}
 						>
-							<ChevronRightIcon className="h-4 w-4" />
+							<FontAwesomeIcon icon={faChevronRight} className="h-4 w-4" />
 						</Button>
 					</PaginationItem>
 				</PaginationContent>

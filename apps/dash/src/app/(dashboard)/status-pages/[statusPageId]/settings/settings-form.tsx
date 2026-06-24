@@ -1,19 +1,20 @@
 "use client";
 
+import {
+	faChevronDown,
+	faGrip,
+	faImage,
+	faList,
+	faSpinner,
+	faUpRightFromSquare,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo as toast } from "sileo";
 import * as z from "zod";
-import {
-	ChevronDown,
-	ExternalLink,
-	Image as ImageIcon,
-	LayoutGrid,
-	LayoutList,
-	Loader2,
-} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -217,7 +218,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 	if (isLoading) {
 		return (
 			<div className="flex justify-center p-10">
-				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+				<FontAwesomeIcon
+					icon={faSpinner}
+					className="h-8 w-8 animate-spin text-muted-foreground"
+				/>
 			</div>
 		);
 	}
@@ -380,7 +384,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 													{...field}
 												/>
 												<div className="absolute top-2.5 right-3 text-muted-foreground">
-													<ExternalLink className="h-4 w-4" />
+													<FontAwesomeIcon
+														icon={faUpRightFromSquare}
+														className="h-4 w-4"
+													/>
 												</div>
 											</div>
 											<FormDescription className="pt-1">
@@ -724,7 +731,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														<div className={optionCardClassName}>
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
-																	<LayoutList className="h-5 w-5 text-muted-foreground/50" />
+																	<FontAwesomeIcon
+																		icon={faList}
+																		className="h-5 w-5 text-muted-foreground/50"
+																	/>
 																</div>
 																<div className="space-y-1">
 																	<div className="font-medium leading-none">
@@ -756,7 +766,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														<div className={optionCardClassName}>
 															<div className="flex items-center gap-4">
 																<div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
-																	<LayoutGrid className="h-5 w-5 text-muted-foreground/50" />
+																	<FontAwesomeIcon
+																		icon={faGrip}
+																		className="h-5 w-5 text-muted-foreground/50"
+																	/>
 																</div>
 																<div className="space-y-1">
 																	<div className="font-medium leading-none">
@@ -935,7 +948,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 												</div>
 											) : (
 												<div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted">
-													<ImageIcon className="h-6 w-6 text-muted-foreground" />
+													<FontAwesomeIcon
+														icon={faImage}
+														className="h-6 w-6 text-muted-foreground"
+													/>
 												</div>
 											)}
 											<div className="flex-1 space-y-2">
@@ -961,7 +977,8 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 											<span className="text-muted-foreground text-sm">
 												Custom Favicon (Optional)
 											</span>
-											<ChevronDown
+											<FontAwesomeIcon
+												icon={faChevronDown}
 												className={cn(
 													"h-4 w-4 text-muted-foreground transition-transform duration-200",
 													faviconOpen && "rotate-180",
@@ -989,7 +1006,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 														</div>
 													) : (
 														<div className="flex h-12 w-12 items-center justify-center rounded-md border bg-muted">
-															<ImageIcon className="h-6 w-6 text-muted-foreground" />
+															<FontAwesomeIcon
+																icon={faImage}
+																className="h-6 w-6 text-muted-foreground"
+															/>
 														</div>
 													)}
 													<div className="flex-1 space-y-2">
@@ -1085,7 +1105,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 						disabled={updateStatusPage.isPending}
 					>
 						{updateStatusPage.isPending && (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							<FontAwesomeIcon
+								icon={faSpinner}
+								className="mr-2 h-4 w-4 animate-spin"
+							/>
 						)}
 						Save changes
 					</Button>

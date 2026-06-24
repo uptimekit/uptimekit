@@ -2,8 +2,9 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
+import { faChevronRight, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
-import { ChevronRight, MoreHorizontal } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export function Breadcrumb({
@@ -85,7 +86,7 @@ export function BreadcrumbSeparator({
 			role="presentation"
 			{...props}
 		>
-			{children ?? <ChevronRight />}
+			{children ?? <FontAwesomeIcon icon={faChevronRight} />}
 		</li>
 	);
 }
@@ -102,7 +103,7 @@ export function BreadcrumbEllipsis({
 			role="presentation"
 			{...props}
 		>
-			<MoreHorizontal className="size-4" />
+			<FontAwesomeIcon icon={faEllipsis} className="size-4" />
 			<span className="sr-only">More</span>
 		</span>
 	);

@@ -1,5 +1,7 @@
 "use client";
 
+import { faAt, faLock } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useForm } from "@tanstack/react-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,7 +9,6 @@ import { useState } from "react";
 import { sileo } from "sileo";
 import z from "zod";
 import { AuthDivider } from "@/components/auth/auth-divider";
-import { AtSignIcon, LockKeyholeIcon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -220,7 +221,7 @@ export default function SignInForm({
 										aria-invalid={showErrors || undefined}
 									/>
 									<InputGroupAddon align="inline-start">
-										<AtSignIcon />
+										<FontAwesomeIcon icon={faAt} />
 									</InputGroupAddon>
 								</InputGroup>
 								{showErrors &&
@@ -258,7 +259,7 @@ export default function SignInForm({
 											aria-invalid={showErrors || undefined}
 										/>
 										<InputGroupAddon align="inline-start">
-											<LockKeyholeIcon />
+											<FontAwesomeIcon icon={faLock} />
 										</InputGroupAddon>
 									</InputGroup>
 									{showErrors &&

@@ -6,9 +6,10 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 import { useRender } from "@base-ui/react/use-render";
+import { faChevronRight, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type React from "react";
 import { createContext, useContext } from "react";
-import { ChevronRightIcon, XIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -215,7 +216,7 @@ export function DrawerPopup({
 							className="absolute end-2 top-2"
 							render={<Button size="icon" variant="ghost" />}
 						>
-							<XIcon />
+							<FontAwesomeIcon icon={faXmark} />
 						</DrawerPrimitive.Close>
 					)}
 					{showBar && <DrawerBar />}
@@ -496,7 +497,10 @@ export function DrawerMenuTrigger({
 			{...props}
 		>
 			{children}
-			<ChevronRightIcon className="ms-auto -me-0.5 opacity-80" />
+			<FontAwesomeIcon
+				icon={faChevronRight}
+				className="ms-auto -me-0.5 opacity-80"
+			/>
 		</DrawerTrigger>
 	);
 }

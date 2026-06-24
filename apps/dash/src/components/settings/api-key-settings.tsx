@@ -1,17 +1,18 @@
 "use client";
 
+import {
+	faCheck,
+	faCopy,
+	faKey,
+	faPlus,
+	faRotateRight,
+	faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { useMemo, useState } from "react";
 import { sileo } from "sileo";
-import {
-	Check,
-	Copy,
-	KeyRound,
-	Plus,
-	RefreshCw,
-	Trash2,
-} from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -208,14 +209,17 @@ export function ApiKeySettings() {
 						</CardDescription>
 					</div>
 					<Button onClick={() => setIsCreateOpen(true)}>
-						<Plus />
+						<FontAwesomeIcon icon={faPlus} />
 						Create key
 					</Button>
 				</CardHeader>
 				<CardContent>
 					{apiKeysQuery.isLoading ? (
 						<div className="flex min-h-48 items-center justify-center text-muted-foreground text-sm">
-							<RefreshCw className="mr-2 size-4 animate-spin" />
+							<FontAwesomeIcon
+								icon={faRotateRight}
+								className="mr-2 size-4 animate-spin"
+							/>
 							Loading API keys...
 						</div>
 					) : apiKeysQuery.data?.length ? (
@@ -276,7 +280,7 @@ export function ApiKeySettings() {
 													variant="ghost"
 													onClick={() => setDeletingKey(apiKey)}
 												>
-													<Trash2 />
+													<FontAwesomeIcon icon={faTrash} />
 												</Button>
 											</div>
 										</TableCell>
@@ -288,7 +292,7 @@ export function ApiKeySettings() {
 						<Empty className="min-h-64">
 							<EmptyHeader>
 								<EmptyMedia variant="icon">
-									<KeyRound />
+									<FontAwesomeIcon icon={faKey} />
 								</EmptyMedia>
 								<EmptyTitle>No API keys</EmptyTitle>
 								<EmptyDescription>
@@ -357,7 +361,11 @@ export function ApiKeySettings() {
 								value={createdKey?.key || ""}
 							/>
 							<Button size="icon" onClick={copyCreatedKey}>
-								{copied ? <Check /> : <Copy />}
+								{copied ? (
+									<FontAwesomeIcon icon={faCheck} />
+								) : (
+									<FontAwesomeIcon icon={faCopy} />
+								)}
 							</Button>
 						</div>
 					</DialogPanel>

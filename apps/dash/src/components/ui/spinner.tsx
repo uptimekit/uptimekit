@@ -1,13 +1,18 @@
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type React from "react";
-import { Loader2Icon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export function Spinner({
 	className,
 	...props
-}: React.ComponentProps<typeof Loader2Icon>): React.ReactElement {
+}: Omit<
+	React.ComponentProps<typeof FontAwesomeIcon>,
+	"icon"
+>): React.ReactElement {
 	return (
-		<Loader2Icon
+		<FontAwesomeIcon
+			icon={faSpinner}
 			aria-label="Loading"
 			className={cn("animate-spin", className)}
 			role="status"

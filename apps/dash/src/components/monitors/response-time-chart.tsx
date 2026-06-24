@@ -1,5 +1,15 @@
 "use client";
 
+import {
+	faAnglesLeft,
+	faAnglesRight,
+	faChevronLeft,
+	faChevronRight,
+	faEllipsis,
+	faGlobe,
+	faUpDown,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -22,15 +32,6 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import {
-	ChevronLeft,
-	ChevronRight,
-	ChevronsLeft,
-	ChevronsRight,
-	ChevronsUpDown,
-	Globe,
-	MoreHorizontal,
-} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,7 +63,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { getRegionInfo } from "@/lib/regions";
+import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -1142,7 +1143,7 @@ export function ResponseTimeChart({
 											size="sm"
 											className="gap-2 border-border/70 bg-background/60"
 										>
-											<Globe className="h-4 w-4" />
+											<FontAwesomeIcon icon={faGlobe} className="h-4 w-4" />
 											{summaryText}
 										</Button>
 									}
@@ -1166,6 +1167,7 @@ export function ResponseTimeChart({
 										{workerIds.map((workerId) => {
 											const { primaryLabel, regionInfo, secondaryLabel } =
 												getLocationDisplay(workerId);
+											const Flag = regionInfo.Flag;
 											const checked = activeWorkerIds.includes(workerId);
 											return (
 												// biome-ignore lint/a11y/noLabelWithoutControl: shhhh its okay
@@ -1196,7 +1198,14 @@ export function ResponseTimeChart({
 															});
 														}}
 													/>
-													<regionInfo.Flag className="size-4 shrink-0 rounded-[2px]" />
+													{isFontAwesomeRegionFlag(Flag) ? (
+														<FontAwesomeIcon
+															icon={Flag}
+															className="size-4 shrink-0 rounded-[2px]"
+														/>
+													) : (
+														<Flag className="size-4 shrink-0 rounded-[2px]" />
+													)}
 													<div className="min-w-0">
 														<div className="truncate text-sm">
 															{primaryLabel}
@@ -1553,7 +1562,10 @@ export function ResponseTimeChart({
 													}
 												>
 													<span className="uppercase">{metric}</span>
-													<ChevronsUpDown className="h-3.5 w-3.5" />
+													<FontAwesomeIcon
+														icon={faUpDown}
+														className="h-3.5 w-3.5"
+													/>
 												</button>
 											</TableHead>
 										))}
@@ -1564,6 +1576,7 @@ export function ResponseTimeChart({
 									{paginatedRegionMetrics.map((row) => {
 										const { primaryLabel, regionInfo, secondaryLabel } =
 											getLocationDisplay(row.workerId);
+										const Flag = regionInfo.Flag;
 										return (
 											<TableRow
 												key={row.workerId}
@@ -1571,7 +1584,14 @@ export function ResponseTimeChart({
 											>
 												<TableCell className="px-4">
 													<div className="flex items-center gap-3">
-														<regionInfo.Flag className="size-4 shrink-0 rounded-[2px]" />
+														{isFontAwesomeRegionFlag(Flag) ? (
+															<FontAwesomeIcon
+																icon={Flag}
+																className="size-4 shrink-0 rounded-[2px]"
+															/>
+														) : (
+															<Flag className="size-4 shrink-0 rounded-[2px]" />
+														)}
 														<div className="min-w-0">
 															<div className="truncate font-medium text-sm">
 																{primaryLabel}
@@ -1616,7 +1636,10 @@ export function ResponseTimeChart({
 																	size="icon"
 																	className="h-8 w-8 text-muted-foreground"
 																>
-																	<MoreHorizontal className="h-4 w-4" />
+																	<FontAwesomeIcon
+																		icon={faEllipsis}
+																		className="h-4 w-4"
+																	/>
 																</Button>
 															}
 														/>
@@ -1693,7 +1716,10 @@ export function ResponseTimeChart({
 												disabled={page === 1}
 												onClick={() => updateChartState({ page: 1 })}
 											>
-												<ChevronsLeft className="h-4 w-4" />
+												<FontAwesomeIcon
+													icon={faAnglesLeft}
+													className="h-4 w-4"
+												/>
 											</Button>
 											<Button
 												type="button"
@@ -1705,7 +1731,10 @@ export function ResponseTimeChart({
 													updateChartState({ page: Math.max(1, page - 1) })
 												}
 											>
-												<ChevronLeft className="h-4 w-4" />
+												<FontAwesomeIcon
+													icon={faChevronLeft}
+													className="h-4 w-4"
+												/>
 											</Button>
 											<Button
 												type="button"
@@ -1719,7 +1748,10 @@ export function ResponseTimeChart({
 													})
 												}
 											>
-												<ChevronRight className="h-4 w-4" />
+												<FontAwesomeIcon
+													icon={faChevronRight}
+													className="h-4 w-4"
+												/>
 											</Button>
 											<Button
 												type="button"
@@ -1729,7 +1761,10 @@ export function ResponseTimeChart({
 												disabled={page === totalPages}
 												onClick={() => updateChartState({ page: totalPages })}
 											>
-												<ChevronsRight className="h-4 w-4" />
+												<FontAwesomeIcon
+													icon={faAnglesRight}
+													className="h-4 w-4"
+												/>
 											</Button>
 										</div>
 									</div>

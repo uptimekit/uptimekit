@@ -1,15 +1,16 @@
 "use client";
 
+import {
+	faEllipsis,
+	faFolder,
+	faPencil,
+	faPlus,
+	faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { sileo } from "sileo";
-import {
-	Folder,
-	MoreHorizontal,
-	Pencil,
-	Plus,
-	Trash2,
-} from "@/components/icons";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -191,7 +192,7 @@ export function GroupsManager({
 				{!readOnly && (
 					<Dialog open={createOpen} onOpenChange={setCreateOpen}>
 						<DialogTrigger render={<Button variant="outline" size="sm" />}>
-							<Plus className="mr-2 h-4 w-4" />
+							<FontAwesomeIcon icon={faPlus} className="mr-2 h-4 w-4" />
 							New Group
 						</DialogTrigger>
 						<DialogPopup className="sm:max-w-[425px]">
@@ -273,7 +274,10 @@ export function GroupsManager({
 						style={{ marginLeft: depth * 16 }}
 					>
 						<div className="flex items-center gap-2">
-							<Folder className="h-4 w-4 text-muted-foreground" />
+							<FontAwesomeIcon
+								icon={faFolder}
+								className="h-4 w-4 text-muted-foreground"
+							/>
 							<span className="font-medium text-sm">{group.name}</span>
 						</div>
 						{!readOnly && (
@@ -281,20 +285,20 @@ export function GroupsManager({
 								<DropdownMenuTrigger
 									render={
 										<Button variant="ghost" size="icon" className="h-8 w-8">
-											<MoreHorizontal className="h-4 w-4" />
+											<FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
 										</Button>
 									}
 								/>
 								<DropdownMenuContent align="end">
 									<DropdownMenuItem onClick={() => openEdit(group)}>
-										<Pencil className="mr-2 h-4 w-4" />
+										<FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
 										Edit
 									</DropdownMenuItem>
 									<DropdownMenuItem
 										className="text-red-500"
 										onClick={() => openDelete(group)}
 									>
-										<Trash2 className="mr-2 h-4 w-4" />
+										<FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
 										Delete
 									</DropdownMenuItem>
 								</DropdownMenuContent>

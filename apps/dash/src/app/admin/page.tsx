@@ -1,4 +1,11 @@
 import {
+	faChartColumn,
+	faShieldHalved,
+	faSignal,
+	faUsers,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
 	getWorkerHeartbeatThreshold,
 	isWorkerHeartbeatFresh,
 } from "@uptimekit/api/lib/worker-status";
@@ -9,10 +16,9 @@ import { worker } from "@uptimekit/db/schema/workers";
 import { formatDistanceToNow } from "date-fns";
 import { and, count, eq, isNull, lt, or } from "drizzle-orm";
 import WorkersMap from "@/components/admin/workers-map";
-import { Activity, BarChart3, Shield, Users } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRegionInfo } from "@/lib/regions";
+import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 
 // Disable prerendering - this page needs database access at runtime
 export const dynamic = "force-dynamic";
@@ -118,7 +124,10 @@ export default async function AdminPage() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="font-medium text-sm">Total Users</CardTitle>
-						<Users className="h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faUsers}
+							className="h-4 w-4 text-muted-foreground"
+						/>
 					</CardHeader>
 					<CardContent>
 						<div className="font-bold text-2xl">{stats.users}</div>
@@ -132,7 +141,10 @@ export default async function AdminPage() {
 						<CardTitle className="font-medium text-sm">
 							Total Organizations
 						</CardTitle>
-						<Shield className="h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faShieldHalved}
+							className="h-4 w-4 text-muted-foreground"
+						/>
 					</CardHeader>
 					<CardContent>
 						<div className="font-bold text-2xl">{stats.orgs}</div>
@@ -144,7 +156,10 @@ export default async function AdminPage() {
 						<CardTitle className="font-medium text-sm">
 							Active Monitors
 						</CardTitle>
-						<Activity className="h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faSignal}
+							className="h-4 w-4 text-muted-foreground"
+						/>
 					</CardHeader>
 					<CardContent>
 						<div className="font-bold text-2xl">{stats.monitors}</div>
@@ -156,7 +171,10 @@ export default async function AdminPage() {
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="font-medium text-sm">System Health</CardTitle>
-						<BarChart3 className="h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faChartColumn}
+							className="h-4 w-4 text-muted-foreground"
+						/>
 					</CardHeader>
 					<CardContent>
 						<div className={`font-bold text-2xl ${systemHealthClassName}`}>
@@ -217,10 +235,18 @@ export default async function AdminPage() {
 													</div>
 													<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
 														<span className="inline-flex min-w-0 items-center gap-1.5">
-															<Flag
-																aria-label={`${regionInfo.label} flag`}
-																className="size-5 shrink-0 rounded-sm shadow-sm"
-															/>
+															{isFontAwesomeRegionFlag(Flag) ? (
+																<FontAwesomeIcon
+																	aria-label={`${regionInfo.label} flag`}
+																	icon={Flag}
+																	className="size-5 shrink-0 rounded-sm shadow-sm"
+																/>
+															) : (
+																<Flag
+																	aria-label={`${regionInfo.label} flag`}
+																	className="size-5 shrink-0 rounded-sm shadow-sm"
+																/>
+															)}
 															<span className="truncate">
 																{regionInfo.label}
 															</span>

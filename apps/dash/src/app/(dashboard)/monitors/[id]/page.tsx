@@ -1,19 +1,20 @@
 "use client";
 
+import {
+	faArrowLeft,
+	faCircleCheck,
+	faCircleQuestion,
+	faCircleXmark,
+	faClock,
+	faGlobe,
+	faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { sileo } from "sileo";
-import {
-	AlertTriangle,
-	ArrowLeft,
-	CheckCircle2,
-	Clock,
-	Globe,
-	HelpCircle,
-	XCircle,
-} from "@/components/icons";
 import { AvailabilityTable } from "@/components/monitors/availability-table";
 import { MonitorCards } from "@/components/monitors/monitor-cards";
 import { ResponseTimeChart } from "@/components/monitors/response-time-chart";
@@ -104,17 +105,44 @@ export default function MonitorDetailsPage() {
 	const getStatusIcon = (status: string) => {
 		switch (status) {
 			case "up":
-				return <CheckCircle2 className="h-5 w-5 text-emerald-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleCheck}
+						className="h-5 w-5 text-emerald-500"
+					/>
+				);
 			case "down":
-				return <XCircle className="h-5 w-5 text-red-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleXmark}
+						className="h-5 w-5 text-red-500"
+					/>
+				);
 			case "degraded":
-				return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faTriangleExclamation}
+						className="h-5 w-5 text-amber-500"
+					/>
+				);
 			case "maintenance":
-				return <Clock className="h-5 w-5 text-blue-500" />;
+				return (
+					<FontAwesomeIcon icon={faClock} className="h-5 w-5 text-blue-500" />
+				);
 			case "pending":
-				return <HelpCircle className="h-5 w-5 text-zinc-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleQuestion}
+						className="h-5 w-5 text-zinc-500"
+					/>
+				);
 			default:
-				return <HelpCircle className="h-5 w-5 text-muted-foreground" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleQuestion}
+						className="h-5 w-5 text-muted-foreground"
+					/>
+				);
 		}
 	};
 
@@ -205,7 +233,7 @@ export default function MonitorDetailsPage() {
 					size="icon"
 					render={
 						<Link href="/monitors">
-							<ArrowLeft className="h-4 w-4" />
+							<FontAwesomeIcon icon={faArrowLeft} className="h-4 w-4" />
 						</Link>
 					}
 				/>
@@ -239,7 +267,7 @@ export default function MonitorDetailsPage() {
 						)}
 					</div>
 					<div className="flex items-center gap-2 text-muted-foreground text-sm">
-						<Globe className="h-3.5 w-3.5" />
+						<FontAwesomeIcon icon={faGlobe} className="h-3.5 w-3.5" />
 						{monitorHref ? (
 							<a href={monitorHref} className="font-mono hover:underline">
 								{monitorTarget}
@@ -250,7 +278,7 @@ export default function MonitorDetailsPage() {
 						{!isExternal && (
 							<>
 								<span className="select-none">·</span>
-								<Clock className="h-3.5 w-3.5" />
+								<FontAwesomeIcon icon={faClock} className="h-3.5 w-3.5" />
 								<span className="select-none">
 									Checked every {monitor.interval}s
 								</span>

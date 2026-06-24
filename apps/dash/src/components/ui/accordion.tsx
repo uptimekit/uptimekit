@@ -1,8 +1,9 @@
 "use client";
 
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type React from "react";
-import { ChevronDownIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export function Accordion(
@@ -40,7 +41,8 @@ export function AccordionTrigger({
 				{...props}
 			>
 				{children}
-				<ChevronDownIcon
+				<FontAwesomeIcon
+					icon={faChevronDown}
 					className="pointer-events-none size-4 shrink-0 translate-y-0.5 opacity-80 transition-transform duration-200 ease-in-out"
 					data-slot="accordion-indicator"
 				/>

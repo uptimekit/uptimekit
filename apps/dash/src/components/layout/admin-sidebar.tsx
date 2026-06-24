@@ -1,18 +1,19 @@
 "use client";
 
+import {
+	faChartColumn,
+	faChevronLeft,
+	faGear,
+	faNetworkWired,
+	faServer,
+	faShieldHalved,
+	faUsers,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
 import { useEffect, useState } from "react";
-import {
-	BarChart3,
-	ChevronLeft,
-	Network,
-	Server,
-	Settings,
-	Shield,
-	Users,
-} from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	Sidebar,
@@ -36,32 +37,32 @@ const adminNav = [
 	{
 		title: "Overview",
 		url: "/admin",
-		icon: BarChart3,
+		icon: faChartColumn,
 	},
 	{
 		title: "Workers",
 		url: "/admin/workers",
-		icon: Server,
+		icon: faServer,
 	},
 	{
 		title: "Users",
 		url: "/admin/users",
-		icon: Users,
+		icon: faUsers,
 	},
 	{
 		title: "Organizations",
 		url: "/admin/organizations",
-		icon: Shield,
+		icon: faShieldHalved,
 	},
 	{
 		title: "Import",
 		url: "/admin/import",
-		icon: Network,
+		icon: faNetworkWired,
 	},
 	{
 		title: "Settings",
 		url: "/admin/settings",
-		icon: Settings,
+		icon: faGear,
 	},
 ] as const;
 
@@ -77,7 +78,7 @@ export function AdminSidebar({
 					<SidebarMenuItem>
 						<SidebarMenuButton size="lg" render={<Link href="/" />}>
 							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-								<ChevronLeft className="size-4" />
+								<FontAwesomeIcon icon={faChevronLeft} className="size-4" />
 							</div>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-semibold">Back to App</span>
@@ -103,7 +104,7 @@ export function AdminSidebar({
 										tooltip={item.title}
 										render={<Link href={item.url} />}
 									>
-										<item.icon />
+										<FontAwesomeIcon icon={item.icon} />
 										<span>{item.title}</span>
 									</SidebarMenuButton>
 								</SidebarMenuItem>

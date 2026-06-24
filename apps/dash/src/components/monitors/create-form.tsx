@@ -1,5 +1,18 @@
 "use client";
 
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+	faBell,
+	faChevronRight,
+	faCode,
+	faGlobe,
+	faMagnifyingGlass,
+	faNetworkWired,
+	faPlus,
+	faServer,
+	faSignal,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,17 +30,6 @@ import {
 } from "react-hook-form";
 import { sileo } from "sileo";
 import * as z from "zod";
-import {
-	Activity,
-	Bell,
-	Braces,
-	ChevronRight,
-	Globe,
-	Network,
-	Plus,
-	Search,
-	Server,
-} from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,7 +82,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { getRegionInfo } from "@/lib/regions";
+import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
 import { GroupCreationDialog } from "./group-creation-dialog";
@@ -287,7 +289,7 @@ interface MonitorTypeDefinition {
 	id: FormValues["type"];
 	label: string;
 	description: string;
-	icon: React.ElementType;
+	icon: IconDefinition;
 	group: "Network & web" | "Infrastructure" | "External";
 	// Component to render specific fields
 	Fields: React.ComponentType<{ form: UseFormReturn<FormValues> }>;
@@ -739,7 +741,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "Network & web",
 		label: "HTTP(s)",
 		description: "Monitor a website or API endpoint",
-		icon: Globe,
+		icon: faGlobe,
 		Fields: UrlField,
 	},
 	{
@@ -747,7 +749,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "Network & web",
 		label: "HTTP JSON",
 		description: "Validate JSON response from an API",
-		icon: Braces,
+		icon: faCode,
 		Fields: HttpJsonFields,
 	},
 	{
@@ -755,7 +757,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "Network & web",
 		label: "HTTP Keyword",
 		description: "Check if a keyword is present on a page",
-		icon: Search,
+		icon: faMagnifyingGlass,
 		Fields: KeywordFields,
 	},
 
@@ -764,7 +766,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "Infrastructure",
 		label: "Ping",
 		description: "Check reachability of a host",
-		icon: Activity,
+		icon: faSignal,
 		Fields: HostnameField,
 	},
 	{
@@ -772,7 +774,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "Infrastructure",
 		label: "Port (TCP)",
 		description: "Monitor a specific port on a server",
-		icon: Server,
+		icon: faServer,
 		Fields: TcpFields,
 	},
 	{
@@ -780,7 +782,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "Infrastructure",
 		label: "DNS",
 		description: "Query DNS records through a resolver",
-		icon: Network,
+		icon: faNetworkWired,
 		Fields: DnsFields,
 	},
 	{
@@ -788,7 +790,7 @@ const monitorTypes: MonitorTypeDefinition[] = [
 		group: "External",
 		label: "Instatus",
 		description: "Get the monitor from any Instatus status page",
-		icon: Network,
+		icon: faNetworkWired,
 		Fields: InstatusFields,
 	},
 ];
@@ -973,7 +975,7 @@ const HttpAdvancedFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
 								onClick={() => remove(index)}
 							>
 								<span className="sr-only">Remove</span>
-								<Plus className="h-4 w-4 rotate-45" />
+								<FontAwesomeIcon icon={faPlus} className="h-4 w-4 rotate-45" />
 							</Button>
 						</div>
 					))}
@@ -984,7 +986,7 @@ const HttpAdvancedFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
 						className="mt-2"
 						onClick={() => append({ key: "", value: "" })}
 					>
-						<Plus className="mr-2 h-4 w-4" />
+						<FontAwesomeIcon icon={faPlus} className="mr-2 h-4 w-4" />
 						Add Header
 					</Button>
 				</div>
@@ -1373,7 +1375,10 @@ export function CreateMonitorForm({
 																placeholder="Select type"
 																startAddon={
 																	value ? (
-																		<value.icon className="h-4 w-4 text-muted-foreground" />
+																		<FontAwesomeIcon
+																			icon={value.icon}
+																			className="h-4 w-4 text-muted-foreground"
+																		/>
 																	) : undefined
 																}
 															/>
@@ -1385,7 +1390,10 @@ export function CreateMonitorForm({
 															{(type) => (
 																<ComboboxItem key={type.id} value={type}>
 																	<div className="flex items-center gap-3">
-																		<type.icon className="h-4 w-4 text-muted-foreground" />
+																		<FontAwesomeIcon
+																			icon={type.icon}
+																			className="h-4 w-4 text-muted-foreground"
+																		/>
 																		<div className="flex flex-col">
 																			<span>{type.label}</span>
 																			<span className="text-muted-foreground text-xs">
@@ -1488,7 +1496,10 @@ export function CreateMonitorForm({
 															<div className="my-1 border-t" />
 															<SelectItem value={CREATE_GROUP_SELECT_VALUE}>
 																<span className="flex items-center gap-2 text-muted-foreground">
-																	<Plus className="h-4 w-4" />
+																	<FontAwesomeIcon
+																		icon={faPlus}
+																		className="h-4 w-4"
+																	/>
 																	<span>Create group</span>
 																</span>
 															</SelectItem>
@@ -1594,7 +1605,10 @@ export function CreateMonitorForm({
 																	className="hover:bg-muted"
 																>
 																	<div className="flex items-center gap-2 text-muted-foreground">
-																		<Plus className="h-4 w-4" />
+																		<FontAwesomeIcon
+																			icon={faPlus}
+																			className="h-4 w-4"
+																		/>
 																		<span>Create tag</span>
 																	</div>
 																</ComboboxItem>
@@ -1648,19 +1662,27 @@ export function CreateMonitorForm({
 													</FormLabel>
 													<div className="rounded-lg border bg-muted/20 p-3 text-sm">
 														<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-															<span className="font-medium">
-																Active monitors:{" "}
-																{organizationQuota?.activeMonitorCount ?? 0}
-																{activeMonitorLimit === null
-																	? " / unlimited"
-																	: ` / ${activeMonitorLimit}`}
-															</span>
-															<span className="text-muted-foreground">
-																Selected workers: {selectedRegionCount}
-																{regionLimit === null
-																	? " / unlimited"
-																	: ` / ${regionLimit}`}
-															</span>
+															{activeMonitorLimit === null ? (
+																""
+															) : (
+																<span className="font-medium">
+																	Active monitors:{" "}
+																	{organizationQuota?.activeMonitorCount ?? 0}
+																	{activeMonitorLimit === null
+																		? " / unlimited"
+																		: ` / ${activeMonitorLimit}`}
+																</span>
+															)}
+															{regionLimit === null ? (
+																""
+															) : (
+																<span className="text-muted-foreground">
+																	Selected workers: {selectedRegionCount}
+																	{regionLimit === null
+																		? " / unlimited"
+																		: ` / ${regionLimit}`}
+																</span>
+															)}
 														</div>
 														{isOverRegionLimit && (
 															<p className="mt-2 text-destructive text-xs">
@@ -1682,7 +1704,8 @@ export function CreateMonitorForm({
 																>
 																	<CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-muted/30 px-4 py-2 font-semibold text-sm hover:bg-muted/50">
 																		<span>{continent}</span>
-																		<ChevronRight
+																		<FontAwesomeIcon
+																			icon={faChevronRight}
 																			className={cn(
 																				"h-4 w-4 transition-transform duration-200",
 																				openContinents[continent] &&
@@ -1734,7 +1757,16 @@ export function CreateMonitorForm({
 																									</FormControl>
 																									<div className="flex items-center gap-2 space-y-1 leading-none">
 																										<div className="relative size-6 overflow-hidden shadow-sm">
-																											<Flag className="h-full w-full" />
+																											{isFontAwesomeRegionFlag(
+																												Flag,
+																											) ? (
+																												<FontAwesomeIcon
+																													icon={Flag}
+																													className="h-full w-full"
+																												/>
+																											) : (
+																												<Flag className="h-full w-full" />
+																											)}
 																										</div>
 																										<div className="min-w-0">
 																											<FormLabel className="cursor-pointer font-normal">
@@ -1887,7 +1919,10 @@ export function CreateMonitorForm({
 													) : (
 														<div className="flex flex-col items-start gap-3 rounded-lg border border-dashed p-6">
 															<div className="flex items-center gap-2 font-medium">
-																<Bell className="h-4 w-4" />
+																<FontAwesomeIcon
+																	icon={faBell}
+																	className="h-4 w-4"
+																/>
 																No notifications configured
 															</div>
 															<p className="text-muted-foreground text-sm">
@@ -1924,7 +1959,8 @@ export function CreateMonitorForm({
 												variant="ghost"
 												className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
 											>
-												<ChevronRight
+												<FontAwesomeIcon
+													icon={faChevronRight}
 													className={cn(
 														"h-4 w-4 transition-transform",
 														isAdvancedOpen && "rotate-90",

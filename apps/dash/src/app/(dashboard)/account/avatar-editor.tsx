@@ -1,9 +1,10 @@
 "use client";
 
+import { faPencil, faTrash, faUser } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { Pencil, Trash, User } from "@/components/icons";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -75,14 +76,14 @@ export function AvatarEditor({ value, onChange, name }: AvatarEditorProps) {
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start">
 						<DropdownMenuItem onClick={handleOpenDialog}>
-							<Pencil className="mr-2 h-4 w-4" />
+							<FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
 							Change avatar
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							className="text-destructive focus:text-destructive"
 							onClick={handleRemove}
 						>
-							<Trash className="mr-2 h-4 w-4" />
+							<FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
 							Remove avatar
 						</DropdownMenuItem>
 					</DropdownMenuContent>
@@ -106,7 +107,10 @@ export function AvatarEditor({ value, onChange, name }: AvatarEditorProps) {
 				onClick={handleOpenDialog}
 				className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border border-dashed bg-muted/50 transition-all hover:bg-muted hover:opacity-80"
 			>
-				<User className="h-8 w-8 text-muted-foreground" />
+				<FontAwesomeIcon
+					icon={faUser}
+					className="h-8 w-8 text-muted-foreground"
+				/>
 			</button>
 
 			<AvatarDialog

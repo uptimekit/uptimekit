@@ -1,12 +1,13 @@
 "use client";
 
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { Loader2 } from "@/components/icons";
 import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -369,7 +370,10 @@ export function CreateIncidentForm() {
 						disabled={createIncident.isPending}
 					>
 						{createIncident.isPending && (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							<FontAwesomeIcon
+								icon={faSpinner}
+								className="mr-2 h-4 w-4 animate-spin"
+							/>
 						)}
 						Create Incident
 					</Button>

@@ -1,7 +1,8 @@
 "use client";
 
+import { faCircleCheck, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type FormEvent, useState } from "react";
-import { CheckCircle2, Loader2 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 interface SubscribeFormProps {
@@ -213,7 +214,7 @@ export function SubscribeForm({
 
 								{state.success ? (
 									<p className="flex items-center gap-2 text-green-600 text-sm dark:text-green-400">
-										<CheckCircle2 className="h-4 w-4" />
+										<FontAwesomeIcon icon={faCircleCheck} className="h-4 w-4" />
 										{state.success}
 									</p>
 								) : null}
@@ -234,7 +235,10 @@ export function SubscribeForm({
 								>
 									{isPending ? (
 										<>
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											<FontAwesomeIcon
+												icon={faSpinner}
+												className="mr-2 h-4 w-4 animate-spin"
+											/>
 											Subscribing...
 										</>
 									) : (
@@ -284,7 +288,10 @@ export function SubscribeForm({
 				<button type="submit" disabled={isPending} className={styles.button}>
 					{isPending ? (
 						<>
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							<FontAwesomeIcon
+								icon={faSpinner}
+								className="mr-2 h-4 w-4 animate-spin"
+							/>
 							Subscribing...
 						</>
 					) : (
@@ -296,7 +303,7 @@ export function SubscribeForm({
 				) : null}
 				{state.success ? (
 					<p className="flex items-center gap-2 text-green-600 text-sm dark:text-green-400">
-						<CheckCircle2 className="h-4 w-4" />
+						<FontAwesomeIcon icon={faCircleCheck} className="h-4 w-4" />
 						{state.success}
 					</p>
 				) : null}

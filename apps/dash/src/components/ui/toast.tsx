@@ -1,23 +1,24 @@
 "use client";
 
 import { Toast } from "@base-ui/react/toast";
-import type React from "react";
 import {
-	CircleAlertIcon,
-	CircleCheckIcon,
-	InfoIcon,
-	LoaderCircleIcon,
-	TriangleAlertIcon,
-} from "@/components/icons";
+	faCircleCheck,
+	faCircleExclamation,
+	faCircleInfo,
+	faSpinner,
+	faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type React from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const TOAST_ICONS = {
-	error: CircleAlertIcon,
-	info: InfoIcon,
-	loading: LoaderCircleIcon,
-	success: CircleCheckIcon,
-	warning: TriangleAlertIcon,
+	error: faCircleExclamation,
+	info: faCircleInfo,
+	loading: faSpinner,
+	success: faCircleCheck,
+	warning: faTriangleExclamation,
 } as const;
 
 type SwipeDirection = "up" | "down" | "left" | "right";
@@ -118,7 +119,10 @@ function Toasts({ position }: { position: ToastPosition }): React.ReactElement {
 											className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
 											data-slot="toast-icon"
 										>
-											<Icon className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
+											<FontAwesomeIcon
+												icon={Icon}
+												className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80"
+											/>
 										</div>
 									)}
 
@@ -201,7 +205,10 @@ function AnchoredToasts(): React.ReactElement {
 													className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
 													data-slot="toast-icon"
 												>
-													<Icon className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80" />
+													<FontAwesomeIcon
+														icon={Icon}
+														className="in-data-[type=loading]:animate-spin in-data-[type=error]:text-destructive in-data-[type=info]:text-info in-data-[type=success]:text-success in-data-[type=warning]:text-warning in-data-[type=loading]:opacity-80"
+													/>
 												</div>
 											)}
 

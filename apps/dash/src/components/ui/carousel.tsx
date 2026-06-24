@@ -1,8 +1,9 @@
+import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import useEmblaCarousel, {
 	type UseEmblaCarouselType,
 } from "embla-carousel-react";
 import * as React from "react";
-import { ArrowLeft, ArrowRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -192,7 +193,7 @@ function CarouselPrevious({
 			onClick={scrollPrev}
 			{...props}
 		>
-			<ArrowLeft />
+			<FontAwesomeIcon icon={faArrowLeft} />
 			<span className="sr-only">Previous slide</span>
 		</Button>
 	);
@@ -222,7 +223,7 @@ function CarouselNext({
 			onClick={scrollNext}
 			{...props}
 		>
-			<ArrowRight />
+			<FontAwesomeIcon icon={faArrowRight} />
 			<span className="sr-only">Next slide</span>
 		</Button>
 	);

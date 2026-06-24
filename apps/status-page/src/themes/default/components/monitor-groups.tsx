@@ -1,7 +1,8 @@
 "use client";
 
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
-import { ChevronDown } from "@/components/icons";
 import { getSectionStatus, getSectionStatusText } from "@/lib/section-status";
 import { cn } from "@/lib/utils";
 import type { GroupedMonitors } from "../../types";
@@ -70,7 +71,8 @@ function MonitorGroupSection({
 						)}
 					>
 						<div className="flex min-w-0 items-center gap-3">
-							<ChevronDown
+							<FontAwesomeIcon
+								icon={faChevronDown}
 								className={cn(
 									"h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
 									!isExpanded && "-rotate-90",

@@ -1,11 +1,12 @@
 "use client";
 
+import { faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import * as z from "zod";
-import { Loader2 } from "@/components/icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -170,7 +171,12 @@ export function CreateOrganizationDialog({
 								Cancel
 							</DialogClose>
 							<Button type="submit" disabled={isLoading}>
-								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+								{isLoading && (
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mr-2 h-4 w-4 animate-spin"
+									/>
+								)}
 								Create Organization
 							</Button>
 						</DialogFooter>

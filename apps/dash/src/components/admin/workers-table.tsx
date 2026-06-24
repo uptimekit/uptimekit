@@ -1,5 +1,13 @@
 "use client";
 
+import {
+	faChevronDown,
+	faChevronLeft,
+	faChevronRight,
+	faEllipsis,
+	faMagnifyingGlass,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	getWorkerAvailabilityStatus,
@@ -10,13 +18,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import { CreateWorkerDialog } from "@/components/admin/create-worker-dialog";
-import {
-	ChevronDown,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	MoreHorizontal,
-	Search,
-} from "@/components/icons";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -48,7 +49,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { getRegionInfo } from "@/lib/regions";
+import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -165,7 +166,10 @@ export function WorkersTable() {
 				<h1 className="font-bold text-2xl tracking-tight">Workers</h1>
 				<div className="flex items-center gap-2">
 					<div className="relative w-64">
-						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faMagnifyingGlass}
+							className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+						/>
 						<Input
 							placeholder="Search"
 							className="pl-8"
@@ -203,7 +207,7 @@ export function WorkersTable() {
 
 			<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
 				<div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
-					<ChevronDown className="h-4 w-4" />
+					<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 					Workers
 				</div>
 				<Table>
@@ -219,7 +223,10 @@ export function WorkersTable() {
 								<TableCell colSpan={4} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
 										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-											<Search className="h-6 w-6 text-muted-foreground" />
+											<FontAwesomeIcon
+												icon={faMagnifyingGlass}
+												className="h-6 w-6 text-muted-foreground"
+											/>
 										</div>
 										<p className="font-medium text-lg">No workers found</p>
 										<p className="text-muted-foreground text-sm">
@@ -276,7 +283,14 @@ export function WorkersTable() {
 															const Flag = regionInfo.Flag;
 															return (
 																<>
-																	<Flag className="size-3.5 shrink-0 rounded-sm" />
+																	{isFontAwesomeRegionFlag(Flag) ? (
+																		<FontAwesomeIcon
+																			icon={Flag}
+																			className="size-3.5 shrink-0 rounded-sm"
+																		/>
+																	) : (
+																		<Flag className="size-3.5 shrink-0 rounded-sm" />
+																	)}
 																	<span>{regionInfo.label}</span>
 																</>
 															);
@@ -309,7 +323,10 @@ export function WorkersTable() {
 														/>
 													}
 												>
-													<MoreHorizontal className="h-4 w-4" />
+													<FontAwesomeIcon
+														icon={faEllipsis}
+														className="h-4 w-4"
+													/>
 													<span className="sr-only">Open menu</span>
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end">
@@ -351,7 +368,7 @@ export function WorkersTable() {
 										disabled={page === 1}
 										onClick={() => setPage(page - 1)}
 									>
-										<ChevronLeftIcon className="h-4 w-4" />
+										<FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
 									</Button>
 								</PaginationItem>
 								{Array.from({ length: totalPages }, (_, i) => i + 1).map(
@@ -393,7 +410,10 @@ export function WorkersTable() {
 										onClick={() => setPage(page + 1)}
 										disabled={page === totalPages}
 									>
-										<ChevronRightIcon className="h-4 w-4" />
+										<FontAwesomeIcon
+											icon={faChevronRight}
+											className="h-4 w-4"
+										/>
 									</Button>
 								</PaginationItem>
 							</PaginationContent>

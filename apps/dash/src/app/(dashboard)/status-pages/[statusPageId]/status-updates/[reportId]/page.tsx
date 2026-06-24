@@ -1,15 +1,15 @@
 "use client";
 
+import {
+	faArrowLeft,
+	faCircleCheck,
+	faPencil,
+	faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import {
-	AlertOctagon,
-	AlertTriangle,
-	ArrowLeft,
-	CheckCircle,
-	Pencil,
-} from "@/components/icons";
 import { AddUpdateForm } from "@/components/status-pages/add-update-form";
 import { EditUpdateForm } from "@/components/status-pages/edit-update-form";
 import { Badge } from "@/components/ui/badge";
@@ -43,18 +43,43 @@ export default function IncidentDetailsPage() {
 
 	const getSeverityIcon = (severity: string, status: string) => {
 		if (status === "resolved") {
-			return <CheckCircle className="h-5 w-5 text-green-500" />;
+			return (
+				<FontAwesomeIcon
+					icon={faCircleCheck}
+					className="h-5 w-5 text-green-500"
+				/>
+			);
 		}
 
 		switch (severity) {
 			case "critical":
-				return <AlertOctagon className="h-5 w-5 text-red-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faTriangleExclamation}
+						className="h-5 w-5 text-red-500"
+					/>
+				);
 			case "major":
-				return <AlertTriangle className="h-5 w-5 text-orange-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faTriangleExclamation}
+						className="h-5 w-5 text-orange-500"
+					/>
+				);
 			case "minor":
-				return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faTriangleExclamation}
+						className="h-5 w-5 text-yellow-500"
+					/>
+				);
 			default:
-				return <CheckCircle className="h-5 w-5 text-green-500" />;
+				return (
+					<FontAwesomeIcon
+						icon={faCircleCheck}
+						className="h-5 w-5 text-green-500"
+					/>
+				);
 		}
 	};
 
@@ -95,7 +120,7 @@ export default function IncidentDetailsPage() {
 						router.push(`/status-pages/${statusPageId}/status-updates`)
 					}
 				>
-					<ArrowLeft className="h-4 w-4" />
+					<FontAwesomeIcon icon={faArrowLeft} className="h-4 w-4" />
 				</Button>
 				<div>
 					<h2 className="flex items-center gap-2 font-medium text-xl">
@@ -164,7 +189,10 @@ export default function IncidentDetailsPage() {
 												})
 											}
 										>
-											<Pencil className="h-3 w-3 text-muted-foreground" />
+											<FontAwesomeIcon
+												icon={faPencil}
+												className="h-3 w-3 text-muted-foreground"
+											/>
 										</Button>
 									</div>
 								</div>

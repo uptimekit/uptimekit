@@ -1,4 +1,5 @@
-import { Heart } from "@/components/icons";
+import { faHeart } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cn } from "@/lib/utils";
 
 interface FooterProps {
@@ -34,7 +35,8 @@ export function Footer({
 
 				<div className="flex items-center gap-1.5 opacity-70 transition-opacity hover:opacity-100">
 					<span>Made with</span>
-					<Heart
+					<FontAwesomeIcon
+						icon={faHeart}
 						aria-hidden="true"
 						focusable="false"
 						className="h-3 w-3 fill-current text-red-500/70"

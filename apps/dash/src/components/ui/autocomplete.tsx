@@ -1,8 +1,9 @@
 "use client";
 
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
+import { faUpDown, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type React from "react";
-import { ChevronsUpDownIcon, XIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -66,7 +67,7 @@ export function AutocompleteInput({
 					{...triggerProps}
 				>
 					<AutocompletePrimitive.Icon data-slot="autocomplete-icon">
-						<ChevronsUpDownIcon />
+						<FontAwesomeIcon icon={faUpDown} />
 					</AutocompletePrimitive.Icon>
 				</AutocompleteTrigger>
 			)}
@@ -78,7 +79,7 @@ export function AutocompleteInput({
 					)}
 					{...clearProps}
 				>
-					<XIcon />
+					<FontAwesomeIcon icon={faXmark} />
 				</AutocompleteClear>
 			)}
 		</AutocompletePrimitive.InputGroup>
@@ -260,7 +261,7 @@ export function AutocompleteClear({
 			data-slot="autocomplete-clear"
 			{...props}
 		>
-			<XIcon />
+			<FontAwesomeIcon icon={faXmark} />
 		</AutocompletePrimitive.Clear>
 	);
 }

@@ -1,8 +1,9 @@
 "use client";
 
+import { faLock } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Lock } from "@/components/icons";
 
 interface PasswordFormProps {
 	statusPageId: string;
@@ -48,7 +49,10 @@ export function PasswordForm({ statusPageId, redirectUrl }: PasswordFormProps) {
 			<div className="w-full max-w-sm space-y-6">
 				<div className="text-center">
 					<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-						<Lock className="h-6 w-6 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faLock}
+							className="h-6 w-6 text-muted-foreground"
+						/>
 					</div>
 					<h1 className="mt-4 font-semibold text-foreground text-xl">
 						Password Protected

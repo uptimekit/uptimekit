@@ -1,8 +1,9 @@
 "use client";
 
+import { faCalendar, faClock } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import * as React from "react";
-import { Calendar as CalendarIcon, Clock } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -75,7 +76,7 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
 					/>
 				}
 			>
-				<CalendarIcon className="mr-2 h-4 w-4" />
+				<FontAwesomeIcon icon={faCalendar} className="mr-2 h-4 w-4" />
 				{date ? format(date, "PP p") : <span>Pick a date</span>}
 			</PopoverTrigger>
 			<PopoverContent className="w-auto p-0" align="start">
@@ -87,7 +88,10 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
 				/>
 				<div className="border-t bg-background p-3">
 					<div className="flex items-center gap-2">
-						<Clock className="h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faClock}
+							className="h-4 w-4 text-muted-foreground"
+						/>
 						<Input
 							type="time"
 							className="h-8"

@@ -1,3 +1,5 @@
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { db } from "@uptimekit/db";
 import { worker, workerApiKey } from "@uptimekit/db/schema/workers";
 import { format } from "date-fns";
@@ -6,7 +8,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WorkerApiKeyManager } from "@/components/admin/worker-api-key-manager";
 import { WorkerGeneralInfoForm } from "@/components/admin/worker-general-info-form";
-import { ChevronLeft } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -57,7 +58,7 @@ export default async function EditWorkerPage({
 					size="icon"
 					render={<Link href="/admin/workers" />}
 				>
-					<ChevronLeft className="h-4 w-4" />
+					<FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
 				</Button>
 				<div className="flex flex-col">
 					<h1 className="font-bold text-2xl tracking-tight">Edit Worker</h1>

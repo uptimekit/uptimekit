@@ -1,9 +1,10 @@
 "use client";
 
+import { faImage, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { ImageIcon, Pencil, Trash } from "@/components/icons";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -71,7 +72,10 @@ export function LogoEditor({
 						className="h-full w-full object-cover"
 					/>
 				) : (
-					<ImageIcon className="h-8 w-8 text-muted-foreground" />
+					<FontAwesomeIcon
+						icon={faImage}
+						className="h-8 w-8 text-muted-foreground"
+					/>
 				)}
 			</div>
 		);
@@ -98,14 +102,14 @@ export function LogoEditor({
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start">
 						<DropdownMenuItem onClick={handleOpenDialog}>
-							<Pencil className="mr-2 h-4 w-4" />
+							<FontAwesomeIcon icon={faPencil} className="mr-2 h-4 w-4" />
 							Change logo
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							className="text-destructive focus:text-destructive"
 							onClick={handleRemove}
 						>
-							<Trash className="mr-2 h-4 w-4" />
+							<FontAwesomeIcon icon={faTrash} className="mr-2 h-4 w-4" />
 							Remove logo
 						</DropdownMenuItem>
 					</DropdownMenuContent>
@@ -129,7 +133,10 @@ export function LogoEditor({
 				onClick={handleOpenDialog}
 				className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border border-dashed bg-muted/50 transition-all hover:bg-muted hover:opacity-80"
 			>
-				<ImageIcon className="h-8 w-8 text-muted-foreground" />
+				<FontAwesomeIcon
+					icon={faImage}
+					className="h-8 w-8 text-muted-foreground"
+				/>
 			</button>
 
 			<LogoDialog

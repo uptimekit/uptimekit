@@ -1,7 +1,18 @@
 "use client";
 
 import MapLibreGL, { type MarkerOptions, type PopupOptions } from "maplibre-gl";
+import { createPortal } from "react-dom";
+
 import "maplibre-gl/dist/maplibre-gl.css";
+import {
+	faExpand,
+	faLocationCrosshairs,
+	faMinus,
+	faPlus,
+	faSpinner,
+	faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	createContext,
 	forwardRef,
@@ -15,8 +26,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { createPortal } from "react-dom";
-import { Loader2, Locate, Maximize, Minus, Plus, X } from "@/components/icons";
 
 import { cn } from "@/lib/utils";
 
@@ -591,7 +600,7 @@ function MarkerPopup({
 					className="absolute top-1 right-1 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 					aria-label="Close popup"
 				>
-					<X className="h-4 w-4" />
+					<FontAwesomeIcon icon={faXmark} className="h-4 w-4" />
 					<span className="sr-only">Close</span>
 				</button>
 			)}
@@ -833,10 +842,10 @@ function MapControls({
 			{showZoom && (
 				<ControlGroup>
 					<ControlButton onClick={handleZoomIn} label="Zoom in">
-						<Plus className="size-4" />
+						<FontAwesomeIcon icon={faPlus} className="size-4" />
 					</ControlButton>
 					<ControlButton onClick={handleZoomOut} label="Zoom out">
-						<Minus className="size-4" />
+						<FontAwesomeIcon icon={faMinus} className="size-4" />
 					</ControlButton>
 				</ControlGroup>
 			)}
@@ -853,9 +862,12 @@ function MapControls({
 						disabled={waitingForLocation}
 					>
 						{waitingForLocation ? (
-							<Loader2 className="size-4 animate-spin" />
+							<FontAwesomeIcon
+								icon={faSpinner}
+								className="size-4 animate-spin"
+							/>
 						) : (
-							<Locate className="size-4" />
+							<FontAwesomeIcon icon={faLocationCrosshairs} className="size-4" />
 						)}
 					</ControlButton>
 				</ControlGroup>
@@ -863,7 +875,7 @@ function MapControls({
 			{showFullscreen && (
 				<ControlGroup>
 					<ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
-						<Maximize className="size-4" />
+						<FontAwesomeIcon icon={faExpand} className="size-4" />
 					</ControlButton>
 				</ControlGroup>
 			)}
@@ -1014,7 +1026,7 @@ function MapPopup({
 					className="absolute top-1 right-1 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 					aria-label="Close popup"
 				>
-					<X className="h-4 w-4" />
+					<FontAwesomeIcon icon={faXmark} className="h-4 w-4" />
 					<span className="sr-only">Close</span>
 				</button>
 			)}

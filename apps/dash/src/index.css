@@ -281,6 +281,10 @@ body {
 	}
 }
 
+a[target="_blank"]::after {
+	content: "↗";
+}
+
 @layer base {
 	* {
 		@apply border-border outline-ring/50;

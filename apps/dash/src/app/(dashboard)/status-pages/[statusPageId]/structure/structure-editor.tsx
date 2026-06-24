@@ -22,19 +22,20 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+	faCircleInfo,
+	faGear,
+	faGripLines,
+	faGripVertical,
+	faMagnifyingGlass,
+	faPlus,
+	faSpinner,
+	faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { sileo } from "sileo";
-import {
-	GripHorizontal,
-	GripVertical,
-	Info,
-	Loader2,
-	Plus,
-	Search,
-	Settings2,
-	Trash2,
-} from "@/components/icons";
 import { groupMonitorOptions } from "@/components/monitors/grouped-monitor-combobox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -455,7 +456,10 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 	if (isStructureLoading || isMonitorsLoading || isPageLoading) {
 		return (
 			<div className="flex justify-center p-10">
-				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+				<FontAwesomeIcon
+					icon={faSpinner}
+					className="h-8 w-8 animate-spin text-muted-foreground"
+				/>
 			</div>
 		);
 	}
@@ -532,7 +536,7 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 								onClick={addGroup}
 								className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-input border-dashed p-8 transition-colors hover:bg-accent/50 hover:text-accent-foreground"
 							>
-								<Plus className="h-4 w-4" />
+								<FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
 								<span className="font-medium text-sm">Add section</span>
 							</button>
 
@@ -570,7 +574,10 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
 					disabled={updateStructureMutation.isPending}
 				>
 					{updateStructureMutation.isPending && (
-						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+						<FontAwesomeIcon
+							icon={faSpinner}
+							className="mr-2 h-4 w-4 animate-spin"
+						/>
 					)}
 					Save changes
 				</Button>
@@ -672,7 +679,10 @@ function GroupCard({
 				{...listeners}
 				className="absolute top-0 right-0 left-0 z-10 flex h-4 cursor-grab items-center justify-center transition-colors hover:bg-muted/50 active:cursor-grabbing"
 			>
-				<GripHorizontal className="h-4 w-4 text-muted-foreground/30 transition-colors group-hover/card:text-muted-foreground/60" />
+				<FontAwesomeIcon
+					icon={faGripLines}
+					className="h-4 w-4 text-muted-foreground/30 transition-colors group-hover/card:text-muted-foreground/60"
+				/>
 			</div>
 
 			<CardContent className="relative space-y-6 p-6 pt-6">
@@ -685,7 +695,7 @@ function GroupCard({
 							onClick={onRemove}
 							onPointerDown={(e) => e.stopPropagation()}
 						>
-							<Trash2 className="h-4 w-4" />
+							<FontAwesomeIcon icon={faTrash} className="h-4 w-4" />
 						</Button>
 					</div>
 				)}
@@ -833,7 +843,12 @@ function AddMonitorInput({
 				{(_value: MonitorOption | null) => (
 					<ComboboxInput
 						placeholder="Search to add resources"
-						startAddon={<Search className="h-4 w-4 text-muted-foreground" />}
+						startAddon={
+							<FontAwesomeIcon
+								icon={faMagnifyingGlass}
+								className="h-4 w-4 text-muted-foreground"
+							/>
+						}
 						className="w-full justify-start border-input/50 bg-muted/30 font-normal text-muted-foreground"
 						onPointerDown={(e) => e.stopPropagation()}
 					/>
@@ -947,7 +962,7 @@ function MonitorRow({
 					{...listeners}
 					className="cursor-grab text-muted-foreground/30 active:cursor-grabbing group-hover:text-muted-foreground"
 				>
-					<GripVertical className="h-4 w-4" />
+					<FontAwesomeIcon icon={faGripVertical} className="h-4 w-4" />
 				</div>
 
 				{/* Icon + Name */}
@@ -964,7 +979,7 @@ function MonitorRow({
 						onClick={() => setIsConfigOpen(true)}
 						onPointerDown={(e) => e.stopPropagation()}
 					>
-						<Settings2 className="h-4 w-4" />
+						<FontAwesomeIcon icon={faGear} className="h-4 w-4" />
 					</Button>
 
 					<Button
@@ -974,7 +989,7 @@ function MonitorRow({
 						onClick={onRemove}
 						onPointerDown={(e) => e.stopPropagation()}
 					>
-						<Trash2 className="h-4 w-4" />
+						<FontAwesomeIcon icon={faTrash} className="h-4 w-4" />
 					</Button>
 				</div>
 			</div>
@@ -1150,7 +1165,12 @@ function MonitorPreview({
 						{description && (
 							<Tooltip>
 								<TooltipTrigger
-									render={<Info className="h-4 w-4 text-muted-foreground/60" />}
+									render={
+										<FontAwesomeIcon
+											icon={faCircleInfo}
+											className="h-4 w-4 text-muted-foreground/60"
+										/>
+									}
 								/>
 								<TooltipContent>
 									<p className="max-w-xs text-sm">{description}</p>
@@ -1180,7 +1200,12 @@ function MonitorPreview({
 					{description && (
 						<Tooltip>
 							<TooltipTrigger
-								render={<Info className="h-4 w-4 text-muted-foreground/60" />}
+								render={
+									<FontAwesomeIcon
+										icon={faCircleInfo}
+										className="h-4 w-4 text-muted-foreground/60"
+									/>
+								}
 							/>
 							<TooltipContent>
 								<p className="max-w-xs text-sm">{description}</p>

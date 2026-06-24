@@ -1,9 +1,13 @@
 "use client";
 
 import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
+import {
+	faChevronDown,
+	faMagnifyingGlass,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
 import { useState } from "react";
-import { ChevronDown, SearchIcon } from "@/components/icons";
 import {
 	Autocomplete,
 	AutocompleteCollection,
@@ -124,7 +128,7 @@ export function CommandInput({
 				)}
 				placeholder={placeholder}
 				size="lg"
-				startAddon={<SearchIcon />}
+				startAddon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
 				{...props}
 			/>
 		</div>
@@ -198,7 +202,8 @@ export function CommandGroup({
 				>
 					<CommandGroupLabel className="m-0 p-0">{heading}</CommandGroupLabel>
 
-					<ChevronDown
+					<FontAwesomeIcon
+						icon={faChevronDown}
 						className={`h-4 w-4 transition-transform ${
 							collapsed ? "-rotate-90" : "rotate-0"
 						}`}

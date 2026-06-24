@@ -1,6 +1,24 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: integration configs are provider-specific */
 "use client";
 
+import {
+	faArrowRight,
+	faCheck,
+	faChevronDown,
+	faChevronLeft,
+	faChevronRight,
+	faCodeBranch,
+	faEllipsis,
+	faEnvelope,
+	faFilter,
+	faGear,
+	faMagnifyingGlass,
+	faPaperPlane,
+	faPlus,
+	faSpinner,
+	faTrash,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { alertManagerIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { appriseIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/apprise-meta";
@@ -18,23 +36,6 @@ import {
 import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
-import {
-	ArrowRight,
-	Check,
-	ChevronDown,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	Filter,
-	Loader2,
-	Mail,
-	MoreHorizontal,
-	Plus,
-	Search,
-	Send,
-	Settings2,
-	Trash2,
-	Webhook,
-} from "@/components/icons";
 import { ConfigDialog } from "@/components/integrations/config-dialog";
 import {
 	AlertDialog,
@@ -174,14 +175,14 @@ function IntegrationIcon({
 
 	const Icon =
 		integration.id === "webhook"
-			? Webhook
+			? faCodeBranch
 			: integration.id === "smtp"
-				? Mail
-				: Settings2;
+				? faEnvelope
+				: faGear;
 
 	return (
 		<div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">
-			<Icon className="size-5" />
+			<FontAwesomeIcon icon={Icon} className="size-5" />
 		</div>
 	);
 }
@@ -414,7 +415,7 @@ export function NotificationsTable() {
 							className="absolute top-1 right-1 h-10 w-10 rounded-full"
 							onClick={() => setSearchOpen(false)}
 						>
-							<ArrowRight className="h-4 w-4" />
+							<FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />
 						</Button>
 					</div>
 				</DialogContent>
@@ -424,7 +425,10 @@ export function NotificationsTable() {
 				<h1 className="font-bold text-2xl tracking-tight">Notifications</h1>
 				<div className="flex items-center gap-2">
 					<div className="relative hidden w-64 md:block">
-						<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+						<FontAwesomeIcon
+							icon={faMagnifyingGlass}
+							className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+						/>
 						<Input
 							placeholder="Search notifications..."
 							className="pl-8"
@@ -438,7 +442,7 @@ export function NotificationsTable() {
 						className="relative md:hidden"
 						onClick={() => setSearchOpen(true)}
 					>
-						<Search className="h-4 w-4" />
+						<FontAwesomeIcon icon={faMagnifyingGlass} className="h-4 w-4" />
 						{search && (
 							<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
 						)}
@@ -449,7 +453,7 @@ export function NotificationsTable() {
 								<Button variant="outline" size="icon" className="relative" />
 							}
 						>
-							<Filter className="h-4 w-4" />
+							<FontAwesomeIcon icon={faFilter} className="h-4 w-4" />
 							{activeFilterCount > 0 && (
 								<span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
 									{activeFilterCount}
@@ -467,7 +471,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								All Statuses
-								{statusFilter === null && <Check className="h-4 w-4" />}
+								{statusFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -476,7 +482,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								Active
-								{statusFilter === "active" && <Check className="h-4 w-4" />}
+								{statusFilter === "active" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -485,7 +493,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								Inactive
-								{statusFilter === "inactive" && <Check className="h-4 w-4" />}
+								{statusFilter === "inactive" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -500,7 +510,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								All Directions
-								{directionFilter === null && <Check className="h-4 w-4" />}
+								{directionFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -509,7 +521,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								Export
-								{directionFilter === "export" && <Check className="h-4 w-4" />}
+								{directionFilter === "export" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -518,7 +532,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								Import
-								{directionFilter === "import" && <Check className="h-4 w-4" />}
+								{directionFilter === "import" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -533,7 +549,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								All Providers
-								{typeFilter === null && <Check className="h-4 w-4" />}
+								{typeFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							{availableIntegrations?.map((integrationMeta) => {
 								const integration = getIntegrationDefinition(integrationMeta);
@@ -548,7 +566,7 @@ export function NotificationsTable() {
 									>
 										<span className="truncate">{integration.name}</span>
 										{typeFilter === integration.id && (
-											<Check className="h-4 w-4" />
+											<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 										)}
 									</DropdownMenuItem>
 								);
@@ -566,7 +584,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								All Notifications
-								{defaultFilter === null && <Check className="h-4 w-4" />}
+								{defaultFilter === null && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -575,7 +595,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								Default
-								{defaultFilter === "default" && <Check className="h-4 w-4" />}
+								{defaultFilter === "default" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => {
@@ -584,7 +606,9 @@ export function NotificationsTable() {
 								className="flex justify-between"
 							>
 								Custom
-								{defaultFilter === "custom" && <Check className="h-4 w-4" />}
+								{defaultFilter === "custom" && (
+									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+								)}
 							</DropdownMenuItem>
 
 							<div className="my-2 h-px bg-muted" />
@@ -644,7 +668,7 @@ export function NotificationsTable() {
 						disabled={isLoadingAvailable}
 						onClick={() => setProviderDialogOpen(true)}
 					>
-						<Plus className="h-4 w-4" />
+						<FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
 						<span className="hidden md:inline">Add notification</span>
 					</Button>
 				</div>
@@ -652,7 +676,7 @@ export function NotificationsTable() {
 
 			<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
 				<div className="flex min-h-12 items-center gap-3 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
-					<ChevronDown className="h-4 w-4" />
+					<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 					<span>Notifications</span>
 					{total > 0 && (
 						<span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
@@ -676,7 +700,10 @@ export function NotificationsTable() {
 						{isLoadingConfigured ? (
 							<TableRow>
 								<TableCell colSpan={5} className="h-24 text-center">
-									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
+									/>
 								</TableCell>
 							</TableRow>
 						) : paginatedNotifications.length === 0 ? (
@@ -684,7 +711,10 @@ export function NotificationsTable() {
 								<TableCell colSpan={5} className="h-24 text-center">
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
 										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-											<Send className="h-6 w-6 text-muted-foreground" />
+											<FontAwesomeIcon
+												icon={faPaperPlane}
+												className="h-6 w-6 text-muted-foreground"
+											/>
 										</div>
 										<p className="font-medium text-lg">
 											No notifications found
@@ -784,7 +814,10 @@ export function NotificationsTable() {
 														/>
 													}
 												>
-													<MoreHorizontal className="h-4 w-4" />
+													<FontAwesomeIcon
+														icon={faEllipsis}
+														className="h-4 w-4"
+													/>
 													<span className="sr-only">Open menu</span>
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end">
@@ -794,7 +827,10 @@ export function NotificationsTable() {
 															setSelectedConfig(config);
 														}}
 													>
-														<Settings2 className="h-4 w-4" />
+														<FontAwesomeIcon
+															icon={faGear}
+															className="h-4 w-4"
+														/>
 														Edit
 													</DropdownMenuItem>
 													{integration.type === "export" && (
@@ -804,7 +840,10 @@ export function NotificationsTable() {
 																void handleTestNotification(config.id);
 															}}
 														>
-															<Send className="h-4 w-4" />
+															<FontAwesomeIcon
+																icon={faPaperPlane}
+																className="h-4 w-4"
+															/>
 															Test
 														</DropdownMenuItem>
 													)}
@@ -813,7 +852,10 @@ export function NotificationsTable() {
 														variant="destructive"
 														onSelect={() => setConfigToRemove(config)}
 													>
-														<Trash2 className="h-4 w-4" />
+														<FontAwesomeIcon
+															icon={faTrash}
+															className="h-4 w-4"
+														/>
 														Remove
 													</DropdownMenuItem>
 												</DropdownMenuContent>
@@ -837,7 +879,7 @@ export function NotificationsTable() {
 										disabled={page === 1}
 										onClick={() => void setFilters({ page: page - 1 })}
 									>
-										<ChevronLeftIcon className="h-4 w-4" />
+										<FontAwesomeIcon icon={faChevronLeft} className="h-4 w-4" />
 									</Button>
 								</PaginationItem>
 								{Array.from({ length: totalPages }, (_, i) => i + 1).map(
@@ -879,7 +921,10 @@ export function NotificationsTable() {
 										onClick={() => void setFilters({ page: page + 1 })}
 										disabled={page === totalPages}
 									>
-										<ChevronRightIcon className="h-4 w-4" />
+										<FontAwesomeIcon
+											icon={faChevronRight}
+											className="h-4 w-4"
+										/>
 									</Button>
 								</PaginationItem>
 							</PaginationContent>
@@ -899,7 +944,10 @@ export function NotificationsTable() {
 					<DialogPanel className="grid gap-3 sm:grid-cols-2">
 						{isLoadingAvailable ? (
 							<div className="col-span-full flex h-24 items-center justify-center">
-								<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+								<FontAwesomeIcon
+									icon={faSpinner}
+									className="h-6 w-6 animate-spin text-muted-foreground"
+								/>
 							</div>
 						) : availableIntegrations?.length ? (
 							availableIntegrations.map((integrationMeta) => {

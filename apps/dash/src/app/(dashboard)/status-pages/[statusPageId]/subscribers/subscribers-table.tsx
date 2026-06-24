@@ -1,17 +1,18 @@
 "use client";
 
+import {
+	faChevronDown,
+	faCodeBranch,
+	faEnvelope,
+	faMagnifyingGlass,
+	faMessage,
+	faSpinner,
+	faUsers,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
-import {
-	ChevronDown,
-	Loader2,
-	Mail,
-	MessageSquare,
-	Search,
-	Users,
-	Webhook,
-} from "@/components/icons";
 import { DataPagination } from "@/components/ui/data-pagination";
 import { Input } from "@/components/ui/input";
 import {
@@ -78,7 +79,10 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
 					</p>
 				</div>
 				<div className="relative w-full max-w-xs">
-					<Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+					<FontAwesomeIcon
+						icon={faMagnifyingGlass}
+						className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+					/>
 					<Input
 						placeholder="Search subscribers..."
 						className="pl-8"
@@ -90,7 +94,7 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
 
 			<div className="overflow-hidden rounded-xl border bg-card shadow-sm">
 				<div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
-					<ChevronDown className="h-4 w-4" />
+					<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 					Subscribers ({total})
 				</div>
 
@@ -106,7 +110,10 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
 						{isLoading ? (
 							<TableRow>
 								<TableCell colSpan={3} className="py-8 text-center">
-									<Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+									<FontAwesomeIcon
+										icon={faSpinner}
+										className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
+									/>
 								</TableCell>
 							</TableRow>
 						) : subscribers.length === 0 ? (
@@ -115,9 +122,15 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
 									<div className="flex flex-col items-center justify-center gap-2 py-6">
 										<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
 											{search ? (
-												<Search className="h-6 w-6 text-muted-foreground" />
+												<FontAwesomeIcon
+													icon={faMagnifyingGlass}
+													className="h-6 w-6 text-muted-foreground"
+												/>
 											) : (
-												<Users className="h-6 w-6 text-muted-foreground" />
+												<FontAwesomeIcon
+													icon={faUsers}
+													className="h-6 w-6 text-muted-foreground"
+												/>
 											)}
 										</div>
 										<p className="font-medium text-lg">No subscribers found</p>
@@ -137,7 +150,10 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
 									<TableCell className="pl-6">
 										<div className="flex items-center gap-3">
 											<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50">
-												<Mail className="h-4 w-4 text-muted-foreground" />
+												<FontAwesomeIcon
+													icon={faEnvelope}
+													className="h-4 w-4 text-muted-foreground"
+												/>
 											</div>
 											<div className="grid gap-1">
 												<span className="font-semibold leading-none">
@@ -152,18 +168,27 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
 									<TableCell className="text-muted-foreground">
 										<div className="flex flex-wrap items-center gap-2">
 											<span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
-												<Mail className="h-3 w-3" />
+												<FontAwesomeIcon
+													icon={faEnvelope}
+													className="h-3 w-3"
+												/>
 												Email
 											</span>
 											{subscriber.slackWebhookUrl ? (
 												<span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
-													<MessageSquare className="h-3 w-3" />
+													<FontAwesomeIcon
+														icon={faMessage}
+														className="h-3 w-3"
+													/>
 													Slack
 												</span>
 											) : null}
 											{subscriber.discordWebhookUrl ? (
 												<span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
-													<Webhook className="h-3 w-3" />
+													<FontAwesomeIcon
+														icon={faCodeBranch}
+														className="h-3 w-3"
+													/>
 													Discord
 												</span>
 											) : null}

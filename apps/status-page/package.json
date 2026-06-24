@@ -12,6 +12,9 @@
 	"dependencies": {
 		"@base-ui/react": "^1.4.1",
 		"@clickhouse/client": "^1.18.5",
+		"@fortawesome/fontawesome-svg-core": "^7.2.0",
+		"@fortawesome/free-solid-svg-icons": "^7.2.0",
+		"@fortawesome/react-fontawesome": "^3.3.1",
 		"@node-rs/argon2": "^2.0.2",
 		"@uptimekit/api": "workspace:*",
 		"@uptimekit/db": "workspace:*",
@@ -25,7 +28,6 @@
 		"motion": "^12.39.0",
 		"next": "^16.2.6",
 		"next-themes": "^0.4.6",
-		"nucleo-ui-essential-outline-18": "^1.1.7",
 		"react": "19.2.7",
 		"react-dom": "19.2.7",
 		"tailwind-merge": "^3.6.0",

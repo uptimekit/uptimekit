@@ -1,9 +1,10 @@
 "use client";
 
 import { NavigationMenu as NavigationMenuPrimitive } from "@base-ui/react/navigation-menu";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cva } from "class-variance-authority";
 import type * as React from "react";
-import { ChevronDownIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 function NavigationMenu({
@@ -76,7 +77,8 @@ function NavigationMenuTrigger({
 		>
 			{children}{" "}
 			<NavigationMenuPrimitive.Icon data-slot="navigation-menu-icon">
-				<ChevronDownIcon
+				<FontAwesomeIcon
+					icon={faChevronDown}
 					aria-hidden="true"
 					className="relative top-[1px] ml-1 size-3 transition duration-300 group-data-open:rotate-180"
 				/>

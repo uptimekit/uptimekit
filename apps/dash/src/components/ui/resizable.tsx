@@ -1,6 +1,7 @@
+import { faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
 import * as ResizablePrimitive from "react-resizable-panels";
-import { GripVerticalIcon } from "@/components/icons";
 
 import { cn } from "@/lib/utils";
 
@@ -74,7 +75,7 @@ function ResizableHandle({
 		>
 			{withHandle && (
 				<div className="z-10 flex h-4 w-3 items-center justify-center rounded-xs border bg-border">
-					<GripVerticalIcon className="size-2.5" />
+					<FontAwesomeIcon icon={faGripVertical} className="size-2.5" />
 				</div>
 			)}
 		</ResizeHandlePrimitive>

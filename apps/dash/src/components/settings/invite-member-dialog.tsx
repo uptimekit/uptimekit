@@ -1,11 +1,17 @@
 "use client";
 
+import {
+	faCheck,
+	faCopy,
+	faPlus,
+	faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { Check, Copy, Loader2, Plus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -95,7 +101,7 @@ export function InviteMemberDialog() {
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
 			<DialogTrigger render={<Button />}>
-				<Plus className="mr-2 h-4 w-4" />
+				<FontAwesomeIcon icon={faPlus} className="mr-2 h-4 w-4" />
 				Add Member
 			</DialogTrigger>
 			<DialogPopup className="sm:max-w-md">
@@ -164,7 +170,10 @@ export function InviteMemberDialog() {
 								</DialogClose>
 								<Button type="submit" disabled={form.formState.isSubmitting}>
 									{form.formState.isSubmitting && (
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										<FontAwesomeIcon
+											icon={faSpinner}
+											className="mr-2 h-4 w-4 animate-spin"
+										/>
 									)}
 									Create Invite
 								</Button>
@@ -182,9 +191,9 @@ export function InviteMemberDialog() {
 									</code>
 									<Button size="icon" variant="outline" onClick={copyLink}>
 										{copied ? (
-											<Check className="h-4 w-4" />
+											<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
 										) : (
-											<Copy className="h-4 w-4" />
+											<FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
 										)}
 									</Button>
 								</div>

@@ -1,3 +1,6 @@
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faGlobe } from "@fortawesome/free-solid-svg-icons";
+
 import {
 	IconAndorra as AD,
 	IconUnitedArabEmirates as AE,
@@ -230,9 +233,9 @@ import {
 	IconZimbabwe as ZW,
 } from "nucleo-flags";
 import type { ComponentType } from "react";
-import { Globe } from "@/components/icons";
 
 type FlagComponent = ComponentType<IconProps>;
+type RegionFlag = FlagComponent | IconDefinition;
 
 const AS = US;
 const BL = FR;
@@ -255,7 +258,7 @@ const YT = FR;
 export interface RegionInfo {
 	value: string;
 	label: string;
-	Flag: FlagComponent | typeof Globe;
+	Flag: RegionFlag;
 	continent?: string;
 }
 
@@ -771,7 +774,13 @@ export function getRegionInfo(regionCode: string): RegionInfo {
 		REGION_MAPPING[regionCode] || {
 			value: regionCode,
 			label: regionCode,
-			Flag: Globe,
+			Flag: faGlobe,
 		}
 	);
+}
+
+export function isFontAwesomeRegionFlag(
+	flag: RegionFlag,
+): flag is IconDefinition {
+	return flag === faGlobe;
 }

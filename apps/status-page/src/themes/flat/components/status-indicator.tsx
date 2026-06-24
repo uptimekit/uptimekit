@@ -1,3 +1,4 @@
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
 import type { StatusType } from "../../types";
@@ -33,7 +34,10 @@ export function StatusIndicator({
 					config.color,
 				)}
 			>
-				<Icon className={cn(sizes.icon, "animate-pulse-glow")} />
+				<FontAwesomeIcon
+					icon={Icon}
+					className={cn(sizes.icon, "animate-pulse-glow")}
+				/>
 			</div>
 			{showLabel && (
 				<span className={cn("font-medium", sizes.text, config.color)}>

@@ -1,5 +1,6 @@
+import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { ChevronDown, ChevronUp } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { Incident } from "../../types";
 import { StatusBadge, StatusDot } from "./status-indicator";
@@ -52,7 +53,10 @@ export function IssueCard({
 							href={detailsLink as any}
 							className="signal-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform duration-150 hover:-translate-y-px hover:text-foreground"
 						>
-							<ChevronDown className="h-4 w-4 -rotate-90" />
+							<FontAwesomeIcon
+								icon={faChevronDown}
+								className="h-4 w-4 -rotate-90"
+							/>
 						</Link>
 					) : (
 						<button
@@ -61,9 +65,9 @@ export function IssueCard({
 							className="signal-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform duration-150 hover:-translate-y-px hover:text-foreground"
 						>
 							{isExpanded ? (
-								<ChevronUp className="h-4 w-4" />
+								<FontAwesomeIcon icon={faChevronUp} className="h-4 w-4" />
 							) : (
-								<ChevronDown className="h-4 w-4" />
+								<FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
 							)}
 						</button>
 					)}
