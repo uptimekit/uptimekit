@@ -1,10 +1,44 @@
+import type { Route } from "next";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
-import type { StatusType } from "../../types";
+import type {
+	GroupedMonitors,
+	Incident,
+	Monitor,
+	StatusType,
+} from "../../types";
 import { StatusIndicator } from "./status-indicator";
 
 interface OverallStatusProps {
 	status: StatusType;
+	monitorGroups?: GroupedMonitors[];
+	activeIssues?: Incident[];
 	className?: string;
+}
+
+const issueStatuses = new Set<StatusType>([
+	"degraded",
+	"partial_outage",
+	"major_outage",
+]);
+
+function getAffectedMonitors(monitorGroups: GroupedMonitors[] = []): Monitor[] {
+	return monitorGroups
+		.flatMap(({ monitors }) => monitors)
+		.filter((monitor) => issueStatuses.has(monitor.currentStatus));
+}
+
+function getActiveIncidents(activeIssues: Incident[] = []): Incident[] {
+	return activeIssues.filter((issue) => issue.severity !== "maintenance");
+}
+
+function getRelatedIncidents(
+	monitor: Monitor,
+	activeIncidents: Incident[],
+): Incident[] {
+	return activeIncidents.filter((incident) =>
+		incident.monitors.some(({ monitor: item }) => item.id === monitor.id),
+	);
 }
 
 const statusMessages: Record<
@@ -66,7 +100,12 @@ const statusGradients: Record<StatusType, string> = {
 	unknown: "from-status-unknown/10 via-status-unknown/5 to-transparent",
 };
 
-export function OverallStatus({ status, className }: OverallStatusProps) {
+export function OverallStatus({
+	status,
+	monitorGroups,
+	activeIssues,
+	className,
+}: OverallStatusProps) {
 	// Custom simplified messages for the compact view
 	const title =
 		status === "operational"
@@ -74,6 +113,12 @@ export function OverallStatus({ status, className }: OverallStatusProps) {
 			: status === "maintenance"
 				? "Ongoing Maintenance"
 				: statusMessages[status].title;
+
+	const affectedMonitors = getAffectedMonitors(monitorGroups);
+	const activeIncidents = getActiveIncidents(activeIssues);
+	const shouldShowIssueDetails =
+		issueStatuses.has(status) &&
+		(affectedMonitors.length > 0 || activeIncidents.length > 0);
 
 	return (
 		<div
@@ -89,9 +134,64 @@ export function OverallStatus({ status, className }: OverallStatusProps) {
 				)}
 			/>
 
-			<div className="relative z-10 flex items-center gap-3">
-				<StatusIndicator status={status} size="md" showLabel={false} />
-				<h1 className="font-semibold text-card-foreground text-lg">{title}</h1>
+			<div className="relative z-10">
+				<div className="flex items-center gap-3">
+					<StatusIndicator status={status} size="md" showLabel={false} />
+					<h1 className="font-semibold text-card-foreground text-lg">
+						{title}
+					</h1>
+				</div>
+
+				{shouldShowIssueDetails ? (
+					<div className="mt-4 border-border/70 border-t pt-3">
+						<p className="text-muted-foreground text-sm">Affected monitors:</p>
+						{affectedMonitors.length > 0 ? (
+							<ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground text-sm">
+								{affectedMonitors.map((monitor) => {
+									const relatedIncidents = getRelatedIncidents(
+										monitor,
+										activeIncidents,
+									);
+
+									return (
+										<li key={monitor.id}>
+											<span className="font-medium text-card-foreground">
+												{monitor.name}
+											</span>
+											{" - "}
+											{relatedIncidents.length > 0
+												? relatedIncidents.map((incident, index) => (
+														<span key={incident.id}>
+															{index > 0 ? ", " : ""}
+															<Link
+																href={incident.detailsLink as Route}
+																className="text-card-foreground underline underline-offset-2 hover:text-primary"
+															>
+																{incident.title}
+															</Link>
+														</span>
+													))
+												: "no linked incident"}
+										</li>
+									);
+								})}
+							</ul>
+						) : (
+							<ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground text-sm">
+								{activeIncidents.map((incident) => (
+									<li key={incident.id}>
+										<Link
+											href={incident.detailsLink as Route}
+											className="text-card-foreground underline underline-offset-2 hover:text-primary"
+										>
+											{incident.title}
+										</Link>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

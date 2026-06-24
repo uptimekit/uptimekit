@@ -30,7 +30,11 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 			<main className="w-full flex-1">
 				<div className="mx-auto max-w-5xl px-4 py-12">
 					<section className="mb-16">
-						<OverallStatus status={overallStatus} />
+						<OverallStatus
+							status={overallStatus}
+							monitorGroups={monitorGroups}
+							activeIssues={activeIssues}
+						/>
 					</section>
 
 					<MonitorGroups
