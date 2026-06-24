@@ -1668,9 +1668,7 @@ export function CreateMonitorForm({
 																<span className="font-medium">
 																	Active monitors:{" "}
 																	{organizationQuota?.activeMonitorCount ?? 0}
-																	{activeMonitorLimit === null
-																		? " / unlimited"
-																		: ` / ${activeMonitorLimit}`}
+																	{` / ${activeMonitorLimit}`}
 																</span>
 															)}
 															{regionLimit === null ? (
