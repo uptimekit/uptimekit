@@ -1676,9 +1676,7 @@ export function CreateMonitorForm({
 															) : (
 																<span className="text-muted-foreground">
 																	Selected workers: {selectedRegionCount}
-																	{regionLimit === null
-																		? " / unlimited"
-																		: ` / ${regionLimit}`}
+																	{` / ${regionLimit}`}
 																</span>
 															)}
 														</div>
