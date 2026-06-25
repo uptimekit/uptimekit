@@ -14,18 +14,18 @@ import { workersRouter } from "./workers";
 import "../pkg/imports"; // Register import sources
 
 export const appRouter = {
-	getVersion,
-	workers: workersRouter,
-	monitors: monitorsRouter,
-	incidents: incidentsRouter,
-	statusPages: statusPagesRouter,
-	statusUpdates: statusUpdatesRouter,
-	maintenance: maintenanceRouter,
-	integrations: integrationsRouter,
-	configuration: configurationRouter,
-	users: usersRouter,
-	organizations: organizationsRouter,
-	imports: importsRouter,
+    getVersion,
+    workers: workersRouter,
+    monitors: monitorsRouter,
+    incidents: incidentsRouter,
+    statusPages: statusPagesRouter,
+    statusUpdates: statusUpdatesRouter,
+    maintenance: maintenanceRouter,
+    integrations: integrationsRouter,
+    configuration: configurationRouter,
+    users: usersRouter,
+    organizations: organizationsRouter,
+    imports: importsRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;

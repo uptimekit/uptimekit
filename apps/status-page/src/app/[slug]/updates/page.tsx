@@ -7,45 +7,47 @@ import { loadUpdatesComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 export default async function SlugUpdatesPage({
-	params,
-	searchParams,
+    params,
+    searchParams,
 }: {
-	params: Promise<{ slug: string }>;
-	searchParams: Promise<{ period?: string }>;
+    params: Promise<{ slug: string }>;
+    searchParams: Promise<{ period?: string }>;
 }) {
-	const { slug } = await params;
-	const query = await searchParams;
+    const { slug } = await params;
+    const query = await searchParams;
 
-	const pageConfig = await getStatusPageBySlug(slug);
+    const pageConfig = await getStatusPageBySlug(slug);
 
-	if (!pageConfig) {
-		notFound();
-	}
+    if (!pageConfig) {
+        notFound();
+    }
 
-	const period = parseIncidentHistoryPeriod(query.period);
-	const currentPath =
-		period === "all" ? `/${slug}/updates` : `/${slug}/updates?period=${period}`;
+    const period = parseIncidentHistoryPeriod(query.period);
+    const currentPath =
+        period === "all"
+            ? `/${slug}/updates`
+            : `/${slug}/updates?period=${period}`;
 
-	await checkStatusPageAccess(pageConfig, currentPath);
+    await checkStatusPageAccess(pageConfig, currentPath);
 
-	const design = (pageConfig.design as any) || {};
-	const themeId = design.themeId || "default";
+    const design = (pageConfig.design as any) || {};
+    const themeId = design.themeId || "default";
 
-	const UpdatesPage = await loadUpdatesComponent(themeId);
+    const UpdatesPage = await loadUpdatesComponent(themeId);
 
-	let data: Awaited<ReturnType<typeof prepareUpdatesPageData>>;
-	try {
-		data = await prepareUpdatesPageData(pageConfig, period, slug);
-	} catch (_error) {
-		notFound();
-	}
+    let data: Awaited<ReturnType<typeof prepareUpdatesPageData>>;
+    try {
+        data = await prepareUpdatesPageData(pageConfig, period, slug);
+    } catch (_error) {
+        notFound();
+    }
 
-	return (
-		<ThemePageWrapper
-			themeId={themeId}
-			theme={design.theme}
-			ThemeComponent={UpdatesPage}
-			componentProps={{ data }}
-		/>
-	);
+    return (
+        <ThemePageWrapper
+            themeId={themeId}
+            theme={design.theme}
+            ThemeComponent={UpdatesPage}
+            componentProps={{ data }}
+        />
+    );
 }

@@ -2,9 +2,9 @@ import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import {
-	statusPage,
-	statusPageGroup,
-	statusPageMonitor,
+    statusPage,
+    statusPageGroup,
+    statusPageMonitor,
 } from "@uptimekit/db/schema/status-pages";
 import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -15,516 +15,545 @@ import { normalizeStatusPageDomain } from "../lib/status-page-domain";
 import { subscribersRouter } from "./subscribers";
 
 function getActiveOrganizationId(
-	activeOrganizationId: string | null | undefined,
+    activeOrganizationId: string | null | undefined,
 ) {
-	if (!activeOrganizationId) {
-		throw new ORPCError("UNAUTHORIZED", {
-			message: "No active organization",
-		});
-	}
+    if (!activeOrganizationId) {
+        throw new ORPCError("UNAUTHORIZED", {
+            message: "No active organization",
+        });
+    }
 
-	return activeOrganizationId;
+    return activeOrganizationId;
 }
 
 export const statusPagesRouter = {
-	list: protectedProcedure
-		.route({
-			method: "GET",
-			path: "/status-pages",
-			tags: ["Status Page Management"],
-			summary: "List status pages",
-			description:
-				"Retrieve a list of status pages with optional searching and filtering.",
-		})
-		.input(
-			z
-				.object({
-					q: z.string().optional(),
-					public: z.boolean().optional(),
-					limit: z.number().default(50),
-					offset: z.number().default(0),
-				})
-				.optional(),
-		)
-		.handler(async ({ input, context }) => {
-			const filters = [
-				eq(
-					statusPage.organizationId,
-					getActiveOrganizationId(context.session.session.activeOrganizationId),
-				),
-			];
+    list: protectedProcedure
+        .route({
+            method: "GET",
+            path: "/status-pages",
+            tags: ["Status Page Management"],
+            summary: "List status pages",
+            description:
+                "Retrieve a list of status pages with optional searching and filtering.",
+        })
+        .input(
+            z
+                .object({
+                    q: z.string().optional(),
+                    public: z.boolean().optional(),
+                    limit: z.number().default(50),
+                    offset: z.number().default(0),
+                })
+                .optional(),
+        )
+        .handler(async ({ input, context }) => {
+            const filters = [
+                eq(
+                    statusPage.organizationId,
+                    getActiveOrganizationId(
+                        context.session.session.activeOrganizationId,
+                    ),
+                ),
+            ];
 
-			if (input?.q) {
-				filters.push(ilike(statusPage.name, `%${input.q}%`));
-			}
+            if (input?.q) {
+                filters.push(ilike(statusPage.name, `%${input.q}%`));
+            }
 
-			if (input?.public !== undefined) {
-				filters.push(eq(statusPage.public, input.public));
-			}
+            if (input?.public !== undefined) {
+                filters.push(eq(statusPage.public, input.public));
+            }
 
-			const [pages, total] = await Promise.all([
-				db
-					.select()
-					.from(statusPage)
-					.where(and(...filters))
-					.orderBy(desc(statusPage.createdAt))
-					.limit(input?.limit || 50)
-					.offset(input?.offset || 0),
-				db.$count(statusPage, and(...filters)),
-			]);
+            const [pages, total] = await Promise.all([
+                db
+                    .select()
+                    .from(statusPage)
+                    .where(and(...filters))
+                    .orderBy(desc(statusPage.createdAt))
+                    .limit(input?.limit || 50)
+                    .offset(input?.offset || 0),
+                db.$count(statusPage, and(...filters)),
+            ]);
 
-			const items = await Promise.all(
-				pages.map(async (page) => {
-					const monitorCount = await db
-						.select({ count: statusPageMonitor.monitorId })
-						.from(statusPageMonitor)
-						.where(eq(statusPageMonitor.statusPageId, page.id))
-						.then((r) => r.length);
+            const items = await Promise.all(
+                pages.map(async (page) => {
+                    const monitorCount = await db
+                        .select({ count: statusPageMonitor.monitorId })
+                        .from(statusPageMonitor)
+                        .where(eq(statusPageMonitor.statusPageId, page.id))
+                        .then((r) => r.length);
 
-					// TODO: Implement subscriber count when subscribers table is ready
-					const subscriberCount = 0;
+                    // TODO: Implement subscriber count when subscribers table is ready
+                    const subscriberCount = 0;
 
-					const { password, ...pageData } = page;
-					return {
-						...pageData,
-						hasPassword: !!password,
-						monitorsCount: monitorCount,
-						subscribers: subscriberCount,
-					};
-				}),
-			);
+                    const { password, ...pageData } = page;
+                    return {
+                        ...pageData,
+                        hasPassword: !!password,
+                        monitorsCount: monitorCount,
+                        subscribers: subscriberCount,
+                    };
+                }),
+            );
 
-			return {
-				items,
-				total,
-			};
-		}),
+            return {
+                items,
+                total,
+            };
+        }),
 
-	create: writeProcedure
-		.route({
-			method: "POST",
-			path: "/status-pages",
-			tags: ["Status Page Management"],
-			summary: "Create status page",
-			description: "Create a new status page.",
-		})
-		.input(
-			z.object({
-				name: z.string().min(1),
-				slug: z.string().min(1),
-				isPrivate: z.boolean().default(false),
-			}),
-		)
-		.handler(async ({ input, context }) => {
-			// Check for duplicate slug globally or per org? Usually globally for subdomains.
-			const existing = await db.query.statusPage.findFirst({
-				where: eq(statusPage.slug, input.slug),
-			});
+    create: writeProcedure
+        .route({
+            method: "POST",
+            path: "/status-pages",
+            tags: ["Status Page Management"],
+            summary: "Create status page",
+            description: "Create a new status page.",
+        })
+        .input(
+            z.object({
+                name: z.string().min(1),
+                slug: z.string().min(1),
+                isPrivate: z.boolean().default(false),
+            }),
+        )
+        .handler(async ({ input, context }) => {
+            // Check for duplicate slug globally or per org? Usually globally for subdomains.
+            const existing = await db.query.statusPage.findFirst({
+                where: eq(statusPage.slug, input.slug),
+            });
 
-			if (existing) {
-				throw new ORPCError("CONFLICT", { message: "Slug already taken" });
-			}
+            if (existing) {
+                throw new ORPCError("CONFLICT", {
+                    message: "Slug already taken",
+                });
+            }
 
-			const [newPage] = await db
-				.insert(statusPage)
-				.values({
-					id: crypto.randomUUID(),
-					name: input.name,
-					slug: input.slug,
-					organizationId: getActiveOrganizationId(
-						context.session.session.activeOrganizationId,
-					),
-					public: !input.isPrivate,
-				})
-				.returning();
+            const [newPage] = await db
+                .insert(statusPage)
+                .values({
+                    id: crypto.randomUUID(),
+                    name: input.name,
+                    slug: input.slug,
+                    organizationId: getActiveOrganizationId(
+                        context.session.session.activeOrganizationId,
+                    ),
+                    public: !input.isPrivate,
+                })
+                .returning();
 
-			return newPage;
-		}),
+            return newPage;
+        }),
 
-	get: protectedProcedure
-		.route({
-			method: "GET",
-			path: "/status-pages/{id}",
-			tags: ["Status Page Management"],
-			summary: "Get status page",
-			description: "Retrieve details of a specific status page.",
-		})
-		.input(z.object({ id: z.string() }))
-		.handler(async ({ input, context }) => {
-			const page = await db.query.statusPage.findFirst({
-				where: and(
-					eq(statusPage.id, input.id),
-					eq(
-						statusPage.organizationId,
-						getActiveOrganizationId(
-							context.session.session.activeOrganizationId,
-						),
-					),
-				),
-			});
+    get: protectedProcedure
+        .route({
+            method: "GET",
+            path: "/status-pages/{id}",
+            tags: ["Status Page Management"],
+            summary: "Get status page",
+            description: "Retrieve details of a specific status page.",
+        })
+        .input(z.object({ id: z.string() }))
+        .handler(async ({ input, context }) => {
+            const page = await db.query.statusPage.findFirst({
+                where: and(
+                    eq(statusPage.id, input.id),
+                    eq(
+                        statusPage.organizationId,
+                        getActiveOrganizationId(
+                            context.session.session.activeOrganizationId,
+                        ),
+                    ),
+                ),
+            });
 
-			if (!page) {
-				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
-			}
+            if (!page) {
+                throw new ORPCError("NOT_FOUND", {
+                    message: "Status page not found",
+                });
+            }
 
-			const { password, ...pageData } = page;
-			return {
-				...pageData,
-				hasPassword: !!password,
-			};
-		}),
+            const { password, ...pageData } = page;
+            return {
+                ...pageData,
+                hasPassword: !!password,
+            };
+        }),
 
-	update: writeProcedure
-		.route({
-			method: "PATCH",
-			path: "/status-pages/{id}",
-			tags: ["Status Page Management"],
-			summary: "Update status page",
-			description: "Update the configuration of a status page.",
-		})
-		.input(
-			z.object({
-				id: z.string(),
-				name: z.string().optional(),
-				slug: z.string().optional(),
-				domain: z.string().optional().nullable(),
-				websiteUrl: z.string().optional().nullable(),
-				design: z
-					.object({
-						themeId: z.string().optional(),
-						logoUrl: z.string().optional(),
-						websiteUrl: z.string().optional(),
-						contactUrl: z.string().optional(),
-						theme: z.enum(["light", "dark"]).optional(),
-						headerLayout: z.enum(["vertical", "horizontal"]).optional(),
-						barStyle: z.enum(["normal", "length", "signal"]).optional(),
-						barDays: z
-							.union([z.literal(30), z.literal(60), z.literal(90)])
-							.optional(),
-						percentDigits: z.number().optional().default(2),
-						defaultSectionCollapsible: z.boolean().optional(),
-						defaultSectionCollapsed: z.boolean().optional(),
-						faviconUrl: z.string().optional(),
-						customCss: z.string().max(50_000).optional(),
-					})
-					.optional(),
-				description: z.string().optional(),
-				public: z.boolean().optional(),
-				password: z
-					.string()
-					.min(6, "Password must be at least 6 characters")
-					.optional()
-					.nullable(),
-			}),
-		)
-		.handler(async ({ input, context }) => {
-			const existing = await db.query.statusPage.findFirst({
-				where: and(
-					eq(statusPage.id, input.id),
-					eq(
-						statusPage.organizationId,
-						getActiveOrganizationId(
-							context.session.session.activeOrganizationId,
-						),
-					),
-				),
-			});
+    update: writeProcedure
+        .route({
+            method: "PATCH",
+            path: "/status-pages/{id}",
+            tags: ["Status Page Management"],
+            summary: "Update status page",
+            description: "Update the configuration of a status page.",
+        })
+        .input(
+            z.object({
+                id: z.string(),
+                name: z.string().optional(),
+                slug: z.string().optional(),
+                domain: z.string().optional().nullable(),
+                websiteUrl: z.string().optional().nullable(),
+                design: z
+                    .object({
+                        themeId: z.string().optional(),
+                        logoUrl: z.string().optional(),
+                        websiteUrl: z.string().optional(),
+                        contactUrl: z.string().optional(),
+                        theme: z.enum(["light", "dark"]).optional(),
+                        headerLayout: z
+                            .enum(["vertical", "horizontal"])
+                            .optional(),
+                        barStyle: z
+                            .enum(["normal", "length", "signal"])
+                            .optional(),
+                        barDays: z
+                            .union([
+                                z.literal(30),
+                                z.literal(60),
+                                z.literal(90),
+                            ])
+                            .optional(),
+                        percentDigits: z.number().optional().default(2),
+                        defaultSectionCollapsible: z.boolean().optional(),
+                        defaultSectionCollapsed: z.boolean().optional(),
+                        faviconUrl: z.string().optional(),
+                        customCss: z.string().max(50_000).optional(),
+                    })
+                    .optional(),
+                description: z.string().optional(),
+                public: z.boolean().optional(),
+                password: z
+                    .string()
+                    .min(6, "Password must be at least 6 characters")
+                    .optional()
+                    .nullable(),
+            }),
+        )
+        .handler(async ({ input, context }) => {
+            const existing = await db.query.statusPage.findFirst({
+                where: and(
+                    eq(statusPage.id, input.id),
+                    eq(
+                        statusPage.organizationId,
+                        getActiveOrganizationId(
+                            context.session.session.activeOrganizationId,
+                        ),
+                    ),
+                ),
+            });
 
-			if (!existing) {
-				throw new ORPCError("NOT_FOUND");
-			}
+            if (!existing) {
+                throw new ORPCError("NOT_FOUND");
+            }
 
-			// If updating slug, check uniqueness
-			if (input.slug && input.slug !== existing.slug) {
-				const slugTaken = await db.query.statusPage.findFirst({
-					where: eq(statusPage.slug, input.slug),
-				});
-				if (slugTaken)
-					throw new ORPCError("CONFLICT", { message: "Slug already taken" });
-			}
+            // If updating slug, check uniqueness
+            if (input.slug && input.slug !== existing.slug) {
+                const slugTaken = await db.query.statusPage.findFirst({
+                    where: eq(statusPage.slug, input.slug),
+                });
+                if (slugTaken)
+                    throw new ORPCError("CONFLICT", {
+                        message: "Slug already taken",
+                    });
+            }
 
-			let normalizedDomain: string | null | undefined;
-			if (input.domain !== undefined) {
-				try {
-					normalizedDomain = normalizeStatusPageDomain(input.domain);
-				} catch (error) {
-					throw new ORPCError("BAD_REQUEST", {
-						message:
-							error instanceof Error
-								? error.message
-								: "Custom domain must be a valid domain name",
-					});
-				}
-			}
+            let normalizedDomain: string | null | undefined;
+            if (input.domain !== undefined) {
+                try {
+                    normalizedDomain = normalizeStatusPageDomain(input.domain);
+                } catch (error) {
+                    throw new ORPCError("BAD_REQUEST", {
+                        message:
+                            error instanceof Error
+                                ? error.message
+                                : "Custom domain must be a valid domain name",
+                    });
+                }
+            }
 
-			if (normalizedDomain && normalizedDomain !== existing.domain) {
-				const domainTaken = await db.query.statusPage.findFirst({
-					where: eq(statusPage.domain, normalizedDomain),
-				});
+            if (normalizedDomain && normalizedDomain !== existing.domain) {
+                const domainTaken = await db.query.statusPage.findFirst({
+                    where: eq(statusPage.domain, normalizedDomain),
+                });
 
-				if (domainTaken && domainTaken.id !== existing.id) {
-					throw new ORPCError("CONFLICT", {
-						message: "Custom domain already taken",
-					});
-				}
-			}
+                if (domainTaken && domainTaken.id !== existing.id) {
+                    throw new ORPCError("CONFLICT", {
+                        message: "Custom domain already taken",
+                    });
+                }
+            }
 
-			// Merge design
-			const currentDesign = (existing.design as any) || {};
-			const newDesign = input.design
-				? { ...currentDesign, ...input.design }
-				: currentDesign;
-			if (newDesign.defaultSectionCollapsible === false) {
-				newDesign.defaultSectionCollapsed = false;
-			}
+            // Merge design
+            const currentDesign = (existing.design as any) || {};
+            const newDesign = input.design
+                ? { ...currentDesign, ...input.design }
+                : currentDesign;
+            if (newDesign.defaultSectionCollapsible === false) {
+                newDesign.defaultSectionCollapsed = false;
+            }
 
-			// Handle password: hash if provided, clear if page is public
-			let passwordHash: string | null | undefined;
-			if (input.public === true) {
-				// Setting to public, clear password
-				passwordHash = null;
-			} else if (input.password) {
-				// New password provided, hash it
-				passwordHash = await hashPassword(input.password);
-			} else if (input.password === null) {
-				// Explicitly clearing password
-				passwordHash = null;
-			}
+            // Handle password: hash if provided, clear if page is public
+            let passwordHash: string | null | undefined;
+            if (input.public === true) {
+                // Setting to public, clear password
+                passwordHash = null;
+            } else if (input.password) {
+                // New password provided, hash it
+                passwordHash = await hashPassword(input.password);
+            } else if (input.password === null) {
+                // Explicitly clearing password
+                passwordHash = null;
+            }
 
-			await db
-				.update(statusPage)
-				.set({
-					name: input.name,
-					slug: input.slug,
-					domain: normalizedDomain,
-					description: input.description,
-					public: input.public,
-					design: newDesign,
-					...(passwordHash !== undefined && { password: passwordHash }),
-				})
-				.where(eq(statusPage.id, input.id));
+            await db
+                .update(statusPage)
+                .set({
+                    name: input.name,
+                    slug: input.slug,
+                    domain: normalizedDomain,
+                    description: input.description,
+                    public: input.public,
+                    design: newDesign,
+                    ...(passwordHash !== undefined && {
+                        password: passwordHash,
+                    }),
+                })
+                .where(eq(statusPage.id, input.id));
 
-			// Invalidate cache
-			if (existing.domain) {
-				await redis.del(`status-page:${existing.domain}`);
-			}
-			if (normalizedDomain && normalizedDomain !== existing.domain) {
-				await redis.del(`status-page:${normalizedDomain}`);
-			}
-			// Invalidate slug-based cache
-			await redis.del(`status-page:slug:${existing.slug}`);
-			if (input.slug && input.slug !== existing.slug) {
-				await redis.del(`status-page:slug:${input.slug}`);
-			}
+            // Invalidate cache
+            if (existing.domain) {
+                await redis.del(`status-page:${existing.domain}`);
+            }
+            if (normalizedDomain && normalizedDomain !== existing.domain) {
+                await redis.del(`status-page:${normalizedDomain}`);
+            }
+            // Invalidate slug-based cache
+            await redis.del(`status-page:slug:${existing.slug}`);
+            if (input.slug && input.slug !== existing.slug) {
+                await redis.del(`status-page:slug:${input.slug}`);
+            }
 
-			return { success: true };
-		}),
+            return { success: true };
+        }),
 
-	// Structure management
-	getStructure: protectedProcedure
-		.route({
-			method: "GET",
-			path: "/status-pages/{id}/structure",
-			tags: ["Status Page Management"],
-			summary: "Get structure",
-			description: "Get the layout structure of a status page.",
-		})
-		.input(z.object({ id: z.string() }))
-		.handler(async ({ input, context }) => {
-			const existing = await db.query.statusPage.findFirst({
-				where: and(
-					eq(statusPage.id, input.id),
-					eq(
-						statusPage.organizationId,
-						getActiveOrganizationId(
-							context.session.session.activeOrganizationId,
-						),
-					),
-				),
-			});
-			if (!existing) throw new ORPCError("NOT_FOUND");
+    // Structure management
+    getStructure: protectedProcedure
+        .route({
+            method: "GET",
+            path: "/status-pages/{id}/structure",
+            tags: ["Status Page Management"],
+            summary: "Get structure",
+            description: "Get the layout structure of a status page.",
+        })
+        .input(z.object({ id: z.string() }))
+        .handler(async ({ input, context }) => {
+            const existing = await db.query.statusPage.findFirst({
+                where: and(
+                    eq(statusPage.id, input.id),
+                    eq(
+                        statusPage.organizationId,
+                        getActiveOrganizationId(
+                            context.session.session.activeOrganizationId,
+                        ),
+                    ),
+                ),
+            });
+            if (!existing) throw new ORPCError("NOT_FOUND");
 
-			// Fetch groups
-			const groups = await db.query.statusPageGroup.findMany({
-				where: eq(statusPageGroup.statusPageId, input.id),
-				orderBy: asc(statusPageGroup.order),
-				with: {
-					monitors: {
-						orderBy: asc(statusPageMonitor.order),
-						with: {
-							monitor: true,
-						},
-					},
-				},
-			});
+            // Fetch groups
+            const groups = await db.query.statusPageGroup.findMany({
+                where: eq(statusPageGroup.statusPageId, input.id),
+                orderBy: asc(statusPageGroup.order),
+                with: {
+                    monitors: {
+                        orderBy: asc(statusPageMonitor.order),
+                        with: {
+                            monitor: true,
+                        },
+                    },
+                },
+            });
 
-			return {
-				groups: groups.map((g) => ({
-					id: g.id,
-					name: g.name,
-					collapsible: g.collapsible,
-					defaultCollapsed: g.defaultCollapsed,
-					monitors: g.monitors.map((m) => ({
-						id: m.monitor.id,
-						name: m.monitor.name,
-						type: m.monitor.type,
-						style: (m.style as "history" | "status") || "history",
-						description: m.description,
-					})),
-				})),
-			};
-		}),
+            return {
+                groups: groups.map((g) => ({
+                    id: g.id,
+                    name: g.name,
+                    collapsible: g.collapsible,
+                    defaultCollapsed: g.defaultCollapsed,
+                    monitors: g.monitors.map((m) => ({
+                        id: m.monitor.id,
+                        name: m.monitor.name,
+                        type: m.monitor.type,
+                        style: (m.style as "history" | "status") || "history",
+                        description: m.description,
+                    })),
+                })),
+            };
+        }),
 
-	updateStructure: writeProcedure
-		.route({
-			method: "PUT",
-			path: "/status-pages/{id}/structure",
-			tags: ["Status Page Management"],
-			summary: "Update structure",
-			description: "Update the layout structure of a status page.",
-		})
-		.input(
-			z.object({
-				id: z.string(),
-				groups: z.array(
-					z.object({
-						id: z.string().optional(),
-						name: z.string(),
-						collapsible: z.boolean().optional().default(true),
-						defaultCollapsed: z.boolean().optional().default(false),
-						monitors: z.array(
-							z.object({
-								id: z.string(),
-								style: z.enum(["history", "status"]).default("history"),
-								description: z.string().optional().nullable(),
-							}),
-						),
-					}),
-				),
-			}),
-		)
-		.handler(async ({ input, context }) => {
-			const existing = await db.query.statusPage.findFirst({
-				where: and(
-					eq(statusPage.id, input.id),
-					eq(
-						statusPage.organizationId,
-						getActiveOrganizationId(
-							context.session.session.activeOrganizationId,
-						),
-					),
-				),
-			});
-			if (!existing) throw new ORPCError("NOT_FOUND");
+    updateStructure: writeProcedure
+        .route({
+            method: "PUT",
+            path: "/status-pages/{id}/structure",
+            tags: ["Status Page Management"],
+            summary: "Update structure",
+            description: "Update the layout structure of a status page.",
+        })
+        .input(
+            z.object({
+                id: z.string(),
+                groups: z.array(
+                    z.object({
+                        id: z.string().optional(),
+                        name: z.string(),
+                        collapsible: z.boolean().optional().default(true),
+                        defaultCollapsed: z.boolean().optional().default(false),
+                        monitors: z.array(
+                            z.object({
+                                id: z.string(),
+                                style: z
+                                    .enum(["history", "status"])
+                                    .default("history"),
+                                description: z.string().optional().nullable(),
+                            }),
+                        ),
+                    }),
+                ),
+            }),
+        )
+        .handler(async ({ input, context }) => {
+            const existing = await db.query.statusPage.findFirst({
+                where: and(
+                    eq(statusPage.id, input.id),
+                    eq(
+                        statusPage.organizationId,
+                        getActiveOrganizationId(
+                            context.session.session.activeOrganizationId,
+                        ),
+                    ),
+                ),
+            });
+            if (!existing) throw new ORPCError("NOT_FOUND");
 
-			const monitorIds = [
-				...new Set(
-					input.groups.flatMap((group) => group.monitors.map((m) => m.id)),
-				),
-			];
-			const monitorTypes =
-				monitorIds.length > 0
-					? await db
-							.select({ id: monitor.id, type: monitor.type })
-							.from(monitor)
-							.where(
-								and(
-									eq(monitor.organizationId, existing.organizationId),
-									inArray(monitor.id, monitorIds),
-								),
-							)
-					: [];
-			const monitorTypeById = new Map(
-				monitorTypes.map((monitorRecord) => [
-					monitorRecord.id,
-					monitorRecord.type,
-				]),
-			);
+            const monitorIds = [
+                ...new Set(
+                    input.groups.flatMap((group) =>
+                        group.monitors.map((m) => m.id),
+                    ),
+                ),
+            ];
+            const monitorTypes =
+                monitorIds.length > 0
+                    ? await db
+                          .select({ id: monitor.id, type: monitor.type })
+                          .from(monitor)
+                          .where(
+                              and(
+                                  eq(
+                                      monitor.organizationId,
+                                      existing.organizationId,
+                                  ),
+                                  inArray(monitor.id, monitorIds),
+                              ),
+                          )
+                    : [];
+            const monitorTypeById = new Map(
+                monitorTypes.map((monitorRecord) => [
+                    monitorRecord.id,
+                    monitorRecord.type,
+                ]),
+            );
 
-			await db.transaction(async (tx) => {
-				await tx
-					.delete(statusPageGroup)
-					.where(eq(statusPageGroup.statusPageId, input.id));
-				await tx
-					.delete(statusPageMonitor)
-					.where(eq(statusPageMonitor.statusPageId, input.id));
+            await db.transaction(async (tx) => {
+                await tx
+                    .delete(statusPageGroup)
+                    .where(eq(statusPageGroup.statusPageId, input.id));
+                await tx
+                    .delete(statusPageMonitor)
+                    .where(eq(statusPageMonitor.statusPageId, input.id));
 
-				for (const [gIndex, group] of input.groups.entries()) {
-					const groupId = crypto.randomUUID();
-					await tx.insert(statusPageGroup).values({
-						id: groupId,
-						statusPageId: input.id,
-						name: group.name,
-						order: gIndex,
-						collapsible: group.collapsible,
-						defaultCollapsed: group.collapsible
-							? group.defaultCollapsed
-							: false,
-					});
+                for (const [gIndex, group] of input.groups.entries()) {
+                    const groupId = crypto.randomUUID();
+                    await tx.insert(statusPageGroup).values({
+                        id: groupId,
+                        statusPageId: input.id,
+                        name: group.name,
+                        order: gIndex,
+                        collapsible: group.collapsible,
+                        defaultCollapsed: group.collapsible
+                            ? group.defaultCollapsed
+                            : false,
+                    });
 
-					if (group.monitors.length > 0) {
-						await tx.insert(statusPageMonitor).values(
-							group.monitors.map((m, mIndex) => ({
-								statusPageId: input.id,
-								monitorId: m.id,
-								groupId: groupId,
-								order: mIndex,
-								style:
-									monitorTypeById.get(m.id) === "instatus" ? "status" : m.style,
-								description: m.description || null,
-							})),
-						);
-					}
-				}
-			});
+                    if (group.monitors.length > 0) {
+                        await tx.insert(statusPageMonitor).values(
+                            group.monitors.map((m, mIndex) => ({
+                                statusPageId: input.id,
+                                monitorId: m.id,
+                                groupId: groupId,
+                                order: mIndex,
+                                style:
+                                    monitorTypeById.get(m.id) === "instatus"
+                                        ? "status"
+                                        : m.style,
+                                description: m.description || null,
+                            })),
+                        );
+                    }
+                }
+            });
 
-			// Invalidate cache
-			if (existing.domain) {
-				await redis.del(`status-page:${existing.domain}`);
-			}
-			// Invalidate slug-based cache
-			await redis.del(`status-page:slug:${existing.slug}`);
+            // Invalidate cache
+            if (existing.domain) {
+                await redis.del(`status-page:${existing.domain}`);
+            }
+            // Invalidate slug-based cache
+            await redis.del(`status-page:slug:${existing.slug}`);
 
-			return { success: true };
-		}),
+            return { success: true };
+        }),
 
-	delete: writeProcedure
-		.route({
-			method: "DELETE",
-			path: "/status-pages/{id}",
-			tags: ["Status Page Management"],
-			summary: "Delete status page",
-			description: "Delete a specific status page by ID.",
-		})
-		.input(z.object({ id: z.string() }))
-		.handler(async ({ input, context }) => {
-			const existing = await db.query.statusPage.findFirst({
-				where: and(
-					eq(statusPage.id, input.id),
-					eq(
-						statusPage.organizationId,
-						getActiveOrganizationId(
-							context.session.session.activeOrganizationId,
-						),
-					),
-				),
-			});
+    delete: writeProcedure
+        .route({
+            method: "DELETE",
+            path: "/status-pages/{id}",
+            tags: ["Status Page Management"],
+            summary: "Delete status page",
+            description: "Delete a specific status page by ID.",
+        })
+        .input(z.object({ id: z.string() }))
+        .handler(async ({ input, context }) => {
+            const existing = await db.query.statusPage.findFirst({
+                where: and(
+                    eq(statusPage.id, input.id),
+                    eq(
+                        statusPage.organizationId,
+                        getActiveOrganizationId(
+                            context.session.session.activeOrganizationId,
+                        ),
+                    ),
+                ),
+            });
 
-			if (!existing) {
-				throw new ORPCError("NOT_FOUND", { message: "Status page not found" });
-			}
+            if (!existing) {
+                throw new ORPCError("NOT_FOUND", {
+                    message: "Status page not found",
+                });
+            }
 
-			await db.delete(statusPage).where(eq(statusPage.id, input.id));
+            await db.delete(statusPage).where(eq(statusPage.id, input.id));
 
-			// Invalidate cache
-			if (existing.domain) {
-				await redis.del(`status-page:${existing.domain}`);
-			}
-			// Invalidate slug-based cache
-			await redis.del(`status-page:slug:${existing.slug}`);
+            // Invalidate cache
+            if (existing.domain) {
+                await redis.del(`status-page:${existing.domain}`);
+            }
+            // Invalidate slug-based cache
+            await redis.del(`status-page:slug:${existing.slug}`);
 
-			return { success: true };
-		}),
+            return { success: true };
+        }),
 
-	subscribers: subscribersRouter,
+    subscribers: subscribersRouter,
 };

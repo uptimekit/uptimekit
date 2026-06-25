@@ -1,75 +1,75 @@
 {
-	"name": "@uptimekit/api",
-	"private": true,
-	"exports": {
-		".": {
-			"default": "./src/index.ts"
-		},
-		"./*": {
-			"default": "./src/*.ts"
-		},
-		"./pkg/*": {
-			"default": "./src/pkg/*/index.ts"
-		},
-		"./pkg/integrations/registry": {
-			"default": "./src/pkg/integrations/registry.ts"
-		},
-		"./pkg/integrations/definitions/discord-meta": {
-			"default": "./src/pkg/integrations/definitions/discord-meta.ts"
-		},
-		"./pkg/integrations/definitions/telegram-meta": {
-			"default": "./src/pkg/integrations/definitions/telegram-meta.ts"
-		},
-		"./pkg/integrations/definitions/webhook-meta": {
-			"default": "./src/pkg/integrations/definitions/webhook-meta.ts"
-		},
-		"./pkg/integrations/definitions/smtp-meta": {
-			"default": "./src/pkg/integrations/definitions/smtp-meta.ts"
-		},
-		"./pkg/integrations/definitions/smtp": {
-			"default": "./src/pkg/integrations/definitions/smtp.ts"
-		},
-		"./pkg/integrations/definitions/alertmanager-meta": {
-			"default": "./src/pkg/integrations/definitions/alertmanager-meta.ts"
-		},
-		"./pkg/integrations/definitions/alertmanager": {
-			"default": "./src/pkg/integrations/definitions/alertmanager.ts"
-		},
-		"./pkg/integrations/definitions/apprise-meta": {
-			"default": "./src/pkg/integrations/definitions/apprise-meta.ts"
-		}
-	},
-	"type": "module",
-	"scripts": {
-		"check-types": "tsc --noEmit -p tsconfig.json",
-		"test": "vitest run"
-	},
-	"devDependencies": {
-		"@types/nodemailer": "^8.0.0",
-		"@uptimekit/config": "workspace:*",
-		"typescript": "^5.9.3",
-		"vitest": "^4.1.8"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"dependencies": {
-		"@clickhouse/client": "^1.15.0",
-		"@node-rs/argon2": "^2.0.2",
-		"@orpc/client": "catalog:",
-		"@orpc/openapi": "catalog:",
-		"@orpc/server": "catalog:",
-		"@orpc/zod": "catalog:",
-		"@uptimekit/auth": "workspace:*",
-		"@uptimekit/db": "workspace:*",
-		"dotenv": "catalog:",
-		"drizzle-orm": "catalog:",
-		"effect": "^3.21.2",
-		"evlog": "^2.18.1",
-		"ioredis": "^5.8.2",
-		"nodemailer": "^8.0.5",
-		"semver": "^7.8.1",
-		"socket.io-client": "^4.8.1",
-		"zod": "catalog:"
-	}
+    "name": "@uptimekit/api",
+    "private": true,
+    "exports": {
+        ".": {
+            "default": "./src/index.ts"
+        },
+        "./*": {
+            "default": "./src/*.ts"
+        },
+        "./pkg/*": {
+            "default": "./src/pkg/*/index.ts"
+        },
+        "./pkg/integrations/registry": {
+            "default": "./src/pkg/integrations/registry.ts"
+        },
+        "./pkg/integrations/definitions/discord-meta": {
+            "default": "./src/pkg/integrations/definitions/discord-meta.ts"
+        },
+        "./pkg/integrations/definitions/telegram-meta": {
+            "default": "./src/pkg/integrations/definitions/telegram-meta.ts"
+        },
+        "./pkg/integrations/definitions/webhook-meta": {
+            "default": "./src/pkg/integrations/definitions/webhook-meta.ts"
+        },
+        "./pkg/integrations/definitions/smtp-meta": {
+            "default": "./src/pkg/integrations/definitions/smtp-meta.ts"
+        },
+        "./pkg/integrations/definitions/smtp": {
+            "default": "./src/pkg/integrations/definitions/smtp.ts"
+        },
+        "./pkg/integrations/definitions/alertmanager-meta": {
+            "default": "./src/pkg/integrations/definitions/alertmanager-meta.ts"
+        },
+        "./pkg/integrations/definitions/alertmanager": {
+            "default": "./src/pkg/integrations/definitions/alertmanager.ts"
+        },
+        "./pkg/integrations/definitions/apprise-meta": {
+            "default": "./src/pkg/integrations/definitions/apprise-meta.ts"
+        }
+    },
+    "type": "module",
+    "scripts": {
+        "check-types": "tsc --noEmit -p tsconfig.json",
+        "test": "vitest run"
+    },
+    "devDependencies": {
+        "@types/nodemailer": "^8.0.0",
+        "@uptimekit/config": "workspace:*",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.8"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "dependencies": {
+        "@clickhouse/client": "^1.15.0",
+        "@node-rs/argon2": "^2.0.2",
+        "@orpc/client": "catalog:",
+        "@orpc/openapi": "catalog:",
+        "@orpc/server": "catalog:",
+        "@orpc/zod": "catalog:",
+        "@uptimekit/auth": "workspace:*",
+        "@uptimekit/db": "workspace:*",
+        "dotenv": "catalog:",
+        "drizzle-orm": "catalog:",
+        "effect": "^3.21.2",
+        "evlog": "^2.18.1",
+        "ioredis": "^5.8.2",
+        "nodemailer": "^8.0.5",
+        "semver": "^7.8.1",
+        "socket.io-client": "^4.8.1",
+        "zod": "catalog:"
+    }
 }

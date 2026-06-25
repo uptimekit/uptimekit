@@ -1,91 +1,95 @@
 import postgres from "postgres";
 import type { TimeSeriesBackend, TimeSeriesDriver } from "./driver";
 import type {
-	ChangeTimelineItem,
-	ChangeTimelineQuery,
-	HourlyUptimeStat,
-	LatestChange,
-	LatestEvent,
-	MonitorChangeInsert,
-	MonitorEventInsert,
-	MonitorWorkerStatus,
-	ResponseTimePoint,
-	ResponseTimesQuery,
-	SingleLatestChange,
-	SingleLatestEvent,
-	SparklinePoint,
-	StatusCodeDistributionPoint,
-	StatusCodeDistributionQuery,
-	WorkerStatus,
+    ChangeTimelineItem,
+    ChangeTimelineQuery,
+    HourlyUptimeStat,
+    LatestChange,
+    LatestEvent,
+    MonitorChangeInsert,
+    MonitorEventInsert,
+    MonitorWorkerStatus,
+    ResponseTimePoint,
+    ResponseTimesQuery,
+    SingleLatestChange,
+    SingleLatestEvent,
+    SparklinePoint,
+    StatusCodeDistributionPoint,
+    StatusCodeDistributionQuery,
+    WorkerStatus,
 } from "./types";
 
 export interface TimescaleDriverOptions {
-	url?: string;
-	client?: ReturnType<typeof postgres>;
-	autoCreateExtension?: boolean;
+    url?: string;
+    client?: ReturnType<typeof postgres>;
+    autoCreateExtension?: boolean;
 }
 
 const MONITOR_EVENTS_COMPRESS_AFTER = "7 days";
 const MONITOR_CHANGES_COMPRESS_AFTER = "14 days";
 
 function formatDateHour(date: Date): string {
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
-		date.getUTCDate(),
-	)} ${pad(date.getUTCHours())}`;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
+        date.getUTCDate(),
+    )} ${pad(date.getUTCHours())}`;
 }
 
 export class TimescaleDriver implements TimeSeriesDriver {
-	backend: TimeSeriesBackend = "timescale";
+    backend: TimeSeriesBackend = "timescale";
 
-	private options: TimescaleDriverOptions;
-	private autoCreateExtension: boolean;
-	private ownedClient: ReturnType<typeof postgres> | null = null;
-	private schemaInit: Promise<void> | null = null;
+    private options: TimescaleDriverOptions;
+    private autoCreateExtension: boolean;
+    private ownedClient: ReturnType<typeof postgres> | null = null;
+    private schemaInit: Promise<void> | null = null;
 
-	constructor(options: TimescaleDriverOptions = {}) {
-		this.options = options;
-		this.autoCreateExtension = options.autoCreateExtension ?? true;
-	}
+    constructor(options: TimescaleDriverOptions = {}) {
+        this.options = options;
+        this.autoCreateExtension = options.autoCreateExtension ?? true;
+    }
 
-	private getClient(): ReturnType<typeof postgres> {
-		if (this.options.client) return this.options.client;
-		if (!this.ownedClient) {
-			const url =
-				this.options.url ??
-				process.env.TIMESCALE_DATABASE_URL ??
-				process.env.DATABASE_URL ??
-				"";
-			if (!url) {
-				throw new Error(
-					"TimescaleDB driver requires TIMESCALE_DATABASE_URL or DATABASE_URL",
-				);
-			}
-			this.ownedClient = postgres(url, {
-				max: 20,
-				idle_timeout: 30,
-			});
-		}
-		return this.ownedClient;
-	}
+    private getClient(): ReturnType<typeof postgres> {
+        if (this.options.client) return this.options.client;
+        if (!this.ownedClient) {
+            const url =
+                this.options.url ??
+                process.env.TIMESCALE_DATABASE_URL ??
+                process.env.DATABASE_URL ??
+                "";
+            if (!url) {
+                throw new Error(
+                    "TimescaleDB driver requires TIMESCALE_DATABASE_URL or DATABASE_URL",
+                );
+            }
+            this.ownedClient = postgres(url, {
+                max: 20,
+                idle_timeout: 30,
+            });
+        }
+        return this.ownedClient;
+    }
 
-	async ensureSchema() {
-		if (!this.schemaInit) {
-			this.schemaInit = (async () => {
-				const sql = this.getClient();
-				if (this.autoCreateExtension) {
-					try {
-						await sql.unsafe("CREATE EXTENSION IF NOT EXISTS timescaledb");
-					} catch (error) {
-						throw new Error(
-							`Failed to create timescaledb extension. Ensure your PostgreSQL image has the TimescaleDB extension installed (e.g. use 'timescale/timescaledb:2.27.1-pg18'). Original error: ${
-								error instanceof Error ? error.message : String(error)
-							}`,
-						);
-					}
-				}
+    async ensureSchema() {
+        if (!this.schemaInit) {
+            this.schemaInit = (async () => {
+                const sql = this.getClient();
+                if (this.autoCreateExtension) {
+                    try {
+                        await sql.unsafe(
+                            "CREATE EXTENSION IF NOT EXISTS timescaledb",
+                        );
+                    } catch (error) {
+                        throw new Error(
+                            `Failed to create timescaledb extension. Ensure your PostgreSQL image has the TimescaleDB extension installed (e.g. use 'timescale/timescaledb:2.27.1-pg18'). Original error: ${
+                                error instanceof Error
+                                    ? error.message
+                                    : String(error)
+                            }`,
+                        );
+                    }
+                }
 
-				await sql.unsafe(`
+                await sql.unsafe(`
 					CREATE TABLE IF NOT EXISTS monitor_events (
 						id UUID NOT NULL,
 						monitor_id TEXT NOT NULL,
@@ -103,19 +107,19 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					)
 				`);
 
-				await sql.unsafe(
-					"SELECT create_hypertable('monitor_events', 'timestamp', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE)",
-				);
+                await sql.unsafe(
+                    "SELECT create_hypertable('monitor_events', 'timestamp', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE)",
+                );
 
-				await sql.unsafe(
-					"CREATE INDEX IF NOT EXISTS monitor_events_monitor_time_idx ON monitor_events (monitor_id, timestamp DESC)",
-				);
+                await sql.unsafe(
+                    "CREATE INDEX IF NOT EXISTS monitor_events_monitor_time_idx ON monitor_events (monitor_id, timestamp DESC)",
+                );
 
-				await sql.unsafe(
-					"CREATE INDEX IF NOT EXISTS monitor_events_monitor_location_time_idx ON monitor_events (monitor_id, location, timestamp DESC)",
-				);
+                await sql.unsafe(
+                    "CREATE INDEX IF NOT EXISTS monitor_events_monitor_location_time_idx ON monitor_events (monitor_id, location, timestamp DESC)",
+                );
 
-				await sql.unsafe(`
+                await sql.unsafe(`
 					CREATE TABLE IF NOT EXISTS monitor_changes (
 						id UUID NOT NULL,
 						monitor_id TEXT NOT NULL,
@@ -125,116 +129,116 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					)
 				`);
 
-				await sql.unsafe(
-					"SELECT create_hypertable('monitor_changes', 'timestamp', chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE)",
-				);
+                await sql.unsafe(
+                    "SELECT create_hypertable('monitor_changes', 'timestamp', chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE)",
+                );
 
-				await sql.unsafe(
-					"CREATE INDEX IF NOT EXISTS monitor_changes_monitor_time_idx ON monitor_changes (monitor_id, timestamp DESC)",
-				);
+                await sql.unsafe(
+                    "CREATE INDEX IF NOT EXISTS monitor_changes_monitor_time_idx ON monitor_changes (monitor_id, timestamp DESC)",
+                );
 
-				await this.enableCompression(sql, {
-					table: "monitor_events",
-					segmentBy: "monitor_id, location",
-					compressAfter: MONITOR_EVENTS_COMPRESS_AFTER,
-				});
+                await this.enableCompression(sql, {
+                    table: "monitor_events",
+                    segmentBy: "monitor_id, location",
+                    compressAfter: MONITOR_EVENTS_COMPRESS_AFTER,
+                });
 
-				await this.enableCompression(sql, {
-					table: "monitor_changes",
-					segmentBy: "monitor_id",
-					compressAfter: MONITOR_CHANGES_COMPRESS_AFTER,
-				});
-			})().catch((error) => {
-				this.schemaInit = null;
-				throw error;
-			});
-		}
-		await this.schemaInit;
-	}
+                await this.enableCompression(sql, {
+                    table: "monitor_changes",
+                    segmentBy: "monitor_id",
+                    compressAfter: MONITOR_CHANGES_COMPRESS_AFTER,
+                });
+            })().catch((error) => {
+                this.schemaInit = null;
+                throw error;
+            });
+        }
+        await this.schemaInit;
+    }
 
-	// `ALTER TABLE ... SET (timescaledb.compress, ...)` is not idempotent: once
-	// chunks are compressed it throws on re-run, so only apply it when
-	// compression isn't already enabled. The policy itself is idempotent.
-	private async enableCompression(
-		sql: ReturnType<typeof postgres>,
-		options: { table: string; segmentBy: string; compressAfter: string },
-	) {
-		const { table, segmentBy, compressAfter } = options;
+    // `ALTER TABLE ... SET (timescaledb.compress, ...)` is not idempotent: once
+    // chunks are compressed it throws on re-run, so only apply it when
+    // compression isn't already enabled. The policy itself is idempotent.
+    private async enableCompression(
+        sql: ReturnType<typeof postgres>,
+        options: { table: string; segmentBy: string; compressAfter: string },
+    ) {
+        const { table, segmentBy, compressAfter } = options;
 
-		const rows = await sql<{ compression_enabled: boolean }[]>`
+        const rows = await sql<{ compression_enabled: boolean }[]>`
 			SELECT compression_enabled
 			FROM timescaledb_information.hypertables
 			WHERE hypertable_name = ${table}
 		`;
 
-		if (!rows[0]?.compression_enabled) {
-			await sql.unsafe(`
+        if (!rows[0]?.compression_enabled) {
+            await sql.unsafe(`
 				ALTER TABLE ${table} SET (
 					timescaledb.compress,
 					timescaledb.compress_segmentby = '${segmentBy}',
 					timescaledb.compress_orderby = 'timestamp DESC'
 				)
 			`);
-		}
+        }
 
-		await sql.unsafe(`
+        await sql.unsafe(`
 			SELECT add_compression_policy(
 				'${table}',
 				compress_after => INTERVAL '${compressAfter}',
 				if_not_exists => TRUE
 			)
 		`);
-	}
+    }
 
-	async insertMonitorEvents(events: MonitorEventInsert[]) {
-		if (events.length === 0) return;
+    async insertMonitorEvents(events: MonitorEventInsert[]) {
+        if (events.length === 0) return;
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = events.map((e) => ({
-			id: e.id,
-			monitor_id: e.monitorId,
-			status: e.status,
-			latency: e.latency,
-			timestamp: e.timestamp,
-			status_code: e.statusCode ?? null,
-			error: e.error ?? null,
-			location: e.location ?? null,
-			dns_lookup: e.dnsLookup ?? null,
-			tcp_connect: e.tcpConnect ?? null,
-			tls_handshake: e.tlsHandshake ?? null,
-			ttfb: e.ttfb ?? null,
-			transfer: e.transfer ?? null,
-		}));
+        const sql = this.getClient();
+        const rows = events.map((e) => ({
+            id: e.id,
+            monitor_id: e.monitorId,
+            status: e.status,
+            latency: e.latency,
+            timestamp: e.timestamp,
+            status_code: e.statusCode ?? null,
+            error: e.error ?? null,
+            location: e.location ?? null,
+            dns_lookup: e.dnsLookup ?? null,
+            tcp_connect: e.tcpConnect ?? null,
+            tls_handshake: e.tlsHandshake ?? null,
+            ttfb: e.ttfb ?? null,
+            transfer: e.transfer ?? null,
+        }));
 
-		await sql`INSERT INTO monitor_events ${sql(rows)}`;
-	}
+        await sql`INSERT INTO monitor_events ${sql(rows)}`;
+    }
 
-	async insertMonitorChanges(changes: MonitorChangeInsert[]) {
-		if (changes.length === 0) return;
+    async insertMonitorChanges(changes: MonitorChangeInsert[]) {
+        if (changes.length === 0) return;
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = changes.map((c) => ({
-			id: c.id,
-			monitor_id: c.monitorId,
-			status: c.status,
-			timestamp: c.timestamp,
-			location: c.location ?? null,
-		}));
+        const sql = this.getClient();
+        const rows = changes.map((c) => ({
+            id: c.id,
+            monitor_id: c.monitorId,
+            status: c.status,
+            timestamp: c.timestamp,
+            location: c.location ?? null,
+        }));
 
-		await sql`INSERT INTO monitor_changes ${sql(rows)}`;
-	}
+        await sql`INSERT INTO monitor_changes ${sql(rows)}`;
+    }
 
-	async getLatestEventForMonitor(
-		monitorId: string,
-	): Promise<SingleLatestEvent | undefined> {
-		await this.ensureSchema();
+    async getLatestEventForMonitor(
+        monitorId: string,
+    ): Promise<SingleLatestEvent | undefined> {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<{ status: string; timestamp: Date }[]>`
+        const sql = this.getClient();
+        const rows = await sql<{ status: string; timestamp: Date }[]>`
 			SELECT status, timestamp
 			FROM monitor_events
 			WHERE monitor_id = ${monitorId}
@@ -242,18 +246,20 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			LIMIT 1
 		`;
 
-		const row = rows[0];
+        const row = rows[0];
 
-		return row ? { status: row.status, timestamp: row.timestamp } : undefined;
-	}
+        return row
+            ? { status: row.status, timestamp: row.timestamp }
+            : undefined;
+    }
 
-	async getLatestChangeForMonitor(
-		monitorId: string,
-	): Promise<SingleLatestChange | undefined> {
-		await this.ensureSchema();
+    async getLatestChangeForMonitor(
+        monitorId: string,
+    ): Promise<SingleLatestChange | undefined> {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<{ timestamp: Date }[]>`
+        const sql = this.getClient();
+        const rows = await sql<{ timestamp: Date }[]>`
 			SELECT timestamp
 			FROM monitor_changes
 			WHERE monitor_id = ${monitorId}
@@ -261,85 +267,85 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			LIMIT 1
 		`;
 
-		const row = rows[0];
+        const row = rows[0];
 
-		return row ? { timestamp: row.timestamp } : undefined;
-	}
+        return row ? { timestamp: row.timestamp } : undefined;
+    }
 
-	async getLatestEventsForMonitors(
-		monitorIds: string[],
-	): Promise<LatestEvent[]> {
-		if (monitorIds.length === 0) return [];
+    async getLatestEventsForMonitors(
+        monitorIds: string[],
+    ): Promise<LatestEvent[]> {
+        if (monitorIds.length === 0) return [];
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<
-			{ monitor_id: string; status: string; timestamp: Date }[]
-		>`
+        const sql = this.getClient();
+        const rows = await sql<
+            { monitor_id: string; status: string; timestamp: Date }[]
+        >`
 			SELECT DISTINCT ON (monitor_id) monitor_id, status, timestamp
 			FROM monitor_events
 			WHERE monitor_id = ANY(${monitorIds})
 			ORDER BY monitor_id, timestamp DESC
 		`;
 
-		return rows.map((r) => ({
-			monitorId: r.monitor_id,
-			status: r.status,
-			timestamp: r.timestamp,
-		}));
-	}
+        return rows.map((r) => ({
+            monitorId: r.monitor_id,
+            status: r.status,
+            timestamp: r.timestamp,
+        }));
+    }
 
-	async getLatestChangesForMonitors(
-		monitorIds: string[],
-	): Promise<LatestChange[]> {
-		if (monitorIds.length === 0) return [];
+    async getLatestChangesForMonitors(
+        monitorIds: string[],
+    ): Promise<LatestChange[]> {
+        if (monitorIds.length === 0) return [];
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<{ monitor_id: string; timestamp: Date }[]>`
+        const sql = this.getClient();
+        const rows = await sql<{ monitor_id: string; timestamp: Date }[]>`
 			SELECT DISTINCT ON (monitor_id) monitor_id, timestamp
 			FROM monitor_changes
 			WHERE monitor_id = ANY(${monitorIds})
 			ORDER BY monitor_id, timestamp DESC
 		`;
 
-		return rows.map((r) => ({
-			monitorId: r.monitor_id,
-			timestamp: r.timestamp,
-		}));
-	}
+        return rows.map((r) => ({
+            monitorId: r.monitor_id,
+            timestamp: r.timestamp,
+        }));
+    }
 
-	async getAverageLatency(monitorId: string, since: Date) {
-		await this.ensureSchema();
+    async getAverageLatency(monitorId: string, since: Date) {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<{ value: string | number | null }[]>`
+        const sql = this.getClient();
+        const rows = await sql<{ value: string | number | null }[]>`
 			SELECT AVG(latency)::float8 AS value
 			FROM monitor_events
 			WHERE monitor_id = ${monitorId}
 				AND timestamp >= ${since}
 		`;
 
-		return Number(rows[0]?.value ?? 0);
-	}
+        return Number(rows[0]?.value ?? 0);
+    }
 
-	async getChangeTimeline(
-		query: ChangeTimelineQuery,
-	): Promise<ChangeTimelineItem[]> {
-		await this.ensureSchema();
+    async getChangeTimeline(
+        query: ChangeTimelineQuery,
+    ): Promise<ChangeTimelineItem[]> {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = query.cursorBefore
-			? await sql<
-					{
-						id: string;
-						status: string;
-						timestamp: Date;
-						location: string | null;
-					}[]
-				>`
+        const sql = this.getClient();
+        const rows = query.cursorBefore
+            ? await sql<
+                  {
+                      id: string;
+                      status: string;
+                      timestamp: Date;
+                      location: string | null;
+                  }[]
+              >`
 					SELECT id, status, timestamp, location
 					FROM monitor_changes
 					WHERE monitor_id = ${query.monitorId}
@@ -347,14 +353,14 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					ORDER BY timestamp DESC
 					LIMIT ${query.limit}
 				`
-			: await sql<
-					{
-						id: string;
-						status: string;
-						timestamp: Date;
-						location: string | null;
-					}[]
-				>`
+            : await sql<
+                  {
+                      id: string;
+                      status: string;
+                      timestamp: Date;
+                      location: string | null;
+                  }[]
+              >`
 					SELECT id, status, timestamp, location
 					FROM monitor_changes
 					WHERE monitor_id = ${query.monitorId}
@@ -362,40 +368,40 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					LIMIT ${query.limit}
 				`;
 
-		return rows.map((r) => ({
-			id: r.id,
-			status: r.status,
-			timestamp: r.timestamp,
-			location: r.location ?? null,
-		}));
-	}
+        return rows.map((r) => ({
+            id: r.id,
+            status: r.status,
+            timestamp: r.timestamp,
+            location: r.location ?? null,
+        }));
+    }
 
-	async getResponseTimes(
-		query: ResponseTimesQuery,
-	): Promise<ResponseTimePoint[]> {
-		await this.ensureSchema();
+    async getResponseTimes(
+        query: ResponseTimesQuery,
+    ): Promise<ResponseTimePoint[]> {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		if (query.bucketSeconds !== undefined) {
-			const bucketSeconds = query.bucketSeconds;
-			const quantile = query.bucketQuantile ?? 0.99;
-			const hasLocations = query.locations && query.locations.length > 0;
+        const sql = this.getClient();
+        if (query.bucketSeconds !== undefined) {
+            const bucketSeconds = query.bucketSeconds;
+            const quantile = query.bucketQuantile ?? 0.99;
+            const hasLocations = query.locations && query.locations.length > 0;
 
-			if (query.groupByLocation) {
-				const rows = hasLocations
-					? await sql<
-							{
-								timestamp: Date;
-								location: string | null;
-								status: string | null;
-								latency: number;
-								dns_lookup: number | null;
-								tcp_connect: number | null;
-								tls_handshake: number | null;
-								ttfb: number | null;
-								transfer: number | null;
-							}[]
-						>`
+            if (query.groupByLocation) {
+                const rows = hasLocations
+                    ? await sql<
+                          {
+                              timestamp: Date;
+                              location: string | null;
+                              status: string | null;
+                              latency: number;
+                              dns_lookup: number | null;
+                              tcp_connect: number | null;
+                              tls_handshake: number | null;
+                              ttfb: number | null;
+                              transfer: number | null;
+                          }[]
+                      >`
 							SELECT
 								time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
 								location,
@@ -418,19 +424,19 @@ export class TimescaleDriver implements TimeSeriesDriver {
 							GROUP BY 1, location
 							ORDER BY timestamp ASC, location ASC
 						`
-					: await sql<
-							{
-								timestamp: Date;
-								location: string | null;
-								status: string | null;
-								latency: number;
-								dns_lookup: number | null;
-								tcp_connect: number | null;
-								tls_handshake: number | null;
-								ttfb: number | null;
-								transfer: number | null;
-							}[]
-						>`
+                    : await sql<
+                          {
+                              timestamp: Date;
+                              location: string | null;
+                              status: string | null;
+                              latency: number;
+                              dns_lookup: number | null;
+                              tcp_connect: number | null;
+                              tls_handshake: number | null;
+                              ttfb: number | null;
+                              transfer: number | null;
+                          }[]
+                      >`
 							SELECT
 								time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
 								location,
@@ -453,34 +459,38 @@ export class TimescaleDriver implements TimeSeriesDriver {
 							ORDER BY timestamp ASC, location ASC
 						`;
 
-				return rows.map((r) => ({
-					timestamp: r.timestamp,
-					location: r.location ?? null,
-					status: r.status ?? null,
-					latency: Number(r.latency) || 0,
-					dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
-					tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
-					tlsHandshake:
-						r.tls_handshake != null ? Number(r.tls_handshake) : null,
-					ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-					transfer: r.transfer != null ? Number(r.transfer) : null,
-				}));
-			}
+                return rows.map((r) => ({
+                    timestamp: r.timestamp,
+                    location: r.location ?? null,
+                    status: r.status ?? null,
+                    latency: Number(r.latency) || 0,
+                    dnsLookup:
+                        r.dns_lookup != null ? Number(r.dns_lookup) : null,
+                    tcpConnect:
+                        r.tcp_connect != null ? Number(r.tcp_connect) : null,
+                    tlsHandshake:
+                        r.tls_handshake != null
+                            ? Number(r.tls_handshake)
+                            : null,
+                    ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+                    transfer: r.transfer != null ? Number(r.transfer) : null,
+                }));
+            }
 
-			const rows = hasLocations
-				? await sql<
-						{
-							timestamp: Date;
-							location: string | null;
-							status: string | null;
-							latency: number;
-							dns_lookup: number | null;
-							tcp_connect: number | null;
-							tls_handshake: number | null;
-							ttfb: number | null;
-							transfer: number | null;
-						}[]
-					>`
+            const rows = hasLocations
+                ? await sql<
+                      {
+                          timestamp: Date;
+                          location: string | null;
+                          status: string | null;
+                          latency: number;
+                          dns_lookup: number | null;
+                          tcp_connect: number | null;
+                          tls_handshake: number | null;
+                          ttfb: number | null;
+                          transfer: number | null;
+                      }[]
+                  >`
 						SELECT
 							time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
 							NULL::TEXT AS location,
@@ -503,19 +513,19 @@ export class TimescaleDriver implements TimeSeriesDriver {
 						GROUP BY 1
 						ORDER BY timestamp ASC
 					`
-				: await sql<
-						{
-							timestamp: Date;
-							location: string | null;
-							status: string | null;
-							latency: number;
-							dns_lookup: number | null;
-							tcp_connect: number | null;
-							tls_handshake: number | null;
-							ttfb: number | null;
-							transfer: number | null;
-						}[]
-					>`
+                : await sql<
+                      {
+                          timestamp: Date;
+                          location: string | null;
+                          status: string | null;
+                          latency: number;
+                          dns_lookup: number | null;
+                          tcp_connect: number | null;
+                          tls_handshake: number | null;
+                          ttfb: number | null;
+                          transfer: number | null;
+                      }[]
+                  >`
 						SELECT
 							time_bucket(make_interval(secs => ${bucketSeconds}), timestamp) AS timestamp,
 							NULL::TEXT AS location,
@@ -538,37 +548,39 @@ export class TimescaleDriver implements TimeSeriesDriver {
 						ORDER BY timestamp ASC
 					`;
 
-			return rows.map((r) => ({
-				timestamp: r.timestamp,
-				location: r.location ?? null,
-				status: r.status ?? null,
-				latency: Number(r.latency) || 0,
-				dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
-				tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
-				tlsHandshake: r.tls_handshake != null ? Number(r.tls_handshake) : null,
-				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-				transfer: r.transfer != null ? Number(r.transfer) : null,
-			}));
-		}
+            return rows.map((r) => ({
+                timestamp: r.timestamp,
+                location: r.location ?? null,
+                status: r.status ?? null,
+                latency: Number(r.latency) || 0,
+                dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
+                tcpConnect:
+                    r.tcp_connect != null ? Number(r.tcp_connect) : null,
+                tlsHandshake:
+                    r.tls_handshake != null ? Number(r.tls_handshake) : null,
+                ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+                transfer: r.transfer != null ? Number(r.transfer) : null,
+            }));
+        }
 
-		const limit = query.limit === undefined ? 2000 : query.limit;
-		const limitClause = limit === null ? sql`` : sql`LIMIT ${limit}`;
-		const hasLocations = query.locations && query.locations.length > 0;
+        const limit = query.limit === undefined ? 2000 : query.limit;
+        const limitClause = limit === null ? sql`` : sql`LIMIT ${limit}`;
+        const hasLocations = query.locations && query.locations.length > 0;
 
-		const rows = hasLocations
-			? await sql<
-					{
-						timestamp: Date;
-						location: string | null;
-						status: string | null;
-						latency: number;
-						dns_lookup: number | null;
-						tcp_connect: number | null;
-						tls_handshake: number | null;
-						ttfb: number | null;
-						transfer: number | null;
-					}[]
-				>`
+        const rows = hasLocations
+            ? await sql<
+                  {
+                      timestamp: Date;
+                      location: string | null;
+                      status: string | null;
+                      latency: number;
+                      dns_lookup: number | null;
+                      tcp_connect: number | null;
+                      tls_handshake: number | null;
+                      ttfb: number | null;
+                      transfer: number | null;
+                  }[]
+              >`
 					SELECT timestamp, location, status, latency,
 						dns_lookup, tcp_connect, tls_handshake, ttfb, transfer
 					FROM monitor_events
@@ -578,19 +590,19 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					ORDER BY timestamp DESC
 					${limitClause}
 				`
-			: await sql<
-					{
-						timestamp: Date;
-						location: string | null;
-						status: string | null;
-						latency: number;
-						dns_lookup: number | null;
-						tcp_connect: number | null;
-						tls_handshake: number | null;
-						ttfb: number | null;
-						transfer: number | null;
-					}[]
-				>`
+            : await sql<
+                  {
+                      timestamp: Date;
+                      location: string | null;
+                      status: string | null;
+                      latency: number;
+                      dns_lookup: number | null;
+                      tcp_connect: number | null;
+                      tls_handshake: number | null;
+                      ttfb: number | null;
+                      transfer: number | null;
+                  }[]
+              >`
 					SELECT timestamp, location, status, latency,
 						dns_lookup, tcp_connect, tls_handshake, ttfb, transfer
 					FROM monitor_events
@@ -600,30 +612,34 @@ export class TimescaleDriver implements TimeSeriesDriver {
 					${limitClause}
 				`;
 
-		// Fetched newest-first so the LIMIT keeps the most recent rows, not the
-		// oldest; reverse to return ascending order.
-		return rows
-			.map((r) => ({
-				timestamp: r.timestamp,
-				location: r.location ?? null,
-				status: r.status ?? null,
-				latency: Number(r.latency) || 0,
-				dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
-				tcpConnect: r.tcp_connect != null ? Number(r.tcp_connect) : null,
-				tlsHandshake: r.tls_handshake != null ? Number(r.tls_handshake) : null,
-				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-				transfer: r.transfer != null ? Number(r.transfer) : null,
-			}))
-			.reverse();
-	}
+        // Fetched newest-first so the LIMIT keeps the most recent rows, not the
+        // oldest; reverse to return ascending order.
+        return rows
+            .map((r) => ({
+                timestamp: r.timestamp,
+                location: r.location ?? null,
+                status: r.status ?? null,
+                latency: Number(r.latency) || 0,
+                dnsLookup: r.dns_lookup != null ? Number(r.dns_lookup) : null,
+                tcpConnect:
+                    r.tcp_connect != null ? Number(r.tcp_connect) : null,
+                tlsHandshake:
+                    r.tls_handshake != null ? Number(r.tls_handshake) : null,
+                ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+                transfer: r.transfer != null ? Number(r.transfer) : null,
+            }))
+            .reverse();
+    }
 
-	async getStatusCodeDistribution(
-		query: StatusCodeDistributionQuery,
-	): Promise<StatusCodeDistributionPoint[]> {
-		await this.ensureSchema();
+    async getStatusCodeDistribution(
+        query: StatusCodeDistributionQuery,
+    ): Promise<StatusCodeDistributionPoint[]> {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<{ status_code: number; count: number | string }[]>`
+        const sql = this.getClient();
+        const rows = await sql<
+            { status_code: number; count: number | string }[]
+        >`
 			SELECT status_code, COUNT(*) AS count
 			FROM monitor_events
 			WHERE monitor_id = ${query.monitorId}
@@ -633,24 +649,24 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			ORDER BY status_code ASC
 		`;
 
-		return rows.map((row) => ({
-			statusCode: Number(row.status_code),
-			count: Number(row.count),
-		}));
-	}
+        return rows.map((row) => ({
+            statusCode: Number(row.status_code),
+            count: Number(row.count),
+        }));
+    }
 
-	async getRecentLatenciesByMonitor(
-		monitorIds: string[],
-		limitPerMonitor: number,
-	): Promise<SparklinePoint[]> {
-		if (monitorIds.length === 0) return [];
+    async getRecentLatenciesByMonitor(
+        monitorIds: string[],
+        limitPerMonitor: number,
+    ): Promise<SparklinePoint[]> {
+        if (monitorIds.length === 0) return [];
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<
-			{ monitor_id: string; latency: number; timestamp: Date }[]
-		>`
+        const sql = this.getClient();
+        const rows = await sql<
+            { monitor_id: string; latency: number; timestamp: Date }[]
+        >`
 			WITH monitor_locations AS (
 				SELECT DISTINCT monitor_id, location
 				FROM monitor_events
@@ -681,41 +697,43 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			ORDER BY monitor_id, MAX(timestamp) ASC
 		`;
 
-		return rows.map((r) => ({
-			monitorId: r.monitor_id,
-			latency: Number(r.latency) || 0,
-			timestamp: r.timestamp,
-		}));
-	}
+        return rows.map((r) => ({
+            monitorId: r.monitor_id,
+            latency: Number(r.latency) || 0,
+            timestamp: r.timestamp,
+        }));
+    }
 
-	async getLatestStatusPerLocation(monitorId: string): Promise<WorkerStatus[]> {
-		const statuses = await this.getLatestStatusPerLocationForMonitors([
-			monitorId,
-		]);
+    async getLatestStatusPerLocation(
+        monitorId: string,
+    ): Promise<WorkerStatus[]> {
+        const statuses = await this.getLatestStatusPerLocationForMonitors([
+            monitorId,
+        ]);
 
-		return statuses.map(({ location, status, timestamp }) => ({
-			location,
-			status,
-			timestamp,
-		}));
-	}
+        return statuses.map(({ location, status, timestamp }) => ({
+            location,
+            status,
+            timestamp,
+        }));
+    }
 
-	async getLatestStatusPerLocationForMonitors(
-		monitorIds: string[],
-	): Promise<MonitorWorkerStatus[]> {
-		if (monitorIds.length === 0) return [];
+    async getLatestStatusPerLocationForMonitors(
+        monitorIds: string[],
+    ): Promise<MonitorWorkerStatus[]> {
+        if (monitorIds.length === 0) return [];
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<
-			{
-				monitor_id: string;
-				location: string | null;
-				status: string;
-				timestamp: Date;
-			}[]
-		>`
+        const sql = this.getClient();
+        const rows = await sql<
+            {
+                monitor_id: string;
+                location: string | null;
+                status: string;
+                timestamp: Date;
+            }[]
+        >`
 			SELECT DISTINCT ON (monitor_id, location)
 				monitor_id, location, status, timestamp
 			FROM monitor_events
@@ -724,40 +742,40 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			ORDER BY monitor_id, location, timestamp DESC
 		`;
 
-		return rows
-			.filter(
-				(
-					r,
-				): r is {
-					monitor_id: string;
-					location: string;
-					status: string;
-					timestamp: Date;
-				} => r.location != null,
-			)
-			.map((r) => ({
-				monitorId: r.monitor_id,
-				location: r.location,
-				status: r.status,
-				timestamp: r.timestamp,
-			}));
-	}
+        return rows
+            .filter(
+                (
+                    r,
+                ): r is {
+                    monitor_id: string;
+                    location: string;
+                    status: string;
+                    timestamp: Date;
+                } => r.location != null,
+            )
+            .map((r) => ({
+                monitorId: r.monitor_id,
+                location: r.location,
+                status: r.status,
+                timestamp: r.timestamp,
+            }));
+    }
 
-	async getHourlyUptimeStats(
-		monitorId: string,
-		since: Date,
-	): Promise<HourlyUptimeStat[]> {
-		await this.ensureSchema();
+    async getHourlyUptimeStats(
+        monitorId: string,
+        since: Date,
+    ): Promise<HourlyUptimeStat[]> {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
-		const rows = await sql<
-			{
-				hour: Date;
-				total_checks: number | string;
-				up_checks: number | string;
-				avg_latency: number | string | null;
-			}[]
-		>`
+        const sql = this.getClient();
+        const rows = await sql<
+            {
+                hour: Date;
+                total_checks: number | string;
+                up_checks: number | string;
+                avg_latency: number | string | null;
+            }[]
+        >`
 			SELECT
 				time_bucket('1 hour', timestamp) AS hour,
 				COUNT(*) AS total_checks,
@@ -770,42 +788,42 @@ export class TimescaleDriver implements TimeSeriesDriver {
 			ORDER BY hour DESC
 		`;
 
-		return rows.map((r) => ({
-			dateHour: formatDateHour(r.hour),
-			totalChecks: Number(r.total_checks) || 0,
-			upChecks: Number(r.up_checks) || 0,
-			avgLatency: Number(r.avg_latency) || 0,
-		}));
-	}
+        return rows.map((r) => ({
+            dateHour: formatDateHour(r.hour),
+            totalChecks: Number(r.total_checks) || 0,
+            upChecks: Number(r.up_checks) || 0,
+            avgLatency: Number(r.avg_latency) || 0,
+        }));
+    }
 
-	async deleteAllForMonitor(monitorId: string) {
-		await this.ensureSchema();
+    async deleteAllForMonitor(monitorId: string) {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
+        const sql = this.getClient();
 
-		await sql`DELETE FROM monitor_events WHERE monitor_id = ${monitorId}`;
-		await sql`DELETE FROM monitor_changes WHERE monitor_id = ${monitorId}`;
-	}
+        await sql`DELETE FROM monitor_events WHERE monitor_id = ${monitorId}`;
+        await sql`DELETE FROM monitor_changes WHERE monitor_id = ${monitorId}`;
+    }
 
-	async deleteOlderThan(cutoff: Date) {
-		await this.ensureSchema();
+    async deleteOlderThan(cutoff: Date) {
+        await this.ensureSchema();
 
-		const sql = this.getClient();
+        const sql = this.getClient();
 
-		await sql`DELETE FROM monitor_events WHERE timestamp < ${cutoff}`;
-		await sql`DELETE FROM monitor_changes WHERE timestamp < ${cutoff}`;
-	}
+        await sql`DELETE FROM monitor_events WHERE timestamp < ${cutoff}`;
+        await sql`DELETE FROM monitor_changes WHERE timestamp < ${cutoff}`;
+    }
 
-	async ping() {
-		await this.getClient()`SELECT 1`;
-	}
+    async ping() {
+        await this.getClient()`SELECT 1`;
+    }
 
-	async close() {
-		if (!this.ownedClient) return;
+    async close() {
+        if (!this.ownedClient) return;
 
-		await this.ownedClient.end();
+        await this.ownedClient.end();
 
-		this.ownedClient = null;
-		this.schemaInit = null;
-	}
+        this.ownedClient = null;
+        this.schemaInit = null;
+    }
 }

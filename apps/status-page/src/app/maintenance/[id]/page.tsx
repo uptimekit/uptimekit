@@ -8,44 +8,44 @@ import { loadMaintenanceDetailComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 export default async function MaintenanceDetailsPage({
-	params,
+    params,
 }: {
-	params: Promise<{ id: string }>;
+    params: Promise<{ id: string }>;
 }) {
-	const { id } = await params;
+    const { id } = await params;
 
-	const headersList = await headers();
-	const host = getHostFromHeaders(headersList);
+    const headersList = await headers();
+    const host = getHostFromHeaders(headersList);
 
-	if (!host) {
-		notFound();
-	}
+    if (!host) {
+        notFound();
+    }
 
-	const domain = getDomainFromHost(host);
-	const pageConfig = await getStatusPageByDomain(domain);
+    const domain = getDomainFromHost(host);
+    const pageConfig = await getStatusPageByDomain(domain);
 
-	if (!pageConfig) {
-		notFound();
-	}
+    if (!pageConfig) {
+        notFound();
+    }
 
-	await checkStatusPageAccess(pageConfig, `/maintenance/${id}`);
+    await checkStatusPageAccess(pageConfig, `/maintenance/${id}`);
 
-	const design = (pageConfig.design as any) || {};
-	const themeId = design.themeId || "default";
+    const design = (pageConfig.design as any) || {};
+    const themeId = design.themeId || "default";
 
-	const MaintenanceDetailPage = await loadMaintenanceDetailComponent(themeId);
+    const MaintenanceDetailPage = await loadMaintenanceDetailComponent(themeId);
 
-	try {
-		const data = await prepareMaintenanceDetailData(pageConfig, id);
-		return (
-			<ThemePageWrapper
-				themeId={themeId}
-				theme={design.theme}
-				ThemeComponent={MaintenanceDetailPage}
-				componentProps={{ data }}
-			/>
-		);
-	} catch {
-		notFound();
-	}
+    try {
+        const data = await prepareMaintenanceDetailData(pageConfig, id);
+        return (
+            <ThemePageWrapper
+                themeId={themeId}
+                theme={design.theme}
+                ThemeComponent={MaintenanceDetailPage}
+                componentProps={{ data }}
+            />
+        );
+    } catch {
+        notFound();
+    }
 }

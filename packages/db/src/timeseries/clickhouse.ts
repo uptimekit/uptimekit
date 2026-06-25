@@ -1,36 +1,36 @@
 import { type ClickHouseClient, createClient } from "@clickhouse/client";
 import type { TimeSeriesBackend, TimeSeriesDriver } from "./driver";
 import type {
-	ChangeTimelineItem,
-	ChangeTimelineQuery,
-	HourlyUptimeStat,
-	LatestChange,
-	LatestEvent,
-	MonitorChangeInsert,
-	MonitorEventInsert,
-	MonitorWorkerStatus,
-	ResponseTimePoint,
-	ResponseTimesQuery,
-	SingleLatestChange,
-	SingleLatestEvent,
-	SparklinePoint,
-	StatusCodeDistributionPoint,
-	StatusCodeDistributionQuery,
-	WorkerStatus,
+    ChangeTimelineItem,
+    ChangeTimelineQuery,
+    HourlyUptimeStat,
+    LatestChange,
+    LatestEvent,
+    MonitorChangeInsert,
+    MonitorEventInsert,
+    MonitorWorkerStatus,
+    ResponseTimePoint,
+    ResponseTimesQuery,
+    SingleLatestChange,
+    SingleLatestEvent,
+    SparklinePoint,
+    StatusCodeDistributionPoint,
+    StatusCodeDistributionQuery,
+    WorkerStatus,
 } from "./types";
 
 interface BootstrapQuery {
-	query: string;
-	optionalTable?: {
-		database: string;
-		table: string;
-	};
+    query: string;
+    optionalTable?: {
+        database: string;
+        table: string;
+    };
 }
 
 const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
-	{ query: "CREATE DATABASE IF NOT EXISTS uptimekit" },
-	{
-		query: `
+    { query: "CREATE DATABASE IF NOT EXISTS uptimekit" },
+    {
+        query: `
 			CREATE TABLE IF NOT EXISTS uptimekit.monitor_events (
 				id UUID,
 				monitorId String,
@@ -48,9 +48,9 @@ const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
 			) ENGINE = MergeTree()
 			ORDER BY (monitorId, timestamp)
 		`,
-	},
-	{
-		query: `
+    },
+    {
+        query: `
 			CREATE TABLE IF NOT EXISTS uptimekit.monitor_changes (
 				id UUID,
 				monitorId String,
@@ -60,245 +60,255 @@ const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
 			) ENGINE = MergeTree()
 			ORDER BY (monitorId, timestamp)
 		`,
-	},
-	{
-		query:
-			"ALTER TABLE system.query_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "query_log" },
-	},
-	{
-		query:
-			"ALTER TABLE system.query_thread_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "query_thread_log" },
-	},
-	{
-		query:
-			"ALTER TABLE system.trace_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "trace_log" },
-	},
-	{
-		query:
-			"ALTER TABLE system.asynchronous_metric_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "asynchronous_metric_log" },
-	},
-	{
-		query:
-			"ALTER TABLE system.metric_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "metric_log" },
-	},
-	{
-		query:
-			"ALTER TABLE system.error_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "error_log" },
-	},
-	{
-		query: "ALTER TABLE system.part_log MODIFY TTL event_date + INTERVAL 3 DAY",
-		optionalTable: { database: "system", table: "part_log" },
-	},
+    },
+    {
+        query: "ALTER TABLE system.query_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "query_log" },
+    },
+    {
+        query: "ALTER TABLE system.query_thread_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "query_thread_log" },
+    },
+    {
+        query: "ALTER TABLE system.trace_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "trace_log" },
+    },
+    {
+        query: "ALTER TABLE system.asynchronous_metric_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "asynchronous_metric_log" },
+    },
+    {
+        query: "ALTER TABLE system.metric_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "metric_log" },
+    },
+    {
+        query: "ALTER TABLE system.error_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "error_log" },
+    },
+    {
+        query: "ALTER TABLE system.part_log MODIFY TTL event_date + INTERVAL 3 DAY",
+        optionalTable: { database: "system", table: "part_log" },
+    },
 ];
 
 // ClickHouse returns DateTime64 as "YYYY-MM-DD HH:MM:SS.SSS" without timezone;
 // treat as UTC.
 function parseTimestamp(value: string): Date {
-	if (value.endsWith("Z") || value.includes("+")) {
-		return new Date(value);
-	}
-	return new Date(`${value.replace(" ", "T")}Z`);
+    if (value.endsWith("Z") || value.includes("+")) {
+        return new Date(value);
+    }
+    return new Date(`${value.replace(" ", "T")}Z`);
 }
 
 function getQuantileLevel(value: number | undefined) {
-	const quantile = value ?? 0.99;
-	if (!Number.isFinite(quantile) || quantile < 0 || quantile > 1) {
-		throw new Error("Response time bucket quantile must be between 0 and 1");
-	}
-	return quantile.toString();
+    const quantile = value ?? 0.99;
+    if (!Number.isFinite(quantile) || quantile < 0 || quantile > 1) {
+        throw new Error(
+            "Response time bucket quantile must be between 0 and 1",
+        );
+    }
+    return quantile.toString();
 }
 
 export interface ClickHouseDriverOptions {
-	url?: string;
-	username?: string;
-	password?: string;
+    url?: string;
+    username?: string;
+    password?: string;
 }
 
 export class ClickHouseDriver implements TimeSeriesDriver {
-	backend: TimeSeriesBackend = "clickhouse";
+    backend: TimeSeriesBackend = "clickhouse";
 
-	private options: ClickHouseDriverOptions;
-	private client: ClickHouseClient | null = null;
-	private schemaInit: Promise<void> | null = null;
+    private options: ClickHouseDriverOptions;
+    private client: ClickHouseClient | null = null;
+    private schemaInit: Promise<void> | null = null;
 
-	constructor(options: ClickHouseDriverOptions = {}) {
-		this.options = options;
-	}
+    constructor(options: ClickHouseDriverOptions = {}) {
+        this.options = options;
+    }
 
-	private getClient(): ClickHouseClient {
-		if (!this.client) {
-			this.client = createClient({
-				url:
-					this.options.url ??
-					process.env.CLICKHOUSE_URL ??
-					"http://localhost:8123",
-				username:
-					this.options.username ?? process.env.CLICKHOUSE_USER ?? "default",
-				password:
-					this.options.password ?? process.env.CLICKHOUSE_PASSWORD ?? "",
-				request_timeout: 30000,
-				max_open_connections: 10,
-			});
-		}
-		return this.client;
-	}
+    private getClient(): ClickHouseClient {
+        if (!this.client) {
+            this.client = createClient({
+                url:
+                    this.options.url ??
+                    process.env.CLICKHOUSE_URL ??
+                    "http://localhost:8123",
+                username:
+                    this.options.username ??
+                    process.env.CLICKHOUSE_USER ??
+                    "default",
+                password:
+                    this.options.password ??
+                    process.env.CLICKHOUSE_PASSWORD ??
+                    "",
+                request_timeout: 30000,
+                max_open_connections: 10,
+            });
+        }
+        return this.client;
+    }
 
-	private async tableExists(database: string, table: string) {
-		const result = await this.getClient().query({
-			query: `
+    private async tableExists(database: string, table: string) {
+        const result = await this.getClient().query({
+            query: `
 				SELECT 1
 				FROM system.tables
 				WHERE database = {database:String} AND name = {table:String}
 				LIMIT 1
 			`,
-			query_params: { database, table },
-			format: "JSON",
-		});
+            query_params: { database, table },
+            format: "JSON",
+        });
 
-		const json = await result.json<{ data?: Array<Record<string, unknown>> }>();
+        const json = await result.json<{
+            data?: Array<Record<string, unknown>>;
+        }>();
 
-		return (json.data?.length ?? 0) > 0;
-	}
+        return (json.data?.length ?? 0) > 0;
+    }
 
-	async ensureSchema() {
-		if (!this.schemaInit) {
-			this.schemaInit = (async () => {
-				for (const { query, optionalTable } of BOOTSTRAP_QUERIES) {
-					if (optionalTable) {
-						try {
-							const exists = await this.tableExists(
-								optionalTable.database,
-								optionalTable.table,
-							);
-							if (!exists) {
-								console.warn(
-									`[clickhouse] Skipping optional bootstrap query because the table does not exist: ${query}`,
-								);
-								continue;
-							}
-							await this.getClient().command({ query });
-						} catch (error) {
-							const message =
-								error instanceof Error ? error.message : String(error);
-							console.warn(
-								`[clickhouse] Skipping optional bootstrap query (${message}): ${query}`,
-							);
-						}
-						continue;
-					}
-					await this.getClient().command({ query });
-				}
-			})().catch((error) => {
-				this.schemaInit = null;
-				throw error;
-			});
-		}
-		await this.schemaInit;
-	}
+    async ensureSchema() {
+        if (!this.schemaInit) {
+            this.schemaInit = (async () => {
+                for (const { query, optionalTable } of BOOTSTRAP_QUERIES) {
+                    if (optionalTable) {
+                        try {
+                            const exists = await this.tableExists(
+                                optionalTable.database,
+                                optionalTable.table,
+                            );
+                            if (!exists) {
+                                console.warn(
+                                    `[clickhouse] Skipping optional bootstrap query because the table does not exist: ${query}`,
+                                );
+                                continue;
+                            }
+                            await this.getClient().command({ query });
+                        } catch (error) {
+                            const message =
+                                error instanceof Error
+                                    ? error.message
+                                    : String(error);
+                            console.warn(
+                                `[clickhouse] Skipping optional bootstrap query (${message}): ${query}`,
+                            );
+                        }
+                        continue;
+                    }
+                    await this.getClient().command({ query });
+                }
+            })().catch((error) => {
+                this.schemaInit = null;
+                throw error;
+            });
+        }
+        await this.schemaInit;
+    }
 
-	private async queryJson<T>(query: string, params?: Record<string, unknown>) {
-		await this.ensureSchema();
+    private async queryJson<T>(
+        query: string,
+        params?: Record<string, unknown>,
+    ) {
+        await this.ensureSchema();
 
-		const result = await this.getClient().query({
-			query,
-			query_params: params,
-			format: "JSON",
-		});
+        const result = await this.getClient().query({
+            query,
+            query_params: params,
+            format: "JSON",
+        });
 
-		const json = (await result.json<T>()) as { data: T[] };
+        const json = (await result.json<T>()) as { data: T[] };
 
-		return json.data;
-	}
+        return json.data;
+    }
 
-	async insertMonitorEvents(events: MonitorEventInsert[]) {
-		if (events.length === 0) return;
+    async insertMonitorEvents(events: MonitorEventInsert[]) {
+        if (events.length === 0) return;
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		await this.getClient().insert({
-			table: "uptimekit.monitor_events",
-			values: events.map((e) => ({
-				id: e.id,
-				monitorId: e.monitorId,
-				status: e.status,
-				latency: e.latency,
-				timestamp: e.timestamp.getTime(),
-				statusCode: e.statusCode ?? null,
-				error: e.error ?? null,
-				location: e.location ?? null,
-				dnsLookup: e.dnsLookup ?? null,
-				tcpConnect: e.tcpConnect ?? null,
-				tlsHandshake: e.tlsHandshake ?? null,
-				ttfb: e.ttfb ?? null,
-				transfer: e.transfer ?? null,
-			})),
-			format: "JSONEachRow",
-		});
-	}
+        await this.getClient().insert({
+            table: "uptimekit.monitor_events",
+            values: events.map((e) => ({
+                id: e.id,
+                monitorId: e.monitorId,
+                status: e.status,
+                latency: e.latency,
+                timestamp: e.timestamp.getTime(),
+                statusCode: e.statusCode ?? null,
+                error: e.error ?? null,
+                location: e.location ?? null,
+                dnsLookup: e.dnsLookup ?? null,
+                tcpConnect: e.tcpConnect ?? null,
+                tlsHandshake: e.tlsHandshake ?? null,
+                ttfb: e.ttfb ?? null,
+                transfer: e.transfer ?? null,
+            })),
+            format: "JSONEachRow",
+        });
+    }
 
-	async insertMonitorChanges(changes: MonitorChangeInsert[]) {
-		if (changes.length === 0) return;
+    async insertMonitorChanges(changes: MonitorChangeInsert[]) {
+        if (changes.length === 0) return;
 
-		await this.ensureSchema();
+        await this.ensureSchema();
 
-		await this.getClient().insert({
-			table: "uptimekit.monitor_changes",
-			values: changes.map((c) => ({
-				id: c.id,
-				monitorId: c.monitorId,
-				status: c.status,
-				timestamp: c.timestamp.getTime(),
-				location: c.location ?? null,
-			})),
-			format: "JSONEachRow",
-		});
-	}
+        await this.getClient().insert({
+            table: "uptimekit.monitor_changes",
+            values: changes.map((c) => ({
+                id: c.id,
+                monitorId: c.monitorId,
+                status: c.status,
+                timestamp: c.timestamp.getTime(),
+                location: c.location ?? null,
+            })),
+            format: "JSONEachRow",
+        });
+    }
 
-	async getLatestEventForMonitor(
-		monitorId: string,
-	): Promise<SingleLatestEvent | undefined> {
-		const rows = await this.queryJson<{ status: string; timestamp: string }>(
-			"SELECT status, timestamp FROM uptimekit.monitor_events WHERE monitorId = {monitorId:String} ORDER BY timestamp DESC LIMIT 1",
-			{ monitorId },
-		);
+    async getLatestEventForMonitor(
+        monitorId: string,
+    ): Promise<SingleLatestEvent | undefined> {
+        const rows = await this.queryJson<{
+            status: string;
+            timestamp: string;
+        }>(
+            "SELECT status, timestamp FROM uptimekit.monitor_events WHERE monitorId = {monitorId:String} ORDER BY timestamp DESC LIMIT 1",
+            { monitorId },
+        );
 
-		const row = rows[0];
+        const row = rows[0];
 
-		return row
-			? { status: row.status, timestamp: parseTimestamp(row.timestamp) }
-			: undefined;
-	}
+        return row
+            ? { status: row.status, timestamp: parseTimestamp(row.timestamp) }
+            : undefined;
+    }
 
-	async getLatestChangeForMonitor(
-		monitorId: string,
-	): Promise<SingleLatestChange | undefined> {
-		const rows = await this.queryJson<{ timestamp: string }>(
-			"SELECT timestamp FROM uptimekit.monitor_changes WHERE monitorId = {monitorId:String} ORDER BY timestamp DESC LIMIT 1",
-			{ monitorId },
-		);
+    async getLatestChangeForMonitor(
+        monitorId: string,
+    ): Promise<SingleLatestChange | undefined> {
+        const rows = await this.queryJson<{ timestamp: string }>(
+            "SELECT timestamp FROM uptimekit.monitor_changes WHERE monitorId = {monitorId:String} ORDER BY timestamp DESC LIMIT 1",
+            { monitorId },
+        );
 
-		const row = rows[0];
+        const row = rows[0];
 
-		return row ? { timestamp: parseTimestamp(row.timestamp) } : undefined;
-	}
+        return row ? { timestamp: parseTimestamp(row.timestamp) } : undefined;
+    }
 
-	async getLatestEventsForMonitors(
-		monitorIds: string[],
-	): Promise<LatestEvent[]> {
-		if (monitorIds.length === 0) return [];
+    async getLatestEventsForMonitors(
+        monitorIds: string[],
+    ): Promise<LatestEvent[]> {
+        if (monitorIds.length === 0) return [];
 
-		const rows = await this.queryJson<{
-			monitorId: string;
-			status: string;
-			timestamp: string;
-		}>(
-			`
+        const rows = await this.queryJson<{
+            monitorId: string;
+            status: string;
+            timestamp: string;
+        }>(
+            `
 				SELECT
 					monitorId,
 					status,
@@ -313,74 +323,74 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 					GROUP BY monitorId
 				)
 			`,
-			{ ids: monitorIds },
-		);
-		return rows.map((r) => ({
-			monitorId: r.monitorId,
-			status: r.status,
-			timestamp: parseTimestamp(r.timestamp),
-		}));
-	}
+            { ids: monitorIds },
+        );
+        return rows.map((r) => ({
+            monitorId: r.monitorId,
+            status: r.status,
+            timestamp: parseTimestamp(r.timestamp),
+        }));
+    }
 
-	async getLatestChangesForMonitors(
-		monitorIds: string[],
-	): Promise<LatestChange[]> {
-		if (monitorIds.length === 0) return [];
+    async getLatestChangesForMonitors(
+        monitorIds: string[],
+    ): Promise<LatestChange[]> {
+        if (monitorIds.length === 0) return [];
 
-		const rows = await this.queryJson<{
-			monitorId: string;
-			timestamp: string;
-		}>(
-			`
+        const rows = await this.queryJson<{
+            monitorId: string;
+            timestamp: string;
+        }>(
+            `
 				SELECT monitorId, max(timestamp) AS timestamp
 				FROM uptimekit.monitor_changes
 				WHERE monitorId IN ({ids:Array(String)})
 				GROUP BY monitorId
 			`,
-			{ ids: monitorIds },
-		);
-		return rows.map((r) => ({
-			monitorId: r.monitorId,
-			timestamp: parseTimestamp(r.timestamp),
-		}));
-	}
+            { ids: monitorIds },
+        );
+        return rows.map((r) => ({
+            monitorId: r.monitorId,
+            timestamp: parseTimestamp(r.timestamp),
+        }));
+    }
 
-	async getAverageLatency(monitorId: string, since: Date) {
-		const rows = await this.queryJson<{ value: number | string | null }>(
-			`
+    async getAverageLatency(monitorId: string, since: Date) {
+        const rows = await this.queryJson<{ value: number | string | null }>(
+            `
 				SELECT avg(latency) as value
 				FROM uptimekit.monitor_events
 				WHERE monitorId = {monitorId:String}
 					AND timestamp >= toDateTime64({startDate:UInt64} / 1000, 3)
 			`,
-			{ monitorId, startDate: since.getTime() },
-		);
+            { monitorId, startDate: since.getTime() },
+        );
 
-		return Number(rows[0]?.value ?? 0);
-	}
+        return Number(rows[0]?.value ?? 0);
+    }
 
-	async getChangeTimeline(
-		query: ChangeTimelineQuery,
-	): Promise<ChangeTimelineItem[]> {
-		const params: Record<string, unknown> = {
-			monitorId: query.monitorId,
-			limit: query.limit,
-		};
-		if (query.cursorBefore) {
-			params.cursor = query.cursorBefore.getTime();
-		}
+    async getChangeTimeline(
+        query: ChangeTimelineQuery,
+    ): Promise<ChangeTimelineItem[]> {
+        const params: Record<string, unknown> = {
+            monitorId: query.monitorId,
+            limit: query.limit,
+        };
+        if (query.cursorBefore) {
+            params.cursor = query.cursorBefore.getTime();
+        }
 
-		const cursorClause = query.cursorBefore
-			? "AND timestamp < toDateTime64({cursor:UInt64} / 1000, 3)"
-			: "";
+        const cursorClause = query.cursorBefore
+            ? "AND timestamp < toDateTime64({cursor:UInt64} / 1000, 3)"
+            : "";
 
-		const rows = await this.queryJson<{
-			id: string;
-			status: string;
-			timestamp: string;
-			location: string | null;
-		}>(
-			`
+        const rows = await this.queryJson<{
+            id: string;
+            status: string;
+            timestamp: string;
+            location: string | null;
+        }>(
+            `
 				SELECT id, status, timestamp, location
 				FROM uptimekit.monitor_changes
 				WHERE monitorId = {monitorId:String}
@@ -388,54 +398,56 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				ORDER BY timestamp DESC
 				LIMIT {limit:UInt32}
 			`,
-			params,
-		);
+            params,
+        );
 
-		return rows.map((r) => ({
-			id: r.id,
-			status: r.status,
-			timestamp: parseTimestamp(r.timestamp),
-			location: r.location ?? null,
-		}));
-	}
+        return rows.map((r) => ({
+            id: r.id,
+            status: r.status,
+            timestamp: parseTimestamp(r.timestamp),
+            location: r.location ?? null,
+        }));
+    }
 
-	async getResponseTimes(
-		query: ResponseTimesQuery,
-	): Promise<ResponseTimePoint[]> {
-		const params: Record<string, unknown> = {
-			monitorId: query.monitorId,
-			startDate: query.since.getTime(),
-		};
+    async getResponseTimes(
+        query: ResponseTimesQuery,
+    ): Promise<ResponseTimePoint[]> {
+        const params: Record<string, unknown> = {
+            monitorId: query.monitorId,
+            startDate: query.since.getTime(),
+        };
 
-		let locationFilter = "";
-		if (query.locations && query.locations.length > 0) {
-			locationFilter = "AND location IN {locations:Array(String)}";
-			params.locations = query.locations;
-		}
+        let locationFilter = "";
+        if (query.locations && query.locations.length > 0) {
+            locationFilter = "AND location IN {locations:Array(String)}";
+            params.locations = query.locations;
+        }
 
-		if (query.bucketSeconds !== undefined) {
-			params.bucketSeconds = query.bucketSeconds;
-			const quantile = getQuantileLevel(query.bucketQuantile);
-			const locationSelect = query.groupByLocation
-				? "location"
-				: "CAST(NULL, 'Nullable(String)') AS location";
-			const groupBy = query.groupByLocation ? "bucket, location" : "bucket";
-			const orderBy = query.groupByLocation
-				? "bucket ASC, location ASC"
-				: "bucket ASC";
+        if (query.bucketSeconds !== undefined) {
+            params.bucketSeconds = query.bucketSeconds;
+            const quantile = getQuantileLevel(query.bucketQuantile);
+            const locationSelect = query.groupByLocation
+                ? "location"
+                : "CAST(NULL, 'Nullable(String)') AS location";
+            const groupBy = query.groupByLocation
+                ? "bucket, location"
+                : "bucket";
+            const orderBy = query.groupByLocation
+                ? "bucket ASC, location ASC"
+                : "bucket ASC";
 
-			const rows = await this.queryJson<{
-				timestamp: string;
-				location: string | null;
-				status: string | null;
-				latency: number | string;
-				dnsLookup: number | string | null;
-				tcpConnect: number | string | null;
-				tlsHandshake: number | string | null;
-				ttfb: number | string | null;
-				transfer: number | string | null;
-			}>(
-				`
+            const rows = await this.queryJson<{
+                timestamp: string;
+                location: string | null;
+                status: string | null;
+                latency: number | string;
+                dnsLookup: number | string | null;
+                tcpConnect: number | string | null;
+                tlsHandshake: number | string | null;
+                ttfb: number | string | null;
+                transfer: number | string | null;
+            }>(
+                `
 					SELECT
 						bucket AS timestamp,
 						${locationSelect},
@@ -470,40 +482,41 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 					GROUP BY ${groupBy}
 					ORDER BY ${orderBy}
 				`,
-				params,
-			);
+                params,
+            );
 
-			return rows.map((r) => ({
-				timestamp: parseTimestamp(r.timestamp),
-				location: r.location ?? null,
-				status: r.status ?? null,
-				latency: Number(r.latency) || 0,
-				dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
-				tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
-				tlsHandshake: r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
-				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-				transfer: r.transfer != null ? Number(r.transfer) : null,
-			}));
-		}
+            return rows.map((r) => ({
+                timestamp: parseTimestamp(r.timestamp),
+                location: r.location ?? null,
+                status: r.status ?? null,
+                latency: Number(r.latency) || 0,
+                dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
+                tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
+                tlsHandshake:
+                    r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
+                ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+                transfer: r.transfer != null ? Number(r.transfer) : null,
+            }));
+        }
 
-		const limit = query.limit === undefined ? 2000 : query.limit;
-		const limitClause = limit === null ? "" : "LIMIT {limit:UInt32}";
-		if (limit !== null) {
-			params.limit = limit;
-		}
+        const limit = query.limit === undefined ? 2000 : query.limit;
+        const limitClause = limit === null ? "" : "LIMIT {limit:UInt32}";
+        if (limit !== null) {
+            params.limit = limit;
+        }
 
-		const rows = await this.queryJson<{
-			timestamp: string;
-			location: string | null;
-			status: string | null;
-			latency: number | string;
-			dnsLookup: number | string | null;
-			tcpConnect: number | string | null;
-			tlsHandshake: number | string | null;
-			ttfb: number | string | null;
-			transfer: number | string | null;
-		}>(
-			`
+        const rows = await this.queryJson<{
+            timestamp: string;
+            location: string | null;
+            status: string | null;
+            latency: number | string;
+            dnsLookup: number | string | null;
+            tcpConnect: number | string | null;
+            tlsHandshake: number | string | null;
+            ttfb: number | string | null;
+            transfer: number | string | null;
+        }>(
+            `
 				SELECT timestamp, location, status, latency, dnsLookup, tcpConnect, tlsHandshake, ttfb, transfer
 				FROM uptimekit.monitor_events
 				WHERE monitorId = {monitorId:String}
@@ -512,34 +525,35 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				ORDER BY timestamp DESC
 				${limitClause}
 			`,
-			params,
-		);
+            params,
+        );
 
-		// Fetched newest-first so the LIMIT keeps the most recent rows, not the
-		// oldest; reverse to return ascending order.
-		return rows
-			.map((r) => ({
-				timestamp: parseTimestamp(r.timestamp),
-				location: r.location ?? null,
-				status: r.status ?? null,
-				latency: Number(r.latency) || 0,
-				dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
-				tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
-				tlsHandshake: r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
-				ttfb: r.ttfb != null ? Number(r.ttfb) : null,
-				transfer: r.transfer != null ? Number(r.transfer) : null,
-			}))
-			.reverse();
-	}
+        // Fetched newest-first so the LIMIT keeps the most recent rows, not the
+        // oldest; reverse to return ascending order.
+        return rows
+            .map((r) => ({
+                timestamp: parseTimestamp(r.timestamp),
+                location: r.location ?? null,
+                status: r.status ?? null,
+                latency: Number(r.latency) || 0,
+                dnsLookup: r.dnsLookup != null ? Number(r.dnsLookup) : null,
+                tcpConnect: r.tcpConnect != null ? Number(r.tcpConnect) : null,
+                tlsHandshake:
+                    r.tlsHandshake != null ? Number(r.tlsHandshake) : null,
+                ttfb: r.ttfb != null ? Number(r.ttfb) : null,
+                transfer: r.transfer != null ? Number(r.transfer) : null,
+            }))
+            .reverse();
+    }
 
-	async getStatusCodeDistribution(
-		query: StatusCodeDistributionQuery,
-	): Promise<StatusCodeDistributionPoint[]> {
-		const rows = await this.queryJson<{
-			statusCode: number | string;
-			count: number | string;
-		}>(
-			`
+    async getStatusCodeDistribution(
+        query: StatusCodeDistributionQuery,
+    ): Promise<StatusCodeDistributionPoint[]> {
+        const rows = await this.queryJson<{
+            statusCode: number | string;
+            count: number | string;
+        }>(
+            `
 				SELECT statusCode, count() AS count
 				FROM uptimekit.monitor_events
 				WHERE monitorId = {monitorId:String}
@@ -548,27 +562,27 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				GROUP BY statusCode
 				ORDER BY statusCode ASC
 			`,
-			{ monitorId: query.monitorId, startDate: query.since.getTime() },
-		);
+            { monitorId: query.monitorId, startDate: query.since.getTime() },
+        );
 
-		return rows.map((row) => ({
-			statusCode: Number(row.statusCode),
-			count: Number(row.count),
-		}));
-	}
+        return rows.map((row) => ({
+            statusCode: Number(row.statusCode),
+            count: Number(row.count),
+        }));
+    }
 
-	async getRecentLatenciesByMonitor(
-		monitorIds: string[],
-		limitPerMonitor: number,
-	): Promise<SparklinePoint[]> {
-		if (monitorIds.length === 0) return [];
+    async getRecentLatenciesByMonitor(
+        monitorIds: string[],
+        limitPerMonitor: number,
+    ): Promise<SparklinePoint[]> {
+        if (monitorIds.length === 0) return [];
 
-		const rows = await this.queryJson<{
-			monitorId: string;
-			latency: number | string;
-			timestamp: string;
-		}>(
-			`
+        const rows = await this.queryJson<{
+            monitorId: string;
+            latency: number | string;
+            timestamp: string;
+        }>(
+            `
 				SELECT monitorId, avg(latency) AS latency, max(timestamp) AS timestamp
 				FROM (
 					SELECT
@@ -590,40 +604,42 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				GROUP BY monitorId, rn
 				ORDER BY monitorId, timestamp ASC
 			`,
-			{ ids: monitorIds, limit: limitPerMonitor },
-		);
+            { ids: monitorIds, limit: limitPerMonitor },
+        );
 
-		return rows.map((r) => ({
-			monitorId: r.monitorId,
-			latency: Number(r.latency) || 0,
-			timestamp: parseTimestamp(r.timestamp),
-		}));
-	}
+        return rows.map((r) => ({
+            monitorId: r.monitorId,
+            latency: Number(r.latency) || 0,
+            timestamp: parseTimestamp(r.timestamp),
+        }));
+    }
 
-	async getLatestStatusPerLocation(monitorId: string): Promise<WorkerStatus[]> {
-		const statuses = await this.getLatestStatusPerLocationForMonitors([
-			monitorId,
-		]);
+    async getLatestStatusPerLocation(
+        monitorId: string,
+    ): Promise<WorkerStatus[]> {
+        const statuses = await this.getLatestStatusPerLocationForMonitors([
+            monitorId,
+        ]);
 
-		return statuses.map(({ location, status, timestamp }) => ({
-			location,
-			status,
-			timestamp,
-		}));
-	}
+        return statuses.map(({ location, status, timestamp }) => ({
+            location,
+            status,
+            timestamp,
+        }));
+    }
 
-	async getLatestStatusPerLocationForMonitors(
-		monitorIds: string[],
-	): Promise<MonitorWorkerStatus[]> {
-		if (monitorIds.length === 0) return [];
+    async getLatestStatusPerLocationForMonitors(
+        monitorIds: string[],
+    ): Promise<MonitorWorkerStatus[]> {
+        if (monitorIds.length === 0) return [];
 
-		const rows = await this.queryJson<{
-			monitorId: string;
-			location: string;
-			status: string;
-			timestamp: string;
-		}>(
-			`
+        const rows = await this.queryJson<{
+            monitorId: string;
+            location: string;
+            status: string;
+            timestamp: string;
+        }>(
+            `
 				SELECT
 					monitorId,
 					location,
@@ -641,28 +657,28 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 					GROUP BY monitorId, location
 				)
 			`,
-			{ monitorIds },
-		);
+            { monitorIds },
+        );
 
-		return rows.map((r) => ({
-			monitorId: r.monitorId,
-			location: r.location,
-			status: r.status,
-			timestamp: parseTimestamp(r.timestamp),
-		}));
-	}
+        return rows.map((r) => ({
+            monitorId: r.monitorId,
+            location: r.location,
+            status: r.status,
+            timestamp: parseTimestamp(r.timestamp),
+        }));
+    }
 
-	async getHourlyUptimeStats(
-		monitorId: string,
-		since: Date,
-	): Promise<HourlyUptimeStat[]> {
-		const rows = await this.queryJson<{
-			date_hour: string;
-			total_checks: number | string;
-			up_checks: number | string;
-			avg_latency: number | string;
-		}>(
-			`
+    async getHourlyUptimeStats(
+        monitorId: string,
+        since: Date,
+    ): Promise<HourlyUptimeStat[]> {
+        const rows = await this.queryJson<{
+            date_hour: string;
+            total_checks: number | string;
+            up_checks: number | string;
+            avg_latency: number | string;
+        }>(
+            `
 				SELECT
 					formatDateTime(timestamp, '%Y-%m-%d %H') as date_hour,
 					count(*) as total_checks,
@@ -674,67 +690,67 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 				GROUP BY date_hour
 				ORDER BY date_hour DESC
 			`,
-			{ monitorId, startDate: since.getTime() },
-		);
+            { monitorId, startDate: since.getTime() },
+        );
 
-		return rows.map((r) => ({
-			dateHour: r.date_hour,
-			totalChecks: Number(r.total_checks) || 0,
-			upChecks: Number(r.up_checks) || 0,
-			avgLatency: Number(r.avg_latency) || 0,
-		}));
-	}
+        return rows.map((r) => ({
+            dateHour: r.date_hour,
+            totalChecks: Number(r.total_checks) || 0,
+            upChecks: Number(r.up_checks) || 0,
+            avgLatency: Number(r.avg_latency) || 0,
+        }));
+    }
 
-	async deleteAllForMonitor(monitorId: string) {
-		await this.ensureSchema();
+    async deleteAllForMonitor(monitorId: string) {
+        await this.ensureSchema();
 
-		await this.getClient().command({
-			query: `
+        await this.getClient().command({
+            query: `
 				ALTER TABLE uptimekit.monitor_events
 				DELETE WHERE monitorId = {monitorId:String}
 			`,
-			query_params: { monitorId },
-		});
+            query_params: { monitorId },
+        });
 
-		await this.getClient().command({
-			query: `
+        await this.getClient().command({
+            query: `
 				ALTER TABLE uptimekit.monitor_changes
 				DELETE WHERE monitorId = {monitorId:String}
 			`,
-			query_params: { monitorId },
-		});
-	}
+            query_params: { monitorId },
+        });
+    }
 
-	async deleteOlderThan(cutoff: Date) {
-		await this.ensureSchema();
+    async deleteOlderThan(cutoff: Date) {
+        await this.ensureSchema();
 
-		await this.getClient().command({
-			query: `
+        await this.getClient().command({
+            query: `
 				ALTER TABLE uptimekit.monitor_events
 				DELETE WHERE timestamp < toDateTime64({cutoff:UInt64} / 1000, 3)
 			`,
-			query_params: { cutoff: cutoff.getTime() },
-		});
+            query_params: { cutoff: cutoff.getTime() },
+        });
 
-		await this.getClient().command({
-			query: `
+        await this.getClient().command({
+            query: `
 				ALTER TABLE uptimekit.monitor_changes
 				DELETE WHERE timestamp < toDateTime64({cutoff:UInt64} / 1000, 3)
 			`,
-			query_params: { cutoff: cutoff.getTime() },
-		});
-	}
+            query_params: { cutoff: cutoff.getTime() },
+        });
+    }
 
-	async ping() {
-		await this.getClient().command({ query: "SELECT 1" });
-	}
+    async ping() {
+        await this.getClient().command({ query: "SELECT 1" });
+    }
 
-	async close() {
-		if (!this.client) return;
+    async close() {
+        if (!this.client) return;
 
-		await this.client.close();
+        await this.client.close();
 
-		this.client = null;
-		this.schemaInit = null;
-	}
+        this.client = null;
+        this.schemaInit = null;
+    }
 }

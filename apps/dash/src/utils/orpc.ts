@@ -6,38 +6,38 @@ import type { AppRouterClient } from "@uptimekit/api/routers/index";
 import { sileo } from "sileo";
 
 export const queryClient = new QueryClient({
-	queryCache: new QueryCache({
-		onError: (error) => {
-			sileo.action({
-				title: `Error: ${error.message}`,
-				button: {
-					title: "Retry",
-					onClick: () => {
-						queryClient.invalidateQueries();
-					},
-				},
-			});
-		},
-	}),
+    queryCache: new QueryCache({
+        onError: (error) => {
+            sileo.action({
+                title: `Error: ${error.message}`,
+                button: {
+                    title: "Retry",
+                    onClick: () => {
+                        queryClient.invalidateQueries();
+                    },
+                },
+            });
+        },
+    }),
 });
 
 export const link = new RPCLink({
-	url: () =>
-		`${typeof window !== "undefined" ? window.location.origin : "http://localhost:3001"}/api/rpc`,
-	fetch(url, options) {
-		return fetch(url, {
-			...options,
-			credentials: "include",
-		});
-	},
-	headers: async () => {
-		if (typeof window !== "undefined") {
-			return {};
-		}
+    url: () =>
+        `${typeof window !== "undefined" ? window.location.origin : "http://localhost:3001"}/api/rpc`,
+    fetch(url, options) {
+        return fetch(url, {
+            ...options,
+            credentials: "include",
+        });
+    },
+    headers: async () => {
+        if (typeof window !== "undefined") {
+            return {};
+        }
 
-		const { headers } = await import("next/headers");
-		return Object.fromEntries(await headers());
-	},
+        const { headers } = await import("next/headers");
+        return Object.fromEntries(await headers());
+    },
 });
 
 export const client: AppRouterClient = createORPCClient(link);

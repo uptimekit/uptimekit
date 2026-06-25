@@ -1,17 +1,17 @@
 {
-	"name": "@uptimekit/config",
-	"private": true,
-	"type": "module",
-	"exports": {
-		"./env": {
-			"types": "./src/env.ts",
-			"default": "./src/env.ts"
-		},
-		"./tsconfig.base.json": "./tsconfig.base.json"
-	},
-	"dependencies": {
-		"@t3-oss/env-core": "^0.13.11",
-		"dotenv": "catalog:",
-		"zod": "catalog:"
-	}
+    "name": "@uptimekit/config",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./env": {
+            "types": "./src/env.ts",
+            "default": "./src/env.ts"
+        },
+        "./tsconfig.base.json": "./tsconfig.base.json"
+    },
+    "dependencies": {
+        "@t3-oss/env-core": "^0.13.11",
+        "dotenv": "catalog:",
+        "zod": "catalog:"
+    }
 }

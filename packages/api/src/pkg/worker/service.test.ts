@@ -1,292 +1,312 @@
 import { describe, expect, it } from "vitest";
 import {
-	getConfiguredWorkerStates,
-	isAutomaticIncidentOpenEligible,
-	isAutomaticIncidentResolveEligible,
-	type MonitorEvent,
+    getConfiguredWorkerStates,
+    isAutomaticIncidentOpenEligible,
+    isAutomaticIncidentResolveEligible,
+    type MonitorEvent,
 } from "./service";
 
 function toMap(
-	entries: Array<[string, { status: MonitorEvent["status"]; timestamp: Date }]>,
+    entries: Array<
+        [string, { status: MonitorEvent["status"]; timestamp: Date }]
+    >,
 ) {
-	return new Map(entries);
+    return new Map(entries);
 }
 
 describe("worker automatic incident gating", () => {
-	it("opens for a single worker when the pending duration is satisfied", () => {
-		const workerStatusById = toMap([
-			[
-				"worker-a",
-				{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-			],
-		]);
+    it("opens for a single worker when the pending duration is satisfied", () => {
+        const workerStatusById = toMap([
+            [
+                "worker-a",
+                { status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
+            ],
+        ]);
 
-		const result = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a"],
-			workerStatusById,
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:30Z"),
-			incidentPendingDurationSeconds: 30,
-		});
+        const result = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a"],
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:30Z"),
+            incidentPendingDurationSeconds: 30,
+        });
 
-		expect(result.eligible).toBe(true);
-		expect(result.allWorkersDownSince?.toISOString()).toBe(
-			"2026-04-26T10:00:00.000Z",
-		);
-	});
+        expect(result.eligible).toBe(true);
+        expect(result.allWorkersDownSince?.toISOString()).toBe(
+            "2026-04-26T10:00:00.000Z",
+        );
+    });
 
-	it("does not open an incident when only some assigned workers are down", () => {
-		const workerStatusById = toMap([
-			[
-				"worker-a",
-				{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-			],
-			[
-				"worker-b",
-				{ status: "up", timestamp: new Date("2026-04-26T10:00:00Z") },
-			],
-		]);
+    it("does not open an incident when only some assigned workers are down", () => {
+        const workerStatusById = toMap([
+            [
+                "worker-a",
+                { status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
+            ],
+            [
+                "worker-b",
+                { status: "up", timestamp: new Date("2026-04-26T10:00:00Z") },
+            ],
+        ]);
 
-		const result = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a", "worker-b"],
-			workerStatusById,
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:45Z"),
-			incidentPendingDurationSeconds: 0,
-		});
+        const result = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a", "worker-b"],
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:45Z"),
+            incidentPendingDurationSeconds: 0,
+        });
 
-		expect(result.eligible).toBe(false);
-		expect(result.triggerStatus).toBeNull();
-		expect(result.reason).toBe(
-			"worker-a is reporting down while worker-b is reporting up.",
-		);
-		expect(result.allWorkersDownSince).toBeNull();
-	});
+        expect(result.eligible).toBe(false);
+        expect(result.triggerStatus).toBeNull();
+        expect(result.reason).toBe(
+            "worker-a is reporting down while worker-b is reporting up.",
+        );
+        expect(result.allWorkersDownSince).toBeNull();
+    });
 
-	it("does not open before every assigned worker is down", () => {
-		const workerStatusById = toMap([
-			[
-				"worker-a",
-				{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-			],
-			[
-				"worker-b",
-				{ status: "down", timestamp: new Date("2026-04-26T10:00:15Z") },
-			],
-			[
-				"worker-c",
-				{ status: "up", timestamp: new Date("2026-04-26T10:00:30Z") },
-			],
-		]);
+    it("does not open before every assigned worker is down", () => {
+        const workerStatusById = toMap([
+            [
+                "worker-a",
+                { status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
+            ],
+            [
+                "worker-b",
+                { status: "down", timestamp: new Date("2026-04-26T10:00:15Z") },
+            ],
+            [
+                "worker-c",
+                { status: "up", timestamp: new Date("2026-04-26T10:00:30Z") },
+            ],
+        ]);
 
-		const beforeFinalFailure = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a", "worker-b", "worker-c"],
-			workerStatusById,
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:30Z"),
-			incidentPendingDurationSeconds: 0,
-		});
+        const beforeFinalFailure = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a", "worker-b", "worker-c"],
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:30Z"),
+            incidentPendingDurationSeconds: 0,
+        });
 
-		expect(beforeFinalFailure.eligible).toBe(false);
-		expect(beforeFinalFailure.triggerStatus).toBeNull();
-		expect(beforeFinalFailure.allWorkersDownSince).toBeNull();
+        expect(beforeFinalFailure.eligible).toBe(false);
+        expect(beforeFinalFailure.triggerStatus).toBeNull();
+        expect(beforeFinalFailure.allWorkersDownSince).toBeNull();
 
-		workerStatusById.set("worker-c", {
-			status: "down",
-			timestamp: new Date("2026-04-26T10:00:45Z"),
-		});
+        workerStatusById.set("worker-c", {
+            status: "down",
+            timestamp: new Date("2026-04-26T10:00:45Z"),
+        });
 
-		const afterFinalFailure = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a", "worker-b", "worker-c"],
-			workerStatusById,
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:45Z"),
-			incidentPendingDurationSeconds: 0,
-		});
+        const afterFinalFailure = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a", "worker-b", "worker-c"],
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:45Z"),
+            incidentPendingDurationSeconds: 0,
+        });
 
-		expect(afterFinalFailure.eligible).toBe(true);
-		expect(afterFinalFailure.triggerStatus).toBe("down");
-		expect(afterFinalFailure.allWorkersDownSince?.toISOString()).toBe(
-			"2026-04-26T10:00:45.000Z",
-		);
-	});
+        expect(afterFinalFailure.eligible).toBe(true);
+        expect(afterFinalFailure.triggerStatus).toBe("down");
+        expect(afterFinalFailure.allWorkersDownSince?.toISOString()).toBe(
+            "2026-04-26T10:00:45.000Z",
+        );
+    });
 
-	it("does not open until every assigned worker has reported at least once", () => {
-		const configuredWorkerStates = getConfiguredWorkerStates(
-			["worker-a", "worker-b"],
-			toMap([
-				[
-					"worker-a",
-					{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-				],
-			]),
-		);
+    it("does not open until every assigned worker has reported at least once", () => {
+        const configuredWorkerStates = getConfiguredWorkerStates(
+            ["worker-a", "worker-b"],
+            toMap([
+                [
+                    "worker-a",
+                    {
+                        status: "down",
+                        timestamp: new Date("2026-04-26T10:00:00Z"),
+                    },
+                ],
+            ]),
+        );
 
-		expect(configuredWorkerStates.allWorkersReporting).toBe(false);
-		expect(configuredWorkerStates.states).toHaveLength(1);
-	});
+        expect(configuredWorkerStates.allWorkersReporting).toBe(false);
+        expect(configuredWorkerStates.states).toHaveLength(1);
+    });
 
-	it("measures pending duration from the last worker to fail", () => {
-		const workerStatusById = toMap([
-			[
-				"worker-a",
-				{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-			],
-			[
-				"worker-b",
-				{ status: "down", timestamp: new Date("2026-04-26T10:00:25Z") },
-			],
-		]);
+    it("measures pending duration from the last worker to fail", () => {
+        const workerStatusById = toMap([
+            [
+                "worker-a",
+                { status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
+            ],
+            [
+                "worker-b",
+                { status: "down", timestamp: new Date("2026-04-26T10:00:25Z") },
+            ],
+        ]);
 
-		const tooEarly = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a", "worker-b"],
-			workerStatusById,
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:29Z"),
-			incidentPendingDurationSeconds: 5,
-		});
+        const tooEarly = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a", "worker-b"],
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:29Z"),
+            incidentPendingDurationSeconds: 5,
+        });
 
-		expect(tooEarly.eligible).toBe(false);
-		expect(tooEarly.allWorkersDownSince?.toISOString()).toBe(
-			"2026-04-26T10:00:25.000Z",
-		);
+        expect(tooEarly.eligible).toBe(false);
+        expect(tooEarly.allWorkersDownSince?.toISOString()).toBe(
+            "2026-04-26T10:00:25.000Z",
+        );
 
-		const onTime = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a", "worker-b"],
-			workerStatusById,
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:30Z"),
-			incidentPendingDurationSeconds: 5,
-		});
+        const onTime = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a", "worker-b"],
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:30Z"),
+            incidentPendingDurationSeconds: 5,
+        });
 
-		expect(onTime.eligible).toBe(true);
-	});
+        expect(onTime.eligible).toBe(true);
+    });
 
-	it("does not resolve while only some assigned workers have recovered", () => {
-		const result = isAutomaticIncidentResolveEligible({
-			configuredWorkerIds: ["worker-a", "worker-b"],
-			workerStatusById: toMap([
-				[
-					"worker-a",
-					{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-				],
-				[
-					"worker-b",
-					{ status: "up", timestamp: new Date("2026-04-26T10:00:05Z") },
-				],
-			]),
-			activeIncident: { id: "incident-1" },
-		});
+    it("does not resolve while only some assigned workers have recovered", () => {
+        const result = isAutomaticIncidentResolveEligible({
+            configuredWorkerIds: ["worker-a", "worker-b"],
+            workerStatusById: toMap([
+                [
+                    "worker-a",
+                    {
+                        status: "down",
+                        timestamp: new Date("2026-04-26T10:00:00Z"),
+                    },
+                ],
+                [
+                    "worker-b",
+                    {
+                        status: "up",
+                        timestamp: new Date("2026-04-26T10:00:05Z"),
+                    },
+                ],
+            ]),
+            activeIncident: { id: "incident-1" },
+        });
 
-		expect(result).toBe(false);
-	});
+        expect(result).toBe(false);
+    });
 
-	it("resolves when all assigned workers recover", () => {
-		const result = isAutomaticIncidentResolveEligible({
-			configuredWorkerIds: ["worker-a", "worker-b"],
-			workerStatusById: toMap([
-				[
-					"worker-a",
-					{ status: "up", timestamp: new Date("2026-04-26T10:00:00Z") },
-				],
-				[
-					"worker-b",
-					{ status: "up", timestamp: new Date("2026-04-26T10:00:05Z") },
-				],
-			]),
-			activeIncident: { id: "incident-1" },
-		});
+    it("resolves when all assigned workers recover", () => {
+        const result = isAutomaticIncidentResolveEligible({
+            configuredWorkerIds: ["worker-a", "worker-b"],
+            workerStatusById: toMap([
+                [
+                    "worker-a",
+                    {
+                        status: "up",
+                        timestamp: new Date("2026-04-26T10:00:00Z"),
+                    },
+                ],
+                [
+                    "worker-b",
+                    {
+                        status: "up",
+                        timestamp: new Date("2026-04-26T10:00:05Z"),
+                    },
+                ],
+            ]),
+            activeIncident: { id: "incident-1" },
+        });
 
-		expect(result).toBe(true);
-	});
+        expect(result).toBe(true);
+    });
 
-	it("does not emit duplicate openings while the same outage remains active", () => {
-		const configuredWorkerIds = ["worker-a", "worker-b"];
-		const workerStatusById = new Map<
-			string,
-			{ status: MonitorEvent["status"]; timestamp: Date }
-		>();
-		const openedAt: string[] = [];
-		let activeIncident: { id: string } | undefined;
+    it("does not emit duplicate openings while the same outage remains active", () => {
+        const configuredWorkerIds = ["worker-a", "worker-b"];
+        const workerStatusById = new Map<
+            string,
+            { status: MonitorEvent["status"]; timestamp: Date }
+        >();
+        const openedAt: string[] = [];
+        let activeIncident: { id: string } | undefined;
 
-		const batch = [
-			{
-				workerId: "worker-a",
-				status: "down",
-				timestamp: new Date("2026-04-26T10:00:00Z"),
-			},
-			{
-				workerId: "worker-b",
-				status: "down",
-				timestamp: new Date("2026-04-26T10:00:02Z"),
-			},
-			{
-				workerId: "worker-a",
-				status: "down",
-				timestamp: new Date("2026-04-26T10:00:03Z"),
-			},
-			{
-				workerId: "worker-b",
-				status: "down",
-				timestamp: new Date("2026-04-26T10:00:04Z"),
-			},
-		] as const;
+        const batch = [
+            {
+                workerId: "worker-a",
+                status: "down",
+                timestamp: new Date("2026-04-26T10:00:00Z"),
+            },
+            {
+                workerId: "worker-b",
+                status: "down",
+                timestamp: new Date("2026-04-26T10:00:02Z"),
+            },
+            {
+                workerId: "worker-a",
+                status: "down",
+                timestamp: new Date("2026-04-26T10:00:03Z"),
+            },
+            {
+                workerId: "worker-b",
+                status: "down",
+                timestamp: new Date("2026-04-26T10:00:04Z"),
+            },
+        ] as const;
 
-		for (const event of batch) {
-			workerStatusById.set(event.workerId, {
-				status: event.status,
-				timestamp: event.timestamp,
-			});
+        for (const event of batch) {
+            workerStatusById.set(event.workerId, {
+                status: event.status,
+                timestamp: event.timestamp,
+            });
 
-			if (
-				isAutomaticIncidentResolveEligible({
-					configuredWorkerIds,
-					workerStatusById,
-					activeIncident,
-				})
-			) {
-				activeIncident = undefined;
-				continue;
-			}
+            if (
+                isAutomaticIncidentResolveEligible({
+                    configuredWorkerIds,
+                    workerStatusById,
+                    activeIncident,
+                })
+            ) {
+                activeIncident = undefined;
+                continue;
+            }
 
-			const openEvaluation = isAutomaticIncidentOpenEligible({
-				configuredWorkerIds,
-				workerStatusById,
-				activeIncident,
-				eventTime: event.timestamp,
-				incidentPendingDurationSeconds: 0,
-			});
+            const openEvaluation = isAutomaticIncidentOpenEligible({
+                configuredWorkerIds,
+                workerStatusById,
+                activeIncident,
+                eventTime: event.timestamp,
+                incidentPendingDurationSeconds: 0,
+            });
 
-			if (openEvaluation.eligible) {
-				openedAt.push(event.timestamp.toISOString());
-				activeIncident = { id: `incident-${openedAt.length}` };
-			}
-		}
+            if (openEvaluation.eligible) {
+                openedAt.push(event.timestamp.toISOString());
+                activeIncident = { id: `incident-${openedAt.length}` };
+            }
+        }
 
-		expect(openedAt).toEqual(["2026-04-26T10:00:02.000Z"]);
-	});
+        expect(openedAt).toEqual(["2026-04-26T10:00:02.000Z"]);
+    });
 
-	it("treats maintenance as a non-down state so it cannot trigger an outage open", () => {
-		const result = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds: ["worker-a", "worker-b"],
-			workerStatusById: toMap([
-				[
-					"worker-a",
-					{
-						status: "maintenance",
-						timestamp: new Date("2026-04-26T10:00:00Z"),
-					},
-				],
-				[
-					"worker-b",
-					{ status: "down", timestamp: new Date("2026-04-26T10:00:00Z") },
-				],
-			]),
-			activeIncident: undefined,
-			eventTime: new Date("2026-04-26T10:00:30Z"),
-			incidentPendingDurationSeconds: 0,
-		});
+    it("treats maintenance as a non-down state so it cannot trigger an outage open", () => {
+        const result = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a", "worker-b"],
+            workerStatusById: toMap([
+                [
+                    "worker-a",
+                    {
+                        status: "maintenance",
+                        timestamp: new Date("2026-04-26T10:00:00Z"),
+                    },
+                ],
+                [
+                    "worker-b",
+                    {
+                        status: "down",
+                        timestamp: new Date("2026-04-26T10:00:00Z"),
+                    },
+                ],
+            ]),
+            activeIncident: undefined,
+            eventTime: new Date("2026-04-26T10:00:30Z"),
+            incidentPendingDurationSeconds: 0,
+        });
 
-		expect(result.eligible).toBe(false);
-	});
+        expect(result.eligible).toBe(false);
+    });
 });

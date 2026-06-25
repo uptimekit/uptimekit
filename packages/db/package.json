@@ -1,39 +1,39 @@
 {
-	"name": "@uptimekit/db",
-	"private": true,
-	"type": "module",
-	"exports": {
-		".": {
-			"default": "./src/index.ts"
-		},
-		"./*": {
-			"default": "./src/*.ts"
-		}
-	},
-	"scripts": {
-		"check-types": "tsc --noEmit -p tsconfig.json",
-		"db:push": "tsx src/migrate.ts",
-		"db:studio": "drizzle-kit studio",
-		"db:generate": "drizzle-kit generate",
-		"db:migrate": "tsx src/migrate.ts",
-		"test": "vitest run"
-	},
-	"devDependencies": {
-		"drizzle-kit": "^0.31.8",
-		"testcontainers": "^12.0.1",
-		"tsx": "^4.21.0",
-		"typescript": "^5.9.3",
-		"vitest": "^4.1.8"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"dependencies": {
-		"@clickhouse/client": "^1.15.0",
-		"@uptimekit/config": "workspace:*",
-		"dotenv": "catalog:",
-		"drizzle-orm": "^0.45.0",
-		"postgres": "^3.4.7",
-		"zod": "catalog:"
-	}
+    "name": "@uptimekit/db",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": {
+            "default": "./src/index.ts"
+        },
+        "./*": {
+            "default": "./src/*.ts"
+        }
+    },
+    "scripts": {
+        "check-types": "tsc --noEmit -p tsconfig.json",
+        "db:push": "tsx src/migrate.ts",
+        "db:studio": "drizzle-kit studio",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "tsx src/migrate.ts",
+        "test": "vitest run"
+    },
+    "devDependencies": {
+        "drizzle-kit": "^0.31.8",
+        "testcontainers": "^12.0.1",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3",
+        "vitest": "^4.1.8"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "dependencies": {
+        "@clickhouse/client": "^1.15.0",
+        "@uptimekit/config": "workspace:*",
+        "dotenv": "catalog:",
+        "drizzle-orm": "^0.45.0",
+        "postgres": "^3.4.7",
+        "zod": "catalog:"
+    }
 }

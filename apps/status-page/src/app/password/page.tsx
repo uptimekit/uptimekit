@@ -8,86 +8,92 @@ import { ThemeSetter } from "@/components/theme-setter";
 import { getCookieName, verifyAccessToken } from "@/lib/access-token";
 
 function isSafeInternalPath(path: string): boolean {
-	return (
-		path.startsWith("/") &&
-		!path.startsWith("//") &&
-		!/^\/[a-z][a-z0-9+.-]*:/i.test(path)
-	);
+    return (
+        path.startsWith("/") &&
+        !path.startsWith("//") &&
+        !/^\/[a-z][a-z0-9+.-]*:/i.test(path)
+    );
 }
 
 function safeDecodeRedirectPath(redirectPath: string | undefined): string {
-	if (!redirectPath) return "/";
+    if (!redirectPath) return "/";
 
-	try {
-		const decoded = decodeURIComponent(redirectPath);
-		return isSafeInternalPath(decoded) ? decoded : "/";
-	} catch {
-		return "/";
-	}
+    try {
+        const decoded = decodeURIComponent(redirectPath);
+        return isSafeInternalPath(decoded) ? decoded : "/";
+    } catch {
+        return "/";
+    }
 }
 
 interface PasswordPageProps {
-	searchParams: Promise<{
-		pageId?: string;
-		redirect?: string;
-	}>;
+    searchParams: Promise<{
+        pageId?: string;
+        redirect?: string;
+    }>;
 }
 
 export const metadata: Metadata = {
-	title: "Password Required",
+    title: "Password Required",
 };
 
 export default async function PasswordPage({
-	searchParams,
+    searchParams,
 }: PasswordPageProps) {
-	const params = await searchParams;
-	const { pageId, redirect: redirectPath } = params;
+    const params = await searchParams;
+    const { pageId, redirect: redirectPath } = params;
 
-	if (!pageId) {
-		notFound();
-	}
+    if (!pageId) {
+        notFound();
+    }
 
-	const page = await db.query.statusPage.findFirst({
-		where: eq(statusPage.id, pageId),
-		columns: {
-			id: true,
-			name: true,
-			public: true,
-			password: true,
-			design: true,
-		},
-	});
+    const page = await db.query.statusPage.findFirst({
+        where: eq(statusPage.id, pageId),
+        columns: {
+            id: true,
+            name: true,
+            public: true,
+            password: true,
+            design: true,
+        },
+    });
 
-	if (!page) {
-		notFound();
-	}
+    if (!page) {
+        notFound();
+    }
 
-	const safeRedirectPath = safeDecodeRedirectPath(redirectPath);
+    const safeRedirectPath = safeDecodeRedirectPath(redirectPath);
 
-	// If page is public or has no password, redirect away
-	if (page.public || !page.password) {
-		redirect(safeRedirectPath as never);
-	}
+    // If page is public or has no password, redirect away
+    if (page.public || !page.password) {
+        redirect(safeRedirectPath as never);
+    }
 
-	// Check if already authenticated
-	const cookieStore = await cookies();
-	const token = cookieStore.get(getCookieName(pageId))?.value;
-	if (token && verifyAccessToken(token, pageId)) {
-		redirect(safeRedirectPath as never);
-	}
+    // Check if already authenticated
+    const cookieStore = await cookies();
+    const token = cookieStore.get(getCookieName(pageId))?.value;
+    if (token && verifyAccessToken(token, pageId)) {
+        redirect(safeRedirectPath as never);
+    }
 
-	const design = (page.design as { customCss?: string; theme?: string }) || {};
-	const theme = design.theme === "dark" ? "dark" : "light";
-	const customCss =
-		typeof design.customCss === "string" ? design.customCss : "";
+    const design =
+        (page.design as { customCss?: string; theme?: string }) || {};
+    const theme = design.theme === "dark" ? "dark" : "light";
+    const customCss =
+        typeof design.customCss === "string" ? design.customCss : "";
 
-	return (
-		<>
-			<ThemeSetter theme={theme} />
-			{customCss.trim() && <style data-uptimekit-custom-css>{customCss}</style>}
-			<main className="min-h-screen bg-background">
-				<PasswordForm statusPageId={pageId} redirectUrl={safeRedirectPath} />
-			</main>
-		</>
-	);
+    return (
+        <>
+            <ThemeSetter theme={theme} />
+            {customCss.trim() && (
+                <style data-uptimekit-custom-css>{customCss}</style>
+            )}
+            <main className="min-h-screen bg-background">
+                <PasswordForm
+                    statusPageId={pageId}
+                    redirectUrl={safeRedirectPath}
+                />
+            </main>
+        </>
+    );
 }

@@ -7,27 +7,27 @@ import SignInForm from "@/components/auth/sign-in-form";
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-	let showRegister = true;
+    let showRegister = true;
 
-	const users = await db
-		.select({ id: schema.user.id })
-		.from(schema.user)
-		.limit(1);
+    const users = await db
+        .select({ id: schema.user.id })
+        .from(schema.user)
+        .limit(1);
 
-	if (users.length === 0) {
-		redirect("/register");
-	} else {
-		showRegister = false;
-	}
+    if (users.length === 0) {
+        redirect("/register");
+    } else {
+        showRegister = false;
+    }
 
-	return (
-		<div className="min-h-screen w-full">
-			<SignInForm
-				showRegister={showRegister}
-				showDiscordLogin={!!process.env.DISCORD_CLIENT_ID}
-				showGithubLogin={!!process.env.GITHUB_CLIENT_ID}
-				fullPage
-			/>
-		</div>
-	);
+    return (
+        <div className="min-h-screen w-full">
+            <SignInForm
+                showRegister={showRegister}
+                showDiscordLogin={!!process.env.DISCORD_CLIENT_ID}
+                showGithubLogin={!!process.env.GITHUB_CLIENT_ID}
+                fullPage
+            />
+        </div>
+    );
 }

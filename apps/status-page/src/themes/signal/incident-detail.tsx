@@ -8,30 +8,30 @@ import { Header } from "./components/header";
 import "./style.css";
 
 export default function SignalIncidentDetail({
-	data,
+    data,
 }: ThemeIncidentDetailProps) {
-	const { config, incident, activeIssues } = data;
-	const { design } = config;
+    const { config, incident, activeIssues } = data;
+    const { design } = config;
 
-	return (
-		<div className="signal-theme flex min-h-screen flex-col bg-background font-sans text-foreground">
-			<Header
-				title={config.name}
-				logoUrl={design.logoUrl}
-				contactUrl={design.contactUrl}
-				websiteUrl={design.websiteUrl}
-				slug={config.routeSlug}
-			/>
+    return (
+        <div className="signal-theme flex min-h-screen flex-col bg-background font-sans text-foreground">
+            <Header
+                title={config.name}
+                logoUrl={design.logoUrl}
+                contactUrl={design.contactUrl}
+                websiteUrl={design.websiteUrl}
+                slug={config.routeSlug}
+            />
 
-			<main className="w-full flex-1">
-				<div className="mx-auto flex w-full max-w-[822px] flex-col gap-8 px-4 pt-6 pb-16">
-					<BackLink href={buildPath("/", config.routeSlug)} />
-					<CurrentIssuesBanner activeIssues={activeIssues} />
-					<DetailCard incident={incident} eyebrow="Incident report" />
-				</div>
-			</main>
+            <main className="w-full flex-1">
+                <div className="mx-auto flex w-full max-w-[822px] flex-col gap-8 px-4 pt-6 pb-16">
+                    <BackLink href={buildPath("/", config.routeSlug)} />
+                    <CurrentIssuesBanner activeIssues={activeIssues} />
+                    <DetailCard incident={incident} eyebrow="Incident report" />
+                </div>
+            </main>
 
-			<Footer />
-		</div>
-	);
+            <Footer />
+        </div>
+    );
 }

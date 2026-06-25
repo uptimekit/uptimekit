@@ -4,19 +4,19 @@ import type React from "react";
 import { cn } from "@/lib/utils";
 
 export function Spinner({
-	className,
-	...props
+    className,
+    ...props
 }: Omit<
-	React.ComponentProps<typeof FontAwesomeIcon>,
-	"icon"
+    React.ComponentProps<typeof FontAwesomeIcon>,
+    "icon"
 >): React.ReactElement {
-	return (
-		<FontAwesomeIcon
-			icon={faSpinner}
-			aria-label="Loading"
-			className={cn("animate-spin", className)}
-			role="status"
-			{...props}
-		/>
-	);
+    return (
+        <FontAwesomeIcon
+            icon={faSpinner}
+            aria-label="Loading"
+            className={cn("animate-spin", className)}
+            role="status"
+            {...props}
+        />
+    );
 }

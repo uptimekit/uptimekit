@@ -1,13 +1,13 @@
 "use client";
 
 import {
-	faArrowLeft,
-	faCircleCheck,
-	faCircleQuestion,
-	faCircleXmark,
-	faClock,
-	faGlobe,
-	faTriangleExclamation,
+    faArrowLeft,
+    faCircleCheck,
+    faCircleQuestion,
+    faCircleXmark,
+    faClock,
+    faGlobe,
+    faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,347 +28,380 @@ import { client, orpc } from "@/utils/orpc";
 const STATUS_CODE_MONITOR_TYPES = new Set(["http", "http-json", "keyword"]);
 
 function getPauseDescription(pauseReason?: string | null) {
-	switch (pauseReason) {
-		case "org_active_monitor_limit":
-			return "Paused automatically after the organization active monitor limit was lowered.";
-		case "org_region_limit":
-			return "Paused automatically after the organization region limit was lowered.";
-		case "worker_deleted":
-			return "Paused automatically because all assigned workers were removed.";
-		default:
-			return "Paused";
-	}
+    switch (pauseReason) {
+        case "org_active_monitor_limit":
+            return "Paused automatically after the organization active monitor limit was lowered.";
+        case "org_region_limit":
+            return "Paused automatically after the organization region limit was lowered.";
+        case "worker_deleted":
+            return "Paused automatically because all assigned workers were removed.";
+        default:
+            return "Paused";
+    }
 }
 
 function getSafeHttpHref(rawUrl: unknown) {
-	if (typeof rawUrl !== "string") {
-		return null;
-	}
+    if (typeof rawUrl !== "string") {
+        return null;
+    }
 
-	try {
-		const url = new URL(rawUrl);
+    try {
+        const url = new URL(rawUrl);
 
-		if (url.protocol !== "http:" && url.protocol !== "https:") {
-			return null;
-		}
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+            return null;
+        }
 
-		return url.href;
-	} catch {
-		return null;
-	}
+        return url.href;
+    } catch {
+        return null;
+    }
 }
 
 export default function MonitorDetailsPage() {
-	const queryClient = useQueryClient();
-	const params = useParams();
-	const id = params.id as string;
+    const queryClient = useQueryClient();
+    const params = useParams();
+    const id = params.id as string;
 
-	const { data: monitor, isLoading: loadingMonitor } = useQuery(
-		orpc.monitors.get.queryOptions({ input: { id } }),
-	);
+    const { data: monitor, isLoading: loadingMonitor } = useQuery(
+        orpc.monitors.get.queryOptions({ input: { id } }),
+    );
 
-	const { data: availability, isLoading: loadingAvailability } = useQuery(
-		orpc.monitors.getAvailability.queryOptions({ input: { monitorId: id } }),
-	);
+    const { data: availability, isLoading: loadingAvailability } = useQuery(
+        orpc.monitors.getAvailability.queryOptions({
+            input: { monitorId: id },
+        }),
+    );
 
-	const { mutate: toggleMonitor, isPending: isToggling } = useMutation({
-		mutationFn: ({ id, active }: { id: string; active: boolean }) =>
-			client.monitors.toggle({ id, active }),
-		onSuccess: () => {
-			sileo.success({ title: "Monitor updated" });
-			queryClient.invalidateQueries({
-				queryKey: orpc.monitors.get.key({ input: { id } }),
-			});
-			queryClient.invalidateQueries({ queryKey: orpc.monitors.list.key() });
-		},
-		onError: () => sileo.error({ title: "Failed to update monitor" }),
-	});
+    const { mutate: toggleMonitor, isPending: isToggling } = useMutation({
+        mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+            client.monitors.toggle({ id, active }),
+        onSuccess: () => {
+            sileo.success({ title: "Monitor updated" });
+            queryClient.invalidateQueries({
+                queryKey: orpc.monitors.get.key({ input: { id } }),
+            });
+            queryClient.invalidateQueries({
+                queryKey: orpc.monitors.list.key(),
+            });
+        },
+        onError: () => sileo.error({ title: "Failed to update monitor" }),
+    });
 
-	if (loadingMonitor) {
-		return <MonitorSkeleton />;
-	}
+    if (loadingMonitor) {
+        return <MonitorSkeleton />;
+    }
 
-	if (!monitor) {
-		return (
-			<div className="flex flex-col items-center justify-center py-10">
-				<h2 className="font-bold text-xl">Monitor not found</h2>
-				<Button
-					className="mt-4"
-					render={<Link href="/monitors">Go back to monitors</Link>}
-				/>
-			</div>
-		);
-	}
+    if (!monitor) {
+        return (
+            <div className="flex flex-col items-center justify-center py-10">
+                <h2 className="font-bold text-xl">Monitor not found</h2>
+                <Button
+                    className="mt-4"
+                    render={<Link href="/monitors">Go back to monitors</Link>}
+                />
+            </div>
+        );
+    }
 
-	const isExternal = monitor.type === "instatus";
+    const isExternal = monitor.type === "instatus";
 
-	const getStatusIcon = (status: string) => {
-		switch (status) {
-			case "up":
-				return (
-					<FontAwesomeIcon
-						icon={faCircleCheck}
-						className="h-5 w-5 text-emerald-500"
-					/>
-				);
-			case "down":
-				return (
-					<FontAwesomeIcon
-						icon={faCircleXmark}
-						className="h-5 w-5 text-red-500"
-					/>
-				);
-			case "degraded":
-				return (
-					<FontAwesomeIcon
-						icon={faTriangleExclamation}
-						className="h-5 w-5 text-amber-500"
-					/>
-				);
-			case "maintenance":
-				return (
-					<FontAwesomeIcon icon={faClock} className="h-5 w-5 text-blue-500" />
-				);
-			case "pending":
-				return (
-					<FontAwesomeIcon
-						icon={faCircleQuestion}
-						className="h-5 w-5 text-zinc-500"
-					/>
-				);
-			default:
-				return (
-					<FontAwesomeIcon
-						icon={faCircleQuestion}
-						className="h-5 w-5 text-muted-foreground"
-					/>
-				);
-		}
-	};
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case "up":
+                return (
+                    <FontAwesomeIcon
+                        icon={faCircleCheck}
+                        className="h-5 w-5 text-emerald-500"
+                    />
+                );
+            case "down":
+                return (
+                    <FontAwesomeIcon
+                        icon={faCircleXmark}
+                        className="h-5 w-5 text-red-500"
+                    />
+                );
+            case "degraded":
+                return (
+                    <FontAwesomeIcon
+                        icon={faTriangleExclamation}
+                        className="h-5 w-5 text-amber-500"
+                    />
+                );
+            case "maintenance":
+                return (
+                    <FontAwesomeIcon
+                        icon={faClock}
+                        className="h-5 w-5 text-blue-500"
+                    />
+                );
+            case "pending":
+                return (
+                    <FontAwesomeIcon
+                        icon={faCircleQuestion}
+                        className="h-5 w-5 text-zinc-500"
+                    />
+                );
+            default:
+                return (
+                    <FontAwesomeIcon
+                        icon={faCircleQuestion}
+                        className="h-5 w-5 text-muted-foreground"
+                    />
+                );
+        }
+    };
 
-	const getStatusText = (status: string) => {
-		switch (status) {
-			case "up":
-				return "Operational";
-			case "down":
-				return "Downtime";
-			case "degraded":
-				return "Degraded";
-			case "maintenance":
-				return "Maintenance";
-			case "pending":
-				return "Pending";
-			default:
-				return "Unknown";
-		}
-	};
+    const getStatusText = (status: string) => {
+        switch (status) {
+            case "up":
+                return "Operational";
+            case "down":
+                return "Downtime";
+            case "degraded":
+                return "Degraded";
+            case "maintenance":
+                return "Maintenance";
+            case "pending":
+                return "Pending";
+            default:
+                return "Unknown";
+        }
+    };
 
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case "up":
-				return "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20";
-			case "down":
-				return "bg-red-500/10 text-red-500 hover:bg-red-500/20";
-			case "degraded":
-				return "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20";
-			case "maintenance":
-				return "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20";
-			default:
-				return "bg-zinc-500/10 text-zinc-500 hover:bg-zinc-500/20";
-		}
-	};
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "up":
+                return "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20";
+            case "down":
+                return "bg-red-500/10 text-red-500 hover:bg-red-500/20";
+            case "degraded":
+                return "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20";
+            case "maintenance":
+                return "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20";
+            default:
+                return "bg-zinc-500/10 text-zinc-500 hover:bg-zinc-500/20";
+        }
+    };
 
-	// Calculate current status duration
-	let currentStatusDuration = "-";
-	if (monitor) {
-		if (monitor.status === "up") {
-			const neverDown = availability?.all?.incidentCount === 0;
-			if (neverDown && monitor.createdAt) {
-				currentStatusDuration = formatDistanceToNow(
-					new Date(monitor.createdAt),
-				);
-			} else if (monitor.lastStatusChange) {
-				currentStatusDuration = formatDistanceToNow(
-					new Date(monitor.lastStatusChange),
-				);
-			} else if (monitor.createdAt) {
-				// Fallback to createdAt if no changes
-				currentStatusDuration = formatDistanceToNow(
-					new Date(monitor.createdAt),
-				);
-			}
-		} else if (monitor.lastStatusChange) {
-			currentStatusDuration = formatDistanceToNow(
-				new Date(monitor.lastStatusChange),
-			);
-		}
-	}
+    // Calculate current status duration
+    let currentStatusDuration = "-";
+    if (monitor) {
+        if (monitor.status === "up") {
+            const neverDown = availability?.all?.incidentCount === 0;
+            if (neverDown && monitor.createdAt) {
+                currentStatusDuration = formatDistanceToNow(
+                    new Date(monitor.createdAt),
+                );
+            } else if (monitor.lastStatusChange) {
+                currentStatusDuration = formatDistanceToNow(
+                    new Date(monitor.lastStatusChange),
+                );
+            } else if (monitor.createdAt) {
+                // Fallback to createdAt if no changes
+                currentStatusDuration = formatDistanceToNow(
+                    new Date(monitor.createdAt),
+                );
+            }
+        } else if (monitor.lastStatusChange) {
+            currentStatusDuration = formatDistanceToNow(
+                new Date(monitor.lastStatusChange),
+            );
+        }
+    }
 
-	// Get display target based on monitor type
-	const getMonitorTarget = () => {
-		const config = monitor.config as Record<string, any>;
-		switch (monitor.type) {
-			case "tcp":
-				return `${config.hostname}:${config.port}`;
-			case "dns":
-				return `${config.recordType || "A"} ${config.hostname}`;
-			case "ping":
-				return config.hostname;
-			default:
-				return config.url;
-		}
-	};
-	const monitorTarget = getMonitorTarget();
-	const monitorHref =
-		monitor.type === "http" ? getSafeHttpHref(monitorTarget) : null;
-	const statusReason = (monitor as any).statusReason as string | null;
-	const showStatusCodeChart = STATUS_CODE_MONITOR_TYPES.has(monitor.type);
+    // Get display target based on monitor type
+    const getMonitorTarget = () => {
+        const config = monitor.config as Record<string, any>;
+        switch (monitor.type) {
+            case "tcp":
+                return `${config.hostname}:${config.port}`;
+            case "dns":
+                return `${config.recordType || "A"} ${config.hostname}`;
+            case "ping":
+                return config.hostname;
+            default:
+                return config.url;
+        }
+    };
+    const monitorTarget = getMonitorTarget();
+    const monitorHref =
+        monitor.type === "http" ? getSafeHttpHref(monitorTarget) : null;
+    const statusReason = (monitor as any).statusReason as string | null;
+    const showStatusCodeChart = STATUS_CODE_MONITOR_TYPES.has(monitor.type);
 
-	return (
-		<div className="flex flex-col gap-6 p-6">
-			{/* Header */}
-			<div className="flex items-center gap-4">
-				<Button
-					variant="ghost"
-					size="icon"
-					render={
-						<Link href="/monitors">
-							<FontAwesomeIcon icon={faArrowLeft} className="h-4 w-4" />
-						</Link>
-					}
-				/>
-				<div className="flex flex-col gap-1">
-					<div className="flex items-center gap-3">
-						<h1 className="font-bold text-2xl tracking-tight">
-							{monitor.name}
-						</h1>
-						{!isExternal ? (
-							<>
-								{!monitor.active && (
-									<Badge variant="outline" className="text-zinc-500">
-										{monitor.pauseReason ? "Paused by quota" : "Paused"}
-									</Badge>
-								)}
-								<Badge
-									variant="secondary"
-									className={cn(
-										getStatusColor(monitor.status as string),
-										!monitor.active && "opacity-50",
-									)}
-								>
-									{getStatusIcon(monitor.status as string)}
-									<span className="ml-1.5 capitalize">
-										{getStatusText(monitor.status as string)}
-									</span>
-								</Badge>
-							</>
-						) : (
-							""
-						)}
-					</div>
-					<div className="flex items-center gap-2 text-muted-foreground text-sm">
-						<FontAwesomeIcon icon={faGlobe} className="h-3.5 w-3.5" />
-						{monitorHref ? (
-							<a href={monitorHref} className="font-mono hover:underline">
-								{monitorTarget}
-							</a>
-						) : (
-							<span className="font-mono">{monitorTarget}</span>
-						)}
-						{!isExternal && (
-							<>
-								<span className="select-none">·</span>
-								<FontAwesomeIcon icon={faClock} className="h-3.5 w-3.5" />
-								<span className="select-none">
-									Checked every {monitor.interval}s
-								</span>
-							</>
-						)}
-					</div>
-					{!monitor.active && monitor.pauseReason && (
-						<p className="text-amber-600 text-sm dark:text-amber-400">
-							{getPauseDescription(monitor.pauseReason)}
-						</p>
-					)}
-					{monitor.status === "degraded" && statusReason && (
-						<p className="max-w-3xl text-amber-600 text-sm dark:text-amber-400">
-							{statusReason}
-						</p>
-					)}
-				</div>
-				<div className="ml-auto flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						render={<Link href={`/monitors/${id}/edit`}>Edit</Link>}
-					/>
-					<Button
-						variant={monitor.active ? "destructive" : "default"}
-						size="sm"
-						onClick={() =>
-							toggleMonitor({ id: monitor.id, active: !monitor.active })
-						}
-						disabled={isToggling}
-					>
-						{monitor.active ? "Pause" : "Resume"}
-					</Button>
-				</div>
-			</div>
+    return (
+        <div className="flex flex-col gap-6 p-6">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    render={
+                        <Link href="/monitors">
+                            <FontAwesomeIcon
+                                icon={faArrowLeft}
+                                className="h-4 w-4"
+                            />
+                        </Link>
+                    }
+                />
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                        <h1 className="font-bold text-2xl tracking-tight">
+                            {monitor.name}
+                        </h1>
+                        {!isExternal ? (
+                            <>
+                                {!monitor.active && (
+                                    <Badge
+                                        variant="outline"
+                                        className="text-zinc-500"
+                                    >
+                                        {monitor.pauseReason
+                                            ? "Paused by quota"
+                                            : "Paused"}
+                                    </Badge>
+                                )}
+                                <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                        getStatusColor(
+                                            monitor.status as string,
+                                        ),
+                                        !monitor.active && "opacity-50",
+                                    )}
+                                >
+                                    {getStatusIcon(monitor.status as string)}
+                                    <span className="ml-1.5 capitalize">
+                                        {getStatusText(
+                                            monitor.status as string,
+                                        )}
+                                    </span>
+                                </Badge>
+                            </>
+                        ) : (
+                            ""
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <FontAwesomeIcon
+                            icon={faGlobe}
+                            className="h-3.5 w-3.5"
+                        />
+                        {monitorHref ? (
+                            <a
+                                href={monitorHref}
+                                className="font-mono hover:underline"
+                            >
+                                {monitorTarget}
+                            </a>
+                        ) : (
+                            <span className="font-mono">{monitorTarget}</span>
+                        )}
+                        {!isExternal && (
+                            <>
+                                <span className="select-none">·</span>
+                                <FontAwesomeIcon
+                                    icon={faClock}
+                                    className="h-3.5 w-3.5"
+                                />
+                                <span className="select-none">
+                                    Checked every {monitor.interval}s
+                                </span>
+                            </>
+                        )}
+                    </div>
+                    {!monitor.active && monitor.pauseReason && (
+                        <p className="text-amber-600 text-sm dark:text-amber-400">
+                            {getPauseDescription(monitor.pauseReason)}
+                        </p>
+                    )}
+                    {monitor.status === "degraded" && statusReason && (
+                        <p className="max-w-3xl text-amber-600 text-sm dark:text-amber-400">
+                            {statusReason}
+                        </p>
+                    )}
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        render={<Link href={`/monitors/${id}/edit`}>Edit</Link>}
+                    />
+                    <Button
+                        variant={monitor.active ? "destructive" : "default"}
+                        size="sm"
+                        onClick={() =>
+                            toggleMonitor({
+                                id: monitor.id,
+                                active: !monitor.active,
+                            })
+                        }
+                        disabled={isToggling}
+                    >
+                        {monitor.active ? "Pause" : "Resume"}
+                    </Button>
+                </div>
+            </div>
 
-			{!isExternal ? (
-				<>
-					{/* Monitor Cards */}
-					<MonitorCards
-						status={monitor.status}
-						lastCheck={monitor.lastCheck}
-						currentStatusDuration={currentStatusDuration}
-						incidentCount={availability?.today?.incidentCount || 0}
-					/>
+            {!isExternal ? (
+                <>
+                    {/* Monitor Cards */}
+                    <MonitorCards
+                        status={monitor.status}
+                        lastCheck={monitor.lastCheck}
+                        currentStatusDuration={currentStatusDuration}
+                        incidentCount={availability?.today?.incidentCount || 0}
+                    />
 
-					{/* Response Time Chart */}
-					<ResponseTimeChart
-						monitorId={id}
-						workerIds={(monitor.workerIds as string[]) || []}
-						monitorType={monitor.type}
-						workers={monitor.workers || []}
-					/>
+                    {/* Response Time Chart */}
+                    <ResponseTimeChart
+                        monitorId={id}
+                        workerIds={(monitor.workerIds as string[]) || []}
+                        monitorType={monitor.type}
+                        workers={monitor.workers || []}
+                    />
 
-					{showStatusCodeChart && <StatusCodePieChart monitorId={id} />}
+                    {showStatusCodeChart && (
+                        <StatusCodePieChart monitorId={id} />
+                    )}
 
-					{/* Availability Stats Table */}
-					<div className="space-y-4">
-						<AvailabilityTable
-							data={availability}
-							isLoading={loadingAvailability}
-						/>
-					</div>
-				</>
-			) : (
-				<p className="flex items-center justify-center text-xl">
-					External monitors dont have this available
-				</p>
-			)}
-		</div>
-	);
+                    {/* Availability Stats Table */}
+                    <div className="space-y-4">
+                        <AvailabilityTable
+                            data={availability}
+                            isLoading={loadingAvailability}
+                        />
+                    </div>
+                </>
+            ) : (
+                <p className="flex items-center justify-center text-xl">
+                    External monitors dont have this available
+                </p>
+            )}
+        </div>
+    );
 }
 
 function MonitorSkeleton() {
-	return (
-		<div className="flex flex-col gap-6 p-6">
-			<div className="flex items-center gap-4">
-				<Skeleton className="h-10 w-10" />
-				<div className="flex flex-col gap-2">
-					<Skeleton className="h-8 w-48" />
-					<Skeleton className="h-4 w-32" />
-				</div>
-				<div className="ml-auto">
-					<Skeleton className="h-10 w-48" />
-				</div>
-			</div>
-			<div className="grid gap-6 md:grid-cols-2">
-				<Skeleton className="h-32" />
-				<Skeleton className="h-32 md:col-span-2" />
-			</div>
-		</div>
-	);
+    return (
+        <div className="flex flex-col gap-6 p-6">
+            <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-10" />
+                <div className="flex flex-col gap-2">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                </div>
+                <div className="ml-auto">
+                    <Skeleton className="h-10 w-48" />
+                </div>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+                <Skeleton className="h-32" />
+                <Skeleton className="h-32 md:col-span-2" />
+            </div>
+        </div>
+    );
 }

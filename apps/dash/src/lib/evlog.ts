@@ -3,13 +3,13 @@ import { createEvlog } from "evlog/next";
 import { createInstrumentation } from "evlog/next/instrumentation";
 
 const evlogOptions = {
-	env: {
-		service: "@uptimekit/dash",
-	},
+    env: {
+        service: "@uptimekit/dash",
+    },
 };
 
 export const { withEvlog, useLogger, log, createError, createEvlogError } =
-	createEvlog(evlogOptions);
+    createEvlog(evlogOptions);
 
 export { parseError };
 

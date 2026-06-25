@@ -7,8 +7,8 @@ import { createTimeSeriesDriver } from "./timeseries";
 loadEnv();
 
 const client = postgres(process.env.DATABASE_URL || "", {
-	max: 20,
-	idle_timeout: 30,
+    max: 20,
+    idle_timeout: 30,
 });
 
 export const db = drizzle(client, { schema });
@@ -19,9 +19,9 @@ export const timeseries = createTimeSeriesDriver();
 export * from "./schema";
 export type { TimeSeriesBackend, TimeSeriesDriver } from "./timeseries";
 export {
-	ClickHouseDriver,
-	createTimeSeriesDriver,
-	resolveTimeSeriesBackend,
-	TimescaleDriver,
+    ClickHouseDriver,
+    createTimeSeriesDriver,
+    resolveTimeSeriesBackend,
+    TimescaleDriver,
 } from "./timeseries";
 export type * from "./timeseries/types";

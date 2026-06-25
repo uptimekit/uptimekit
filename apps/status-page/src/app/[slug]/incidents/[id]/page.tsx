@@ -6,36 +6,36 @@ import { loadIncidentDetailComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 export default async function SlugIncidentDetailsPage({
-	params,
+    params,
 }: {
-	params: Promise<{ slug: string; id: string }>;
+    params: Promise<{ slug: string; id: string }>;
 }) {
-	const { slug, id } = await params;
+    const { slug, id } = await params;
 
-	const pageConfig = await getStatusPageBySlug(slug);
+    const pageConfig = await getStatusPageBySlug(slug);
 
-	if (!pageConfig) {
-		notFound();
-	}
+    if (!pageConfig) {
+        notFound();
+    }
 
-	await checkStatusPageAccess(pageConfig, `/${slug}/incidents/${id}`);
+    await checkStatusPageAccess(pageConfig, `/${slug}/incidents/${id}`);
 
-	const design = (pageConfig.design as any) || {};
-	const themeId = design.themeId || "default";
+    const design = (pageConfig.design as any) || {};
+    const themeId = design.themeId || "default";
 
-	const IncidentDetailPage = await loadIncidentDetailComponent(themeId);
+    const IncidentDetailPage = await loadIncidentDetailComponent(themeId);
 
-	try {
-		const data = await prepareIncidentDetailData(pageConfig, id, slug);
-		return (
-			<ThemePageWrapper
-				themeId={themeId}
-				theme={design.theme}
-				ThemeComponent={IncidentDetailPage}
-				componentProps={{ data }}
-			/>
-		);
-	} catch {
-		notFound();
-	}
+    try {
+        const data = await prepareIncidentDetailData(pageConfig, id, slug);
+        return (
+            <ThemePageWrapper
+                themeId={themeId}
+                theme={design.theme}
+                ThemeComponent={IncidentDetailPage}
+                componentProps={{ data }}
+            />
+        );
+    } catch {
+        notFound();
+    }
 }

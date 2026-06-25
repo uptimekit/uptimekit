@@ -4,12 +4,12 @@ import type { NextConfig } from "next";
 loadEnv();
 
 const nextConfig: NextConfig = {
-	typedRoutes: true,
-	reactCompiler: true,
-	output: "standalone",
-	logging: {
-		incomingRequests: true,
-	},
+    typedRoutes: true,
+    reactCompiler: true,
+    output: "standalone",
+    logging: {
+        incomingRequests: true,
+    },
 };
 
 export default nextConfig;

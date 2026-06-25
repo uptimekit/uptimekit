@@ -9,13 +9,13 @@ import { NextResponse } from "next/server";
 import { withEvlog } from "@/lib/evlog";
 
 interface CertificateInfo {
-	domain: string;
-	issuer: string;
-	validFrom: string;
-	validTo: string;
-	daysUntilExpiry: number;
-	isValid: boolean;
-	error?: string;
+    domain: string;
+    issuer: string;
+    validFrom: string;
+    validTo: string;
+    daysUntilExpiry: number;
+    isValid: boolean;
+    error?: string;
 }
 
 /**
@@ -34,35 +34,35 @@ interface CertificateInfo {
  * - If `daysUntilExpiry` is greater than 7 (and within `threshold`), require at least 7 days since the last notification to notify again.
  */
 function shouldSendNotification(
-	daysUntilExpiry: number,
-	lastNotification: {
-		lastNotifiedAt: Date;
-		daysUntilExpiryAtNotification: string;
-	} | null,
-	threshold: number,
+    daysUntilExpiry: number,
+    lastNotification: {
+        lastNotifiedAt: Date;
+        daysUntilExpiryAtNotification: string;
+    } | null,
+    threshold: number,
 ): boolean {
-	if (daysUntilExpiry < 0) {
-		return true;
-	}
+    if (daysUntilExpiry < 0) {
+        return true;
+    }
 
-	if (daysUntilExpiry > threshold) {
-		return false;
-	}
+    if (daysUntilExpiry > threshold) {
+        return false;
+    }
 
-	if (!lastNotification) {
-		return true;
-	}
+    if (!lastNotification) {
+        return true;
+    }
 
-	const lastDays = Number.parseFloat(
-		lastNotification.daysUntilExpiryAtNotification,
-	);
-	const daysSinceLastNotification = lastDays - daysUntilExpiry;
+    const lastDays = Number.parseFloat(
+        lastNotification.daysUntilExpiryAtNotification,
+    );
+    const daysSinceLastNotification = lastDays - daysUntilExpiry;
 
-	if (daysUntilExpiry <= 7) {
-		return daysSinceLastNotification >= 1;
-	}
+    if (daysUntilExpiry <= 7) {
+        return daysSinceLastNotification >= 1;
+    }
 
-	return daysSinceLastNotification >= 7;
+    return daysSinceLastNotification >= 7;
 }
 
 /**
@@ -75,129 +75,140 @@ function shouldSendNotification(
  * @returns A NextResponse with a JSON body. On success the body includes `success`, `notified`, `threshold`, `daysUntilExpiry`, and `nextNotificationIn` when applicable. On error the body includes an `error` message and an appropriate HTTP status (e.g., authentication failure, monitor not found, invalid JSON, or missing required fields).
  */
 async function handlePost(
-	request: Request,
-	{ params }: { params: Promise<{ monitorId: string }> },
+    request: Request,
+    { params }: { params: Promise<{ monitorId: string }> },
 ) {
-	const authResult = await authenticateWorker(request);
+    const authResult = await authenticateWorker(request);
 
-	if (isAuthError(authResult)) {
-		return NextResponse.json(
-			{ error: authResult.error },
-			{ status: authResult.status },
-		);
-	}
+    if (isAuthError(authResult)) {
+        return NextResponse.json(
+            { error: authResult.error },
+            { status: authResult.status },
+        );
+    }
 
-	const { monitorId } = await params;
+    const { monitorId } = await params;
 
-	const monitorRecord = await db.query.monitor.findFirst({
-		where: eq(monitor.id, monitorId),
-	});
+    const monitorRecord = await db.query.monitor.findFirst({
+        where: eq(monitor.id, monitorId),
+    });
 
-	if (!monitorRecord) {
-		return NextResponse.json({ error: "Monitor not found" }, { status: 404 });
-	}
+    if (!monitorRecord) {
+        return NextResponse.json(
+            { error: "Monitor not found" },
+            { status: 404 },
+        );
+    }
 
-	let body: CertificateInfo;
-	try {
-		body = await request.json();
-	} catch {
-		return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-	}
+    let body: CertificateInfo;
+    try {
+        body = await request.json();
+    } catch {
+        return NextResponse.json(
+            { error: "Invalid JSON body" },
+            { status: 400 },
+        );
+    }
 
-	if (!body.domain || body.daysUntilExpiry === undefined) {
-		return NextResponse.json(
-			{ error: "Missing required fields: domain, daysUntilExpiry" },
-			{ status: 400 },
-		);
-	}
+    if (!body.domain || body.daysUntilExpiry === undefined) {
+        return NextResponse.json(
+            { error: "Missing required fields: domain, daysUntilExpiry" },
+            { status: 400 },
+        );
+    }
 
-	const config = monitorRecord.config as {
-		checkSsl?: boolean;
-		sslCertExpiryNotificationDays?: number;
-	};
+    const config = monitorRecord.config as {
+        checkSsl?: boolean;
+        sslCertExpiryNotificationDays?: number;
+    };
 
-	const checkSsl = config.checkSsl ?? true;
-	const notificationThreshold = config.sslCertExpiryNotificationDays ?? 30;
+    const checkSsl = config.checkSsl ?? true;
+    const notificationThreshold = config.sslCertExpiryNotificationDays ?? 30;
 
-	if (!checkSsl) {
-		return NextResponse.json({
-			success: true,
-			message: "SSL checking disabled for this monitor",
-		});
-	}
+    if (!checkSsl) {
+        return NextResponse.json({
+            success: true,
+            message: "SSL checking disabled for this monitor",
+        });
+    }
 
-	const lastNotification = await db.query.sslCertificateNotification.findFirst({
-		where: and(
-			eq(sslCertificateNotification.monitorId, monitorId),
-			eq(sslCertificateNotification.domain, body.domain),
-		),
-		orderBy: (table, { desc }) => [desc(table.lastNotifiedAt)],
-	});
+    const lastNotification =
+        await db.query.sslCertificateNotification.findFirst({
+            where: and(
+                eq(sslCertificateNotification.monitorId, monitorId),
+                eq(sslCertificateNotification.domain, body.domain),
+            ),
+            orderBy: (table, { desc }) => [desc(table.lastNotifiedAt)],
+        });
 
-	const shouldNotify =
-		body.error ||
-		!body.isValid ||
-		shouldSendNotification(
-			body.daysUntilExpiry,
-			lastNotification ?? null,
-			notificationThreshold,
-		);
+    const shouldNotify =
+        body.error ||
+        !body.isValid ||
+        shouldSendNotification(
+            body.daysUntilExpiry,
+            lastNotification ?? null,
+            notificationThreshold,
+        );
 
-	if (shouldNotify) {
-		const now = new Date();
+    if (shouldNotify) {
+        const now = new Date();
 
-		await db.transaction(async (tx) => {
-			if (lastNotification) {
-				await tx
-					.update(sslCertificateNotification)
-					.set({
-						lastNotifiedAt: now,
-						daysUntilExpiryAtNotification: body.daysUntilExpiry.toString(),
-						updatedAt: now,
-					})
-					.where(eq(sslCertificateNotification.id, lastNotification.id));
-			} else {
-				await tx.insert(sslCertificateNotification).values({
-					id: crypto.randomUUID(),
-					monitorId: monitorRecord.id,
-					domain: body.domain,
-					lastNotifiedAt: now,
-					daysUntilExpiryAtNotification: body.daysUntilExpiry.toString(),
-				});
-			}
+        await db.transaction(async (tx) => {
+            if (lastNotification) {
+                await tx
+                    .update(sslCertificateNotification)
+                    .set({
+                        lastNotifiedAt: now,
+                        daysUntilExpiryAtNotification:
+                            body.daysUntilExpiry.toString(),
+                        updatedAt: now,
+                    })
+                    .where(
+                        eq(sslCertificateNotification.id, lastNotification.id),
+                    );
+            } else {
+                await tx.insert(sslCertificateNotification).values({
+                    id: crypto.randomUUID(),
+                    monitorId: monitorRecord.id,
+                    domain: body.domain,
+                    lastNotifiedAt: now,
+                    daysUntilExpiryAtNotification:
+                        body.daysUntilExpiry.toString(),
+                });
+            }
 
-			await publishAppEvent(
-				"monitor.ssl.expiring",
-				{
-					monitorId: monitorRecord.id,
-					organizationId: monitorRecord.organizationId,
-					monitorName: monitorRecord.name,
-					domain: body.domain,
-					issuer: body.issuer,
-					validFrom: body.validFrom,
-					validTo: body.validTo,
-					daysUntilExpiry: body.daysUntilExpiry,
-					isValid: body.isValid,
-					error: body.error,
-					threshold: notificationThreshold,
-				},
-				{ tx },
-			);
-		});
-		await processPendingNotifications("ssl-certificate");
-	}
+            await publishAppEvent(
+                "monitor.ssl.expiring",
+                {
+                    monitorId: monitorRecord.id,
+                    organizationId: monitorRecord.organizationId,
+                    monitorName: monitorRecord.name,
+                    domain: body.domain,
+                    issuer: body.issuer,
+                    validFrom: body.validFrom,
+                    validTo: body.validTo,
+                    daysUntilExpiry: body.daysUntilExpiry,
+                    isValid: body.isValid,
+                    error: body.error,
+                    threshold: notificationThreshold,
+                },
+                { tx },
+            );
+        });
+        await processPendingNotifications("ssl-certificate");
+    }
 
-	return NextResponse.json({
-		success: true,
-		notified: shouldNotify,
-		threshold: notificationThreshold,
-		daysUntilExpiry: body.daysUntilExpiry,
-		nextNotificationIn: shouldNotify
-			? body.daysUntilExpiry > 7
-				? 7
-				: 1
-			: undefined,
-	});
+    return NextResponse.json({
+        success: true,
+        notified: shouldNotify,
+        threshold: notificationThreshold,
+        daysUntilExpiry: body.daysUntilExpiry,
+        nextNotificationIn: shouldNotify
+            ? body.daysUntilExpiry > 7
+                ? 7
+                : 1
+            : undefined,
+    });
 }
 
 export const POST = withEvlog(handlePost);

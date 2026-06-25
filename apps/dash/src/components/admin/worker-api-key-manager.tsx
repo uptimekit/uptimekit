@@ -8,147 +8,156 @@ import { useState } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogPanel,
-	DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogPanel,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { orpc } from "@/utils/orpc";
 
 interface WorkerApiKeyManagerProps {
-	workerId: string;
+    workerId: string;
 }
 
 export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
-	const [newKey, setNewKey] = useState<string | null>(null);
-	const [showConfirm, setShowConfirm] = useState(false);
-	const [isRevealed, setIsRevealed] = useState(false);
-	const router = useRouter();
+    const [newKey, setNewKey] = useState<string | null>(null);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [isRevealed, setIsRevealed] = useState(false);
+    const router = useRouter();
 
-	const { mutate, isPending } = useMutation({
-		...orpc.workers.rotateKey.mutationOptions(),
-		onSuccess: (data: { key: string }) => {
-			setNewKey(data.key);
-			sileo.success({ title: "API Key rotated successfully" });
-		},
-		onError: (error: Error) => {
-			console.error(error);
-			sileo.error({ title: "Failed to rotate API Key" });
-		},
-	});
+    const { mutate, isPending } = useMutation({
+        ...orpc.workers.rotateKey.mutationOptions(),
+        onSuccess: (data: { key: string }) => {
+            setNewKey(data.key);
+            sileo.success({ title: "API Key rotated successfully" });
+        },
+        onError: (error: Error) => {
+            console.error(error);
+            sileo.error({ title: "Failed to rotate API Key" });
+        },
+    });
 
-	const handleRotate = () => {
-		setShowConfirm(false);
-		mutate({ id: workerId });
-	};
+    const handleRotate = () => {
+        setShowConfirm(false);
+        mutate({ id: workerId });
+    };
 
-	const handleCopy = () => {
-		if (newKey) {
-			navigator.clipboard.writeText(newKey);
-			setIsRevealed(true);
-			sileo.success({ title: "Copied to clipboard" });
-		}
-	};
+    const handleCopy = () => {
+        if (newKey) {
+            navigator.clipboard.writeText(newKey);
+            setIsRevealed(true);
+            sileo.success({ title: "Copied to clipboard" });
+        }
+    };
 
-	const handleCloseNewKeyDialog = () => {
-		setNewKey(null);
-		setIsRevealed(false);
-		router.refresh();
-	};
+    const handleCloseNewKeyDialog = () => {
+        setNewKey(null);
+        setIsRevealed(false);
+        router.refresh();
+    };
 
-	return (
-		<div className="flex flex-col gap-2">
-			<Button
-				variant="secondary"
-				className="w-full"
-				onClick={() => setShowConfirm(true)}
-				disabled={isPending}
-			>
-				{isPending ? (
-					<FontAwesomeIcon
-						icon={faSpinner}
-						className="mr-2 h-4 w-4 animate-spin"
-					/>
-				) : null}
-				Rotate API Key
-			</Button>
-			<p className="text-[0.8rem] text-muted-foreground">
-				Rotating the key will immediately invalidate the old one. The worker
-				will need the new key to connect.
-			</p>
+    return (
+        <div className="flex flex-col gap-2">
+            <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => setShowConfirm(true)}
+                disabled={isPending}
+            >
+                {isPending ? (
+                    <FontAwesomeIcon
+                        icon={faSpinner}
+                        className="mr-2 h-4 w-4 animate-spin"
+                    />
+                ) : null}
+                Rotate API Key
+            </Button>
+            <p className="text-[0.8rem] text-muted-foreground">
+                Rotating the key will immediately invalidate the old one. The
+                worker will need the new key to connect.
+            </p>
 
-			{/* Confirmation Dialog */}
-			<Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Rotate API Key?</DialogTitle>
-						<DialogDescription>
-							Are you sure you want to rotate the API key? The existing key will
-							stop working immediately.
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button variant="outline" onClick={() => setShowConfirm(false)}>
-							Cancel
-						</Button>
-						<Button variant="destructive" onClick={handleRotate}>
-							Rotate Key
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+            {/* Confirmation Dialog */}
+            <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Rotate API Key?</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to rotate the API key? The
+                            existing key will stop working immediately.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirm(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleRotate}>
+                            Rotate Key
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-			{/* New Key Display Dialog */}
-			<Dialog
-				open={!!newKey}
-				onOpenChange={(open) => !open && handleCloseNewKeyDialog()}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>New API Key Generated</DialogTitle>
-						<DialogDescription>
-							Please copy this key immediately. You will not be able to see it
-							again.
-						</DialogDescription>
-					</DialogHeader>
-					<DialogPanel>
-						<div className="flex items-center space-x-2">
-							<div className="grid flex-1 gap-2">
-								<Label htmlFor="link" className="sr-only">
-									Link
-								</Label>
-								<Input
-									id="link"
-									value={newKey || ""}
-									readOnly
-									type={isRevealed ? "text" : "password"}
-								/>
-							</div>
-							<Button
-								type="submit"
-								size="sm"
-								className="px-3"
-								onClick={handleCopy}
-							>
-								<span className="sr-only">Copy</span>
-								{isRevealed ? (
-									<FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
-								) : (
-									<FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
-								)}
-							</Button>
-						</div>
-					</DialogPanel>
-					<DialogFooter>
-						<Button onClick={handleCloseNewKeyDialog}>Done</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</div>
-	);
+            {/* New Key Display Dialog */}
+            <Dialog
+                open={!!newKey}
+                onOpenChange={(open) => !open && handleCloseNewKeyDialog()}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>New API Key Generated</DialogTitle>
+                        <DialogDescription>
+                            Please copy this key immediately. You will not be
+                            able to see it again.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogPanel>
+                        <div className="flex items-center space-x-2">
+                            <div className="grid flex-1 gap-2">
+                                <Label htmlFor="link" className="sr-only">
+                                    Link
+                                </Label>
+                                <Input
+                                    id="link"
+                                    value={newKey || ""}
+                                    readOnly
+                                    type={isRevealed ? "text" : "password"}
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                className="px-3"
+                                onClick={handleCopy}
+                            >
+                                <span className="sr-only">Copy</span>
+                                {isRevealed ? (
+                                    <FontAwesomeIcon
+                                        icon={faCheck}
+                                        className="h-4 w-4"
+                                    />
+                                ) : (
+                                    <FontAwesomeIcon
+                                        icon={faCopy}
+                                        className="h-4 w-4"
+                                    />
+                                )}
+                            </Button>
+                        </div>
+                    </DialogPanel>
+                    <DialogFooter>
+                        <Button onClick={handleCloseNewKeyDialog}>Done</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
 }

@@ -1,28 +1,28 @@
 export function buildPath(basePath: string, slug?: string): string {
-	if (slug) {
-		return `/${slug}${basePath}`;
-	}
-	return basePath;
+    if (slug) {
+        return `/${slug}${basePath}`;
+    }
+    return basePath;
 }
 
 function shouldTrustProxyHeaders(): boolean {
-	return process.env.STATUS_PAGE_TRUST_PROXY_HEADERS === "true";
+    return process.env.STATUS_PAGE_TRUST_PROXY_HEADERS === "true";
 }
 
 function normalizeHost(host: string | null): string | undefined {
-	const normalizedHost = host?.split(",")[0]?.trim().toLowerCase();
+    const normalizedHost = host?.split(",")[0]?.trim().toLowerCase();
 
-	if (!normalizedHost) {
-		return undefined;
-	}
+    if (!normalizedHost) {
+        return undefined;
+    }
 
-	return normalizedHost;
+    return normalizedHost;
 }
 
 function normalizeHeaderToken(value: string | null): string | undefined {
-	const token = value?.split(",").find((part) => part.trim().length > 0);
+    const token = value?.split(",").find((part) => part.trim().length > 0);
 
-	return token?.trim().toLowerCase();
+    return token?.trim().toLowerCase();
 }
 
 /**
@@ -37,17 +37,17 @@ function normalizeHeaderToken(value: string | null): string | undefined {
  * Comma-separated values use the first token, and the result is trimmed/lowercased.
  */
 export function getHostFromHeaders(
-	headersList: Pick<Headers, "get">,
+    headersList: Pick<Headers, "get">,
 ): string | undefined {
-	if (shouldTrustProxyHeaders()) {
-		return normalizeHost(
-			headersList.get("x-forwarded-host") ||
-				headersList.get("x-original-host") ||
-				headersList.get("host"),
-		);
-	}
+    if (shouldTrustProxyHeaders()) {
+        return normalizeHost(
+            headersList.get("x-forwarded-host") ||
+                headersList.get("x-original-host") ||
+                headersList.get("host"),
+        );
+    }
 
-	return normalizeHost(headersList.get("host"));
+    return normalizeHost(headersList.get("host"));
 }
 
 /**
@@ -62,21 +62,21 @@ export function getHostFromHeaders(
  * Handles `host:port`, `[ipv6]:port`, plain hostnames, and unbracketed IPv6.
  */
 export function getDomainFromHost(host: string): string {
-	if (host.startsWith("[")) {
-		const closingBracketIndex = host.indexOf("]");
+    if (host.startsWith("[")) {
+        const closingBracketIndex = host.indexOf("]");
 
-		if (closingBracketIndex > 0) {
-			return host.slice(1, closingBracketIndex);
-		}
-	}
+        if (closingBracketIndex > 0) {
+            return host.slice(1, closingBracketIndex);
+        }
+    }
 
-	const firstColonIndex = host.indexOf(":");
+    const firstColonIndex = host.indexOf(":");
 
-	if (firstColonIndex !== -1 && firstColonIndex === host.lastIndexOf(":")) {
-		return host.slice(0, firstColonIndex);
-	}
+    if (firstColonIndex !== -1 && firstColonIndex === host.lastIndexOf(":")) {
+        return host.slice(0, firstColonIndex);
+    }
 
-	return host;
+    return host;
 }
 
 /**
@@ -91,15 +91,16 @@ export function getDomainFromHost(host: string): string {
  * `STATUS_PAGE_DEFAULT_PROTOCOL`, defaulting to HTTPS.
  */
 export function getProtocolFromHeaders(
-	headersList: Pick<Headers, "get">,
+    headersList: Pick<Headers, "get">,
 ): "http" | "https" {
-	if (!shouldTrustProxyHeaders()) {
-		return process.env.STATUS_PAGE_DEFAULT_PROTOCOL?.toLowerCase() === "http"
-			? "http"
-			: "https";
-	}
+    if (!shouldTrustProxyHeaders()) {
+        return process.env.STATUS_PAGE_DEFAULT_PROTOCOL?.toLowerCase() ===
+            "http"
+            ? "http"
+            : "https";
+    }
 
-	return normalizeHeaderToken(headersList.get("x-forwarded-proto")) === "http"
-		? "http"
-		: "https";
+    return normalizeHeaderToken(headersList.get("x-forwarded-proto")) === "http"
+        ? "http"
+        : "https";
 }

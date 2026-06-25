@@ -4,8 +4,8 @@ import { loadEnv } from "@uptimekit/config/env";
 loadEnv();
 
 import {
-	type PostgresNotificationWorker,
-	startNotificationWorker,
+    type PostgresNotificationWorker,
+    startNotificationWorker,
 } from "@uptimekit/api/pkg/notifications";
 import { type Job, Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
@@ -18,8 +18,8 @@ const logger = createLogger("SCHEDULER");
 
 // Job names
 const JOBS = {
-	MAINTENANCE_PROCESSOR: "maintenance-processor",
-	DATA_RETENTION: "data-retention",
+    MAINTENANCE_PROCESSOR: "maintenance-processor",
+    DATA_RETENTION: "data-retention",
 } as const;
 
 let connection: IORedis | null = null;
@@ -28,87 +28,87 @@ let worker: Worker | null = null;
 let notificationWorker: PostgresNotificationWorker | null = null;
 
 function getRequiredRedisUrl() {
-	const redisUrl = process.env.REDIS_URL?.trim();
+    const redisUrl = process.env.REDIS_URL?.trim();
 
-	if (!redisUrl) {
-		throw new Error("REDIS_URL is not defined");
-	}
+    if (!redisUrl) {
+        throw new Error("REDIS_URL is not defined");
+    }
 
-	return redisUrl;
+    return redisUrl;
 }
 
 function describeRedisTarget(redisUrl: string) {
-	try {
-		const parsed = new URL(redisUrl);
-		return `${parsed.protocol}//${parsed.host}`;
-	} catch {
-		return "<invalid REDIS_URL>";
-	}
+    try {
+        const parsed = new URL(redisUrl);
+        return `${parsed.protocol}//${parsed.host}`;
+    } catch {
+        return "<invalid REDIS_URL>";
+    }
 }
 
 async function createRedisConnection() {
-	const redisUrl = getRequiredRedisUrl();
-	const redisTarget = describeRedisTarget(redisUrl);
+    const redisUrl = getRequiredRedisUrl();
+    const redisTarget = describeRedisTarget(redisUrl);
 
-	if (redisTarget === "<invalid REDIS_URL>") {
-		throw new Error("REDIS_URL is not a valid URL");
-	}
+    if (redisTarget === "<invalid REDIS_URL>") {
+        throw new Error("REDIS_URL is not a valid URL");
+    }
 
-	const redis = new IORedis(redisUrl, {
-		maxRetriesPerRequest: null,
-		lazyConnect: true,
-		enableOfflineQueue: false,
-	});
+    const redis = new IORedis(redisUrl, {
+        maxRetriesPerRequest: null,
+        lazyConnect: true,
+        enableOfflineQueue: false,
+    });
 
-	logger.info(`Connecting to Redis at ${redisTarget}`);
+    logger.info(`Connecting to Redis at ${redisTarget}`);
 
-	try {
-		await redis.connect();
-		await redis.ping();
-		logger.info(`Connected to Redis at ${redisTarget}`);
-		return redis;
-	} catch (error) {
-		await redis.quit().catch(() => undefined);
-		throw error;
-	}
+    try {
+        await redis.connect();
+        await redis.ping();
+        logger.info(`Connected to Redis at ${redisTarget}`);
+        return redis;
+    } catch (error) {
+        await redis.quit().catch(() => undefined);
+        throw error;
+    }
 }
 
 function createSchedulerWorker(connection: IORedis) {
-	const schedulerQueue = new Queue("scheduler", { connection });
-	const worker = new Worker(
-		"scheduler",
-		async (job: Job) => {
-			logger.info(`Processing job: ${job.name}`);
+    const schedulerQueue = new Queue("scheduler", { connection });
+    const worker = new Worker(
+        "scheduler",
+        async (job: Job) => {
+            logger.info(`Processing job: ${job.name}`);
 
-			try {
-				switch (job.name) {
-					case JOBS.MAINTENANCE_PROCESSOR:
-						await processMaintenanceTransitions();
-						break;
-					case JOBS.DATA_RETENTION:
-						await processDataRetention();
-						break;
-					default:
-						logger.warn(`Unknown job: ${job.name}`);
-				}
-				logger.info(`Job completed: ${job.name}`);
-			} catch (error) {
-				logger.error(`Job failed: ${job.name}`, error);
-				throw error;
-			}
-		},
-		{ connection },
-	);
+            try {
+                switch (job.name) {
+                    case JOBS.MAINTENANCE_PROCESSOR:
+                        await processMaintenanceTransitions();
+                        break;
+                    case JOBS.DATA_RETENTION:
+                        await processDataRetention();
+                        break;
+                    default:
+                        logger.warn(`Unknown job: ${job.name}`);
+                }
+                logger.info(`Job completed: ${job.name}`);
+            } catch (error) {
+                logger.error(`Job failed: ${job.name}`, error);
+                throw error;
+            }
+        },
+        { connection },
+    );
 
-	worker.on("failed", (job: Job | undefined, err: Error) => {
-		logger.error(`Job ${job?.name} failed:`, err);
-	});
+    worker.on("failed", (job: Job | undefined, err: Error) => {
+        logger.error(`Job ${job?.name} failed:`, err);
+    });
 
-	worker.on("error", (err: Error) => {
-		logger.error("Worker error:", err);
-	});
+    worker.on("error", (err: Error) => {
+        logger.error("Worker error:", err);
+    });
 
-	return { schedulerQueue, worker };
+    return { schedulerQueue, worker };
 }
 
 /**
@@ -117,35 +117,35 @@ function createSchedulerWorker(connection: IORedis) {
  * Registers a "maintenance-processor" job to run every minute and a "data-retention" job to run daily at 2:00 AM.
  */
 async function registerJobs() {
-	if (!schedulerQueue) {
-		throw new Error("Scheduler queue is not initialized");
-	}
+    if (!schedulerQueue) {
+        throw new Error("Scheduler queue is not initialized");
+    }
 
-	logger.info("Registering scheduler jobs...");
+    logger.info("Registering scheduler jobs...");
 
-	// Maintenance processor - runs every minute
-	await schedulerQueue.upsertJobScheduler(
-		JOBS.MAINTENANCE_PROCESSOR,
-		{ pattern: "* * * * *" }, // Every minute
-		{
-			name: JOBS.MAINTENANCE_PROCESSOR,
-			data: {},
-		},
-	);
-	logger.info("Registered: maintenance-processor (every minute)");
+    // Maintenance processor - runs every minute
+    await schedulerQueue.upsertJobScheduler(
+        JOBS.MAINTENANCE_PROCESSOR,
+        { pattern: "* * * * *" }, // Every minute
+        {
+            name: JOBS.MAINTENANCE_PROCESSOR,
+            data: {},
+        },
+    );
+    logger.info("Registered: maintenance-processor (every minute)");
 
-	// Data retention - runs daily at 2:00 AM
-	await schedulerQueue.upsertJobScheduler(
-		JOBS.DATA_RETENTION,
-		{ pattern: "0 2 * * *" }, // Daily at 2:00 AM
-		{
-			name: JOBS.DATA_RETENTION,
-			data: {},
-		},
-	);
-	logger.info("Registered: data-retention (daily at 2:00 AM)");
+    // Data retention - runs daily at 2:00 AM
+    await schedulerQueue.upsertJobScheduler(
+        JOBS.DATA_RETENTION,
+        { pattern: "0 2 * * *" }, // Daily at 2:00 AM
+        {
+            name: JOBS.DATA_RETENTION,
+            data: {},
+        },
+    );
+    logger.info("Registered: data-retention (daily at 2:00 AM)");
 
-	logger.info("All scheduler jobs registered!");
+    logger.info("All scheduler jobs registered!");
 }
 
 /**
@@ -154,41 +154,41 @@ async function registerJobs() {
  * Closes resources in sequence to finalize processing before terminating the process.
  */
 async function shutdown() {
-	logger.info("Shutting down scheduler...");
-	await notificationWorker?.stop();
-	await worker?.close();
-	await schedulerQueue?.close();
-	await connection?.quit();
-	process.exit(0);
+    logger.info("Shutting down scheduler...");
+    await notificationWorker?.stop();
+    await worker?.close();
+    await schedulerQueue?.close();
+    await connection?.quit();
+    process.exit(0);
 }
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 export async function startScheduler() {
-	connection = await createRedisConnection();
+    connection = await createRedisConnection();
 
-	const scheduler = createSchedulerWorker(connection);
-	schedulerQueue = scheduler.schedulerQueue;
-	worker = scheduler.worker;
+    const scheduler = createSchedulerWorker(connection);
+    schedulerQueue = scheduler.schedulerQueue;
+    worker = scheduler.worker;
 
-	await ensureConfiguration();
-	await registerJobs();
-	notificationWorker = await startNotificationWorker();
+    await ensureConfiguration();
+    await registerJobs();
+    notificationWorker = await startNotificationWorker();
 
-	logger.info("Scheduler is running...");
+    logger.info("Scheduler is running...");
 }
 
 function isDirectExecution() {
-	const entrypoint = process.argv[1];
-	return Boolean(
-		entrypoint && import.meta.url === pathToFileURL(entrypoint).href,
-	);
+    const entrypoint = process.argv[1];
+    return Boolean(
+        entrypoint && import.meta.url === pathToFileURL(entrypoint).href,
+    );
 }
 
 if (isDirectExecution()) {
-	startScheduler().catch((error) => {
-		logger.error("Scheduler failed to start", error);
-		process.exit(1);
-	});
+    startScheduler().catch((error) => {
+        logger.error("Scheduler failed to start", error);
+        process.exit(1);
+    });
 }

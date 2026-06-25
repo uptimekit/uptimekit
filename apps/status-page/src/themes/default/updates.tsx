@@ -8,39 +8,39 @@ import { Header } from "./components/header";
 import { UpdatesList } from "./components/updates-list";
 
 export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
-	const { config, incidentsByDate, activeIssues, selectedPeriod } = data;
-	const { design } = config;
-	const updatesPath = buildPath("/updates", config.routeSlug);
+    const { config, incidentsByDate, activeIssues, selectedPeriod } = data;
+    const { design } = config;
+    const updatesPath = buildPath("/updates", config.routeSlug);
 
-	return (
-		<div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-			<Header
-				title={config.name}
-				logoUrl={design.logoUrl}
-				contactUrl={design.contactUrl}
-			/>
+    return (
+        <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+            <Header
+                title={config.name}
+                logoUrl={design.logoUrl}
+                contactUrl={design.contactUrl}
+            />
 
-			<main className="w-full flex-1">
-				<div className="mx-auto max-w-5xl px-4 py-12">
-					<BackLink href={buildPath("/", config.routeSlug)} />
+            <main className="w-full flex-1">
+                <div className="mx-auto max-w-5xl px-4 py-12">
+                    <BackLink href={buildPath("/", config.routeSlug)} />
 
-					<h1 className="mb-8 font-bold text-3xl text-foreground">
-						Incident History
-					</h1>
+                    <h1 className="mb-8 font-bold text-3xl text-foreground">
+                        Incident History
+                    </h1>
 
-					<IncidentHistoryPeriodSelector
-						basePath={updatesPath}
-						selectedPeriod={selectedPeriod}
-					/>
-					<CurrentIssuesBanner activeIssues={activeIssues} />
-					<UpdatesList
-						incidentsByDate={incidentsByDate}
-						selectedPeriod={selectedPeriod}
-					/>
-				</div>
-			</main>
+                    <IncidentHistoryPeriodSelector
+                        basePath={updatesPath}
+                        selectedPeriod={selectedPeriod}
+                    />
+                    <CurrentIssuesBanner activeIssues={activeIssues} />
+                    <UpdatesList
+                        incidentsByDate={incidentsByDate}
+                        selectedPeriod={selectedPeriod}
+                    />
+                </div>
+            </main>
 
-			<Footer />
-		</div>
-	);
+            <Footer />
+        </div>
+    );
 }

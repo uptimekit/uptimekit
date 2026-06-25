@@ -1,36 +1,36 @@
 {
-	"version": 1,
-	"skills": {
-		"design-an-interface": {
-			"source": "mattpocock/skills",
-			"sourceType": "github",
-			"computedHash": "885b05367fb1cf61a1e27e0d50f14d2502a05c1fa276c6e9ea050ce6a90e7095"
-		},
-		"grill-me": {
-			"source": "mattpocock/skills",
-			"sourceType": "github",
-			"computedHash": "784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea"
-		},
-		"improve-codebase-architecture": {
-			"source": "mattpocock/skills",
-			"sourceType": "github",
-			"computedHash": "b627d5ecf36847d678b470aa87f46da602ee1013af8c97cd26ad4d005e59662d"
-		},
-		"shadcn": {
-			"source": "shadcn/ui",
-			"sourceType": "github",
-			"skillPath": "skills/shadcn/SKILL.md",
-			"computedHash": "80a6226e78f6d1fe464214ae0ef449d49d8ffaa3e7704f011e9b418c678ad4d1"
-		},
-		"tdd": {
-			"source": "mattpocock/skills",
-			"sourceType": "github",
-			"computedHash": "ad055544599481182d0079c4198e85da26677cb408a677be2da04915375f0427"
-		},
-		"to-prd": {
-			"source": "mattpocock/skills",
-			"sourceType": "github",
-			"computedHash": "8351452ad372ea4f839d3f7b951927b417851ffa49e7e6af28ea0f0ae111dca8"
-		}
-	}
+    "version": 1,
+    "skills": {
+        "design-an-interface": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "computedHash": "885b05367fb1cf61a1e27e0d50f14d2502a05c1fa276c6e9ea050ce6a90e7095"
+        },
+        "grill-me": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "computedHash": "784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea"
+        },
+        "improve-codebase-architecture": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "computedHash": "b627d5ecf36847d678b470aa87f46da602ee1013af8c97cd26ad4d005e59662d"
+        },
+        "shadcn": {
+            "source": "shadcn/ui",
+            "sourceType": "github",
+            "skillPath": "skills/shadcn/SKILL.md",
+            "computedHash": "80a6226e78f6d1fe464214ae0ef449d49d8ffaa3e7704f011e9b418c678ad4d1"
+        },
+        "tdd": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "computedHash": "ad055544599481182d0079c4198e85da26677cb408a677be2da04915375f0427"
+        },
+        "to-prd": {
+            "source": "mattpocock/skills",
+            "sourceType": "github",
+            "computedHash": "8351452ad372ea4f839d3f7b951927b417851ffa49e7e6af28ea0f0ae111dca8"
+        }
+    }
 }

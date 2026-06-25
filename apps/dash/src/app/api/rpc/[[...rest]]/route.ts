@@ -11,58 +11,58 @@ import type { NextRequest } from "next/server";
 
 const logger = createLogger("RPC");
 const evlogOrpcOptions = {
-	routes: {
-		"/api/rpc/**": { service: "@uptimekit/api" },
-	},
+    routes: {
+        "/api/rpc/**": { service: "@uptimekit/api" },
+    },
 };
 
 const rpcHandler = new RPCHandler(appRouter, {
-	interceptors: [
-		onError((error) => {
-			logger.error("RPC error:", error);
-		}),
-	],
+    interceptors: [
+        onError((error) => {
+            logger.error("RPC error:", error);
+        }),
+    ],
 });
 const apiHandler = new OpenAPIHandler(appRouter, {
-	plugins: [
-		new OpenAPIReferencePlugin({
-			schemaConverters: [new ZodToJsonSchemaConverter()],
-		}),
-	],
-	interceptors: [
-		onError((error) => {
-			logger.error("OpenAPI error:", error);
-		}),
-	],
+    plugins: [
+        new OpenAPIReferencePlugin({
+            schemaConverters: [new ZodToJsonSchemaConverter()],
+        }),
+    ],
+    interceptors: [
+        onError((error) => {
+            logger.error("OpenAPI error:", error);
+        }),
+    ],
 });
 type OrpcHandleOptions = Parameters<typeof rpcHandler.handle>[1];
 
 const orpcHandler = withOrpcEvlog(
-	{
-		async handle(request: Request, options?: OrpcHandleOptions) {
-			const handleOptions = options ?? {
-				context: await createContext(request),
-			};
-			const rpcResult = await rpcHandler.handle(request, handleOptions);
-			if (rpcResult.response) return rpcResult;
+    {
+        async handle(request: Request, options?: OrpcHandleOptions) {
+            const handleOptions = options ?? {
+                context: await createContext(request),
+            };
+            const rpcResult = await rpcHandler.handle(request, handleOptions);
+            if (rpcResult.response) return rpcResult;
 
-			return apiHandler.handle(
-				request,
-				handleOptions as Parameters<typeof apiHandler.handle>[1],
-			);
-		},
-	},
-	evlogOrpcOptions,
+            return apiHandler.handle(
+                request,
+                handleOptions as Parameters<typeof apiHandler.handle>[1],
+            );
+        },
+    },
+    evlogOrpcOptions,
 );
 
 async function handleRequest(req: NextRequest) {
-	const result = await orpcHandler.handle(req, {
-		prefix: "/api/rpc",
-		context: await createContext(req),
-	});
-	if (result.response) return result.response;
+    const result = await orpcHandler.handle(req, {
+        prefix: "/api/rpc",
+        context: await createContext(req),
+    });
+    if (result.response) return result.response;
 
-	return new Response("Not found", { status: 404 });
+    return new Response("Not found", { status: 404 });
 }
 
 export const GET = handleRequest;

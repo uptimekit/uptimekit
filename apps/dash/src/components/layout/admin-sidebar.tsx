@@ -1,13 +1,13 @@
 "use client";
 
 import {
-	faChartColumn,
-	faChevronLeft,
-	faGear,
-	faNetworkWired,
-	faServer,
-	faShieldHalved,
-	faUsers,
+    faChartColumn,
+    faChevronLeft,
+    faGear,
+    faNetworkWired,
+    faServer,
+    faShieldHalved,
+    faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
@@ -16,145 +16,157 @@ import type * as React from "react";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-	Sidebar,
-	SidebarContent,
-	SidebarFooter,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarGroupLabel,
-	SidebarHeader,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	SidebarRail,
-	SidebarSeparator,
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarRail,
+    SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 
 // Admin Navigation items
 const adminNav = [
-	{
-		title: "Overview",
-		url: "/admin",
-		icon: faChartColumn,
-	},
-	{
-		title: "Workers",
-		url: "/admin/workers",
-		icon: faServer,
-	},
-	{
-		title: "Users",
-		url: "/admin/users",
-		icon: faUsers,
-	},
-	{
-		title: "Organizations",
-		url: "/admin/organizations",
-		icon: faShieldHalved,
-	},
-	{
-		title: "Import",
-		url: "/admin/import",
-		icon: faNetworkWired,
-	},
-	{
-		title: "Settings",
-		url: "/admin/settings",
-		icon: faGear,
-	},
+    {
+        title: "Overview",
+        url: "/admin",
+        icon: faChartColumn,
+    },
+    {
+        title: "Workers",
+        url: "/admin/workers",
+        icon: faServer,
+    },
+    {
+        title: "Users",
+        url: "/admin/users",
+        icon: faUsers,
+    },
+    {
+        title: "Organizations",
+        url: "/admin/organizations",
+        icon: faShieldHalved,
+    },
+    {
+        title: "Import",
+        url: "/admin/import",
+        icon: faNetworkWired,
+    },
+    {
+        title: "Settings",
+        url: "/admin/settings",
+        icon: faGear,
+    },
 ] as const;
 
 export function AdminSidebar({
-	...props
+    ...props
 }: React.ComponentProps<typeof Sidebar>) {
-	const pathname = usePathname();
+    const pathname = usePathname();
 
-	return (
-		<Sidebar collapsible="icon" variant="inset" {...props}>
-			<SidebarHeader>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<SidebarMenuButton size="lg" render={<Link href="/" />}>
-							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-								<FontAwesomeIcon icon={faChevronLeft} className="size-4" />
-							</div>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-semibold">Back to App</span>
-								<span className="truncate text-xs">Exit admin area</span>
-							</div>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-				</SidebarMenu>
-			</SidebarHeader>
-			<SidebarContent>
-				<SidebarGroup>
-					<SidebarGroupLabel>Administration</SidebarGroupLabel>
-					<SidebarGroupContent>
-						<SidebarMenu>
-							{adminNav.map((item) => (
-								<SidebarMenuItem key={item.title}>
-									<SidebarMenuButton
-										isActive={
-											item.url === "/admin"
-												? pathname === "/admin"
-												: pathname.startsWith(item.url)
-										}
-										tooltip={item.title}
-										render={<Link href={item.url} />}
-									>
-										<FontAwesomeIcon icon={item.icon} />
-										<span>{item.title}</span>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							))}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-			</SidebarContent>
-			<SidebarSeparator />
-			<SidebarFooter>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<AdminUserMenu />
-					</SidebarMenuItem>
-				</SidebarMenu>
-			</SidebarFooter>
-			<SidebarRail />
-		</Sidebar>
-	);
+    return (
+        <Sidebar collapsible="icon" variant="inset" {...props}>
+            <SidebarHeader>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton size="lg" render={<Link href="/" />}>
+                            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                                <FontAwesomeIcon
+                                    icon={faChevronLeft}
+                                    className="size-4"
+                                />
+                            </div>
+                            <div className="grid flex-1 text-left text-sm leading-tight">
+                                <span className="truncate font-semibold">
+                                    Back to App
+                                </span>
+                                <span className="truncate text-xs">
+                                    Exit admin area
+                                </span>
+                            </div>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarHeader>
+            <SidebarContent>
+                <SidebarGroup>
+                    <SidebarGroupLabel>Administration</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {adminNav.map((item) => (
+                                <SidebarMenuItem key={item.title}>
+                                    <SidebarMenuButton
+                                        isActive={
+                                            item.url === "/admin"
+                                                ? pathname === "/admin"
+                                                : pathname.startsWith(item.url)
+                                        }
+                                        tooltip={item.title}
+                                        render={<Link href={item.url} />}
+                                    >
+                                        <FontAwesomeIcon icon={item.icon} />
+                                        <span>{item.title}</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+            </SidebarContent>
+            <SidebarSeparator />
+            <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <AdminUserMenu />
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
+            <SidebarRail />
+        </Sidebar>
+    );
 }
 
 function AdminUserMenu() {
-	const [isMounted, setIsMounted] = useState(false);
-	const { data: session, isPending } = authClient.useSession();
+    const [isMounted, setIsMounted] = useState(false);
+    const { data: session, isPending } = authClient.useSession();
 
-	useEffect(() => {
-		setIsMounted(true);
-	}, []);
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
-	if (!isMounted || isPending) {
-		return <Skeleton className="h-12 w-full rounded-lg" />;
-	}
+    if (!isMounted || isPending) {
+        return <Skeleton className="h-12 w-full rounded-lg" />;
+    }
 
-	if (!session) return null;
+    if (!session) return null;
 
-	return (
-		<SidebarMenuButton
-			size="lg"
-			className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-		>
-			<Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
-				<AvatarImage src={session.user.image || ""} alt={session.user.name} />
-				<AvatarFallback className="rounded-lg">
-					{session.user.name.slice(0, 2).toUpperCase()}
-				</AvatarFallback>
-			</Avatar>
-			<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-				<span className="truncate font-semibold text-red-500">Admin Mode</span>
-				<span className="truncate text-xs">{session.user.email}</span>
-			</div>
-		</SidebarMenuButton>
-	);
+    return (
+        <SidebarMenuButton
+            size="lg"
+            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+        >
+            <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
+                <AvatarImage
+                    src={session.user.image || ""}
+                    alt={session.user.name}
+                />
+                <AvatarFallback className="rounded-lg">
+                    {session.user.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-semibold text-red-500">
+                    Admin Mode
+                </span>
+                <span className="truncate text-xs">{session.user.email}</span>
+            </div>
+        </SidebarMenuButton>
+    );
 }

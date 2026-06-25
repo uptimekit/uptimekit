@@ -9,44 +9,44 @@ import { loadUpdatesComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 export default async function UpdatesPage({
-	searchParams,
+    searchParams,
 }: {
-	searchParams: Promise<{ period?: string }>;
+    searchParams: Promise<{ period?: string }>;
 }) {
-	const headersList = await headers();
-	const host = getHostFromHeaders(headersList);
-	const params = await searchParams;
+    const headersList = await headers();
+    const host = getHostFromHeaders(headersList);
+    const params = await searchParams;
 
-	if (!host) {
-		notFound();
-	}
+    if (!host) {
+        notFound();
+    }
 
-	const domain = getDomainFromHost(host);
-	const pageConfig = await getStatusPageByDomain(domain);
+    const domain = getDomainFromHost(host);
+    const pageConfig = await getStatusPageByDomain(domain);
 
-	if (!pageConfig) {
-		notFound();
-	}
+    if (!pageConfig) {
+        notFound();
+    }
 
-	const period = parseIncidentHistoryPeriod(params.period);
-	const currentPath =
-		period === "all" ? "/updates" : `/updates?period=${period}`;
+    const period = parseIncidentHistoryPeriod(params.period);
+    const currentPath =
+        period === "all" ? "/updates" : `/updates?period=${period}`;
 
-	await checkStatusPageAccess(pageConfig, currentPath);
+    await checkStatusPageAccess(pageConfig, currentPath);
 
-	const design = (pageConfig.design as any) || {};
-	const themeId = design.themeId || "default";
+    const design = (pageConfig.design as any) || {};
+    const themeId = design.themeId || "default";
 
-	const UpdatesPage = await loadUpdatesComponent(themeId);
+    const UpdatesPage = await loadUpdatesComponent(themeId);
 
-	const data = await prepareUpdatesPageData(pageConfig, period);
+    const data = await prepareUpdatesPageData(pageConfig, period);
 
-	return (
-		<ThemePageWrapper
-			themeId={themeId}
-			theme={design.theme}
-			ThemeComponent={UpdatesPage}
-			componentProps={{ data }}
-		/>
-	);
+    return (
+        <ThemePageWrapper
+            themeId={themeId}
+            theme={design.theme}
+            ThemeComponent={UpdatesPage}
+            componentProps={{ data }}
+        />
+    );
 }

@@ -1,31 +1,31 @@
 {
-	"name": "@uptimekit/auth",
-	"private": true,
-	"exports": {
-		".": {
-			"default": "./src/index.ts"
-		},
-		"./*": {
-			"default": "./src/*.ts"
-		}
-	},
-	"type": "module",
-	"scripts": {
-		"check-types": "tsc --noEmit -p tsconfig.json"
-	},
-	"devDependencies": {
-		"@uptimekit/config": "workspace:*",
-		"typescript": "^5.9.3"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"dependencies": {
-		"@better-auth/api-key": "^1.6.9",
-		"@uptimekit/db": "workspace:*",
-		"better-auth": "catalog:",
-		"drizzle-orm": "catalog:",
-		"dotenv": "catalog:",
-		"zod": "catalog:"
-	}
+    "name": "@uptimekit/auth",
+    "private": true,
+    "exports": {
+        ".": {
+            "default": "./src/index.ts"
+        },
+        "./*": {
+            "default": "./src/*.ts"
+        }
+    },
+    "type": "module",
+    "scripts": {
+        "check-types": "tsc --noEmit -p tsconfig.json"
+    },
+    "devDependencies": {
+        "@uptimekit/config": "workspace:*",
+        "typescript": "^5.9.3"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "dependencies": {
+        "@better-auth/api-key": "^1.6.9",
+        "@uptimekit/db": "workspace:*",
+        "better-auth": "catalog:",
+        "drizzle-orm": "catalog:",
+        "dotenv": "catalog:",
+        "zod": "catalog:"
+    }
 }

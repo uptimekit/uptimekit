@@ -2,34 +2,34 @@ import type { z } from "zod";
 import type { IntegrationEventName } from "../../lib/events";
 
 export interface IntegrationDefinition<Config = unknown> {
-	id: string;
-	name: string;
-	type: "export" | "import";
-	logo?: string;
-	description: string;
-	configSchema: z.ZodSchema<Config>;
-	events: IntegrationEventName[];
-	handler: (
-		config: Config,
-		event: IntegrationEventName,
-		payload: unknown,
-	) => Promise<void>;
+    id: string;
+    name: string;
+    type: "export" | "import";
+    logo?: string;
+    description: string;
+    configSchema: z.ZodSchema<Config>;
+    events: IntegrationEventName[];
+    handler: (
+        config: Config,
+        event: IntegrationEventName,
+        payload: unknown,
+    ) => Promise<void>;
 }
 
 class IntegrationRegistry {
-	private integrations = new Map<string, IntegrationDefinition<any>>();
+    private integrations = new Map<string, IntegrationDefinition<any>>();
 
-	register(integration: IntegrationDefinition<any>) {
-		this.integrations.set(integration.id, integration);
-	}
+    register(integration: IntegrationDefinition<any>) {
+        this.integrations.set(integration.id, integration);
+    }
 
-	get(id: string) {
-		return this.integrations.get(id);
-	}
+    get(id: string) {
+        return this.integrations.get(id);
+    }
 
-	list() {
-		return Array.from(this.integrations.values());
-	}
+    list() {
+        return Array.from(this.integrations.values());
+    }
 }
 
 export const integrationRegistry = new IntegrationRegistry();

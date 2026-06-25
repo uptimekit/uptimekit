@@ -7,29 +7,29 @@ import { Header } from "./components/header";
 import { MaintenanceDetailCard } from "./components/maintenance-detail-card";
 
 export default function DefaultMaintenanceDetail({
-	data,
+    data,
 }: ThemeMaintenanceDetailProps) {
-	const { config, maintenance, activeIssues } = data;
-	const { design } = config;
+    const { config, maintenance, activeIssues } = data;
+    const { design } = config;
 
-	return (
-		<div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-			<Header
-				title={config.name}
-				logoUrl={design.logoUrl}
-				contactUrl={design.contactUrl}
-				slug={config.routeSlug}
-			/>
+    return (
+        <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+            <Header
+                title={config.name}
+                logoUrl={design.logoUrl}
+                contactUrl={design.contactUrl}
+                slug={config.routeSlug}
+            />
 
-			<main className="w-full flex-1">
-				<div className="mx-auto max-w-4xl px-4 py-10">
-					<BackLink href={buildPath("/", config.routeSlug)} />
-					<CurrentIssuesBanner activeIssues={activeIssues} />
-					<MaintenanceDetailCard maintenance={maintenance} />
-				</div>
-			</main>
+            <main className="w-full flex-1">
+                <div className="mx-auto max-w-4xl px-4 py-10">
+                    <BackLink href={buildPath("/", config.routeSlug)} />
+                    <CurrentIssuesBanner activeIssues={activeIssues} />
+                    <MaintenanceDetailCard maintenance={maintenance} />
+                </div>
+            </main>
 
-			<Footer />
-		</div>
-	);
+            <Footer />
+        </div>
+    );
 }

@@ -2,9 +2,9 @@
 
 import { type MouseEvent, useState } from "react";
 import {
-	getViewportTooltipPosition,
-	ViewportTooltip,
-	type ViewportTooltipPosition,
+    getViewportTooltipPosition,
+    ViewportTooltip,
+    type ViewportTooltipPosition,
 } from "@/components/viewport-tooltip";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
@@ -14,25 +14,25 @@ import type { StatusType, UptimeDay } from "../../types";
  * Convert a duration in milliseconds into a concise human-readable downtime string.
  */
 function formatDowntime(ms: number): string {
-	if (ms <= 0) return "No downtime";
+    if (ms <= 0) return "No downtime";
 
-	const seconds = Math.floor(ms / 1000);
-	const minutes = Math.floor(seconds / 60);
-	const hours = Math.floor(minutes / 60);
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
 
-	if (hours > 0) {
-		const remainingMinutes = minutes % 60;
-		return remainingMinutes > 0
-			? `${hours}h ${remainingMinutes}m down`
-			: `${hours}h down`;
-	}
-	if (minutes > 0) {
-		const remainingSeconds = seconds % 60;
-		return remainingSeconds > 0
-			? `${minutes}m ${remainingSeconds}s down`
-			: `${minutes}m down`;
-	}
-	return `${seconds}s down`;
+    if (hours > 0) {
+        const remainingMinutes = minutes % 60;
+        return remainingMinutes > 0
+            ? `${hours}h ${remainingMinutes}m down`
+            : `${hours}h down`;
+    }
+    if (minutes > 0) {
+        const remainingSeconds = seconds % 60;
+        return remainingSeconds > 0
+            ? `${minutes}m ${remainingSeconds}s down`
+            : `${minutes}m down`;
+    }
+    return `${seconds}s down`;
 }
 
 /**
@@ -40,23 +40,23 @@ function formatDowntime(ms: number): string {
  * Handles YYYY-MM-DD format without timezone shift.
  */
 function formatTooltipDate(dateString: string): string {
-	if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-		const [year, month, day] = dateString.split("-").map(Number);
-		const date = new Date(year, month - 1, day);
-		return date.toLocaleDateString("en-US", {
-			weekday: "long",
-			month: "short",
-			day: "numeric",
-			year: "numeric",
-		});
-	}
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        });
+    }
 
-	return new Date(dateString).toLocaleDateString("en-US", {
-		weekday: "long",
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-	});
+    return new Date(dateString).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
 }
 
 /**
@@ -64,459 +64,526 @@ function formatTooltipDate(dateString: string): string {
  * Handles formats like: "5h 15m", "6m", "30s down", "5h down", etc.
  */
 function parseDuration(durationStr: string | undefined): number {
-	if (!durationStr) return 0;
+    if (!durationStr) return 0;
 
-	// Remove "down" suffix and trim
-	const clean = durationStr.replace(/down/gi, "").trim();
-	if (!clean) return 0;
+    // Remove "down" suffix and trim
+    const clean = durationStr.replace(/down/gi, "").trim();
+    if (!clean) return 0;
 
-	let totalMs = 0;
+    let totalMs = 0;
 
-	// Parse hours (e.g., "5h" or "5 h")
-	const hoursMatch = clean.match(/(\d+)\s*h/i);
-	if (hoursMatch) {
-		totalMs += Number.parseInt(hoursMatch[1], 10) * 60 * 60 * 1000;
-	}
+    // Parse hours (e.g., "5h" or "5 h")
+    const hoursMatch = clean.match(/(\d+)\s*h/i);
+    if (hoursMatch) {
+        totalMs += Number.parseInt(hoursMatch[1], 10) * 60 * 60 * 1000;
+    }
 
-	// Parse minutes (e.g., "15m" or "15 m")
-	const minutesMatch = clean.match(/(\d+)\s*m/i);
-	if (minutesMatch) {
-		totalMs += Number.parseInt(minutesMatch[1], 10) * 60 * 1000;
-	}
+    // Parse minutes (e.g., "15m" or "15 m")
+    const minutesMatch = clean.match(/(\d+)\s*m/i);
+    if (minutesMatch) {
+        totalMs += Number.parseInt(minutesMatch[1], 10) * 60 * 1000;
+    }
 
-	// Parse seconds (e.g., "30s" or "30 s")
-	const secondsMatch = clean.match(/(\d+)\s*s/i);
-	if (secondsMatch) {
-		totalMs += Number.parseInt(secondsMatch[1], 10) * 1000;
-	}
+    // Parse seconds (e.g., "30s" or "30 s")
+    const secondsMatch = clean.match(/(\d+)\s*s/i);
+    if (secondsMatch) {
+        totalMs += Number.parseInt(secondsMatch[1], 10) * 1000;
+    }
 
-	return totalMs;
+    return totalMs;
 }
 
 function isMaintenanceStatus(status: StatusType): boolean {
-	return status === "maintenance" || status === "maintenance_scheduled";
+    return status === "maintenance" || status === "maintenance_scheduled";
 }
 
 function formatMaintenanceDuration(day: UptimeDay): string {
-	const maintenanceMs = day.maintenanceMs ?? parseDuration(day.duration);
+    const maintenanceMs = day.maintenanceMs ?? parseDuration(day.duration);
 
-	if (maintenanceMs <= 0) {
-		return "Maintenance excluded from uptime";
-	}
+    if (maintenanceMs <= 0) {
+        return "Maintenance excluded from uptime";
+    }
 
-	return `${formatDowntime(maintenanceMs).replace(/ down$/, "")} maintenance`;
+    return `${formatDowntime(maintenanceMs).replace(/ down$/, "")} maintenance`;
 }
 
 interface UptimeBarProps {
-	days: UptimeDay[];
-	className?: string;
-	style?: "normal" | "length" | "signal";
-	toFixed?: number;
+    days: UptimeDay[];
+    className?: string;
+    style?: "normal" | "length" | "signal";
+    toFixed?: number;
 }
 
 interface UptimeSegment {
-	start: number;
-	length: number;
-	status: StatusType;
+    start: number;
+    length: number;
+    status: StatusType;
 }
 
 const statusColors: Record<StatusType, string> = {
-	operational: "bg-status-operational",
-	degraded: "bg-status-degraded",
-	partial_outage: "bg-status-partial-outage",
-	major_outage: "bg-status-major-outage",
-	maintenance: "bg-status-maintenance",
-	maintenance_scheduled: "bg-status-partial-outage",
-	maintenance_completed: "bg-status-operational",
-	unknown: "bg-status-unknown/20",
+    operational: "bg-status-operational",
+    degraded: "bg-status-degraded",
+    partial_outage: "bg-status-partial-outage",
+    major_outage: "bg-status-major-outage",
+    maintenance: "bg-status-maintenance",
+    maintenance_scheduled: "bg-status-partial-outage",
+    maintenance_completed: "bg-status-operational",
+    unknown: "bg-status-unknown/20",
 };
 
 function buildSegments(days: UptimeDay[]): UptimeSegment[] {
-	if (days.length === 0) {
-		return [];
-	}
+    if (days.length === 0) {
+        return [];
+    }
 
-	const segments: UptimeSegment[] = [];
-	let currentStatus = days[0].status;
-	let start = 0;
+    const segments: UptimeSegment[] = [];
+    let currentStatus = days[0].status;
+    let start = 0;
 
-	for (let index = 1; index < days.length; index++) {
-		if (days[index].status !== currentStatus) {
-			segments.push({
-				start,
-				length: index - start,
-				status: currentStatus,
-			});
-			currentStatus = days[index].status;
-			start = index;
-		}
-	}
+    for (let index = 1; index < days.length; index++) {
+        if (days[index].status !== currentStatus) {
+            segments.push({
+                start,
+                length: index - start,
+                status: currentStatus,
+            });
+            currentStatus = days[index].status;
+            start = index;
+        }
+    }
 
-	segments.push({
-		start,
-		length: days.length - start,
-		status: currentStatus,
-	});
+    segments.push({
+        start,
+        length: days.length - start,
+        status: currentStatus,
+    });
 
-	return segments;
+    return segments;
 }
 
 // Get color for stacked bar segments
 const segmentColors = {
-	uptime: "bg-green-500",
-	minor: "bg-yellow-500", // degraded
-	major: "bg-orange-500", // partial_outage
-	critical: "bg-red-500", // major_outage
-	maintenance: "bg-blue-500",
-	unknown: "bg-neutral-800",
+    uptime: "bg-green-500",
+    minor: "bg-yellow-500", // degraded
+    major: "bg-orange-500", // partial_outage
+    critical: "bg-red-500", // major_outage
+    maintenance: "bg-blue-500",
+    unknown: "bg-neutral-800",
 };
 
 interface BarSegments {
-	uptime: number; // percentage (0-100)
-	minor: number; // percentage
-	major: number; // percentage
-	critical: number; // percentage
-	maintenance: number; // percentage
-	unknown: number; // percentage
+    uptime: number; // percentage (0-100)
+    minor: number; // percentage
+    major: number; // percentage
+    critical: number; // percentage
+    maintenance: number; // percentage
+    unknown: number; // percentage
 }
 
 function calculateSegments(day: UptimeDay): BarSegments {
-	const DAY_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-	const segments: BarSegments = {
-		uptime: 100,
-		minor: 0,
-		major: 0,
-		critical: 0,
-		maintenance: 0,
-		unknown: 0,
-	};
+    const DAY_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    const segments: BarSegments = {
+        uptime: 100,
+        minor: 0,
+        major: 0,
+        critical: 0,
+        maintenance: 0,
+        unknown: 0,
+    };
 
-	if (day.status === "operational" || day.status === "maintenance_completed") {
-		segments.uptime = 100;
-	} else if (day.status === "unknown") {
-		segments.unknown = 100;
-		segments.uptime = 0;
-	} else {
-		// Calculate actual downtime proportion - use downtimeMs or parse duration string
-		const downtimeMs = isMaintenanceStatus(day.status)
-			? (day.maintenanceMs ?? parseDuration(day.duration))
-			: (day.downtimeMs ?? parseDuration(day.duration));
-		const downtimePercent = Math.min(100, (downtimeMs / DAY_MS) * 100);
+    if (
+        day.status === "operational" ||
+        day.status === "maintenance_completed"
+    ) {
+        segments.uptime = 100;
+    } else if (day.status === "unknown") {
+        segments.unknown = 100;
+        segments.uptime = 0;
+    } else {
+        // Calculate actual downtime proportion - use downtimeMs or parse duration string
+        const downtimeMs = isMaintenanceStatus(day.status)
+            ? (day.maintenanceMs ?? parseDuration(day.duration))
+            : (day.downtimeMs ?? parseDuration(day.duration));
+        const downtimePercent = Math.min(100, (downtimeMs / DAY_MS) * 100);
 
-		// Uptime is what's left after downtime
-		segments.uptime = Math.max(0, 100 - downtimePercent);
+        // Uptime is what's left after downtime
+        segments.uptime = Math.max(0, 100 - downtimePercent);
 
-		// Assign downtime to appropriate severity category
-		if (
-			day.status === "maintenance" ||
-			day.status === "maintenance_scheduled"
-		) {
-			segments.maintenance = downtimePercent;
-		} else if (day.status === "degraded") {
-			segments.minor = downtimePercent;
-		} else if (day.status === "partial_outage") {
-			segments.major = downtimePercent;
-		} else if (day.status === "major_outage") {
-			segments.critical = downtimePercent;
-		}
-	}
+        // Assign downtime to appropriate severity category
+        if (
+            day.status === "maintenance" ||
+            day.status === "maintenance_scheduled"
+        ) {
+            segments.maintenance = downtimePercent;
+        } else if (day.status === "degraded") {
+            segments.minor = downtimePercent;
+        } else if (day.status === "partial_outage") {
+            segments.major = downtimePercent;
+        } else if (day.status === "major_outage") {
+            segments.critical = downtimePercent;
+        }
+    }
 
-	return segments;
+    return segments;
 }
 
 function SegmentTooltip({ day, toFixed }: { day: UptimeDay; toFixed: number }) {
-	const segs = calculateSegments(day);
-	const showUptimeSegment =
-		!isMaintenanceStatus(day.status) && segs.uptime > 0 && segs.uptime < 100;
+    const segs = calculateSegments(day);
+    const showUptimeSegment =
+        !isMaintenanceStatus(day.status) &&
+        segs.uptime > 0 &&
+        segs.uptime < 100;
 
-	return (
-		<div className="mt-2 space-y-1 border-t pt-2">
-			{showUptimeSegment && (
-				<div className="flex items-center gap-2 text-xs">
-					<div className="h-2 w-2 rounded-full bg-green-500" />
-					<span className="text-muted-foreground">
-						{segs.uptime.toFixed(toFixed)}% uptime
-					</span>
-				</div>
-			)}
-			{segs.minor > 0 && (
-				<div className="flex items-center gap-2 text-xs">
-					<div className="h-2 w-2 rounded-full bg-yellow-500" />
-					<span className="text-muted-foreground">
-						{segs.minor.toFixed(toFixed)}% minor issues
-					</span>
-				</div>
-			)}
-			{segs.major > 0 && (
-				<div className="flex items-center gap-2 text-xs">
-					<div className="h-2 w-2 rounded-full bg-orange-500" />
-					<span className="text-muted-foreground">
-						{segs.major.toFixed(toFixed)}% major outage
-					</span>
-				</div>
-			)}
-			{segs.critical > 0 && (
-				<div className="flex items-center gap-2 text-xs">
-					<div className="h-2 w-2 rounded-full bg-red-500" />
-					<span className="text-muted-foreground">
-						{segs.critical.toFixed(toFixed)}% critical outage
-					</span>
-				</div>
-			)}
-			{segs.maintenance > 0 && (
-				<div className="flex items-center gap-2 text-xs">
-					<div className="h-2 w-2 rounded-full bg-blue-500" />
-					<span className="text-muted-foreground">Maintenance</span>
-				</div>
-			)}
-			{segs.unknown > 0 && (
-				<div className="flex items-center gap-2 text-xs">
-					<div className="h-2 w-2 rounded-full bg-gray-400" />
-					<span className="text-muted-foreground">Unknown</span>
-				</div>
-			)}
-		</div>
-	);
+    return (
+        <div className="mt-2 space-y-1 border-t pt-2">
+            {showUptimeSegment && (
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-muted-foreground">
+                        {segs.uptime.toFixed(toFixed)}% uptime
+                    </span>
+                </div>
+            )}
+            {segs.minor > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                    <span className="text-muted-foreground">
+                        {segs.minor.toFixed(toFixed)}% minor issues
+                    </span>
+                </div>
+            )}
+            {segs.major > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full bg-orange-500" />
+                    <span className="text-muted-foreground">
+                        {segs.major.toFixed(toFixed)}% major outage
+                    </span>
+                </div>
+            )}
+            {segs.critical > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full bg-red-500" />
+                    <span className="text-muted-foreground">
+                        {segs.critical.toFixed(toFixed)}% critical outage
+                    </span>
+                </div>
+            )}
+            {segs.maintenance > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full bg-blue-500" />
+                    <span className="text-muted-foreground">Maintenance</span>
+                </div>
+            )}
+            {segs.unknown > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                    <div className="h-2 w-2 rounded-full bg-gray-400" />
+                    <span className="text-muted-foreground">Unknown</span>
+                </div>
+            )}
+        </div>
+    );
 }
 
 function StackedBar({ segments }: { segments: BarSegments }) {
-	const { uptime, minor, major, critical, maintenance, unknown } = segments;
+    const { uptime, minor, major, critical, maintenance, unknown } = segments;
 
-	return (
-		<div className="flex h-full w-full flex-col overflow-hidden rounded-[1px]">
-			{/* Uptime - top portion */}
-			{uptime > 0 && (
-				<div
-					className={cn("w-full transition-opacity", segmentColors.uptime)}
-					style={{ height: `${uptime}%` }}
-				/>
-			)}
-			{/* Unknown status - gray */}
-			{unknown > 0 && (
-				<div
-					className={cn("w-full transition-opacity", segmentColors.unknown)}
-					style={{ height: `${unknown}%` }}
-				/>
-			)}
-			{/* Minor issues */}
-			{minor > 0 && (
-				<div
-					className={cn("w-full transition-opacity", segmentColors.minor)}
-					style={{ height: `${minor}%` }}
-				/>
-			)}
-			{/* Major issues */}
-			{major > 0 && (
-				<div
-					className={cn("w-full transition-opacity", segmentColors.major)}
-					style={{ height: `${major}%` }}
-				/>
-			)}
-			{/* Critical issues */}
-			{critical > 0 && (
-				<div
-					className={cn("w-full transition-opacity", segmentColors.critical)}
-					style={{ height: `${critical}%` }}
-				/>
-			)}
-			{/* Maintenance */}
-			{maintenance > 0 && (
-				<div
-					className={cn("w-full transition-opacity", segmentColors.maintenance)}
-					style={{ height: `${maintenance}%` }}
-				/>
-			)}
-		</div>
-	);
+    return (
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-[1px]">
+            {/* Uptime - top portion */}
+            {uptime > 0 && (
+                <div
+                    className={cn(
+                        "w-full transition-opacity",
+                        segmentColors.uptime,
+                    )}
+                    style={{ height: `${uptime}%` }}
+                />
+            )}
+            {/* Unknown status - gray */}
+            {unknown > 0 && (
+                <div
+                    className={cn(
+                        "w-full transition-opacity",
+                        segmentColors.unknown,
+                    )}
+                    style={{ height: `${unknown}%` }}
+                />
+            )}
+            {/* Minor issues */}
+            {minor > 0 && (
+                <div
+                    className={cn(
+                        "w-full transition-opacity",
+                        segmentColors.minor,
+                    )}
+                    style={{ height: `${minor}%` }}
+                />
+            )}
+            {/* Major issues */}
+            {major > 0 && (
+                <div
+                    className={cn(
+                        "w-full transition-opacity",
+                        segmentColors.major,
+                    )}
+                    style={{ height: `${major}%` }}
+                />
+            )}
+            {/* Critical issues */}
+            {critical > 0 && (
+                <div
+                    className={cn(
+                        "w-full transition-opacity",
+                        segmentColors.critical,
+                    )}
+                    style={{ height: `${critical}%` }}
+                />
+            )}
+            {/* Maintenance */}
+            {maintenance > 0 && (
+                <div
+                    className={cn(
+                        "w-full transition-opacity",
+                        segmentColors.maintenance,
+                    )}
+                    style={{ height: `${maintenance}%` }}
+                />
+            )}
+        </div>
+    );
 }
 
 export function UptimeBar({
-	days,
-	className,
-	style = "normal",
-	toFixed = 2,
+    days,
+    className,
+    style = "normal",
+    toFixed = 2,
 }: UptimeBarProps) {
-	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-	const [tooltipPosition, setTooltipPosition] =
-		useState<ViewportTooltipPosition | null>(null);
-	const segments = buildSegments(days);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+    const [tooltipPosition, setTooltipPosition] =
+        useState<ViewportTooltipPosition | null>(null);
+    const segments = buildSegments(days);
 
-	const handleDayMouseEnter = (
-		index: number,
-		event: MouseEvent<HTMLDivElement>,
-	) => {
-		setHoveredIndex(index);
-		setTooltipPosition(getViewportTooltipPosition(event.currentTarget));
-	};
+    const handleDayMouseEnter = (
+        index: number,
+        event: MouseEvent<HTMLDivElement>,
+    ) => {
+        setHoveredIndex(index);
+        setTooltipPosition(getViewportTooltipPosition(event.currentTarget));
+    };
 
-	const handleDayMouseLeave = () => {
-		setHoveredIndex(null);
-		setTooltipPosition(null);
-	};
+    const handleDayMouseLeave = () => {
+        setHoveredIndex(null);
+        setTooltipPosition(null);
+    };
 
-	return (
-		<div className={cn("relative w-full", className)}>
-			{style === "signal" ? (
-				<>
-					<div className="mb-3 flex select-none justify-between text-muted-foreground/60 text-xs">
-						<span>{days.length} days ago</span>
-						<div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
-						<span>Today</span>
-					</div>
-					<div className="relative">
-						<div
-							className="relative grid gap-x-[2px]"
-							style={{
-								gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
-							}}
-						>
-							{segments.map((segment) => (
-								<div
-									key={`${segment.start}-${segment.status}`}
-									className={cn(
-										"relative h-1.5 rounded-full transition-opacity",
-										statusColors[segment.status],
-									)}
-									style={{
-										gridColumn: `${segment.start + 1} / span ${segment.length}`,
-									}}
-								/>
-							))}
-						</div>
-						<div
-							className="absolute inset-x-0 -top-3 grid h-8 gap-x-[2px]"
-							style={{
-								gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
-							}}
-						>
-							{days.map((day, index) => (
-								// biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target
-								<div
-									key={day.date}
-									className="relative h-full"
-									onMouseEnter={(event) => handleDayMouseEnter(index, event)}
-									onMouseLeave={handleDayMouseLeave}
-								>
-									{hoveredIndex === index ? (
-										<div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
-											<div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
-										</div>
-									) : null}
-									{hoveredIndex === index && tooltipPosition ? (
-										<ViewportTooltip position={tooltipPosition}>
-											<div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
-												<div className="font-semibold text-popover-foreground text-sm">
-													{day.annotation || statusConfig[day.status].label}
-												</div>
-												<div className="mt-1 text-muted-foreground text-xs">
-													{formatTooltipDate(day.date)}
-												</div>
-												{isMaintenanceStatus(day.status) ? (
-													<div className="mt-1 text-muted-foreground text-xs">
-														{formatMaintenanceDuration(day)}
-													</div>
-												) : day.duration ? (
-													<div className="mt-1 text-muted-foreground text-xs">
-														Duration: {day.duration}
-													</div>
-												) : (
-													day.status !== "unknown" && (
-														<div className="mt-1 text-muted-foreground text-xs">
-															{day.downtimeMs !== undefined &&
-															day.downtimeMs > 0
-																? formatDowntime(day.downtimeMs)
-																: "No downtime"}
-														</div>
-													)
-												)}
-												<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-											</div>
-										</ViewportTooltip>
-									) : null}
-								</div>
-							))}
-						</div>
-					</div>
-				</>
-			) : (
-				<>
-					{/* Flex container for the bar segments */}
-					<div className="flex h-8 w-full gap-[3px]">
-						{days.map((day, index) => (
-							<>
-								{/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
-								<div
-									key={day.date}
-									className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
-									onMouseEnter={(event) => handleDayMouseEnter(index, event)}
-									onMouseLeave={handleDayMouseLeave}
-								>
-									{/* The visible bar segment */}
-									{style === "length" ? (
-										<div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
-											<StackedBar segments={calculateSegments(day)} />
-										</div>
-									) : (
-										<div
-											className={cn(
-												"h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
-												statusColors[day.status],
-											)}
-										/>
-									)}
+    return (
+        <div className={cn("relative w-full", className)}>
+            {style === "signal" ? (
+                <>
+                    <div className="mb-3 flex select-none justify-between text-muted-foreground/60 text-xs">
+                        <span>{days.length} days ago</span>
+                        <div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
+                        <span>Today</span>
+                    </div>
+                    <div className="relative">
+                        <div
+                            className="relative grid gap-x-[2px]"
+                            style={{
+                                gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+                            }}
+                        >
+                            {segments.map((segment) => (
+                                <div
+                                    key={`${segment.start}-${segment.status}`}
+                                    className={cn(
+                                        "relative h-1.5 rounded-full transition-opacity",
+                                        statusColors[segment.status],
+                                    )}
+                                    style={{
+                                        gridColumn: `${segment.start + 1} / span ${segment.length}`,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <div
+                            className="absolute inset-x-0 -top-3 grid h-8 gap-x-[2px]"
+                            style={{
+                                gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+                            }}
+                        >
+                            {days.map((day, index) => (
+                                // biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target
+                                <div
+                                    key={day.date}
+                                    className="relative h-full"
+                                    onMouseEnter={(event) =>
+                                        handleDayMouseEnter(index, event)
+                                    }
+                                    onMouseLeave={handleDayMouseLeave}
+                                >
+                                    {hoveredIndex === index ? (
+                                        <div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
+                                            <div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-white/18" />
+                                        </div>
+                                    ) : null}
+                                    {hoveredIndex === index &&
+                                    tooltipPosition ? (
+                                        <ViewportTooltip
+                                            position={tooltipPosition}
+                                        >
+                                            <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+                                                <div className="font-semibold text-popover-foreground text-sm">
+                                                    {day.annotation ||
+                                                        statusConfig[day.status]
+                                                            .label}
+                                                </div>
+                                                <div className="mt-1 text-muted-foreground text-xs">
+                                                    {formatTooltipDate(
+                                                        day.date,
+                                                    )}
+                                                </div>
+                                                {isMaintenanceStatus(
+                                                    day.status,
+                                                ) ? (
+                                                    <div className="mt-1 text-muted-foreground text-xs">
+                                                        {formatMaintenanceDuration(
+                                                            day,
+                                                        )}
+                                                    </div>
+                                                ) : day.duration ? (
+                                                    <div className="mt-1 text-muted-foreground text-xs">
+                                                        Duration: {day.duration}
+                                                    </div>
+                                                ) : (
+                                                    day.status !==
+                                                        "unknown" && (
+                                                        <div className="mt-1 text-muted-foreground text-xs">
+                                                            {day.downtimeMs !==
+                                                                undefined &&
+                                                            day.downtimeMs > 0
+                                                                ? formatDowntime(
+                                                                      day.downtimeMs,
+                                                                  )
+                                                                : "No downtime"}
+                                                        </div>
+                                                    )
+                                                )}
+                                                <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+                                            </div>
+                                        </ViewportTooltip>
+                                    ) : null}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <>
+                    {/* Flex container for the bar segments */}
+                    <div className="flex h-8 w-full gap-[3px]">
+                        {days.map((day, index) => (
+                            <>
+                                {/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
+                                <div
+                                    key={day.date}
+                                    className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
+                                    onMouseEnter={(event) =>
+                                        handleDayMouseEnter(index, event)
+                                    }
+                                    onMouseLeave={handleDayMouseLeave}
+                                >
+                                    {/* The visible bar segment */}
+                                    {style === "length" ? (
+                                        <div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
+                                            <StackedBar
+                                                segments={calculateSegments(
+                                                    day,
+                                                )}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className={cn(
+                                                "h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
+                                                statusColors[day.status],
+                                            )}
+                                        />
+                                    )}
 
-									{/* Tooltip */}
-									{hoveredIndex === index && tooltipPosition && (
-										<ViewportTooltip position={tooltipPosition}>
-											<div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
-												<div className="font-semibold text-popover-foreground text-sm">
-													{day.annotation || statusConfig[day.status].label}
-												</div>
-												<div className="mt-1 text-muted-foreground text-xs">
-													{formatTooltipDate(day.date)}
-												</div>
-												{style === "length" && (
-													<SegmentTooltip day={day} toFixed={toFixed} />
-												)}
-												{isMaintenanceStatus(day.status) ? (
-													<div className="mt-1 text-muted-foreground text-xs">
-														{formatMaintenanceDuration(day)}
-													</div>
-												) : day.duration ? (
-													<div className="mt-1 text-muted-foreground text-xs">
-														Duration: {day.duration}
-													</div>
-												) : (
-													day.status !== "unknown" && (
-														<div className="mt-1 text-muted-foreground text-xs">
-															{day.downtimeMs !== undefined &&
-															day.downtimeMs > 0
-																? formatDowntime(day.downtimeMs)
-																: "No downtime"}
-														</div>
-													)
-												)}
+                                    {/* Tooltip */}
+                                    {hoveredIndex === index &&
+                                        tooltipPosition && (
+                                            <ViewportTooltip
+                                                position={tooltipPosition}
+                                            >
+                                                <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+                                                    <div className="font-semibold text-popover-foreground text-sm">
+                                                        {day.annotation ||
+                                                            statusConfig[
+                                                                day.status
+                                                            ].label}
+                                                    </div>
+                                                    <div className="mt-1 text-muted-foreground text-xs">
+                                                        {formatTooltipDate(
+                                                            day.date,
+                                                        )}
+                                                    </div>
+                                                    {style === "length" && (
+                                                        <SegmentTooltip
+                                                            day={day}
+                                                            toFixed={toFixed}
+                                                        />
+                                                    )}
+                                                    {isMaintenanceStatus(
+                                                        day.status,
+                                                    ) ? (
+                                                        <div className="mt-1 text-muted-foreground text-xs">
+                                                            {formatMaintenanceDuration(
+                                                                day,
+                                                            )}
+                                                        </div>
+                                                    ) : day.duration ? (
+                                                        <div className="mt-1 text-muted-foreground text-xs">
+                                                            Duration:{" "}
+                                                            {day.duration}
+                                                        </div>
+                                                    ) : (
+                                                        day.status !==
+                                                            "unknown" && (
+                                                            <div className="mt-1 text-muted-foreground text-xs">
+                                                                {day.downtimeMs !==
+                                                                    undefined &&
+                                                                day.downtimeMs >
+                                                                    0
+                                                                    ? formatDowntime(
+                                                                          day.downtimeMs,
+                                                                      )
+                                                                    : "No downtime"}
+                                                            </div>
+                                                        )
+                                                    )}
 
-												{/* Arrow */}
-												<div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-											</div>
-										</ViewportTooltip>
-									)}
-								</div>
-							</>
-						))}
-					</div>
-				</>
-			)}
+                                                    {/* Arrow */}
+                                                    <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+                                                </div>
+                                            </ViewportTooltip>
+                                        )}
+                                </div>
+                            </>
+                        ))}
+                    </div>
+                </>
+            )}
 
-			{/* Legend / Labels */}
-			{style !== "signal" ? (
-				<div className="mt-2 flex select-none justify-between text-muted-foreground/60 text-xs">
-					<span>{days.length} days ago</span>
-					<div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
-					<span>Today</span>
-				</div>
-			) : null}
-		</div>
-	);
+            {/* Legend / Labels */}
+            {style !== "signal" ? (
+                <div className="mt-2 flex select-none justify-between text-muted-foreground/60 text-xs">
+                    <span>{days.length} days ago</span>
+                    <div className="mx-4 my-auto hidden h-px flex-1 bg-border/30 sm:block" />
+                    <span>Today</span>
+                </div>
+            ) : null}
+        </div>
+    );
 }

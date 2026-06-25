@@ -5,34 +5,34 @@ import { useState } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
-	Dialog,
-	DialogClose,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogPanel,
-	DialogPopup,
-	DialogTitle,
+    Dialog,
+    DialogClose,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogPanel,
+    DialogPopup,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { client, orpc } from "@/utils/orpc";
 
 const PRESET_COLORS = [
-	"#3b82f6", // blue
-	"#10b981", // green
-	"#f59e0b", // amber
-	"#ef4444", // red
-	"#8b5cf6", // purple
-	"#ec4899", // pink
-	"#06b6d4", // cyan
-	"#84cc16", // lime
+    "#3b82f6", // blue
+    "#10b981", // green
+    "#f59e0b", // amber
+    "#ef4444", // red
+    "#8b5cf6", // purple
+    "#ec4899", // pink
+    "#06b6d4", // cyan
+    "#84cc16", // lime
 ];
 
 interface TagCreationDialogProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	onCreated?: () => void;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onCreated?: () => void;
 }
 
 /**
@@ -48,84 +48,94 @@ interface TagCreationDialogProps {
  * @returns A JSX element containing the tag creation dialog
  */
 export function TagCreationDialog({
-	open,
-	onOpenChange,
-	onCreated,
+    open,
+    onOpenChange,
+    onCreated,
 }: TagCreationDialogProps) {
-	const [tagName, setTagName] = useState("");
-	const [tagColor, setTagColor] = useState(PRESET_COLORS[0]);
+    const [tagName, setTagName] = useState("");
+    const [tagColor, setTagColor] = useState(PRESET_COLORS[0]);
 
-	const queryClient = useQueryClient();
+    const queryClient = useQueryClient();
 
-	const { mutate: createTag, isPending: isCreating } = useMutation({
-		mutationFn: ({ name, color }: { name: string; color: string }) =>
-			client.monitors.createTag({ name, color }),
-		onSuccess: () => {
-			sileo.success({ title: "Tag created" });
-			queryClient.invalidateQueries({ queryKey: orpc.monitors.listTags.key() });
-			onOpenChange(false);
-			setTagName("");
-			setTagColor(PRESET_COLORS[0]);
-			onCreated?.();
-		},
-		onError: () => sileo.error({ title: "Failed to create tag" }),
-	});
+    const { mutate: createTag, isPending: isCreating } = useMutation({
+        mutationFn: ({ name, color }: { name: string; color: string }) =>
+            client.monitors.createTag({ name, color }),
+        onSuccess: () => {
+            sileo.success({ title: "Tag created" });
+            queryClient.invalidateQueries({
+                queryKey: orpc.monitors.listTags.key(),
+            });
+            onOpenChange(false);
+            setTagName("");
+            setTagColor(PRESET_COLORS[0]);
+            onCreated?.();
+        },
+        onError: () => sileo.error({ title: "Failed to create tag" }),
+    });
 
-	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogPopup className="sm:max-w-[425px]">
-				<DialogHeader>
-					<DialogTitle>Create Tag</DialogTitle>
-					<DialogDescription>
-						Create a new tag to categorize your monitors.
-					</DialogDescription>
-				</DialogHeader>
-				<DialogPanel className="space-y-4">
-					<div className="space-y-2">
-						<Label htmlFor="tag-name">Tag Name</Label>
-						<Input
-							id="tag-name"
-							placeholder="Critical, API, Frontend, etc."
-							value={tagName}
-							onChange={(e) => setTagName(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && tagName.trim()) {
-									createTag({ name: tagName.trim(), color: tagColor });
-								}
-							}}
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label>Color</Label>
-						<div className="flex gap-2">
-							{PRESET_COLORS.map((color) => (
-								<button
-									key={color}
-									type="button"
-									className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
-									style={{
-										backgroundColor: color,
-										borderColor: tagColor === color ? "#000" : "transparent",
-									}}
-									onClick={() => setTagColor(color)}
-								/>
-							))}
-						</div>
-					</div>
-				</DialogPanel>
-				<DialogFooter>
-					<DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
-					<Button
-						onClick={() =>
-							tagName.trim() &&
-							createTag({ name: tagName.trim(), color: tagColor })
-						}
-						disabled={!tagName.trim() || isCreating}
-					>
-						Create
-					</Button>
-				</DialogFooter>
-			</DialogPopup>
-		</Dialog>
-	);
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogPopup className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Create Tag</DialogTitle>
+                    <DialogDescription>
+                        Create a new tag to categorize your monitors.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogPanel className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="tag-name">Tag Name</Label>
+                        <Input
+                            id="tag-name"
+                            placeholder="Critical, API, Frontend, etc."
+                            value={tagName}
+                            onChange={(e) => setTagName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && tagName.trim()) {
+                                    createTag({
+                                        name: tagName.trim(),
+                                        color: tagColor,
+                                    });
+                                }
+                            }}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Color</Label>
+                        <div className="flex gap-2">
+                            {PRESET_COLORS.map((color) => (
+                                <button
+                                    key={color}
+                                    type="button"
+                                    className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
+                                    style={{
+                                        backgroundColor: color,
+                                        borderColor:
+                                            tagColor === color
+                                                ? "#000"
+                                                : "transparent",
+                                    }}
+                                    onClick={() => setTagColor(color)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </DialogPanel>
+                <DialogFooter>
+                    <DialogClose render={<Button variant="ghost" />}>
+                        Cancel
+                    </DialogClose>
+                    <Button
+                        onClick={() =>
+                            tagName.trim() &&
+                            createTag({ name: tagName.trim(), color: tagColor })
+                        }
+                        disabled={!tagName.trim() || isCreating}
+                    >
+                        Create
+                    </Button>
+                </DialogFooter>
+            </DialogPopup>
+        </Dialog>
+    );
 }

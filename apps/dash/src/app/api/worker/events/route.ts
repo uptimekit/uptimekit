@@ -1,8 +1,8 @@
 import {
-	authenticateWorker,
-	isAuthError,
-	type MonitorEvent,
-	processMonitorEvents,
+    authenticateWorker,
+    isAuthError,
+    type MonitorEvent,
+    processMonitorEvents,
 } from "@uptimekit/api/pkg/worker";
 import { NextResponse } from "next/server";
 import { withEvlog } from "@/lib/evlog";
@@ -17,32 +17,38 @@ import { withEvlog } from "@/lib/evlog";
  * @returns A JSON HTTP response: on error returns an object with an `error` message and the appropriate status code; on success returns the result of processing the monitor events
  */
 async function handlePost(request: Request) {
-	const authResult = await authenticateWorker(request);
+    const authResult = await authenticateWorker(request);
 
-	if (isAuthError(authResult)) {
-		return NextResponse.json(
-			{ error: authResult.error },
-			{ status: authResult.status },
-		);
-	}
+    if (isAuthError(authResult)) {
+        return NextResponse.json(
+            { error: authResult.error },
+            { status: authResult.status },
+        );
+    }
 
-	let body: { events?: MonitorEvent[] };
-	try {
-		body = await request.json();
-	} catch {
-		return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-	}
+    let body: { events?: MonitorEvent[] };
+    try {
+        body = await request.json();
+    } catch {
+        return NextResponse.json(
+            { error: "Invalid JSON body" },
+            { status: 400 },
+        );
+    }
 
-	if (!body.events || !Array.isArray(body.events)) {
-		return NextResponse.json(
-			{ error: "Missing events array" },
-			{ status: 400 },
-		);
-	}
+    if (!body.events || !Array.isArray(body.events)) {
+        return NextResponse.json(
+            { error: "Missing events array" },
+            { status: 400 },
+        );
+    }
 
-	const result = await processMonitorEvents(body.events, authResult.worker.id);
+    const result = await processMonitorEvents(
+        body.events,
+        authResult.worker.id,
+    );
 
-	return NextResponse.json(result);
+    return NextResponse.json(result);
 }
 
 export const POST = withEvlog(handlePost);

@@ -1,15 +1,15 @@
 import { OrganizationSettingsClient } from "@/components/settings/organization-settings-client";
 
 interface OrganizationSettingsPageProps {
-	params: Promise<{
-		organizationId: string;
-	}>;
+    params: Promise<{
+        organizationId: string;
+    }>;
 }
 
 export default async function OrganizationSettingsPage({
-	params,
+    params,
 }: OrganizationSettingsPageProps) {
-	const { organizationId } = await params;
+    const { organizationId } = await params;
 
-	return <OrganizationSettingsClient organizationId={organizationId} />;
+    return <OrganizationSettingsClient organizationId={organizationId} />;
 }

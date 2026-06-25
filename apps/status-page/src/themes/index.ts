@@ -4,15 +4,15 @@ import { manifest as signalManifest } from "./signal/manifest";
 import type { ThemeManifest } from "./types";
 
 export const themeRegistry: Record<string, ThemeManifest> = {
-	default: defaultManifest,
-	flat: flatManifest,
-	signal: signalManifest,
+    default: defaultManifest,
+    flat: flatManifest,
+    signal: signalManifest,
 };
 
 export function getThemeManifest(themeId: string): ThemeManifest | undefined {
-	return themeRegistry[themeId];
+    return themeRegistry[themeId];
 }
 
 export function getAllThemes(): ThemeManifest[] {
-	return Object.values(themeRegistry);
+    return Object.values(themeRegistry);
 }

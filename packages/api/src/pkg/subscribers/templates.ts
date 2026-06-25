@@ -1,44 +1,44 @@
 interface SubscriberEmailTemplateInput {
-	eventLabel: string;
-	statusPageName: string;
-	incidentTitle: string;
-	severity: string;
-	description: string;
-	incidentUrl: string;
+    eventLabel: string;
+    statusPageName: string;
+    incidentTitle: string;
+    severity: string;
+    description: string;
+    incidentUrl: string;
 }
 
 function escapeHtml(value: string) {
-	return value
-		.replaceAll("&", "&amp;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("'", "&#39;");
+    return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
 }
 
 export function renderSubscriberEmailText(input: SubscriberEmailTemplateInput) {
-	return [
-		input.eventLabel,
-		"",
-		`Status page: ${input.statusPageName}`,
-		`Incident: ${input.incidentTitle}`,
-		`Severity: ${input.severity}`,
-		"",
-		input.description,
-		"",
-		`View incident: ${input.incidentUrl}`,
-	].join("\n");
+    return [
+        input.eventLabel,
+        "",
+        `Status page: ${input.statusPageName}`,
+        `Incident: ${input.incidentTitle}`,
+        `Severity: ${input.severity}`,
+        "",
+        input.description,
+        "",
+        `View incident: ${input.incidentUrl}`,
+    ].join("\n");
 }
 
 export function renderSubscriberEmailHtml(input: SubscriberEmailTemplateInput) {
-	const eventLabel = escapeHtml(input.eventLabel);
-	const statusPageName = escapeHtml(input.statusPageName);
-	const incidentTitle = escapeHtml(input.incidentTitle);
-	const severity = escapeHtml(input.severity);
-	const description = escapeHtml(input.description);
-	const incidentUrl = escapeHtml(input.incidentUrl);
+    const eventLabel = escapeHtml(input.eventLabel);
+    const statusPageName = escapeHtml(input.statusPageName);
+    const incidentTitle = escapeHtml(input.incidentTitle);
+    const severity = escapeHtml(input.severity);
+    const description = escapeHtml(input.description);
+    const incidentUrl = escapeHtml(input.incidentUrl);
 
-	return `
+    return `
 		<!doctype html>
 		<html>
 			<body style="margin:0;padding:24px;background:#f5f5f5;font-family:Arial,sans-serif;color:#111827;">

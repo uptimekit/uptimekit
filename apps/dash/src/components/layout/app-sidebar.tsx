@@ -1,17 +1,17 @@
 "use client";
 
 import {
-	faChevronDown,
-	faGaugeHigh,
-	faGear,
-	faGrip,
-	faPlus,
-	faRightFromBracket,
-	faShieldHalved,
-	faSignal,
-	faTriangleExclamation,
-	faUpDown,
-	faUser,
+    faChevronDown,
+    faGaugeHigh,
+    faGear,
+    faGrip,
+    faPlus,
+    faRightFromBracket,
+    faShieldHalved,
+    faSignal,
+    faTriangleExclamation,
+    faUpDown,
+    faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -21,26 +21,26 @@ import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import { CreateOrganizationDialog } from "@/components/layout/create-organization-dialog";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-	Sidebar,
-	SidebarContent,
-	SidebarFooter,
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarGroupLabel,
-	SidebarHeader,
-	SidebarMenu,
-	SidebarMenuButton,
-	SidebarMenuItem,
-	SidebarRail,
-	SidebarSeparator,
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarRail,
+    SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
@@ -49,284 +49,310 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 // Navigation items
 const mainNav = [
-	{
-		title: "Incidents",
-		url: "/",
-		icon: faTriangleExclamation,
-	},
-	{
-		title: "Monitors",
-		url: "/monitors",
-		icon: faSignal,
-	},
-	{
-		title: "Status Pages",
-		url: "/status-pages",
-		icon: faGaugeHigh,
-	},
-	{
-		title: "Notifications",
-		url: "/integrations",
-		icon: faGrip,
-	},
+    {
+        title: "Incidents",
+        url: "/",
+        icon: faTriangleExclamation,
+    },
+    {
+        title: "Monitors",
+        url: "/monitors",
+        icon: faSignal,
+    },
+    {
+        title: "Status Pages",
+        url: "/status-pages",
+        icon: faGaugeHigh,
+    },
+    {
+        title: "Notifications",
+        url: "/integrations",
+        icon: faGrip,
+    },
 ];
 
 const configNav = [
-	{
-		title: "Settings",
-		url: "/settings",
-		icon: faGear,
-	},
-	{
-		title: "Admin",
-		url: "/admin",
-		icon: faShieldHalved,
-	},
+    {
+        title: "Settings",
+        url: "/settings",
+        icon: faGear,
+    },
+    {
+        title: "Admin",
+        url: "/admin",
+        icon: faShieldHalved,
+    },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const pathname = usePathname();
-	const router = useRouter(); // Use useRouter from next/navigation
-	const [showCreateOrgModal, setShowCreateOrgModal] = React.useState(false);
-	const [isMounted, setIsMounted] = React.useState(false);
+    const pathname = usePathname();
+    const router = useRouter(); // Use useRouter from next/navigation
+    const [showCreateOrgModal, setShowCreateOrgModal] = React.useState(false);
+    const [isMounted, setIsMounted] = React.useState(false);
 
-	const { data: organizations, isPending: isLoadingOrgs } =
-		authClient.useListOrganizations();
-	const { data: activeOrg } = authClient.useActiveOrganization();
-	const { data: session } = authClient.useSession();
+    const { data: organizations, isPending: isLoadingOrgs } =
+        authClient.useListOrganizations();
+    const { data: activeOrg } = authClient.useActiveOrganization();
+    const { data: session } = authClient.useSession();
 
-	React.useEffect(() => {
-		setIsMounted(true);
-	}, []);
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
-	const displayedOrganizations = isMounted ? organizations : undefined;
-	const displayedActiveOrg = isMounted ? activeOrg : undefined;
-	const displayedSession = isMounted ? session : undefined;
-	const isGlobalAdmin = displayedSession?.user?.role === "admin";
-	const organizationSettingsUrl = displayedActiveOrg?.id
-		? `/organization/${displayedActiveOrg.id}/settings`
-		: "/settings";
-	const { data: appVersion } = useQuery(orpc.getVersion.queryOptions());
-	const hasUpdate = appVersion?.isLatest === false;
+    const displayedOrganizations = isMounted ? organizations : undefined;
+    const displayedActiveOrg = isMounted ? activeOrg : undefined;
+    const displayedSession = isMounted ? session : undefined;
+    const isGlobalAdmin = displayedSession?.user?.role === "admin";
+    const organizationSettingsUrl = displayedActiveOrg?.id
+        ? `/organization/${displayedActiveOrg.id}/settings`
+        : "/settings";
+    const { data: appVersion } = useQuery(orpc.getVersion.queryOptions());
+    const hasUpdate = appVersion?.isLatest === false;
 
-	// Use organization info safely
-	// Note: Better-auth might return null/undefined while loading
-	const currentOrgName = displayedActiveOrg?.name || "Select Organization";
+    // Use organization info safely
+    // Note: Better-auth might return null/undefined while loading
+    const currentOrgName = displayedActiveOrg?.name || "Select Organization";
 
-	return (
-		<Sidebar collapsible="icon" {...props} variant="inset">
-			<SidebarHeader>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={
-									<SidebarMenuButton
-										size="lg"
-										className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-									/>
-								}
-							>
-								<div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
-									<Image
-										src={
-											displayedActiveOrg?.logo ||
-											"https://r2.uptimekit.dev/logos/uptimekit.svg"
-										}
-										alt={currentOrgName}
-										width={50}
-										height={50}
-										className="size-full object-cover"
-									/>
-								</div>
-								<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-									<span className="truncate font-semibold">
-										{currentOrgName}
-									</span>
-									<span className="truncate text-xs">
-										{displayedActiveOrg?.slug || "Organization"}
-									</span>
-								</div>
-								<FontAwesomeIcon
-									icon={faChevronDown}
-									className="ml-auto group-data-[collapsible=icon]:hidden"
-								/>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent
-								className="w-(--anchor-width) min-w-56 rounded-lg"
-								align="start"
-								side="bottom"
-								sideOffset={4}
-							>
-								<DropdownMenuLabel className="text-muted-foreground text-xs">
-									Organizations
-								</DropdownMenuLabel>
-								{!isMounted || isLoadingOrgs ? (
-									<DropdownMenuItem disabled>Loading...</DropdownMenuItem>
-								) : (
-									displayedOrganizations?.map((org) => (
-										<DropdownMenuItem
-											key={org.id}
-											onClick={() => {
-												authClient.organization.setActive(
-													{
-														organizationId: org.id,
-													},
-													{
-														onSuccess: async () => {
-															await queryClient.invalidateQueries();
-															router.refresh();
-															router.push("/");
-														},
-													},
-												);
-											}}
-											className="gap-2 p-2"
-										>
-											<div className="flex size-6 items-center justify-center overflow-hidden rounded-sm border">
-												<Image
-													src={
-														org.logo ||
-														"https://r2.uptimekit.dev/logos/uptimekit.svg"
-													}
-													alt={org.name}
-													width={24}
-													height={24}
-													className="size-full object-cover"
-												/>
-											</div>
-											{org.name}
-											{displayedActiveOrg?.id === org.id && (
-												<span className="ml-auto text-muted-foreground text-xs">
-													Active
-												</span>
-											)}
-										</DropdownMenuItem>
-									))
-								)}
-								{isGlobalAdmin && (
-									<>
-										<DropdownMenuSeparator />
-										<DropdownMenuItem
-											className="cursor-pointer gap-2 p-2"
-											onSelect={() => setShowCreateOrgModal(true)}
-										>
-											<div className="flex size-6 items-center justify-center rounded-md border bg-background">
-												<FontAwesomeIcon icon={faPlus} className="size-4" />
-											</div>
-											<div className="font-medium text-muted-foreground">
-												Add Organization
-											</div>
-										</DropdownMenuItem>
-									</>
-								)}
-							</DropdownMenuContent>
-						</DropdownMenu>
-					</SidebarMenuItem>
-				</SidebarMenu>
-			</SidebarHeader>
-			<SidebarContent className="overflow-x-hidden">
-				<SidebarGroup>
-					<SidebarGroupLabel>Main</SidebarGroupLabel>
-					<SidebarGroupContent>
-						<SidebarMenu>
-							{mainNav
-								.filter((item) => {
-									if (item.title === "Notifications") {
-										const members = displayedActiveOrg?.members;
-										const role = members?.find(
-											(m) => m.userId === displayedSession?.user?.id,
-										)?.role;
-										return role === "owner" || role === "admin";
-									}
-									return true;
-								})
-								.map((item) => (
-									<SidebarMenuItem key={item.title}>
-										<SidebarMenuButton
-											isActive={
-												item.url === "/"
-													? pathname === "/"
-													: pathname.startsWith(item.url)
-											}
-											tooltip={item.title}
-											render={
-												<Link href={item.url as any}>
-													<FontAwesomeIcon icon={item.icon} />
-													<span>{item.title}</span>
-												</Link>
-											}
-										/>
-									</SidebarMenuItem>
-								))}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-				<SidebarSeparator />
-				<SidebarGroup>
-					<SidebarGroupLabel>Configuration</SidebarGroupLabel>
-					<SidebarGroupContent>
-						<SidebarMenu>
-							{configNav
-								.filter(
-									(item) =>
-										item.title !== "Admin" ||
-										displayedSession?.user?.role === "admin",
-								)
-								.map((item) => (
-									<SidebarMenuItem key={item.title}>
-										<SidebarMenuButton
-											isActive={
-												item.title === "Organization"
-													? pathname.startsWith("/organization/")
-													: pathname.startsWith(item.url)
-											}
-											tooltip={item.title}
-											render={
-												<Link
-													href={
-														(item.title === "Organization"
-															? organizationSettingsUrl
-															: item.url) as any
-													}
-												>
-													<FontAwesomeIcon icon={item.icon} />
-													<span>{item.title}</span>
-												</Link>
-											}
-										/>
-									</SidebarMenuItem>
-								))}
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-			</SidebarContent>
-			<SidebarFooter>
-				<SidebarMenu>
-					<SidebarMenuItem>
-						<UserMenuComponent />
-					</SidebarMenuItem>
-				</SidebarMenu>
-				{appVersion && (
-					<div className="px-2 text-center text-muted-foreground text-xs group-data-[collapsible=icon]:hidden">
-						v{appVersion.version}
-						{hasUpdate && (
-							<span className="ml-2 text-warning-foreground">
-								Update available
-							</span>
-						)}
-					</div>
-				)}
-			</SidebarFooter>
-			<SidebarRail />
-			{isGlobalAdmin && (
-				<CreateOrganizationDialog
-					open={showCreateOrgModal}
-					setOpen={setShowCreateOrgModal}
-				/>
-			)}
-		</Sidebar>
-	);
+    return (
+        <Sidebar collapsible="icon" {...props} variant="inset">
+            <SidebarHeader>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={
+                                    <SidebarMenuButton
+                                        size="lg"
+                                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+                                    />
+                                }
+                            >
+                                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
+                                    <Image
+                                        src={
+                                            displayedActiveOrg?.logo ||
+                                            "https://r2.uptimekit.dev/logos/uptimekit.svg"
+                                        }
+                                        alt={currentOrgName}
+                                        width={50}
+                                        height={50}
+                                        className="size-full object-cover"
+                                    />
+                                </div>
+                                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                                    <span className="truncate font-semibold">
+                                        {currentOrgName}
+                                    </span>
+                                    <span className="truncate text-xs">
+                                        {displayedActiveOrg?.slug ||
+                                            "Organization"}
+                                    </span>
+                                </div>
+                                <FontAwesomeIcon
+                                    icon={faChevronDown}
+                                    className="ml-auto group-data-[collapsible=icon]:hidden"
+                                />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                className="w-(--anchor-width) min-w-56 rounded-lg"
+                                align="start"
+                                side="bottom"
+                                sideOffset={4}
+                            >
+                                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                                    Organizations
+                                </DropdownMenuLabel>
+                                {!isMounted || isLoadingOrgs ? (
+                                    <DropdownMenuItem disabled>
+                                        Loading...
+                                    </DropdownMenuItem>
+                                ) : (
+                                    displayedOrganizations?.map((org) => (
+                                        <DropdownMenuItem
+                                            key={org.id}
+                                            onClick={() => {
+                                                authClient.organization.setActive(
+                                                    {
+                                                        organizationId: org.id,
+                                                    },
+                                                    {
+                                                        onSuccess: async () => {
+                                                            await queryClient.invalidateQueries();
+                                                            router.refresh();
+                                                            router.push("/");
+                                                        },
+                                                    },
+                                                );
+                                            }}
+                                            className="gap-2 p-2"
+                                        >
+                                            <div className="flex size-6 items-center justify-center overflow-hidden rounded-sm border">
+                                                <Image
+                                                    src={
+                                                        org.logo ||
+                                                        "https://r2.uptimekit.dev/logos/uptimekit.svg"
+                                                    }
+                                                    alt={org.name}
+                                                    width={24}
+                                                    height={24}
+                                                    className="size-full object-cover"
+                                                />
+                                            </div>
+                                            {org.name}
+                                            {displayedActiveOrg?.id ===
+                                                org.id && (
+                                                <span className="ml-auto text-muted-foreground text-xs">
+                                                    Active
+                                                </span>
+                                            )}
+                                        </DropdownMenuItem>
+                                    ))
+                                )}
+                                {isGlobalAdmin && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            className="cursor-pointer gap-2 p-2"
+                                            onSelect={() =>
+                                                setShowCreateOrgModal(true)
+                                            }
+                                        >
+                                            <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                                                <FontAwesomeIcon
+                                                    icon={faPlus}
+                                                    className="size-4"
+                                                />
+                                            </div>
+                                            <div className="font-medium text-muted-foreground">
+                                                Add Organization
+                                            </div>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarHeader>
+            <SidebarContent className="overflow-x-hidden">
+                <SidebarGroup>
+                    <SidebarGroupLabel>Main</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {mainNav
+                                .filter((item) => {
+                                    if (item.title === "Notifications") {
+                                        const members =
+                                            displayedActiveOrg?.members;
+                                        const role = members?.find(
+                                            (m) =>
+                                                m.userId ===
+                                                displayedSession?.user?.id,
+                                        )?.role;
+                                        return (
+                                            role === "owner" || role === "admin"
+                                        );
+                                    }
+                                    return true;
+                                })
+                                .map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            isActive={
+                                                item.url === "/"
+                                                    ? pathname === "/"
+                                                    : pathname.startsWith(
+                                                          item.url,
+                                                      )
+                                            }
+                                            tooltip={item.title}
+                                            render={
+                                                <Link href={item.url as any}>
+                                                    <FontAwesomeIcon
+                                                        icon={item.icon}
+                                                    />
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            }
+                                        />
+                                    </SidebarMenuItem>
+                                ))}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+                <SidebarSeparator />
+                <SidebarGroup>
+                    <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {configNav
+                                .filter(
+                                    (item) =>
+                                        item.title !== "Admin" ||
+                                        displayedSession?.user?.role ===
+                                            "admin",
+                                )
+                                .map((item) => (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            isActive={
+                                                item.title === "Organization"
+                                                    ? pathname.startsWith(
+                                                          "/organization/",
+                                                      )
+                                                    : pathname.startsWith(
+                                                          item.url,
+                                                      )
+                                            }
+                                            tooltip={item.title}
+                                            render={
+                                                <Link
+                                                    href={
+                                                        (item.title ===
+                                                        "Organization"
+                                                            ? organizationSettingsUrl
+                                                            : item.url) as any
+                                                    }
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={item.icon}
+                                                    />
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            }
+                                        />
+                                    </SidebarMenuItem>
+                                ))}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+            </SidebarContent>
+            <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <UserMenuComponent />
+                    </SidebarMenuItem>
+                </SidebarMenu>
+                {appVersion && (
+                    <div className="px-2 text-center text-muted-foreground text-xs group-data-[collapsible=icon]:hidden">
+                        v{appVersion.version}
+                        {hasUpdate && (
+                            <span className="ml-2 text-warning-foreground">
+                                Update available
+                            </span>
+                        )}
+                    </div>
+                )}
+            </SidebarFooter>
+            <SidebarRail />
+            {isGlobalAdmin && (
+                <CreateOrganizationDialog
+                    open={showCreateOrgModal}
+                    setOpen={setShowCreateOrgModal}
+                />
+            )}
+        </Sidebar>
+    );
 }
 
 // Inline adaptation of UserMenu for Sidebar context if needed, or we can import the existing one.
@@ -337,96 +363,110 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function UserMenuComponent() {
-	const router = useRouter();
-	const [isMounted, setIsMounted] = React.useState(false);
-	const { data: session, isPending } = authClient.useSession();
+    const router = useRouter();
+    const [isMounted, setIsMounted] = React.useState(false);
+    const { data: session, isPending } = authClient.useSession();
 
-	React.useEffect(() => {
-		setIsMounted(true);
-	}, []);
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
-	if (!isMounted || isPending) {
-		return <Skeleton className="h-12 w-full rounded-lg" />;
-	}
+    if (!isMounted || isPending) {
+        return <Skeleton className="h-12 w-full rounded-lg" />;
+    }
 
-	if (!session) return null; // Should not happen in dashboard
+    if (!session) return null; // Should not happen in dashboard
 
-	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={
-					<SidebarMenuButton
-						size="lg"
-						className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-					/>
-				}
-			>
-				<Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
-					<AvatarImage src={session.user.image || ""} alt={session.user.name} />
-					<AvatarFallback className="rounded-lg">
-						{session.user.name.slice(0, 2).toUpperCase()}
-					</AvatarFallback>
-				</Avatar>
-				<div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-					<span className="truncate font-semibold">{session.user.name}</span>
-					<span className="truncate text-xs">{session.user.email}</span>
-				</div>
-				<FontAwesomeIcon
-					icon={faUpDown}
-					className="ml-auto size-4 group-data-[collapsible=icon]:hidden"
-				/>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent
-				className="w-(--anchor-width) min-w-56"
-				side="bottom"
-				align="end"
-				sideOffset={4}
-			>
-				<DropdownMenuLabel className="p-0 font-normal">
-					<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-						<Avatar className="h-8 w-8">
-							<AvatarImage
-								src={session.user.image || ""}
-								alt={session.user.name}
-							/>
-							<AvatarFallback className="">
-								{session.user.name.slice(0, 2).toUpperCase()}
-							</AvatarFallback>
-						</Avatar>
-						<div className="grid flex-1 text-left text-sm leading-tight">
-							<span className="truncate font-semibold">
-								{session.user.name}
-							</span>
-							<span className="truncate text-xs">{session.user.email}</span>
-						</div>
-					</div>
-				</DropdownMenuLabel>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem render={<Link href={"/settings" as any} />}>
-					<FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
-					Settings
-				</DropdownMenuItem>
-				<DropdownMenuItem render={<Link href={"/organization" as any} />}>
-					<FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
-					Organization
-				</DropdownMenuItem>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					variant="destructive"
-					onClick={() => {
-						authClient.signOut({
-							fetchOptions: {
-								onSuccess: () => {
-									router.push("/");
-								},
-							},
-						});
-					}}
-				>
-					<FontAwesomeIcon icon={faRightFromBracket} className="mr-2 h-4 w-4" />
-					Log out
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
-	);
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger
+                render={
+                    <SidebarMenuButton
+                        size="lg"
+                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+                    />
+                }
+            >
+                <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
+                    <AvatarImage
+                        src={session.user.image || ""}
+                        alt={session.user.name}
+                    />
+                    <AvatarFallback className="rounded-lg">
+                        {session.user.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                    <span className="truncate font-semibold">
+                        {session.user.name}
+                    </span>
+                    <span className="truncate text-xs">
+                        {session.user.email}
+                    </span>
+                </div>
+                <FontAwesomeIcon
+                    icon={faUpDown}
+                    className="ml-auto size-4 group-data-[collapsible=icon]:hidden"
+                />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                className="w-(--anchor-width) min-w-56"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+            >
+                <DropdownMenuLabel className="p-0 font-normal">
+                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage
+                                src={session.user.image || ""}
+                                alt={session.user.name}
+                            />
+                            <AvatarFallback className="">
+                                {session.user.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="grid flex-1 text-left text-sm leading-tight">
+                            <span className="truncate font-semibold">
+                                {session.user.name}
+                            </span>
+                            <span className="truncate text-xs">
+                                {session.user.email}
+                            </span>
+                        </div>
+                    </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href={"/settings" as any} />}>
+                    <FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
+                    Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    render={<Link href={"/organization" as any} />}
+                >
+                    <FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
+                    Organization
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => {
+                        authClient.signOut({
+                            fetchOptions: {
+                                onSuccess: () => {
+                                    router.push("/");
+                                },
+                            },
+                        });
+                    }}
+                >
+                    <FontAwesomeIcon
+                        icon={faRightFromBracket}
+                        className="mr-2 h-4 w-4"
+                    />
+                    Log out
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 }

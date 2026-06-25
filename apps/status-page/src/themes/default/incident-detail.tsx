@@ -7,28 +7,28 @@ import { Header } from "./components/header";
 import { IncidentDetailCard } from "./components/incident-detail-card";
 
 export default function DefaultIncidentDetail({
-	data,
+    data,
 }: ThemeIncidentDetailProps) {
-	const { config, incident, activeIssues } = data;
-	const { design } = config;
+    const { config, incident, activeIssues } = data;
+    const { design } = config;
 
-	return (
-		<div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-			<Header
-				title={config.name}
-				logoUrl={design.logoUrl}
-				contactUrl={design.contactUrl}
-			/>
+    return (
+        <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+            <Header
+                title={config.name}
+                logoUrl={design.logoUrl}
+                contactUrl={design.contactUrl}
+            />
 
-			<main className="w-full flex-1">
-				<div className="mx-auto max-w-3xl px-4 py-12">
-					<BackLink href={buildPath("/", config.routeSlug)} />
-					<CurrentIssuesBanner activeIssues={activeIssues} />
-					<IncidentDetailCard incident={incident} />
-				</div>
-			</main>
+            <main className="w-full flex-1">
+                <div className="mx-auto max-w-3xl px-4 py-12">
+                    <BackLink href={buildPath("/", config.routeSlug)} />
+                    <CurrentIssuesBanner activeIssues={activeIssues} />
+                    <IncidentDetailCard incident={incident} />
+                </div>
+            </main>
 
-			<Footer />
-		</div>
-	);
+            <Footer />
+        </div>
+    );
 }

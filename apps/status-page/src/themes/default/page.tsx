@@ -9,55 +9,55 @@ import { PreviousIncidents } from "./components/previous-incidents";
 import "./style.css";
 
 export default function DefaultTheme({ data }: ThemePageProps) {
-	const {
-		config,
-		overallStatus,
-		monitorGroups,
-		activeIssues,
-		scheduledMaintenances,
-		pastIncidents,
-	} = data;
-	const { design } = config;
+    const {
+        config,
+        overallStatus,
+        monitorGroups,
+        activeIssues,
+        scheduledMaintenances,
+        pastIncidents,
+    } = data;
+    const { design } = config;
 
-	return (
-		<div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-			<Header
-				title={config.name}
-				logoUrl={design.logoUrl}
-				contactUrl={design.contactUrl}
-			/>
+    return (
+        <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+            <Header
+                title={config.name}
+                logoUrl={design.logoUrl}
+                contactUrl={design.contactUrl}
+            />
 
-			<main className="w-full flex-1">
-				<div className="mx-auto max-w-5xl px-4 py-12">
-					<section className="mb-16">
-						<OverallStatus
-							status={overallStatus}
-							monitorGroups={monitorGroups}
-							activeIssues={activeIssues}
-						/>
-					</section>
+            <main className="w-full flex-1">
+                <div className="mx-auto max-w-5xl px-4 py-12">
+                    <section className="mb-16">
+                        <OverallStatus
+                            status={overallStatus}
+                            monitorGroups={monitorGroups}
+                            activeIssues={activeIssues}
+                        />
+                    </section>
 
-					<MonitorGroups
-						monitorGroups={monitorGroups}
-						layout={design.headerLayout}
-						barStyle={design.barStyle}
-						toFixed={design.percentDigits}
-					/>
-					<ActiveIssuesSection activeIssues={activeIssues} />
+                    <MonitorGroups
+                        monitorGroups={monitorGroups}
+                        layout={design.headerLayout}
+                        barStyle={design.barStyle}
+                        toFixed={design.percentDigits}
+                    />
+                    <ActiveIssuesSection activeIssues={activeIssues} />
 
-					<ScheduledMaintenanceSection
-						scheduledMaintenances={scheduledMaintenances}
-						slug={config.routeSlug}
-					/>
+                    <ScheduledMaintenanceSection
+                        scheduledMaintenances={scheduledMaintenances}
+                        slug={config.routeSlug}
+                    />
 
-					<PreviousIncidents
-						pastIncidents={pastIncidents}
-						slug={config.routeSlug}
-					/>
-				</div>
-			</main>
+                    <PreviousIncidents
+                        pastIncidents={pastIncidents}
+                        slug={config.routeSlug}
+                    />
+                </div>
+            </main>
 
-			<Footer />
-		</div>
-	);
+            <Footer />
+        </div>
+    );
 }

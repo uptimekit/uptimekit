@@ -1,13 +1,13 @@
 import { db, timeseries } from "@uptimekit/db";
 import {
-	incident,
-	incidentActivity,
-	incidentMonitor,
-	incidentStatusPage,
+    incident,
+    incidentActivity,
+    incidentMonitor,
+    incidentStatusPage,
 } from "@uptimekit/db/schema/incidents";
 import {
-	maintenance,
-	maintenanceMonitor,
+    maintenance,
+    maintenanceMonitor,
 } from "@uptimekit/db/schema/maintenance";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
@@ -15,257 +15,269 @@ import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, isNull } from "drizzle-orm";
 import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
-	type AutomaticIncidentOpenEvaluation,
-	type ConfiguredWorkerStateResult,
-	getAggregateMonitorStatus,
-	getConfiguredWorkerStates,
-	getEffectiveMonitorWorkers,
-	isAutomaticIncidentOpenEligible,
-	isAutomaticIncidentResolveEligible,
-	type WorkerStatusSnapshot,
+    type AutomaticIncidentOpenEvaluation,
+    type ConfiguredWorkerStateResult,
+    getAggregateMonitorStatus,
+    getConfiguredWorkerStates,
+    getEffectiveMonitorWorkers,
+    isAutomaticIncidentOpenEligible,
+    isAutomaticIncidentResolveEligible,
+    type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
 import { processPendingNotifications } from "../notifications";
 
 // Types
 export interface HTTPTimings {
-	dnsLookup?: number;
-	tcpConnect?: number;
-	tlsHandshake?: number;
-	ttfb?: number;
-	transfer?: number;
-	total?: number;
+    dnsLookup?: number;
+    tcpConnect?: number;
+    tlsHandshake?: number;
+    ttfb?: number;
+    transfer?: number;
+    total?: number;
 }
 
 export interface MonitorEvent {
-	monitorId: string;
-	status: "up" | "down" | "degraded" | "maintenance" | "pending";
-	latency: number;
-	timestamp: string | Date | number;
-	statusCode?: number;
-	error?: string;
-	location?: string;
-	timings?: HTTPTimings;
+    monitorId: string;
+    status: "up" | "down" | "degraded" | "maintenance" | "pending";
+    latency: number;
+    timestamp: string | Date | number;
+    statusCode?: number;
+    error?: string;
+    location?: string;
+    timings?: HTTPTimings;
 }
 
 interface MonitorChangeInsert {
-	id: string;
-	monitorId: string;
-	status: string;
-	timestamp: Date;
-	location?: string | null;
+    id: string;
+    monitorId: string;
+    status: string;
+    timestamp: Date;
+    location?: string | null;
 }
 
 interface ProcessedMonitorEventGroup {
-	changesToInsert: MonitorChangeInsert[];
-	incidentsToInsert: (typeof incident.$inferInsert)[];
-	incidentUpdatesToApply: IncidentUpdate[];
-	incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[];
-	incidentStatusPagesToInsert: (typeof incidentStatusPage.$inferInsert)[];
-	activitiesToInsert: (typeof incidentActivity.$inferInsert)[];
-	eventsToDispatch: WorkerIncidentEventDispatch[];
+    changesToInsert: MonitorChangeInsert[];
+    incidentsToInsert: (typeof incident.$inferInsert)[];
+    incidentUpdatesToApply: IncidentUpdate[];
+    incidentMonitorsToInsert: (typeof incidentMonitor.$inferInsert)[];
+    incidentStatusPagesToInsert: (typeof incidentStatusPage.$inferInsert)[];
+    activitiesToInsert: (typeof incidentActivity.$inferInsert)[];
+    eventsToDispatch: WorkerIncidentEventDispatch[];
 }
 
 interface IncidentUpdate {
-	id: string;
-	values: Partial<typeof incident.$inferInsert>;
+    id: string;
+    values: Partial<typeof incident.$inferInsert>;
 }
 
 type WorkerIncidentEventDispatch =
-	| {
-			event: "incident.created";
-			payload: AppEventPayload<"incident.created">;
-	  }
-	| {
-			event: "incident.resolved";
-			payload: AppEventPayload<"incident.resolved">;
-	  };
+    | {
+          event: "incident.created";
+          payload: AppEventPayload<"incident.created">;
+      }
+    | {
+          event: "incident.resolved";
+          payload: AppEventPayload<"incident.resolved">;
+      };
 
 const monitorEventLocks = new Map<string, Promise<void>>();
 type AutomaticIncidentTriggerStatus = "down" | "degraded";
 
 function getAutomaticIncidentTitle(
-	monitorName: string,
-	triggerStatus: AutomaticIncidentTriggerStatus,
+    monitorName: string,
+    triggerStatus: AutomaticIncidentTriggerStatus,
 ) {
-	return triggerStatus === "degraded"
-		? `Monitor ${monitorName} is degraded`
-		: `Monitor ${monitorName} is down`;
+    return triggerStatus === "degraded"
+        ? `Monitor ${monitorName} is degraded`
+        : `Monitor ${monitorName} is down`;
 }
 
 function getAutomaticIncidentSeverity(
-	triggerStatus: AutomaticIncidentTriggerStatus,
+    triggerStatus: AutomaticIncidentTriggerStatus,
 ) {
-	return triggerStatus === "degraded" ? "minor" : "major";
+    return triggerStatus === "degraded" ? "minor" : "major";
 }
 
 function getAutomaticIncidentDescription(input: {
-	monitorName: string;
-	triggerStatus: AutomaticIncidentTriggerStatus;
-	reason: string | null;
-	error?: string;
+    monitorName: string;
+    triggerStatus: AutomaticIncidentTriggerStatus;
+    reason: string | null;
+    error?: string;
 }) {
-	const summary =
-		input.triggerStatus === "degraded"
-			? `Monitor ${input.monitorName} is degraded.`
-			: `Monitor ${input.monitorName} is down.`;
-	const details = [summary];
+    const summary =
+        input.triggerStatus === "degraded"
+            ? `Monitor ${input.monitorName} is degraded.`
+            : `Monitor ${input.monitorName} is down.`;
+    const details = [summary];
 
-	if (input.reason) {
-		details.push(`Reason: ${input.reason}`);
-	}
+    if (input.reason) {
+        details.push(`Reason: ${input.reason}`);
+    }
 
-	details.push(`Last failure: ${input.error || "Unknown error"}`);
+    details.push(`Last failure: ${input.error || "Unknown error"}`);
 
-	return details.join("\n\n");
+    return details.join("\n\n");
 }
 
 function getAutomaticIncidentOpenedMessage(input: {
-	triggerStatus: AutomaticIncidentTriggerStatus;
-	reason: string | null;
-	error?: string;
-	workerLabel: string;
+    triggerStatus: AutomaticIncidentTriggerStatus;
+    reason: string | null;
+    error?: string;
+    workerLabel: string;
 }) {
-	const statusText = input.triggerStatus === "degraded" ? "degraded" : "down";
-	const details = [`Incident opened automatically. Monitor is ${statusText}.`];
+    const statusText = input.triggerStatus === "degraded" ? "degraded" : "down";
+    const details = [
+        `Incident opened automatically. Monitor is ${statusText}.`,
+    ];
 
-	if (input.reason) {
-		details.push(input.reason);
-	}
+    if (input.reason) {
+        details.push(input.reason);
+    }
 
-	details.push(
-		`Last failure: ${input.error || "unknown error"}. (Worker: ${input.workerLabel})`,
-	);
+    details.push(
+        `Last failure: ${input.error || "unknown error"}. (Worker: ${input.workerLabel})`,
+    );
 
-	return details.join(" ");
+    return details.join(" ");
 }
 
 function getAutomaticIncidentEscalatedMessage(input: {
-	reason: string | null;
-	error?: string;
-	workerLabel: string;
+    reason: string | null;
+    error?: string;
+    workerLabel: string;
 }) {
-	const details = ["Incident escalated automatically. Monitor is down."];
+    const details = ["Incident escalated automatically. Monitor is down."];
 
-	if (input.reason) {
-		details.push(input.reason);
-	}
+    if (input.reason) {
+        details.push(input.reason);
+    }
 
-	details.push(
-		`Last failure: ${input.error || "unknown error"}. (Worker: ${input.workerLabel})`,
-	);
+    details.push(
+        `Last failure: ${input.error || "unknown error"}. (Worker: ${input.workerLabel})`,
+    );
 
-	return details.join(" ");
+    return details.join(" ");
 }
 
 async function withMonitorEventLock<T>(
-	monitorId: string,
-	fn: () => Promise<T>,
+    monitorId: string,
+    fn: () => Promise<T>,
 ) {
-	const previous = monitorEventLocks.get(monitorId) ?? Promise.resolve();
-	let releaseCurrentLock: () => void = () => {};
-	const current = new Promise<void>((resolve) => {
-		releaseCurrentLock = resolve;
-	});
-	const tail = previous.catch(() => undefined).then(() => current);
-	monitorEventLocks.set(monitorId, tail);
+    const previous = monitorEventLocks.get(monitorId) ?? Promise.resolve();
+    let releaseCurrentLock: () => void = () => {};
+    const current = new Promise<void>((resolve) => {
+        releaseCurrentLock = resolve;
+    });
+    const tail = previous.catch(() => undefined).then(() => current);
+    monitorEventLocks.set(monitorId, tail);
 
-	await previous.catch(() => undefined);
+    await previous.catch(() => undefined);
 
-	try {
-		return await fn();
-	} finally {
-		releaseCurrentLock();
-		if (monitorEventLocks.get(monitorId) === tail) {
-			monitorEventLocks.delete(monitorId);
-		}
-	}
+    try {
+        return await fn();
+    } finally {
+        releaseCurrentLock();
+        if (monitorEventLocks.get(monitorId) === tail) {
+            monitorEventLocks.delete(monitorId);
+        }
+    }
 }
 
 async function persistProcessedMonitorEventGroup(input: {
-	processed: ProcessedMonitorEventGroup;
-	monitorEvents: MonitorEvent[];
-	workerId: string;
+    processed: ProcessedMonitorEventGroup;
+    monitorEvents: MonitorEvent[];
+    workerId: string;
 }) {
-	const { processed, monitorEvents, workerId } = input;
+    const { processed, monitorEvents, workerId } = input;
 
-	if (processed.changesToInsert.length > 0) {
-		await timeseries.insertMonitorChanges(processed.changesToInsert);
-	}
+    if (processed.changesToInsert.length > 0) {
+        await timeseries.insertMonitorChanges(processed.changesToInsert);
+    }
 
-	await db.transaction(async (tx) => {
-		if (processed.incidentsToInsert.length > 0) {
-			await tx.insert(incident).values(processed.incidentsToInsert);
-		}
+    await db.transaction(async (tx) => {
+        if (processed.incidentsToInsert.length > 0) {
+            await tx.insert(incident).values(processed.incidentsToInsert);
+        }
 
-		for (const update of processed.incidentUpdatesToApply) {
-			await tx
-				.update(incident)
-				.set(update.values)
-				.where(eq(incident.id, update.id));
-		}
+        for (const update of processed.incidentUpdatesToApply) {
+            await tx
+                .update(incident)
+                .set(update.values)
+                .where(eq(incident.id, update.id));
+        }
 
-		if (processed.incidentMonitorsToInsert.length > 0) {
-			await tx
-				.insert(incidentMonitor)
-				.values(processed.incidentMonitorsToInsert);
-		}
+        if (processed.incidentMonitorsToInsert.length > 0) {
+            await tx
+                .insert(incidentMonitor)
+                .values(processed.incidentMonitorsToInsert);
+        }
 
-		if (processed.incidentStatusPagesToInsert.length > 0) {
-			await tx
-				.insert(incidentStatusPage)
-				.values(processed.incidentStatusPagesToInsert);
-		}
+        if (processed.incidentStatusPagesToInsert.length > 0) {
+            await tx
+                .insert(incidentStatusPage)
+                .values(processed.incidentStatusPagesToInsert);
+        }
 
-		if (processed.activitiesToInsert.length > 0) {
-			await tx.insert(incidentActivity).values(processed.activitiesToInsert);
-		}
+        if (processed.activitiesToInsert.length > 0) {
+            await tx
+                .insert(incidentActivity)
+                .values(processed.activitiesToInsert);
+        }
 
-		for (const eventToDispatch of processed.eventsToDispatch) {
-			if (eventToDispatch.event === "incident.created") {
-				await publishAppEvent("incident.created", eventToDispatch.payload, {
-					tx,
-				});
-				continue;
-			}
+        for (const eventToDispatch of processed.eventsToDispatch) {
+            if (eventToDispatch.event === "incident.created") {
+                await publishAppEvent(
+                    "incident.created",
+                    eventToDispatch.payload,
+                    {
+                        tx,
+                    },
+                );
+                continue;
+            }
 
-			await publishAppEvent("incident.resolved", eventToDispatch.payload, {
-				tx,
-			});
-		}
-	});
+            await publishAppEvent(
+                "incident.resolved",
+                eventToDispatch.payload,
+                {
+                    tx,
+                },
+            );
+        }
+    });
 
-	if (processed.eventsToDispatch.length > 0) {
-		await processPendingNotifications("worker-events");
-	}
+    if (processed.eventsToDispatch.length > 0) {
+        await processPendingNotifications("worker-events");
+    }
 
-	if (monitorEvents.length > 0) {
-		await timeseries.insertMonitorEvents(
-			monitorEvents.map((event) => ({
-				id: crypto.randomUUID(),
-				monitorId: event.monitorId,
-				status: event.status,
-				latency: event.latency,
-				timestamp: new Date(event.timestamp),
-				statusCode: event.statusCode,
-				error: event.error,
-				location: event.location || workerId,
-				dnsLookup: event.timings?.dnsLookup,
-				tcpConnect: event.timings?.tcpConnect,
-				tlsHandshake: event.timings?.tlsHandshake,
-				ttfb: event.timings?.ttfb,
-				transfer: event.timings?.transfer,
-			})),
-		);
-	}
+    if (monitorEvents.length > 0) {
+        await timeseries.insertMonitorEvents(
+            monitorEvents.map((event) => ({
+                id: crypto.randomUUID(),
+                monitorId: event.monitorId,
+                status: event.status,
+                latency: event.latency,
+                timestamp: new Date(event.timestamp),
+                statusCode: event.statusCode,
+                error: event.error,
+                location: event.location || workerId,
+                dnsLookup: event.timings?.dnsLookup,
+                tcpConnect: event.timings?.tcpConnect,
+                tlsHandshake: event.timings?.tlsHandshake,
+                ttfb: event.timings?.ttfb,
+                transfer: event.timings?.transfer,
+            })),
+        );
+    }
 }
 
 export {
-	type AutomaticIncidentOpenEvaluation,
-	type ConfiguredWorkerStateResult,
-	getConfiguredWorkerStates,
-	isAutomaticIncidentOpenEligible,
-	isAutomaticIncidentResolveEligible,
-	type WorkerStatusSnapshot,
+    type AutomaticIncidentOpenEvaluation,
+    type ConfiguredWorkerStateResult,
+    getConfiguredWorkerStates,
+    isAutomaticIncidentOpenEligible,
+    isAutomaticIncidentResolveEligible,
+    type WorkerStatusSnapshot,
 };
 
 /**
@@ -275,68 +287,68 @@ export {
  * @returns An array of monitor configuration objects containing: `id`, `type`, `url` (defaults to `""`), `hostname` (defaults to `""`), `port` (defaults to `0`), `resolverServers`, `recordType`, `interval`, `timeout`, `method` (defaults to `"GET"`), `headers` (defaults to `{}`), `body`, `acceptedStatusCodes`, `keyword`, `jsonPath`, `expectedValue`, `checkSsl` (defaults to `true`), and `sslCertExpiryNotificationDays` (defaults to `30`)
  */
 export async function getMonitorsForWorker(workerId: string) {
-	const workerRecord = await db.query.worker.findFirst({
-		where: eq(worker.id, workerId),
-	});
+    const workerRecord = await db.query.worker.findFirst({
+        where: eq(worker.id, workerId),
+    });
 
-	if (!workerRecord) {
-		return [];
-	}
+    if (!workerRecord) {
+        return [];
+    }
 
-	const allActiveMonitors = await db.query.monitor.findMany({
-		where: (t, { eq }) => eq(t.active, true),
-	});
+    const allActiveMonitors = await db.query.monitor.findMany({
+        where: (t, { eq }) => eq(t.active, true),
+    });
 
-	return allActiveMonitors
-		.filter((m) => {
-			const workerIds = (m.workerIds as string[] | null) ?? [];
-			if (workerIds.length > 0) {
-				return workerIds.includes(workerId);
-			}
-			const locations = (m.locations as string[] | null) ?? [];
-			return locations.includes(workerRecord.location);
-		})
-		.map((m) => {
-			const config = m.config as {
-				url?: string;
-				hostname?: string;
-				port?: number;
-				resolverServers?: string;
-				recordType?: string;
-				method?: string;
-				headers?: Record<string, string>;
-				body?: string;
-				acceptedStatusCodes?: string;
-				keyword?: string;
-				jsonPath?: string;
-				expectedValue?: string;
-				checkSsl?: boolean;
-				sslCertExpiryNotificationDays?: number;
-			};
-			return {
-				id: m.id,
-				type: m.type,
-				url: config.url || "",
-				hostname: config.hostname || "",
-				port: config.port || 0,
-				resolverServers: config.resolverServers || "",
-				recordType: config.recordType || "",
-				interval: m.interval,
-				timeout: m.timeout,
-				retries: m.retries,
-				retryInterval: m.retryInterval,
-				method: config.method || "GET",
-				headers: config.headers || {},
-				body: config.body,
-				acceptedStatusCodes: config.acceptedStatusCodes,
-				keyword: config.keyword,
-				jsonPath: config.jsonPath,
-				expectedValue: config.expectedValue,
-				checkSsl: config.checkSsl ?? true,
-				sslCertExpiryNotificationDays:
-					config.sslCertExpiryNotificationDays ?? 30,
-			};
-		});
+    return allActiveMonitors
+        .filter((m) => {
+            const workerIds = (m.workerIds as string[] | null) ?? [];
+            if (workerIds.length > 0) {
+                return workerIds.includes(workerId);
+            }
+            const locations = (m.locations as string[] | null) ?? [];
+            return locations.includes(workerRecord.location);
+        })
+        .map((m) => {
+            const config = m.config as {
+                url?: string;
+                hostname?: string;
+                port?: number;
+                resolverServers?: string;
+                recordType?: string;
+                method?: string;
+                headers?: Record<string, string>;
+                body?: string;
+                acceptedStatusCodes?: string;
+                keyword?: string;
+                jsonPath?: string;
+                expectedValue?: string;
+                checkSsl?: boolean;
+                sslCertExpiryNotificationDays?: number;
+            };
+            return {
+                id: m.id,
+                type: m.type,
+                url: config.url || "",
+                hostname: config.hostname || "",
+                port: config.port || 0,
+                resolverServers: config.resolverServers || "",
+                recordType: config.recordType || "",
+                interval: m.interval,
+                timeout: m.timeout,
+                retries: m.retries,
+                retryInterval: m.retryInterval,
+                method: config.method || "GET",
+                headers: config.headers || {},
+                body: config.body,
+                acceptedStatusCodes: config.acceptedStatusCodes,
+                keyword: config.keyword,
+                jsonPath: config.jsonPath,
+                expectedValue: config.expectedValue,
+                checkSsl: config.checkSsl ?? true,
+                sslCertExpiryNotificationDays:
+                    config.sslCertExpiryNotificationDays ?? 30,
+            };
+        });
 }
 
 /**
@@ -347,36 +359,36 @@ export async function getMonitorsForWorker(workerId: string) {
  * @returns An object with `success: true` and `count` equal to the number of processed events
  */
 export async function processMonitorEvents(
-	events: MonitorEvent[],
-	workerId: string,
+    events: MonitorEvent[],
+    workerId: string,
 ) {
-	// Group events by monitor
-	const eventsByMonitor = new Map<string, MonitorEvent[]>();
-	for (const event of events) {
-		const list = eventsByMonitor.get(event.monitorId) || [];
-		list.push(event);
-		eventsByMonitor.set(event.monitorId, list);
-	}
+    // Group events by monitor
+    const eventsByMonitor = new Map<string, MonitorEvent[]>();
+    for (const event of events) {
+        const list = eventsByMonitor.get(event.monitorId) || [];
+        list.push(event);
+        eventsByMonitor.set(event.monitorId, list);
+    }
 
-	for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-		await withMonitorEventLock(monitorId, async () => {
-			const processedGroup = await processMonitorEventGroup(
-				monitorId,
-				monitorEvents,
-				workerId,
-			);
+    for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
+        await withMonitorEventLock(monitorId, async () => {
+            const processedGroup = await processMonitorEventGroup(
+                monitorId,
+                monitorEvents,
+                workerId,
+            );
 
-			await persistProcessedMonitorEventGroup({
-				processed: processedGroup,
-				monitorEvents,
-				workerId,
-			});
+            await persistProcessedMonitorEventGroup({
+                processed: processedGroup,
+                monitorEvents,
+                workerId,
+            });
 
-			return processedGroup;
-		});
-	}
+            return processedGroup;
+        });
+    }
 
-	return { success: true, count: events.length };
+    return { success: true, count: events.length };
 }
 
 /**
@@ -393,369 +405,377 @@ export async function processMonitorEvents(
  * @param activitiesToInsert - Array that will be appended with incident activity entries describing automated actions
  */
 async function processMonitorEventGroup(
-	monitorId: string,
-	monitorEvents: MonitorEvent[],
-	workerId: string,
+    monitorId: string,
+    monitorEvents: MonitorEvent[],
+    workerId: string,
 ): Promise<ProcessedMonitorEventGroup> {
-	const result: ProcessedMonitorEventGroup = {
-		changesToInsert: [],
-		incidentsToInsert: [],
-		incidentUpdatesToApply: [],
-		incidentMonitorsToInsert: [],
-		incidentStatusPagesToInsert: [],
-		activitiesToInsert: [],
-		eventsToDispatch: [],
-	};
+    const result: ProcessedMonitorEventGroup = {
+        changesToInsert: [],
+        incidentsToInsert: [],
+        incidentUpdatesToApply: [],
+        incidentMonitorsToInsert: [],
+        incidentStatusPagesToInsert: [],
+        activitiesToInsert: [],
+        eventsToDispatch: [],
+    };
 
-	const monitorConfig = await db.query.monitor.findFirst({
-		where: eq(monitor.id, monitorId),
-	});
+    const monitorConfig = await db.query.monitor.findFirst({
+        where: eq(monitor.id, monitorId),
+    });
 
-	if (!monitorConfig) {
-		console.warn(`Received events for unknown monitor: ${monitorId}`);
-		return result;
-	}
+    if (!monitorConfig) {
+        console.warn(`Received events for unknown monitor: ${monitorId}`);
+        return result;
+    }
 
-	// Check for active maintenance
-	const activeMaintenance = await db
-		.select({ id: maintenance.id })
-		.from(maintenance)
-		.innerJoin(
-			maintenanceMonitor,
-			eq(maintenance.id, maintenanceMonitor.maintenanceId),
-		)
-		.where(
-			and(
-				eq(maintenanceMonitor.monitorId, monitorId),
-				eq(maintenance.status, "in_progress"),
-			),
-		)
-		.limit(1);
+    // Check for active maintenance
+    const activeMaintenance = await db
+        .select({ id: maintenance.id })
+        .from(maintenance)
+        .innerJoin(
+            maintenanceMonitor,
+            eq(maintenance.id, maintenanceMonitor.maintenanceId),
+        )
+        .where(
+            and(
+                eq(maintenanceMonitor.monitorId, monitorId),
+                eq(maintenance.status, "in_progress"),
+            ),
+        )
+        .limit(1);
 
-	const isUnderMaintenance = activeMaintenance.length > 0;
+    const isUnderMaintenance = activeMaintenance.length > 0;
 
-	if (isUnderMaintenance) {
-		for (const event of monitorEvents) {
-			event.status = "maintenance";
-		}
-	}
+    if (isUnderMaintenance) {
+        for (const event of monitorEvents) {
+            event.status = "maintenance";
+        }
+    }
 
-	// Fetch active automatic incident
-	const activeIncidentList = await db
-		.select({
-			id: incident.id,
-			status: incident.status,
-			title: incident.title,
-			description: incident.description,
-			severity: incident.severity,
-			endedAt: incident.endedAt,
-			type: incident.type,
-		})
-		.from(incident)
-		.innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
-		.where(
-			and(
-				eq(incidentMonitor.monitorId, monitorId),
-				eq(incident.type, "automatic"),
-				isNull(incident.endedAt),
-			),
-		)
-		.limit(1);
+    // Fetch active automatic incident
+    const activeIncidentList = await db
+        .select({
+            id: incident.id,
+            status: incident.status,
+            title: incident.title,
+            description: incident.description,
+            severity: incident.severity,
+            endedAt: incident.endedAt,
+            type: incident.type,
+        })
+        .from(incident)
+        .innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
+        .where(
+            and(
+                eq(incidentMonitor.monitorId, monitorId),
+                eq(incident.type, "automatic"),
+                isNull(incident.endedAt),
+            ),
+        )
+        .limit(1);
 
-	let activeIncident: (typeof activeIncidentList)[0] | undefined =
-		activeIncidentList[0];
+    let activeIncident: (typeof activeIncidentList)[0] | undefined =
+        activeIncidentList[0];
 
-	// Sort by timestamp
-	monitorEvents.sort(
-		(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-	);
+    // Sort by timestamp
+    monitorEvents.sort(
+        (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
 
-	const monitorWorkerIds = Array.isArray(monitorConfig.workerIds)
-		? monitorConfig.workerIds
-		: [];
-	const monitorLocations = Array.isArray(monitorConfig.locations)
-		? monitorConfig.locations
-		: [];
-	const configuredWorkers = await getEffectiveMonitorWorkers({
-		id: monitorConfig.id,
-		workerIds: monitorWorkerIds,
-		locations: monitorLocations,
-	});
-	const configuredWorkerIds = configuredWorkers.map(
-		(configuredWorker) => configuredWorker.id,
-	);
-	const workerLabels = new Map(
-		configuredWorkers.map((workerRecord) => [
-			workerRecord.id,
-			`${workerRecord.name} (${workerRecord.location.toUpperCase()})`,
-		]),
-	);
+    const monitorWorkerIds = Array.isArray(monitorConfig.workerIds)
+        ? monitorConfig.workerIds
+        : [];
+    const monitorLocations = Array.isArray(monitorConfig.locations)
+        ? monitorConfig.locations
+        : [];
+    const configuredWorkers = await getEffectiveMonitorWorkers({
+        id: monitorConfig.id,
+        workerIds: monitorWorkerIds,
+        locations: monitorLocations,
+    });
+    const configuredWorkerIds = configuredWorkers.map(
+        (configuredWorker) => configuredWorker.id,
+    );
+    const workerLabels = new Map(
+        configuredWorkers.map((workerRecord) => [
+            workerRecord.id,
+            `${workerRecord.name} (${workerRecord.location.toUpperCase()})`,
+        ]),
+    );
 
-	const latestWorkerStatuses =
-		await timeseries.getLatestStatusPerLocation(monitorId);
-	const workerStatusById = new Map<string, WorkerStatusSnapshot>();
-	for (const workerStatus of latestWorkerStatuses) {
-		workerStatusById.set(workerStatus.location, {
-			status: workerStatus.status as MonitorEvent["status"],
-			timestamp: workerStatus.timestamp,
-		});
-	}
+    const latestWorkerStatuses =
+        await timeseries.getLatestStatusPerLocation(monitorId);
+    const workerStatusById = new Map<string, WorkerStatusSnapshot>();
+    for (const workerStatus of latestWorkerStatuses) {
+        workerStatusById.set(workerStatus.location, {
+            status: workerStatus.status as MonitorEvent["status"],
+            timestamp: workerStatus.timestamp,
+        });
+    }
 
-	let currentStatus =
-		latestWorkerStatuses.length > 0
-			? getAggregateMonitorStatus({
-					configuredWorkerIds,
-					workerStatusById,
-					isUnderMaintenance,
-				}).status
-			: undefined;
+    let currentStatus =
+        latestWorkerStatuses.length > 0
+            ? getAggregateMonitorStatus({
+                  configuredWorkerIds,
+                  workerStatusById,
+                  isUnderMaintenance,
+              }).status
+            : undefined;
 
-	for (const event of monitorEvents) {
-		const eventTime = new Date(event.timestamp);
-		const eventWorkerId = event.location || workerId;
+    for (const event of monitorEvents) {
+        const eventTime = new Date(event.timestamp);
+        const eventWorkerId = event.location || workerId;
 
-		workerStatusById.set(eventWorkerId, {
-			status: event.status,
-			timestamp: eventTime,
-		});
+        workerStatusById.set(eventWorkerId, {
+            status: event.status,
+            timestamp: eventTime,
+        });
 
-		const aggregateStatus = getAggregateMonitorStatus({
-			configuredWorkerIds,
-			workerStatusById,
-			isUnderMaintenance,
-			workerLabels,
-		});
-		const aggregateRuntimeStatus = aggregateStatus.status;
-		const isChange =
-			currentStatus !== undefined && currentStatus !== aggregateRuntimeStatus;
-		const isFirstEvent = currentStatus === undefined;
+        const aggregateStatus = getAggregateMonitorStatus({
+            configuredWorkerIds,
+            workerStatusById,
+            isUnderMaintenance,
+            workerLabels,
+        });
+        const aggregateRuntimeStatus = aggregateStatus.status;
+        const isChange =
+            currentStatus !== undefined &&
+            currentStatus !== aggregateRuntimeStatus;
+        const isFirstEvent = currentStatus === undefined;
 
-		if (isChange || isFirstEvent) {
-			result.changesToInsert.push({
-				id: crypto.randomUUID(),
-				monitorId: event.monitorId,
-				status: aggregateRuntimeStatus,
-				timestamp: eventTime,
-				location: eventWorkerId,
-			});
-			currentStatus = aggregateRuntimeStatus;
-		}
+        if (isChange || isFirstEvent) {
+            result.changesToInsert.push({
+                id: crypto.randomUUID(),
+                monitorId: event.monitorId,
+                status: aggregateRuntimeStatus,
+                timestamp: eventTime,
+                location: eventWorkerId,
+            });
+            currentStatus = aggregateRuntimeStatus;
+        }
 
-		if (
-			isAutomaticIncidentResolveEligible({
-				configuredWorkerIds,
-				workerStatusById,
-				activeIncident,
-			})
-		) {
-			const resolvedIncident = activeIncident;
-			if (!resolvedIncident) {
-				continue;
-			}
+        if (
+            isAutomaticIncidentResolveEligible({
+                configuredWorkerIds,
+                workerStatusById,
+                activeIncident,
+            })
+        ) {
+            const resolvedIncident = activeIncident;
+            if (!resolvedIncident) {
+                continue;
+            }
 
-			result.incidentUpdatesToApply.push({
-				id: resolvedIncident.id,
-				values: {
-					status: "resolved",
-					endedAt: eventTime,
-					resolvedAt: eventTime,
-					updatedAt: eventTime,
-				},
-			});
+            result.incidentUpdatesToApply.push({
+                id: resolvedIncident.id,
+                values: {
+                    status: "resolved",
+                    endedAt: eventTime,
+                    resolvedAt: eventTime,
+                    updatedAt: eventTime,
+                },
+            });
 
-			result.eventsToDispatch.push({
-				event: "incident.resolved",
-				payload: {
-					incidentId: resolvedIncident.id,
-					organizationId: monitorConfig.organizationId,
-					title: `Monitor ${monitorConfig.name} recovered`,
-					description:
-						aggregateRuntimeStatus === "maintenance"
-							? "Monitor entered maintenance."
-							: "Monitor is back up in all configured workers.",
-					severity: resolvedIncident.severity as "minor" | "major" | "critical",
-				},
-			});
+            result.eventsToDispatch.push({
+                event: "incident.resolved",
+                payload: {
+                    incidentId: resolvedIncident.id,
+                    organizationId: monitorConfig.organizationId,
+                    title: `Monitor ${monitorConfig.name} recovered`,
+                    description:
+                        aggregateRuntimeStatus === "maintenance"
+                            ? "Monitor entered maintenance."
+                            : "Monitor is back up in all configured workers.",
+                    severity: resolvedIncident.severity as
+                        | "minor"
+                        | "major"
+                        | "critical",
+                },
+            });
 
-			result.activitiesToInsert.push({
-				id: crypto.randomUUID(),
-				incidentId: resolvedIncident.id,
-				message:
-					aggregateRuntimeStatus === "maintenance"
-						? "Monitor entered maintenance. Incident resolved automatically."
-						: "Monitor recovered in all configured workers. Incident resolved automatically.",
-				type: "event",
-				createdAt: eventTime,
-				userId: null,
-			});
+            result.activitiesToInsert.push({
+                id: crypto.randomUUID(),
+                incidentId: resolvedIncident.id,
+                message:
+                    aggregateRuntimeStatus === "maintenance"
+                        ? "Monitor entered maintenance. Incident resolved automatically."
+                        : "Monitor recovered in all configured workers. Incident resolved automatically.",
+                type: "event",
+                createdAt: eventTime,
+                userId: null,
+            });
 
-			activeIncident = undefined;
-			continue;
-		}
+            activeIncident = undefined;
+            continue;
+        }
 
-		if (activeIncident && aggregateRuntimeStatus === "down") {
-			const incidentTitle = getAutomaticIncidentTitle(
-				monitorConfig.name,
-				"down",
-			);
-			const incidentDescription = getAutomaticIncidentDescription({
-				monitorName: monitorConfig.name,
-				triggerStatus: "down",
-				reason: aggregateStatus.statusReason,
-				error: event.error,
-			});
+        if (activeIncident && aggregateRuntimeStatus === "down") {
+            const incidentTitle = getAutomaticIncidentTitle(
+                monitorConfig.name,
+                "down",
+            );
+            const incidentDescription = getAutomaticIncidentDescription({
+                monitorName: monitorConfig.name,
+                triggerStatus: "down",
+                reason: aggregateStatus.statusReason,
+                error: event.error,
+            });
 
-			if (
-				activeIncident.title !== incidentTitle ||
-				activeIncident.description !== incidentDescription ||
-				activeIncident.severity !== "major"
-			) {
-				result.incidentUpdatesToApply.push({
-					id: activeIncident.id,
-					values: {
-						title: incidentTitle,
-						description: incidentDescription,
-						severity: "major",
-						updatedAt: eventTime,
-					},
-				});
+            if (
+                activeIncident.title !== incidentTitle ||
+                activeIncident.description !== incidentDescription ||
+                activeIncident.severity !== "major"
+            ) {
+                result.incidentUpdatesToApply.push({
+                    id: activeIncident.id,
+                    values: {
+                        title: incidentTitle,
+                        description: incidentDescription,
+                        severity: "major",
+                        updatedAt: eventTime,
+                    },
+                });
 
-				result.activitiesToInsert.push({
-					id: crypto.randomUUID(),
-					incidentId: activeIncident.id,
-					message: getAutomaticIncidentEscalatedMessage({
-						reason: aggregateStatus.statusReason,
-						error: event.error,
-						workerLabel: workerLabels.get(eventWorkerId) || eventWorkerId,
-					}),
-					type: "event",
-					createdAt: eventTime,
-					userId: null,
-				});
+                result.activitiesToInsert.push({
+                    id: crypto.randomUUID(),
+                    incidentId: activeIncident.id,
+                    message: getAutomaticIncidentEscalatedMessage({
+                        reason: aggregateStatus.statusReason,
+                        error: event.error,
+                        workerLabel:
+                            workerLabels.get(eventWorkerId) || eventWorkerId,
+                    }),
+                    type: "event",
+                    createdAt: eventTime,
+                    userId: null,
+                });
 
-				activeIncident = {
-					...activeIncident,
-					title: incidentTitle,
-					description: incidentDescription,
-					severity: "major",
-				};
-			}
-		}
+                activeIncident = {
+                    ...activeIncident,
+                    title: incidentTitle,
+                    description: incidentDescription,
+                    severity: "major",
+                };
+            }
+        }
 
-		const openEvaluation = isAutomaticIncidentOpenEligible({
-			configuredWorkerIds,
-			workerStatusById,
-			activeIncident,
-			eventTime,
-			incidentPendingDurationSeconds: monitorConfig.incidentPendingDuration,
-			isUnderMaintenance,
-			workerLabels,
-		});
+        const openEvaluation = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds,
+            workerStatusById,
+            activeIncident,
+            eventTime,
+            incidentPendingDurationSeconds:
+                monitorConfig.incidentPendingDuration,
+            isUnderMaintenance,
+            workerLabels,
+        });
 
-		if (
-			openEvaluation.eligible &&
-			openEvaluation.triggerStatus &&
-			openEvaluation.startedAt
-		) {
-			const newIncidentId = crypto.randomUUID();
-			const incidentTitle = getAutomaticIncidentTitle(
-				monitorConfig.name,
-				openEvaluation.triggerStatus,
-			);
-			const incidentDescription = getAutomaticIncidentDescription({
-				monitorName: monitorConfig.name,
-				triggerStatus: openEvaluation.triggerStatus,
-				reason: openEvaluation.reason,
-				error: event.error,
-			});
-			const incidentSeverity = getAutomaticIncidentSeverity(
-				openEvaluation.triggerStatus,
-			);
-			activeIncident = {
-				id: newIncidentId,
-				status: "investigating",
-				title: incidentTitle,
-				description: incidentDescription,
-				severity: incidentSeverity,
-				endedAt: null,
-				type: "automatic",
-			};
+        if (
+            openEvaluation.eligible &&
+            openEvaluation.triggerStatus &&
+            openEvaluation.startedAt
+        ) {
+            const newIncidentId = crypto.randomUUID();
+            const incidentTitle = getAutomaticIncidentTitle(
+                monitorConfig.name,
+                openEvaluation.triggerStatus,
+            );
+            const incidentDescription = getAutomaticIncidentDescription({
+                monitorName: monitorConfig.name,
+                triggerStatus: openEvaluation.triggerStatus,
+                reason: openEvaluation.reason,
+                error: event.error,
+            });
+            const incidentSeverity = getAutomaticIncidentSeverity(
+                openEvaluation.triggerStatus,
+            );
+            activeIncident = {
+                id: newIncidentId,
+                status: "investigating",
+                title: incidentTitle,
+                description: incidentDescription,
+                severity: incidentSeverity,
+                endedAt: null,
+                type: "automatic",
+            };
 
-			result.incidentsToInsert.push({
-				id: newIncidentId,
-				organizationId: monitorConfig.organizationId,
-				title: incidentTitle,
-				description: incidentDescription,
-				status: "investigating",
-				severity: incidentSeverity,
-				type: "automatic",
-				startedAt: openEvaluation.startedAt,
-				endedAt: null,
-				createdAt: eventTime,
-				updatedAt: eventTime,
-				resolvedAt: null,
-			});
+            result.incidentsToInsert.push({
+                id: newIncidentId,
+                organizationId: monitorConfig.organizationId,
+                title: incidentTitle,
+                description: incidentDescription,
+                status: "investigating",
+                severity: incidentSeverity,
+                type: "automatic",
+                startedAt: openEvaluation.startedAt,
+                endedAt: null,
+                createdAt: eventTime,
+                updatedAt: eventTime,
+                resolvedAt: null,
+            });
 
-			result.incidentMonitorsToInsert.push({
-				incidentId: newIncidentId,
-				monitorId: monitorId,
-			});
+            result.incidentMonitorsToInsert.push({
+                incidentId: newIncidentId,
+                monitorId: monitorId,
+            });
 
-			if (monitorConfig.publishIncidentToStatusPage) {
-				const statusPages = await db
-					.select({
-						statusPageId: statusPageMonitor.statusPageId,
-					})
-					.from(statusPageMonitor)
-					.where(eq(statusPageMonitor.monitorId, monitorId));
+            if (monitorConfig.publishIncidentToStatusPage) {
+                const statusPages = await db
+                    .select({
+                        statusPageId: statusPageMonitor.statusPageId,
+                    })
+                    .from(statusPageMonitor)
+                    .where(eq(statusPageMonitor.monitorId, monitorId));
 
-				for (const { statusPageId } of statusPages) {
-					result.incidentStatusPagesToInsert.push({
-						incidentId: newIncidentId,
-						statusPageId,
-					});
-				}
+                for (const { statusPageId } of statusPages) {
+                    result.incidentStatusPagesToInsert.push({
+                        incidentId: newIncidentId,
+                        statusPageId,
+                    });
+                }
 
-				if (statusPages.length > 0) {
-					result.activitiesToInsert.push({
-						id: crypto.randomUUID(),
-						incidentId: newIncidentId,
-						message: `Published to ${statusPages.length} status page${statusPages.length === 1 ? "" : "s"} automatically.`,
-						type: "event",
-						createdAt: eventTime,
-						userId: null,
-					});
-				}
-			}
+                if (statusPages.length > 0) {
+                    result.activitiesToInsert.push({
+                        id: crypto.randomUUID(),
+                        incidentId: newIncidentId,
+                        message: `Published to ${statusPages.length} status page${statusPages.length === 1 ? "" : "s"} automatically.`,
+                        type: "event",
+                        createdAt: eventTime,
+                        userId: null,
+                    });
+                }
+            }
 
-			result.activitiesToInsert.push({
-				id: crypto.randomUUID(),
-				incidentId: newIncidentId,
-				message: getAutomaticIncidentOpenedMessage({
-					triggerStatus: openEvaluation.triggerStatus,
-					reason: openEvaluation.reason,
-					error: event.error,
-					workerLabel: workerLabels.get(eventWorkerId) || eventWorkerId,
-				}),
-				type: "event",
-				createdAt: eventTime,
-				userId: null,
-			});
+            result.activitiesToInsert.push({
+                id: crypto.randomUUID(),
+                incidentId: newIncidentId,
+                message: getAutomaticIncidentOpenedMessage({
+                    triggerStatus: openEvaluation.triggerStatus,
+                    reason: openEvaluation.reason,
+                    error: event.error,
+                    workerLabel:
+                        workerLabels.get(eventWorkerId) || eventWorkerId,
+                }),
+                type: "event",
+                createdAt: eventTime,
+                userId: null,
+            });
 
-			result.eventsToDispatch.push({
-				event: "incident.created",
-				payload: {
-					incidentId: newIncidentId,
-					organizationId: monitorConfig.organizationId,
-					title: incidentTitle,
-					description: incidentDescription,
-					severity: incidentSeverity,
-				},
-			});
-		}
-	}
+            result.eventsToDispatch.push({
+                event: "incident.created",
+                payload: {
+                    incidentId: newIncidentId,
+                    organizationId: monitorConfig.organizationId,
+                    title: incidentTitle,
+                    description: incidentDescription,
+                    severity: incidentSeverity,
+                },
+            });
+        }
+    }
 
-	// `incidentRecoveryDuration` exists on the monitor schema but remains intentionally
-	// unused here so this fix only changes multi-worker incident gating behavior.
-	return result;
+    // `incidentRecoveryDuration` exists on the monitor schema but remains intentionally
+    // unused here so this fix only changes multi-worker incident gating behavior.
+    return result;
 }

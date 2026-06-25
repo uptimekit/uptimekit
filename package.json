@@ -1,70 +1,70 @@
 {
-	"name": "uptimekit",
-	"private": true,
-	"type": "module",
-	"version": "4.2.0",
-	"workspaces": [
-		"apps/*",
-		"packages/*"
-	],
-	"scripts": {
-		"check": "pnpm run lint && pnpm run check-types && pnpm run test",
-		"lint": "biome check .",
-		"prepare": "husky || true",
-		"build": "turbo build",
-		"clear:cache": "find . -type d -name .next -prune -exec rm -rf {} +",
-		"check-types": "turbo check-types",
-		"test": "vitest run",
-		"start": "turbo start",
-		"dev": "turbo dev",
-		"dev:dash": "turbo -F @uptimekit/dash dev",
-		"dev:status-page": "turbo -F @uptimekit/status-page dev",
-		"db:push": "turbo -F @uptimekit/db db:push",
-		"db:studio": "turbo -F @uptimekit/db db:studio",
-		"db:generate": "turbo -F @uptimekit/db db:generate",
-		"db:migrate": "turbo -F @uptimekit/db db:migrate",
-		"db:seed": "tsx scripts/seed-db.ts",
-		"db:seed:timescale": "TIMESERIES_BACKEND=timescale tsx scripts/seed-db.ts",
-		"ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
-	},
-	"dependencies": {
-		"dotenv": "^17.4.2",
-		"drizzle-orm": "^0.45.2",
-		"postgres": "^3.4.9",
-		"zod": "^4.4.3"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.4.15",
-		"@commitlint/cli": "^21.0.1",
-		"@commitlint/config-conventional": "^21.0.1",
-		"@types/node": "^22.19.19",
-		"husky": "^9.1.7",
-		"lint-staged": "^16.4.0",
-		"tsx": "^4.21.0",
-		"turbo": "^2.9.14",
-		"typescript": "^5.9.3",
-		"vite": "^8.0.16",
-		"vitest": "^4.1.8"
-	},
-	"lint-staged": {
-		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-			"node scripts/biome-safe.js"
-		]
-	},
-	"packageManager": "pnpm@10.33.0",
-	"pnpm": {
-		"overrides": {
-			"esbuild": "^0.28.0",
-			"postcss": "^8.5.14",
-			"vite": "^8.0.16"
-		},
-		"onlyBuiltDependencies": [
-			"cpu-features",
-			"esbuild",
-			"msgpackr-extract",
-			"protobufjs",
-			"sharp",
-			"ssh2"
-		]
-	}
+    "name": "uptimekit",
+    "private": true,
+    "type": "module",
+    "version": "4.2.0",
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "check": "pnpm run lint && pnpm run check-types && pnpm run test",
+        "lint": "biome check .",
+        "prepare": "husky || true",
+        "build": "turbo build",
+        "clear:cache": "find . -type d -name .next -prune -exec rm -rf {} +",
+        "check-types": "turbo check-types",
+        "test": "vitest run",
+        "start": "turbo start",
+        "dev": "turbo dev",
+        "dev:dash": "turbo -F @uptimekit/dash dev",
+        "dev:status-page": "turbo -F @uptimekit/status-page dev",
+        "db:push": "turbo -F @uptimekit/db db:push",
+        "db:studio": "turbo -F @uptimekit/db db:studio",
+        "db:generate": "turbo -F @uptimekit/db db:generate",
+        "db:migrate": "turbo -F @uptimekit/db db:migrate",
+        "db:seed": "tsx scripts/seed-db.ts",
+        "db:seed:timescale": "TIMESERIES_BACKEND=timescale tsx scripts/seed-db.ts",
+        "ruler:apply": "pnpm dlx @intellectronica/ruler@latest apply --local-only"
+    },
+    "dependencies": {
+        "dotenv": "^17.4.2",
+        "drizzle-orm": "^0.45.2",
+        "postgres": "^3.4.9",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.4.15",
+        "@commitlint/cli": "^21.0.1",
+        "@commitlint/config-conventional": "^21.0.1",
+        "@types/node": "^22.19.19",
+        "husky": "^9.1.7",
+        "lint-staged": "^16.4.0",
+        "tsx": "^4.21.0",
+        "turbo": "^2.9.14",
+        "typescript": "^5.9.3",
+        "vite": "^8.0.16",
+        "vitest": "^4.1.8"
+    },
+    "lint-staged": {
+        "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+            "node scripts/biome-safe.js"
+        ]
+    },
+    "packageManager": "pnpm@10.33.0",
+    "pnpm": {
+        "overrides": {
+            "esbuild": "^0.28.0",
+            "postcss": "^8.5.14",
+            "vite": "^8.0.16"
+        },
+        "onlyBuiltDependencies": [
+            "cpu-features",
+            "esbuild",
+            "msgpackr-extract",
+            "protobufjs",
+            "sharp",
+            "ssh2"
+        ]
+    }
 }
