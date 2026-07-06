@@ -53,6 +53,9 @@ export default function SignInForm({
     email,
     emailReadOnly = false,
     fullPage = false,
+    defaultEmail,
+    defaultPassword,
+    startInPasswordStep = false,
 }: {
     showRegister?: boolean;
     showDiscordLogin?: boolean;
@@ -61,10 +64,13 @@ export default function SignInForm({
     email?: string;
     emailReadOnly?: boolean;
     fullPage?: boolean;
+    defaultEmail?: string;
+    defaultPassword?: string;
+    startInPasswordStep?: boolean;
 }) {
     const router = useRouter();
     const { isPending } = authClient.useSession();
-    const [isPasswordStep, setIsPasswordStep] = useState(false);
+    const [isPasswordStep, setIsPasswordStep] = useState(startInPasswordStep);
 
     const handleSocialSignIn = async (provider: "discord" | "github") => {
         await authClient.signIn.social({
@@ -83,8 +89,8 @@ export default function SignInForm({
 
     const form = useForm({
         defaultValues: {
-            email: email || "",
-            password: "",
+            email: email || defaultEmail || "",
+            password: defaultPassword || "",
         },
         onSubmit: async ({ value }) => {
             const normalizedEmail = value.email.trim().toLowerCase();

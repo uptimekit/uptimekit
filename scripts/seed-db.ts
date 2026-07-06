@@ -1219,8 +1219,10 @@ async function main() {
     console.log(`  Status page slug: ${SEED.statusPageSlug}`);
 }
 
-try {
-    await main();
-} finally {
-    await postgresClient.end();
-}
+(async () => {
+    try {
+        await main();
+    } finally {
+        await postgresClient.end();
+    }
+})();

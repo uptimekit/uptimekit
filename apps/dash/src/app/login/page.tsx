@@ -20,6 +20,8 @@ export default async function LoginPage() {
         showRegister = false;
     }
 
+    const isDemo = process.env.DEMO_MODE === "true";
+
     return (
         <div className="min-h-screen w-full">
             <SignInForm
@@ -27,6 +29,9 @@ export default async function LoginPage() {
                 showDiscordLogin={!!process.env.DISCORD_CLIENT_ID}
                 showGithubLogin={!!process.env.GITHUB_CLIENT_ID}
                 fullPage
+                defaultEmail={isDemo ? process.env.DEMO_EMAIL : undefined}
+                defaultPassword={isDemo ? process.env.DEMO_PASSWORD : undefined}
+                startInPasswordStep={isDemo}
             />
         </div>
     );
