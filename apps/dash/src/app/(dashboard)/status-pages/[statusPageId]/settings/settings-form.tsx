@@ -240,6 +240,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
             value: "signal",
             label: "Signal - Compact operational status layout",
         },
+        {
+            value: "spark",
+            label: "Spark - Barebones design",
+        },
     ];
 
     const colorThemes = [

@@ -433,12 +433,21 @@ export async function prepareStatusPageData(
                         : 100;
 
                 if (totalIncidentMs > 0) {
+                    const annotation = Array.from(
+                        new Set(
+                            reportsOutsideMaintenance
+                                .map((report: any) => report.title)
+                                .filter(Boolean),
+                        ),
+                    ).join("\n");
+
                     return {
                         ...day,
                         status: getWorstIncidentStatus(
                             reportsOutsideMaintenance,
                         ),
                         uptime,
+                        annotation,
                         downtimeMs: totalIncidentMs,
                         maintenanceMs,
                         monitoredMs,

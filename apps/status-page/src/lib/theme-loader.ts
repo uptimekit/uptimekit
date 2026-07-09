@@ -15,6 +15,7 @@ const themeLoaders: Record<
     default: () => import("@/themes/default/page"),
     flat: () => import("@/themes/flat/page"),
     signal: () => import("@/themes/signal/page"),
+    spark: () => import("@/themes/spark/page"),
 };
 
 const incidentDetailLoaders: Record<
@@ -24,6 +25,7 @@ const incidentDetailLoaders: Record<
     default: () => import("@/themes/default/incident-detail"),
     flat: () => import("@/themes/flat/incident-detail"),
     signal: () => import("@/themes/signal/incident-detail"),
+    spark: () => import("@/themes/spark/incident-detail"),
 };
 
 const maintenanceDetailLoaders: Record<
@@ -33,6 +35,7 @@ const maintenanceDetailLoaders: Record<
     default: () => import("@/themes/default/maintenance-detail"),
     flat: () => import("@/themes/flat/maintenance-detail"),
     signal: () => import("@/themes/signal/maintenance-detail"),
+    spark: () => import("@/themes/spark/maintenance-detail"),
 };
 
 const updatesLoaders: Record<
@@ -42,6 +45,7 @@ const updatesLoaders: Record<
     default: () => import("@/themes/default/updates"),
     flat: () => import("@/themes/flat/updates"),
     signal: () => import("@/themes/signal/updates"),
+    spark: () => import("@/themes/spark/updates"),
 };
 
 export async function loadThemeComponent(
