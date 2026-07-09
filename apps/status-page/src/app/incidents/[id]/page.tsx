@@ -61,7 +61,10 @@ export async function generateMetadata({
             },
         };
     } catch {
-        return { title: "Incident" };
+        return {
+            title: "Incident",
+            robots: { index: false, follow: false },
+        };
     }
 }
 
