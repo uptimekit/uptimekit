@@ -1129,7 +1129,12 @@ export const incidentsRouter = {
                     message: input.message,
                     createdAt: input.createdAt,
                 })
-                .where(eq(incidentActivity.id, input.activityId));
+                .where(
+                    and(
+                        eq(incidentActivity.id, input.activityId),
+                        eq(incidentActivity.incidentId, input.incidentId),
+                    ),
+                );
 
             return { success: true };
         }),
