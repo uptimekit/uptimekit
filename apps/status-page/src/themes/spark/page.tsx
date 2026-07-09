@@ -4,7 +4,6 @@ import { Calendar } from "./components/calendar";
 import { Header } from "./components/header";
 import { MonitorGroups } from "./components/monitor-groups";
 import "./style.css";
-import Image from "next/image";
 import { Logo } from "./components/uk-logo";
 
 function StatusBanner({
