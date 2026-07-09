@@ -86,7 +86,7 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
                     onSelect={handleSelect}
                     autoFocus
                 />
-                <div className="border-t bg-background p-3">
+                <div className="-mx-2 mt-2 -mb-2 rounded-b-xl border-t bg-background p-3">
                     <div className="flex items-center gap-2">
                         <FontAwesomeIcon
                             icon={faClock}

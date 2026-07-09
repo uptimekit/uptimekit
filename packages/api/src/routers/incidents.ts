@@ -1084,6 +1084,56 @@ export const incidentsRouter = {
             return { success: true };
         }),
 
+    editActivity: writeProcedure
+        .route({
+            method: "PATCH",
+            path: "/incidents/{incidentId}/activities/{activityId}",
+            tags: ["incidents"],
+            summary: "Edit activity",
+            description: "Edit an incident timeline entry.",
+        })
+        .input(
+            z.object({
+                incidentId: z.string(),
+                activityId: z.string(),
+                message: z.string().min(1),
+                createdAt: incidentTimestampSchema,
+            }),
+        )
+        .handler(async ({ input, context }) => {
+            const activity = await db.query.incidentActivity.findFirst({
+                where: and(
+                    eq(incidentActivity.id, input.activityId),
+                    eq(incidentActivity.incidentId, input.incidentId),
+                ),
+                with: {
+                    incident: true,
+                },
+            });
+
+            if (
+                !activity ||
+                activity.incident.organizationId !==
+                    getActiveOrganizationId(
+                        context.session.session.activeOrganizationId,
+                    )
+            ) {
+                throw new ORPCError("NOT_FOUND", {
+                    message: "Activity not found",
+                });
+            }
+
+            await db
+                .update(incidentActivity)
+                .set({
+                    message: input.message,
+                    createdAt: input.createdAt,
+                })
+                .where(eq(incidentActivity.id, input.activityId));
+
+            return { success: true };
+        }),
+
     delete: writeProcedure
         .route({
             method: "DELETE",

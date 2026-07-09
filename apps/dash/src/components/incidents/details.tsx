@@ -73,6 +73,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -97,11 +98,19 @@ const editIncidentSchema = z
 
 type EditIncidentValues = z.infer<typeof editIncidentSchema>;
 
+type EditableActivity = {
+    id: string;
+    message: string;
+    createdAt: string | Date;
+};
+
 export function IncidentDetails({ id }: { id: string }) {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [comment, setComment] = useState("");
     const [editOpen, setEditOpen] = useState(false);
+    const [activityToEdit, setActivityToEdit] =
+        useState<EditableActivity | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const submitComment = useMutation(
@@ -167,6 +176,26 @@ export function IncidentDetails({ id }: { id: string }) {
                     title: `Failed to delete incident: ${err.message}`,
                 });
                 setShowDeleteDialog(false);
+            },
+        }),
+    );
+
+    const editActivity = useMutation(
+        orpc.incidents.editActivity.mutationOptions({
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: orpc.incidents.get.key({ input: { id } }),
+                });
+                queryClient.invalidateQueries({
+                    queryKey: orpc.incidents.list.key(),
+                });
+                setActivityToEdit(null);
+                sileo.success({ title: "Timeline entry updated" });
+            },
+            onError: (err) => {
+                sileo.error({
+                    title: `Failed to update timeline entry: ${err.message}`,
+                });
             },
         }),
     );
@@ -417,37 +446,80 @@ export function IncidentDetails({ id }: { id: string }) {
                                                 <div className="absolute top-8 bottom-[-24px] left-[11px] w-px bg-border" />
                                             )}
                                             <div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
-                                            <div className="flex-1 space-y-1">
-                                                <div className="flex items-center gap-1.5 text-sm leading-none">
-                                                    {activity.user && (
-                                                        <Avatar className="h-4 w-4">
-                                                            <AvatarImage
-                                                                src={
-                                                                    activity
-                                                                        .user
-                                                                        .image ??
-                                                                    undefined
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                                <div className="flex items-start justify-between gap-2 text-sm leading-none">
+                                                    <div className="flex min-w-0 items-center gap-1.5">
+                                                        {activity.user && (
+                                                            <Avatar className="h-4 w-4 shrink-0">
+                                                                <AvatarImage
+                                                                    src={
+                                                                        activity
+                                                                            .user
+                                                                            .image ??
+                                                                        undefined
+                                                                    }
+                                                                    alt={
+                                                                        activity
+                                                                            .user
+                                                                            .name
+                                                                    }
+                                                                />
+                                                                <AvatarFallback className="text-[8px]">
+                                                                    {activity.user.name
+                                                                        ?.slice(
+                                                                            0,
+                                                                            2,
+                                                                        )
+                                                                        .toUpperCase() ??
+                                                                        "??"}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                        )}
+                                                        <span className="break-words leading-5">
+                                                            {activity.message}
+                                                        </span>
+                                                    </div>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger
+                                                            render={
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 shrink-0"
+                                                                />
+                                                            }
+                                                        >
+                                                            <FontAwesomeIcon
+                                                                icon={
+                                                                    faEllipsis
                                                                 }
-                                                                alt={
-                                                                    activity
-                                                                        .user
-                                                                        .name
-                                                                }
+                                                                className="h-3 w-3"
                                                             />
-                                                            <AvatarFallback className="text-[8px]">
-                                                                {activity.user.name
-                                                                    ?.slice(
-                                                                        0,
-                                                                        2,
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem
+                                                                onSelect={() =>
+                                                                    setActivityToEdit(
+                                                                        {
+                                                                            id: activity.id,
+                                                                            message:
+                                                                                activity.message,
+                                                                            createdAt:
+                                                                                activity.createdAt,
+                                                                        },
                                                                     )
-                                                                    .toUpperCase() ??
-                                                                    "??"}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                    )}
-                                                    <span>
-                                                        {activity.message}
-                                                    </span>
+                                                                }
+                                                            >
+                                                                <FontAwesomeIcon
+                                                                    icon={
+                                                                        faPencil
+                                                                    }
+                                                                    className="mr-2 h-4 w-4"
+                                                                />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                                 <p className="text-muted-foreground text-xs">
                                                     {formatDistanceToNow(
@@ -600,6 +672,23 @@ export function IncidentDetails({ id }: { id: string }) {
                 onOpenChange={setEditOpen}
             />
 
+            <EditActivityDialog
+                activity={activityToEdit}
+                open={!!activityToEdit}
+                onOpenChange={(open) => {
+                    if (!open) setActivityToEdit(null);
+                }}
+                onSubmit={(values) => {
+                    if (!activityToEdit) return;
+                    editActivity.mutate({
+                        incidentId: id,
+                        activityId: activityToEdit.id,
+                        ...values,
+                    });
+                }}
+                isPending={editActivity.isPending}
+            />
+
             <AlertDialog
                 open={showDeleteDialog}
                 onOpenChange={setShowDeleteDialog}
@@ -632,6 +721,80 @@ export function IncidentDetails({ id }: { id: string }) {
                 </AlertDialogContent>
             </AlertDialog>
         </>
+    );
+}
+
+function EditActivityDialog({
+    activity,
+    open,
+    onOpenChange,
+    onSubmit,
+    isPending,
+}: {
+    activity: EditableActivity | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (values: { message: string; createdAt: Date }) => void;
+    isPending: boolean;
+}) {
+    const [message, setMessage] = useState("");
+    const [createdAt, setCreatedAt] = useState(new Date());
+
+    useEffect(() => {
+        if (!activity) return;
+
+        setMessage(activity.message);
+        setCreatedAt(new Date(activity.createdAt));
+    }, [activity]);
+
+    const trimmedMessage = message.trim();
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogPopup>
+                <DialogHeader>
+                    <DialogTitle>Edit timeline entry</DialogTitle>
+                </DialogHeader>
+                <DialogPanel className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Message</Label>
+                        <Textarea
+                            value={message}
+                            onChange={(event) => setMessage(event.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Time</Label>
+                        <DateTimePicker
+                            date={createdAt}
+                            setDate={(date) => setCreatedAt(date ?? createdAt)}
+                        />
+                    </div>
+                    <DialogFooter className="-mx-6 mt-6 -mb-6">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => onOpenChange(false)}
+                            disabled={isPending}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() =>
+                                onSubmit({
+                                    message: trimmedMessage,
+                                    createdAt,
+                                })
+                            }
+                            disabled={!trimmedMessage || isPending}
+                        >
+                            Save changes
+                        </Button>
+                    </DialogFooter>
+                </DialogPanel>
+            </DialogPopup>
+        </Dialog>
     );
 }
 
