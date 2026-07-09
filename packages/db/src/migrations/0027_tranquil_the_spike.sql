@@ -1,0 +1,1 @@
+ALTER TABLE "incident" ADD COLUMN "planned_end_at" timestamp;

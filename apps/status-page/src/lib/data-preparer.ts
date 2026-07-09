@@ -372,7 +372,7 @@ export async function prepareStatusPageData(
                 const dayEnd = new Date(day.date);
                 dayEnd.setHours(23, 59, 59, 999);
 
-                const maintenanceRanges = events.maintenances.flatMap(
+                const maintenanceItems = events.maintenances.flatMap(
                     (m: any) => {
                         const affectsMonitor = m.monitors.some(
                             (mm: any) => mm.monitorId === pm.monitorId,
@@ -386,8 +386,11 @@ export async function prepareStatusPageData(
                             dayEnd,
                         );
 
-                        return range ? [range] : [];
+                        return range ? [{ range, title: m.title }] : [];
                     },
+                );
+                const maintenanceRanges = maintenanceItems.map(
+                    (item: any) => item.range,
                 );
                 const mergedMaintenanceRanges = mergeRanges(maintenanceRanges);
                 const maintenanceMs = sumRanges(mergedMaintenanceRanges);
@@ -456,10 +459,19 @@ export async function prepareStatusPageData(
                 }
 
                 if (maintenanceMs > 0) {
+                    const annotation = Array.from(
+                        new Set(
+                            maintenanceItems
+                                .map((item: any) => item.title)
+                                .filter(Boolean),
+                        ),
+                    ).join("\n");
+
                     return {
                         ...day,
                         status: "maintenance" as any,
                         uptime: 100,
+                        annotation,
                         maintenanceMs,
                         monitoredMs,
                         duration: formatDuration(maintenanceMs),

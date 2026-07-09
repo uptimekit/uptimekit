@@ -1,17 +1,31 @@
 "use client";
 
+import { faWrench } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef, useState } from "react";
 import {
     ViewportTooltip,
     type ViewportTooltipPosition,
 } from "@/components/viewport-tooltip";
 import { calculateAggregateStatus } from "@/lib/status-utils";
+import { cn } from "@/lib/utils";
 import type {
     GroupedMonitors,
     Monitor,
     StatusType,
     UptimeDay,
 } from "../../types";
+
+const statusBgClass: Record<StatusType, string> = {
+    operational: "bg-status-operational",
+    degraded: "bg-status-degraded",
+    partial_outage: "bg-status-partial-outage",
+    major_outage: "bg-status-major-outage",
+    maintenance: "bg-status-maintenance",
+    maintenance_scheduled: "bg-status-partial-outage",
+    maintenance_completed: "bg-status-operational",
+    unknown: "bg-status-unknown",
+};
 
 interface MonitorGroupsProps {
     monitorGroups: GroupedMonitors[];
@@ -88,6 +102,12 @@ function formatTooltipDate(date: string): string {
     });
 }
 
+function formatStatusText(status: StatusType): string {
+    const text = status.replaceAll("_", " ");
+
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function getTooltipMessages(day: UptimeDay): string[] {
     if (
         day.status === "operational" ||
@@ -103,7 +123,7 @@ function getTooltipMessages(day: UptimeDay): string[] {
             .filter(Boolean);
     }
 
-    return [day.status.replaceAll("_", " ")];
+    return [formatStatusText(day.status)];
 }
 
 function getBelowTooltipPosition(
@@ -127,72 +147,36 @@ function getPeriodLabel(monitorGroups: GroupedMonitors[]): string {
     return `${formatMonthYear(history[0].date)} - ${formatMonthYear(history[history.length - 1].date)}`;
 }
 
-function MonitorGroupRow({
-    group,
-    index,
-    toFixed,
+function StatusIcon({
+    status,
+    className,
 }: {
-    group: GroupedMonitors;
-    index: number;
-    toFixed: number;
+    status: StatusType;
+    className?: string;
 }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const history = getGroupHistory(group.monitors);
-    const status = calculateAggregateStatus(
-        group.monitors.map((monitor) => monitor.currentStatus),
-    );
-    const name = group.group?.name ?? `Group ${index + 1}`;
-
     return (
-        <div className="spark-group-row" data-open={isOpen}>
-            <div className="spark-group-meta">
-                <div className="spark-group-title">
-                    <span className="spark-status-icon" data-status={status} />
-                    <span className="truncate">{name}</span>
-                    <button
-                        type="button"
-                        className="spark-component-count spark-component-toggle"
-                        data-open={isOpen}
-                        aria-expanded={isOpen}
-                        onClick={() => setIsOpen((current) => !current)}
-                    >
-                        {formatComponentCount(group.monitors.length)}
-                        <span className="spark-chevron spark-chevron-down" />
-                    </button>
-                </div>
-                <div className="spark-uptime">
-                    {formatUptime(getAverageUptime(group.monitors), toFixed)}%
-                    uptime
-                </div>
-            </div>
-
-            <div className="spark-summary" aria-hidden={isOpen}>
-                <div className="spark-summary-inner">
-                    {history.length ? (
-                        <HistoryBars days={history} toFixed={toFixed} />
-                    ) : (
-                        <div className="spark-empty-history">No history</div>
-                    )}
-                </div>
-            </div>
-
-            <div
-                className="spark-component-panel"
-                data-open={isOpen}
-                aria-hidden={!isOpen}
-            >
-                <div className="spark-component-panel-inner">
-                    {group.monitors.map((monitor) => (
-                        <MonitorComponentRow
-                            key={monitor.id}
-                            monitor={monitor}
-                            toFixed={toFixed}
-                        />
-                    ))}
-                </div>
-            </div>
-        </div>
+        <span
+            className={cn(
+                "spark-status-icon relative inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+                statusBgClass[status],
+                className,
+            )}
+            data-status={status}
+        />
     );
+}
+
+function TooltipStatusIcon({ status }: { status: StatusType }) {
+    if (status === "maintenance" || status === "maintenance_scheduled") {
+        return (
+            <FontAwesomeIcon
+                icon={faWrench}
+                className="mt-0.5 h-[15px] w-[15px] shrink-0 text-status-maintenance"
+            />
+        );
+    }
+
+    return <span className="spark-tooltip-icon" data-status={status} />;
 }
 
 function HistoryBars({
@@ -243,7 +227,7 @@ function HistoryBars({
     return (
         // biome-ignore lint/a11y/noStaticElementInteractions: visual hover target
         <div
-            className="spark-bars z-99"
+            className="relative z-[99] grid h-4 gap-[3px] max-[520px]:gap-px"
             style={{
                 gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
             }}
@@ -253,7 +237,10 @@ function HistoryBars({
                 <button
                     type="button"
                     key={day.date}
-                    className="spark-bar"
+                    className={cn(
+                        "min-w-px cursor-default rounded-[1px] border-0 p-0",
+                        statusBgClass[day.status],
+                    )}
                     data-status={day.status}
                     aria-label={`${day.date}: ${formatUptime(day.uptime, toFixed)}% uptime`}
                     onMouseEnter={(event) =>
@@ -270,21 +257,24 @@ function HistoryBars({
                     position={tooltip.position}
                 >
                     <div
-                        className="spark-bar-tooltip"
-                        data-visible={tooltip.visible}
+                        className={cn(
+                            "pointer-events-none w-64 rounded-md border border-border bg-card p-2.5 shadow-[0_10px_24px_rgb(0_0_0/0.24)] transition-[opacity,transform] duration-[140ms] ease-out",
+                            tooltip.visible
+                                ? "translate-y-0 opacity-100"
+                                : "-translate-y-1 opacity-0",
+                        )}
                     >
-                        <div className="spark-bar-tooltip-date">
+                        <div className="mb-3.5 text-muted-foreground text-sm">
                             {formatTooltipDate(hoveredDay.date)}
                         </div>
-                        <div className="spark-bar-tooltip-messages">
+                        <div className="grid gap-3.5">
                             {getTooltipMessages(hoveredDay).map((message) => (
                                 <div
                                     key={message}
-                                    className="spark-bar-tooltip-message"
+                                    className="flex items-start gap-2.5 font-medium text-foreground text-sm leading-[1.35]"
                                 >
-                                    <span
-                                        className="spark-tooltip-icon"
-                                        data-status={hoveredDay.status}
+                                    <TooltipStatusIcon
+                                        status={hoveredDay.status}
                                     />
                                     <span>{message}</span>
                                 </div>
@@ -305,32 +295,110 @@ function MonitorComponentRow({
     toFixed: number;
 }) {
     return (
-        <div className="spark-component-item">
-            <div className="spark-component-meta">
-                <div className="spark-component-name">
-                    <span
-                        className="spark-status-icon"
-                        data-status={monitor.currentStatus}
-                    />
+        <div className="pt-2 [&:not(:first-child)]:pt-3.5">
+            <div className="mb-2 flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-[7px] font-medium text-sm">
+                    <StatusIcon status={monitor.currentStatus} />
                     <span className="truncate">{monitor.name}</span>
                     {monitor.description ? (
                         <span
-                            className="spark-info"
+                            className="inline-flex h-[13px] w-[13px] select-none items-center justify-center rounded-full border border-muted-foreground text-[9px] text-muted-foreground leading-none"
                             title={monitor.description}
                         >
                             i
                         </span>
                     ) : null}
                 </div>
-                <span className="spark-component-uptime">
+                <span className="shrink-0 text-muted-foreground text-sm">
                     {formatUptime(monitor.avgUptime, toFixed)}% uptime
                 </span>
             </div>
             {monitor.history.length ? (
                 <HistoryBars days={monitor.history} toFixed={toFixed} />
             ) : (
-                <div className="spark-empty-history">No history</div>
+                <div className="text-muted-foreground text-sm">No history</div>
             )}
+        </div>
+    );
+}
+
+function MonitorGroupRow({
+    group,
+    index,
+    toFixed,
+}: {
+    group: GroupedMonitors;
+    index: number;
+    toFixed: number;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const history = getGroupHistory(group.monitors);
+    const status = calculateAggregateStatus(
+        group.monitors.map((monitor) => monitor.currentStatus),
+    );
+    const name = group.group?.name ?? `Group ${index + 1}`;
+
+    return (
+        <div
+            className="spark-group-row border-border border-b px-4 py-4 last:border-b-0"
+            data-open={isOpen}
+        >
+            <div className="mb-2.5 flex items-center justify-between gap-4 max-[520px]:flex-col max-[520px]:items-start max-[520px]:gap-2">
+                <div className="flex min-w-0 items-center gap-2 font-medium text-sm">
+                    <StatusIcon
+                        status={status}
+                        className={isOpen ? "hidden" : undefined}
+                    />
+                    <span className="truncate">{name}</span>
+                    <button
+                        type="button"
+                        className="spark-component-toggle flex cursor-pointer items-center gap-1.5 whitespace-nowrap border-0 bg-transparent p-0 font-inherit text-muted-foreground text-sm hover:text-foreground"
+                        data-open={isOpen}
+                        aria-expanded={isOpen}
+                        onClick={() => setIsOpen((current) => !current)}
+                    >
+                        {formatComponentCount(group.monitors.length)}
+                        <span className="spark-chevron spark-chevron-down" />
+                    </button>
+                </div>
+                <div
+                    className={cn(
+                        "whitespace-nowrap text-muted-foreground text-sm transition-opacity duration-160",
+                        isOpen && "hidden",
+                    )}
+                >
+                    {formatUptime(getAverageUptime(group.monitors), toFixed)}%
+                    uptime
+                </div>
+            </div>
+
+            <div className="spark-summary" aria-hidden={isOpen}>
+                <div className="spark-summary-inner">
+                    {history.length ? (
+                        <HistoryBars days={history} toFixed={toFixed} />
+                    ) : (
+                        <div className="text-muted-foreground text-sm">
+                            No history
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div
+                className="spark-component-panel"
+                data-open={isOpen}
+                aria-hidden={!isOpen}
+            >
+                <div className="spark-component-panel-inner">
+                    {group.monitors.map((monitor) => (
+                        <MonitorComponentRow
+                            key={monitor.id}
+                            monitor={monitor}
+                            toFixed={toFixed}
+                        />
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
@@ -340,13 +408,14 @@ export function MonitorGroups({
     toFixed = 2,
 }: MonitorGroupsProps) {
     return (
-        <section className="spark-card" aria-label="System status">
-            <div className="spark-card-header">
-                <h2 className="spark-card-title">System status</h2>
-                <div className="spark-period">
-                    {/* <span className="spark-chevron spark-chevron-left" /> */}
+        <section
+            className="overflow-hidden rounded-lg border border-border bg-card"
+            aria-label="System status"
+        >
+            <div className="flex min-h-[52px] items-center gap-[22px] border-border border-b px-4 max-[520px]:flex-col max-[520px]:items-start max-[520px]:gap-2">
+                <h2 className="font-semibold text-base">System status</h2>
+                <div className="flex items-center gap-2.5 text-muted-foreground text-sm">
                     <span>{getPeriodLabel(monitorGroups)}</span>
-                    {/* <span className="spark-chevron spark-chevron-right" /> */}
                 </div>
             </div>
 
