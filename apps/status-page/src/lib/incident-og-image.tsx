@@ -35,7 +35,7 @@ export async function incidentImageResponse(
                       ? "#3b82f6"
                       : "#f97316";
         const monitors = incident.monitors
-            .map((item) => item.monitor.name)
+            .map((item) => item.monitor?.name)
             .filter(Boolean);
         const affected = monitors.length
             ? `${monitors.slice(0, 3).join(", ")}${monitors.length > 3 ? ` +${monitors.length - 3} more` : ""}`
