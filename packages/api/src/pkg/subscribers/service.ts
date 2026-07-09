@@ -25,7 +25,7 @@ interface SubscriberEventPayload {
     organizationId: string;
     title: string;
     description?: string | null;
-    severity: "minor" | "major" | "critical";
+    severity: "minor" | "major" | "critical" | "maintenance";
 }
 
 interface SubscriberStatusPage {

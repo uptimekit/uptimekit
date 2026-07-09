@@ -22,13 +22,19 @@ const incidentStatusSchema = z.enum([
     "monitoring",
     "resolved",
 ]);
-const incidentSeveritySchema = z.enum(["minor", "major", "critical"]);
+const incidentSeveritySchema = z.enum([
+    "minor",
+    "major",
+    "critical",
+    "maintenance",
+]);
 
 type IncidentStatus = z.infer<typeof incidentStatusSchema>;
 type IncidentSeverity = z.infer<typeof incidentSeveritySchema>;
 
 const incidentSeverityRank: Record<IncidentSeverity, number> = {
     minor: 0,
+    maintenance: 0,
     major: 1,
     critical: 2,
 };
@@ -48,6 +54,7 @@ const incidentUpdateInputSchema = z.object({
     description: z.string().optional(),
     severity: incidentSeveritySchema,
     startedAt: incidentTimestampSchema,
+    plannedEndAt: incidentTimestampSchema.nullable().optional(),
     endedAt: incidentTimestampSchema.nullable().optional(),
     monitorIds: z.array(z.string()).default([]),
     statusPageIds: z.array(z.string()).default([]),
@@ -90,10 +97,20 @@ function getActiveOrganizationId(
     return activeOrganizationId;
 }
 
-function ensureValidTimeline(startedAt: Date, endedAt: Date | null) {
+function ensureValidTimeline(
+    startedAt: Date,
+    endedAt: Date | null,
+    plannedEndAt: Date | null = null,
+) {
     if (endedAt && endedAt.getTime() < startedAt.getTime()) {
         throw new ORPCError("BAD_REQUEST", {
             message: "Incident end time cannot be before the start time",
+        });
+    }
+
+    if (plannedEndAt && plannedEndAt.getTime() < startedAt.getTime()) {
+        throw new ORPCError("BAD_REQUEST", {
+            message: "Planned end time cannot be before the start time",
         });
     }
 }
@@ -133,6 +150,10 @@ function parseIncidentSeverity(severity: string): IncidentSeverity {
 }
 
 function getHighestSeverity(items: { severity: string }[]) {
+    if (items.every((item) => item.severity === "maintenance")) {
+        return "maintenance";
+    }
+
     return items.reduce<IncidentSeverity>((highest, item) => {
         const severity = parseIncidentSeverity(item.severity);
 
@@ -275,7 +296,7 @@ export const incidentsRouter = {
                 offset: z.number().default(0),
                 status: z.enum(["open", "resolved", "all"]).default("all"),
                 q: z.string().optional(),
-                severity: z.enum(["minor", "major", "critical"]).optional(),
+                severity: incidentSeveritySchema.optional(),
                 type: z.enum(["manual", "automatic"]).optional(),
                 monitorId: z.string().optional(),
                 statusPageId: z.string().optional(),
@@ -441,6 +462,7 @@ export const incidentsRouter = {
                 monitorIds: z.array(z.string()).default([]),
                 statusPageIds: z.array(z.string()).default([]),
                 startedAt: incidentTimestampSchema.optional(),
+                plannedEndAt: incidentTimestampSchema.nullable().optional(),
                 endedAt: incidentTimestampSchema.nullable().optional(),
             }),
         )
@@ -454,7 +476,7 @@ export const incidentsRouter = {
                 context.session.session.activeOrganizationId,
             );
 
-            ensureValidTimeline(startedAt, endedAt);
+            ensureValidTimeline(startedAt, endedAt, input.plannedEndAt ?? null);
             await assertOrganizationResources(
                 organizationId,
                 input.monitorIds,
@@ -471,6 +493,7 @@ export const incidentsRouter = {
                     status,
                     type: "manual",
                     startedAt,
+                    plannedEndAt: input.plannedEndAt ?? null,
                     endedAt,
                     createdAt: now,
                     updatedAt: now,
@@ -568,7 +591,11 @@ export const incidentsRouter = {
             }
 
             const endedAt = input.endedAt ?? null;
-            ensureValidTimeline(input.startedAt, endedAt);
+            ensureValidTimeline(
+                input.startedAt,
+                endedAt,
+                input.plannedEndAt ?? null,
+            );
             await assertOrganizationResources(
                 organizationId,
                 input.monitorIds,
@@ -644,6 +671,7 @@ export const incidentsRouter = {
                         description: input.description,
                         severity: input.severity,
                         startedAt: input.startedAt,
+                        plannedEndAt: input.plannedEndAt ?? null,
                         endedAt,
                         status: nextStatus,
                         resolvedAt: endedAt,

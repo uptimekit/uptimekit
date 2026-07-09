@@ -171,7 +171,8 @@ export async function processAlertManagerWebhook(
                         severity: existingIncident.severity as
                             | "minor"
                             | "major"
-                            | "critical",
+                            | "critical"
+                            | "maintenance",
                     },
                     { tx },
                 );

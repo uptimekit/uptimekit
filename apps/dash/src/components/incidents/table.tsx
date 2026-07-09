@@ -87,7 +87,12 @@ import { client, orpc } from "@/utils/orpc";
 
 const PAGE_SIZE_OPTIONS = ["10", "25", "50", "100"] as const;
 const INCIDENT_STATUS_FILTERS = ["open", "resolved"] as const;
-const INCIDENT_SEVERITY_FILTERS = ["minor", "major", "critical"] as const;
+const INCIDENT_SEVERITY_FILTERS = [
+    "minor",
+    "major",
+    "critical",
+    "maintenance",
+] as const;
 const INCIDENT_TYPE_FILTERS = ["manual", "automatic"] as const;
 
 type BulkIncidentAction = "acknowledge" | "resolve" | "delete";
@@ -462,6 +467,7 @@ export function IncidentsTable() {
     const getStatusIcon = (status: string) => {
         switch (status) {
             case "resolved":
+            case "completed":
                 return (
                     <FontAwesomeIcon
                         icon={faCircleCheck}
@@ -471,6 +477,7 @@ export function IncidentsTable() {
             case "investigating":
             case "identified":
             case "monitoring":
+            case "in_progress":
                 return (
                     <FontAwesomeIcon
                         icon={faShieldHalved}
@@ -490,14 +497,36 @@ export function IncidentsTable() {
     const getStatusColor = (status: string) => {
         switch (status) {
             case "resolved":
+            case "completed":
                 return "border-emerald-500/20 bg-emerald-500/10 text-emerald-500";
             case "investigating":
             case "identified":
             case "monitoring":
+            case "in_progress":
                 return "border-red-500/20 bg-red-500/10 text-red-500";
+            case "scheduled":
+                return "border-blue-500/20 bg-blue-500/10 text-blue-500";
             default:
                 return "border-muted bg-muted/50 text-muted-foreground";
         }
+    };
+
+    const getIncidentDisplayStatus = (incident: {
+        severity: string;
+        status: string;
+        startedAt: string | Date;
+        plannedEndAt?: string | Date | null;
+        endedAt?: string | Date | null;
+    }) => {
+        if (incident.severity !== "maintenance") return incident.status;
+
+        const now = new Date();
+        if (incident.endedAt) return "completed";
+        if (incident.plannedEndAt && new Date(incident.plannedEndAt) <= now) {
+            return "completed";
+        }
+        if (new Date(incident.startedAt) > now) return "scheduled";
+        return "in_progress";
     };
 
     const clearSelection = () => {
@@ -812,6 +841,23 @@ export function IncidentsTable() {
                             >
                                 Resolved
                                 {statusFilter === "resolved" && (
+                                    <FontAwesomeIcon
+                                        icon={faCheck}
+                                        className="h-4 w-4"
+                                    />
+                                )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    void setFilters({
+                                        severity: "maintenance",
+                                        page: 1,
+                                    });
+                                }}
+                                className="flex justify-between"
+                            >
+                                Maintenance
+                                {severityFilter === "maintenance" && (
                                     <FontAwesomeIcon
                                         icon={faCheck}
                                         className="h-4 w-4"
@@ -1320,6 +1366,8 @@ export function IncidentsTable() {
                                 const isSelected = selectedIncidentIds.has(
                                     incident.id,
                                 );
+                                const displayStatus =
+                                    getIncidentDisplayStatus(incident);
 
                                 return (
                                     <TableRow
@@ -1361,12 +1409,12 @@ export function IncidentsTable() {
                                                     className={cn(
                                                         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors",
                                                         getStatusColor(
-                                                            incident.status,
+                                                            displayStatus,
                                                         ),
                                                     )}
                                                 >
                                                     {getStatusIcon(
-                                                        incident.status,
+                                                        displayStatus,
                                                     )}
                                                 </div>
                                                 <div className="grid gap-1">
@@ -1420,6 +1468,9 @@ export function IncidentsTable() {
                                                                     incident.severity ===
                                                                         "critical" &&
                                                                         "bg-red-500/10 text-red-500",
+                                                                    incident.severity ===
+                                                                        "maintenance" &&
+                                                                        "bg-blue-500/10 text-blue-500",
                                                                 )}
                                                             >
                                                                 {
@@ -1444,22 +1495,39 @@ export function IncidentsTable() {
                                                 <div
                                                     className={cn(
                                                         "h-2 w-2 rounded-full",
-                                                        incident.status !==
-                                                            "resolved"
-                                                            ? "animate-pulse bg-red-500"
-                                                            : "bg-muted-foreground/30",
+                                                        displayStatus ===
+                                                            "completed" &&
+                                                            "bg-muted-foreground/30",
+                                                        displayStatus ===
+                                                            "scheduled" &&
+                                                            "bg-blue-500",
+                                                        displayStatus !==
+                                                            "completed" &&
+                                                            displayStatus !==
+                                                                "scheduled" &&
+                                                            "animate-pulse bg-red-500",
                                                     )}
                                                 />
                                                 <span
                                                     className={cn(
                                                         "font-medium text-sm capitalize",
-                                                        incident.status !==
-                                                            "resolved"
-                                                            ? "text-red-500"
-                                                            : "text-muted-foreground",
+                                                        displayStatus ===
+                                                            "completed" &&
+                                                            "text-muted-foreground",
+                                                        displayStatus ===
+                                                            "scheduled" &&
+                                                            "text-blue-500",
+                                                        displayStatus !==
+                                                            "completed" &&
+                                                            displayStatus !==
+                                                                "scheduled" &&
+                                                            "text-red-500",
                                                     )}
                                                 >
-                                                    {incident.status}
+                                                    {displayStatus.replace(
+                                                        "_",
+                                                        " ",
+                                                    )}
                                                 </span>
                                             </div>
                                         </TableCell>

@@ -85,8 +85,9 @@ const editIncidentSchema = z
     .object({
         title: z.string().min(1, "Title is required"),
         description: z.string().optional(),
-        severity: z.enum(["minor", "major", "critical"]),
+        severity: z.enum(["minor", "major", "critical", "maintenance"]),
         startedAt: z.date(),
+        plannedEndAt: z.date().nullable(),
         endedAt: z.date().nullable(),
         monitorIds: z.array(z.string()),
         statusPageIds: z.array(z.string()),
@@ -216,6 +217,7 @@ export function IncidentDetails({ id }: { id: string }) {
 
     const isResolved = incident.status === "resolved";
     const isAcknowledged = !!incident.acknowledgedAt;
+    const isMaintenance = incident.severity === "maintenance";
 
     return (
         <>
@@ -258,7 +260,16 @@ export function IncidentDetails({ id }: { id: string }) {
                                                 : "text-red-500",
                                         )}
                                     >
-                                        {isResolved ? "Resolved" : "Ongoing"}
+                                        {isMaintenance
+                                            ? isResolved
+                                                ? "Completed"
+                                                : new Date(incident.startedAt) >
+                                                    new Date()
+                                                  ? "Scheduled"
+                                                  : "In progress"
+                                            : isResolved
+                                              ? "Resolved"
+                                              : "Ongoing"}
                                     </span>
                                     <span>·</span>
                                     <span>
@@ -348,7 +359,9 @@ export function IncidentDetails({ id }: { id: string }) {
                             <CardHeader>
                                 <CardTitle>Description</CardTitle>
                                 <CardDescription>
-                                    Incident details and affected monitors.
+                                    {isMaintenance
+                                        ? "Maintenance details and affected monitors."
+                                        : "Incident details and affected monitors."}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -562,6 +575,26 @@ export function IncidentDetails({ id }: { id: string }) {
                                     </span>
                                 </div>
                                 <Separator />
+                                {isMaintenance && (
+                                    <>
+                                        <div className="grid gap-1">
+                                            <span className="font-medium text-sm">
+                                                Planned end
+                                            </span>
+                                            <span className="text-muted-foreground text-sm">
+                                                {incident.plannedEndAt
+                                                    ? format(
+                                                          new Date(
+                                                              incident.plannedEndAt,
+                                                          ),
+                                                          "MMM d, yyyy 'at' h:mm a",
+                                                      )
+                                                    : "Not set"}
+                                            </span>
+                                        </div>
+                                        <Separator />
+                                    </>
+                                )}
                                 <div className="grid gap-1">
                                     <span className="font-medium text-sm">
                                         Ended at
@@ -816,6 +849,9 @@ function EditIncidentDialog({
             description: incident.description ?? "",
             severity: incident.severity as EditIncidentValues["severity"],
             startedAt: new Date(incident.startedAt),
+            plannedEndAt: incident.plannedEndAt
+                ? new Date(incident.plannedEndAt)
+                : null,
             endedAt: incident.endedAt ? new Date(incident.endedAt) : null,
             monitorIds: (incident.monitors ?? []).map(
                 (item: any) => item.monitor.id,
@@ -832,6 +868,9 @@ function EditIncidentDialog({
             description: incident.description ?? "",
             severity: incident.severity as EditIncidentValues["severity"],
             startedAt: new Date(incident.startedAt),
+            plannedEndAt: incident.plannedEndAt
+                ? new Date(incident.plannedEndAt)
+                : null,
             endedAt: incident.endedAt ? new Date(incident.endedAt) : null,
             monitorIds: (incident.monitors ?? []).map(
                 (item: any) => item.monitor.id,
@@ -891,6 +930,7 @@ function EditIncidentDialog({
                                 description: values.description || undefined,
                                 severity: values.severity,
                                 startedAt: values.startedAt,
+                                plannedEndAt: values.plannedEndAt,
                                 endedAt: values.endedAt,
                                 monitorIds: values.monitorIds,
                                 statusPageIds: values.statusPageIds,
@@ -1010,6 +1050,7 @@ function EditIncidentDialog({
                                                         "minor",
                                                         "major",
                                                         "critical",
+                                                        "maintenance",
                                                     ] as const
                                                 ).map((value) => (
                                                     <Button
@@ -1036,6 +1077,52 @@ function EditIncidentDialog({
                                         </FormItem>
                                     )}
                                 />
+
+                                {form.watch("severity") === "maintenance" && (
+                                    <FormField
+                                        control={form.control}
+                                        name="plannedEndAt"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    Planned end
+                                                </FormLabel>
+                                                <div className="space-y-2">
+                                                    <FormControl>
+                                                        <DateTimePicker
+                                                            date={
+                                                                field.value ??
+                                                                undefined
+                                                            }
+                                                            setDate={(date) =>
+                                                                field.onChange(
+                                                                    date ??
+                                                                        null,
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    {field.value && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="px-0"
+                                                            onClick={() =>
+                                                                field.onChange(
+                                                                    null,
+                                                                )
+                                                            }
+                                                        >
+                                                            Clear planned end
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
 
                                 <div className="space-y-3">
                                     <FormLabel>Affected monitors</FormLabel>

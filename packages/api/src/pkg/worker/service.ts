@@ -5,14 +5,10 @@ import {
     incidentMonitor,
     incidentStatusPage,
 } from "@uptimekit/db/schema/incidents";
-import {
-    maintenance,
-    maintenanceMonitor,
-} from "@uptimekit/db/schema/maintenance";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { worker } from "@uptimekit/db/schema/workers";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
     type AutomaticIncidentOpenEvaluation,
@@ -428,18 +424,21 @@ async function processMonitorEventGroup(
         return result;
     }
 
-    // Check for active maintenance
+    const now = new Date();
     const activeMaintenance = await db
-        .select({ id: maintenance.id })
-        .from(maintenance)
-        .innerJoin(
-            maintenanceMonitor,
-            eq(maintenance.id, maintenanceMonitor.maintenanceId),
-        )
+        .select({ id: incident.id })
+        .from(incident)
+        .innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
         .where(
             and(
-                eq(maintenanceMonitor.monitorId, monitorId),
-                eq(maintenance.status, "in_progress"),
+                eq(incidentMonitor.monitorId, monitorId),
+                eq(incident.severity, "maintenance"),
+                isNull(incident.endedAt),
+                lte(incident.startedAt, now),
+                or(
+                    isNull(incident.plannedEndAt),
+                    gt(incident.plannedEndAt, now),
+                ),
             ),
         )
         .limit(1);
@@ -590,7 +589,8 @@ async function processMonitorEventGroup(
                     severity: resolvedIncident.severity as
                         | "minor"
                         | "major"
-                        | "critical",
+                        | "critical"
+                        | "maintenance",
                 },
             });
 

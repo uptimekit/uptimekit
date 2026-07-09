@@ -25,10 +25,6 @@ const items: NavItem[] = [
         href: "status-updates",
     },
     {
-        title: "Maintenance",
-        href: "maintenance",
-    },
-    {
         title: "Subscribers",
         href: "subscribers",
     },

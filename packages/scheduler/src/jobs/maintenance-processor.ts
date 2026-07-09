@@ -1,28 +1,22 @@
 import { db } from "@uptimekit/db";
-import {
-    maintenance,
-    maintenanceUpdate,
-} from "@uptimekit/db/schema/maintenance";
-import { and, eq, lte } from "drizzle-orm";
+import { incident, incidentActivity } from "@uptimekit/db/schema/incidents";
+import { and, eq, isNull, lte, ne } from "drizzle-orm";
 import { createLogger } from "../lib/logger";
 
 const logger = createLogger("MAINTENANCE");
 
 /**
- * Automatically transition maintenance records to the next status based on the current time.
- *
- * Transitions records from "scheduled" to "in_progress" when `startAt` is less than or equal to now,
- * and from "in_progress" to "completed" when `endAt` is less than or equal to now. For each transitioned
- * record, updates the maintenance row and inserts a corresponding `maintenanceUpdate` entry.
+ * Automatically transition maintenance incidents based on their time window.
  */
 export async function processMaintenanceTransitions() {
     const now = new Date();
 
-    // Find all scheduled maintenance that should be in_progress
-    const scheduledToStart = await db.query.maintenance.findMany({
+    const scheduledToStart = await db.query.incident.findMany({
         where: and(
-            eq(maintenance.status, "scheduled"),
-            lte(maintenance.startAt, now),
+            eq(incident.severity, "maintenance"),
+            ne(incident.status, "monitoring"),
+            isNull(incident.endedAt),
+            lte(incident.startedAt, now),
         ),
     });
 
@@ -30,34 +24,32 @@ export async function processMaintenanceTransitions() {
         logger.info(`Starting: ${m.id} - ${m.title}`);
 
         await db.transaction(async (tx) => {
-            // Update maintenance status
             await tx
-                .update(maintenance)
+                .update(incident)
                 .set({
-                    status: "in_progress",
+                    status: "monitoring",
                     updatedAt: now,
                 })
-                .where(eq(maintenance.id, m.id));
+                .where(eq(incident.id, m.id));
 
-            // Create automatic update entry
-            await tx.insert(maintenanceUpdate).values({
+            await tx.insert(incidentActivity).values({
                 id: crypto.randomUUID(),
-                maintenanceId: m.id,
+                incidentId: m.id,
                 message: "Maintenance has started automatically.",
-                status: "in_progress",
+                type: "event",
                 createdAt: now,
-                updatedAt: now,
+                userId: null,
             });
         });
 
         logger.info(`Started: ${m.id}`);
     }
 
-    // Find all in_progress maintenance that should be completed
-    const inProgressToComplete = await db.query.maintenance.findMany({
+    const inProgressToComplete = await db.query.incident.findMany({
         where: and(
-            eq(maintenance.status, "in_progress"),
-            lte(maintenance.endAt, now),
+            eq(incident.severity, "maintenance"),
+            isNull(incident.endedAt),
+            lte(incident.plannedEndAt, now),
         ),
     });
 
@@ -65,23 +57,23 @@ export async function processMaintenanceTransitions() {
         logger.info(`Completing: ${m.id} - ${m.title}`);
 
         await db.transaction(async (tx) => {
-            // Update maintenance status
             await tx
-                .update(maintenance)
+                .update(incident)
                 .set({
-                    status: "completed",
+                    status: "resolved",
+                    endedAt: now,
+                    resolvedAt: now,
                     updatedAt: now,
                 })
-                .where(eq(maintenance.id, m.id));
+                .where(eq(incident.id, m.id));
 
-            // Create automatic update entry
-            await tx.insert(maintenanceUpdate).values({
+            await tx.insert(incidentActivity).values({
                 id: crypto.randomUUID(),
-                maintenanceId: m.id,
+                incidentId: m.id,
                 message: "Maintenance has been completed automatically.",
-                status: "completed",
+                type: "event",
                 createdAt: now,
-                updatedAt: now,
+                userId: null,
             });
         });
 

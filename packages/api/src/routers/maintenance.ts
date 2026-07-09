@@ -1,15 +1,94 @@
 import { ORPCError } from "@orpc/server";
 import { db } from "@uptimekit/db";
 import {
-    maintenance,
-    maintenanceMonitor,
-    maintenanceStatusPage,
-    maintenanceUpdate,
-} from "@uptimekit/db/schema/maintenance";
+    incident,
+    incidentActivity,
+    incidentMonitor,
+    incidentStatusPage,
+} from "@uptimekit/db/schema/incidents";
+import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPage } from "@uptimekit/db/schema/status-pages";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+
+const maintenanceStatusSchema = z.enum([
+    "scheduled",
+    "in_progress",
+    "completed",
+]);
+
+function getActiveOrganizationId(
+    activeOrganizationId: string | null | undefined,
+) {
+    if (!activeOrganizationId) {
+        throw new ORPCError("UNAUTHORIZED", {
+            message: "No active organization",
+        });
+    }
+
+    return activeOrganizationId;
+}
+
+function getMaintenanceStatus(item: {
+    startedAt: Date;
+    plannedEndAt?: Date | null;
+    endedAt: Date | null;
+}) {
+    const now = new Date();
+
+    if (item.endedAt) return "completed";
+    if (item.plannedEndAt && item.plannedEndAt <= now) return "completed";
+    if (item.startedAt > now) return "scheduled";
+    return "in_progress";
+}
+
+function toMaintenance<T extends { startedAt: Date; endedAt: Date | null }>(
+    item: T,
+) {
+    return {
+        ...item,
+        status: getMaintenanceStatus(item),
+        startAt: item.startedAt,
+        endAt: "plannedEndAt" in item ? item.plannedEndAt : item.endedAt,
+    };
+}
+
+async function assertStatusPage(organizationId: string, statusPageId: string) {
+    const page = await db.query.statusPage.findFirst({
+        where: and(
+            eq(statusPage.id, statusPageId),
+            eq(statusPage.organizationId, organizationId),
+        ),
+    });
+
+    if (!page) {
+        throw new ORPCError("NOT_FOUND", {
+            message: "Status page not found",
+        });
+    }
+}
+
+async function assertMonitors(organizationId: string, monitorIds: string[]) {
+    if (monitorIds.length === 0) return;
+
+    const rows = await db
+        .select({ id: monitor.id })
+        .from(monitor)
+        .where(
+            and(
+                eq(monitor.organizationId, organizationId),
+                inArray(monitor.id, monitorIds),
+            ),
+        );
+
+    if (rows.length !== monitorIds.length) {
+        throw new ORPCError("BAD_REQUEST", {
+            message:
+                "One or more monitors do not belong to the active organization",
+        });
+    }
+}
 
 export const maintenanceRouter = {
     list: protectedProcedure
@@ -18,49 +97,37 @@ export const maintenanceRouter = {
             path: "/maintenance",
             tags: ["Status Page Management"],
             summary: "List maintenance windows",
-            description: "List maintenance windows for a status page.",
         })
-        .input(
-            z.object({
-                statusPageId: z.string(),
-            }),
-        )
+        .input(z.object({ statusPageId: z.string() }))
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
+            await assertStatusPage(organizationId, input.statusPageId);
 
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const page = await db.query.statusPage.findFirst({
+            const records = await db.query.incident.findMany({
                 where: and(
-                    eq(statusPage.id, input.statusPageId),
-                    eq(statusPage.organizationId, activeOrganizationId),
+                    eq(incident.organizationId, organizationId),
+                    eq(incident.severity, "maintenance"),
+                    inArray(
+                        incident.id,
+                        db
+                            .select({
+                                incidentId: incidentStatusPage.incidentId,
+                            })
+                            .from(incidentStatusPage)
+                            .where(
+                                eq(
+                                    incidentStatusPage.statusPageId,
+                                    input.statusPageId,
+                                ),
+                            ),
+                    ),
                 ),
+                orderBy: [desc(incident.startedAt)],
             });
 
-            if (!page) {
-                throw new ORPCError("NOT_FOUND", {
-                    message: "Status page not found",
-                });
-            }
-
-            const records = await db.query.maintenanceStatusPage.findMany({
-                where: eq(
-                    maintenanceStatusPage.statusPageId,
-                    input.statusPageId,
-                ),
-                with: {
-                    maintenance: true,
-                },
-            });
-
-            return records
-                .map((r) => r.maintenance)
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            return records.map(toMaintenance);
         }),
 
     create: writeProcedure
@@ -69,7 +136,6 @@ export const maintenanceRouter = {
             path: "/maintenance",
             tags: ["Status Page Management"],
             summary: "Create maintenance",
-            description: "Schedule a new maintenance window.",
         })
         .input(
             z.object({
@@ -78,117 +144,95 @@ export const maintenanceRouter = {
                 description: z.string().optional(),
                 startAt: z.string().datetime(),
                 endAt: z.string().datetime(),
-                status: z.enum(["scheduled", "in_progress", "completed"]),
+                status: maintenanceStatusSchema,
                 monitorIds: z.array(z.string()).optional(),
             }),
         )
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
+            const monitorIds = input.monitorIds ?? [];
+            await assertStatusPage(organizationId, input.statusPageId);
+            await assertMonitors(organizationId, monitorIds);
 
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const page = await db.query.statusPage.findFirst({
-                where: and(
-                    eq(statusPage.id, input.statusPageId),
-                    eq(statusPage.organizationId, activeOrganizationId),
-                ),
-            });
-
-            if (!page) {
-                throw new ORPCError("NOT_FOUND", {
-                    message: "Status page not found",
-                });
-            }
-
-            const maintenanceId = crypto.randomUUID();
+            const id = crypto.randomUUID();
             const now = new Date();
+            const startAt = new Date(input.startAt);
+            const endAt = new Date(input.endAt);
+            const isCompleted = input.status === "completed";
 
             await db.transaction(async (tx) => {
-                await tx.insert(maintenance).values({
-                    id: maintenanceId,
-                    organizationId: activeOrganizationId,
+                await tx.insert(incident).values({
+                    id,
+                    organizationId,
                     title: input.title,
                     description: input.description,
-                    startAt: new Date(input.startAt),
-                    endAt: new Date(input.endAt),
-                    status: input.status,
+                    status: isCompleted
+                        ? "resolved"
+                        : input.status === "in_progress"
+                          ? "monitoring"
+                          : "investigating",
+                    severity: "maintenance",
+                    type: "manual",
+                    startedAt: startAt,
+                    plannedEndAt: endAt,
+                    endedAt: isCompleted ? endAt : null,
+                    resolvedAt: isCompleted ? endAt : null,
                     createdAt: now,
                     updatedAt: now,
                 });
 
-                await tx.insert(maintenanceStatusPage).values({
-                    maintenanceId: maintenanceId,
+                await tx.insert(incidentStatusPage).values({
+                    incidentId: id,
                     statusPageId: input.statusPageId,
                 });
 
-                if (input.monitorIds && input.monitorIds.length > 0) {
-                    await tx.insert(maintenanceMonitor).values(
-                        input.monitorIds.map((monitorId) => ({
-                            maintenanceId: maintenanceId,
-                            monitorId: monitorId,
+                if (monitorIds.length > 0) {
+                    await tx.insert(incidentMonitor).values(
+                        monitorIds.map((monitorId) => ({
+                            incidentId: id,
+                            monitorId,
                         })),
                     );
                 }
 
-                // Create initial update if description is provided
                 if (input.description) {
-                    await tx.insert(maintenanceUpdate).values({
+                    await tx.insert(incidentActivity).values({
                         id: crypto.randomUUID(),
-                        maintenanceId: maintenanceId,
+                        incidentId: id,
                         message: input.description,
-                        status: input.status,
+                        type: "comment",
                         createdAt: now,
-                        updatedAt: now,
+                        userId: context.session.user.id,
                     });
                 }
             });
 
-            return { id: maintenanceId };
+            return { id };
         }),
+
     get: protectedProcedure
         .route({
             method: "GET",
             path: "/maintenance/{maintenanceId}",
             tags: ["Status Page Management"],
             summary: "Get maintenance",
-            description: "Get details of a specific maintenance window.",
         })
-        .input(
-            z.object({
-                maintenanceId: z.string(),
-            }),
-        )
+        .input(z.object({ maintenanceId: z.string() }))
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
-
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const record = await db.query.maintenance.findFirst({
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
+            const record = await db.query.incident.findFirst({
                 where: and(
-                    eq(maintenance.id, input.maintenanceId),
-                    eq(maintenance.organizationId, activeOrganizationId),
+                    eq(incident.id, input.maintenanceId),
+                    eq(incident.organizationId, organizationId),
+                    eq(incident.severity, "maintenance"),
                 ),
                 with: {
-                    updates: {
-                        orderBy: (updates, { desc }) => [
-                            desc(updates.createdAt),
-                        ],
-                    },
-                    monitors: {
-                        with: {
-                            monitor: true,
-                        },
-                    },
+                    activities: { orderBy: [desc(incidentActivity.createdAt)] },
+                    monitors: { with: { monitor: true } },
                 },
             });
 
@@ -198,7 +242,7 @@ export const maintenanceRouter = {
                 });
             }
 
-            return record;
+            return { ...toMaintenance(record), updates: record.activities };
         }),
 
     update: writeProcedure
@@ -207,7 +251,6 @@ export const maintenanceRouter = {
             path: "/maintenance/{maintenanceId}",
             tags: ["Status Page Management"],
             summary: "Update maintenance",
-            description: "Update a maintenance window configuration.",
         })
         .input(
             z.object({
@@ -217,36 +260,23 @@ export const maintenanceRouter = {
             }),
         )
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
-
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const record = await db.query.maintenance.findFirst({
-                where: and(
-                    eq(maintenance.id, input.maintenanceId),
-                    eq(maintenance.organizationId, activeOrganizationId),
-                ),
-            });
-
-            if (!record) {
-                throw new ORPCError("NOT_FOUND", {
-                    message: "Maintenance not found",
-                });
-            }
-
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
             await db
-                .update(maintenance)
+                .update(incident)
                 .set({
-                    startAt: new Date(input.startAt),
-                    endAt: new Date(input.endAt),
+                    startedAt: new Date(input.startAt),
+                    plannedEndAt: new Date(input.endAt),
                     updatedAt: new Date(),
                 })
-                .where(eq(maintenance.id, input.maintenanceId));
+                .where(
+                    and(
+                        eq(incident.id, input.maintenanceId),
+                        eq(incident.organizationId, organizationId),
+                        eq(incident.severity, "maintenance"),
+                    ),
+                );
 
             return { success: true };
         }),
@@ -257,29 +287,23 @@ export const maintenanceRouter = {
             path: "/maintenance/{maintenanceId}/updates",
             tags: ["Status Page Management"],
             summary: "Create maintenance update",
-            description: "Post an update to a maintenance window.",
         })
         .input(
             z.object({
                 maintenanceId: z.string(),
                 message: z.string().min(1),
-                status: z.enum(["scheduled", "in_progress", "completed"]),
+                status: maintenanceStatusSchema,
             }),
         )
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
-
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const record = await db.query.maintenance.findFirst({
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
+            const record = await db.query.incident.findFirst({
                 where: and(
-                    eq(maintenance.id, input.maintenanceId),
-                    eq(maintenance.organizationId, activeOrganizationId),
+                    eq(incident.id, input.maintenanceId),
+                    eq(incident.organizationId, organizationId),
+                    eq(incident.severity, "maintenance"),
                 ),
             });
 
@@ -289,44 +313,41 @@ export const maintenanceRouter = {
                 });
             }
 
-            const updateId = crypto.randomUUID();
             const now = new Date();
+            const updateId = crypto.randomUUID();
+            const values: Partial<typeof incident.$inferSelect> = {
+                status:
+                    input.status === "completed"
+                        ? "resolved"
+                        : input.status === "in_progress"
+                          ? "monitoring"
+                          : "investigating",
+                updatedAt: now,
+            };
+
+            if (input.status === "in_progress" && record.startedAt > now) {
+                values.startedAt = now;
+            }
+
+            if (input.status === "completed") {
+                values.endedAt = now;
+                values.resolvedAt = now;
+            }
 
             await db.transaction(async (tx) => {
-                await tx.insert(maintenanceUpdate).values({
+                await tx.insert(incidentActivity).values({
                     id: updateId,
-                    maintenanceId: input.maintenanceId,
+                    incidentId: input.maintenanceId,
                     message: input.message,
-                    status: input.status,
+                    type: "comment",
                     createdAt: now,
-                    updatedAt: now,
+                    userId: context.session.user.id,
                 });
 
-                // Determine if we need to update startAt or endAt
-                const updates: Partial<typeof maintenance.$inferSelect> = {
-                    status: input.status,
-                    updatedAt: now,
-                };
-
-                if (
-                    record.status === "scheduled" &&
-                    input.status === "in_progress"
-                ) {
-                    updates.startAt = now;
-                }
-
-                if (input.status === "completed") {
-                    // If completing early, update endAt to now
-                    if (record.endAt > now) {
-                        updates.endAt = now;
-                    }
-                }
-
-                // Update maintenance status and updatedAt
                 await tx
-                    .update(maintenance)
-                    .set(updates)
-                    .where(eq(maintenance.id, input.maintenanceId));
+                    .update(incident)
+                    .set(values)
+                    .where(eq(incident.id, input.maintenanceId));
             });
 
             return { id: updateId };
@@ -338,37 +359,27 @@ export const maintenanceRouter = {
             path: "/maintenance/updates/{updateId}",
             tags: ["Status Page Management"],
             summary: "Modify maintenance update",
-            description: "Edit a previously posted maintenance update.",
         })
         .input(
             z.object({
                 updateId: z.string(),
                 message: z.string().min(1),
-                status: z
-                    .enum(["scheduled", "in_progress", "completed"])
-                    .optional(),
+                status: maintenanceStatusSchema.optional(),
             }),
         )
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
-
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const update = await db.query.maintenanceUpdate.findFirst({
-                where: eq(maintenanceUpdate.id, input.updateId),
-                with: {
-                    maintenance: true,
-                },
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
+            const update = await db.query.incidentActivity.findFirst({
+                where: eq(incidentActivity.id, input.updateId),
+                with: { incident: true },
             });
 
             if (
                 !update ||
-                update.maintenance.organizationId !== activeOrganizationId
+                update.incident.organizationId !== organizationId ||
+                update.incident.severity !== "maintenance"
             ) {
                 throw new ORPCError("NOT_FOUND", {
                     message: "Update not found or access denied",
@@ -376,13 +387,9 @@ export const maintenanceRouter = {
             }
 
             await db
-                .update(maintenanceUpdate)
-                .set({
-                    message: input.message,
-                    ...(input.status ? { status: input.status } : {}),
-                    updatedAt: new Date(),
-                })
-                .where(eq(maintenanceUpdate.id, input.updateId));
+                .update(incidentActivity)
+                .set({ message: input.message })
+                .where(eq(incidentActivity.id, input.updateId));
 
             return { success: true };
         }),
@@ -393,48 +400,28 @@ export const maintenanceRouter = {
             path: "/maintenance/updates/{updateId}",
             tags: ["maintenance"],
             summary: "Delete maintenance update",
-            description: "Delete a maintenance update.",
         })
-        .input(
-            z.object({
-                updateId: z.string(),
-            }),
-        )
+        .input(z.object({ updateId: z.string() }))
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
-
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const update = await db.query.maintenanceUpdate.findFirst({
-                where: eq(maintenanceUpdate.id, input.updateId),
-                with: {
-                    maintenance: true,
-                },
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
+            const update = await db.query.incidentActivity.findFirst({
+                where: eq(incidentActivity.id, input.updateId),
+                with: { incident: { with: { activities: true } } },
             });
 
             if (
                 !update ||
-                update.maintenance.organizationId !== activeOrganizationId
+                update.incident.organizationId !== organizationId ||
+                update.incident.severity !== "maintenance"
             ) {
                 throw new ORPCError("NOT_FOUND", {
                     message: "Update not found or access denied",
                 });
             }
 
-            // Check if this is the last update
-            const updateCount = await db.query.maintenanceUpdate.findMany({
-                where: eq(
-                    maintenanceUpdate.maintenanceId,
-                    update.maintenanceId,
-                ),
-            });
-
-            if (updateCount.length <= 1) {
+            if (update.incident.activities.length <= 1) {
                 throw new ORPCError("BAD_REQUEST", {
                     message:
                         "Cannot delete the last update from a maintenance window.",
@@ -442,8 +429,8 @@ export const maintenanceRouter = {
             }
 
             await db
-                .delete(maintenanceUpdate)
-                .where(eq(maintenanceUpdate.id, input.updateId));
+                .delete(incidentActivity)
+                .where(eq(incidentActivity.id, input.updateId));
 
             return { success: true };
         }),
@@ -454,41 +441,21 @@ export const maintenanceRouter = {
             path: "/maintenance/{maintenanceId}",
             tags: ["Status Page Management"],
             summary: "Delete maintenance",
-            description:
-                "Delete an entire maintenance window and all its updates.",
         })
-        .input(
-            z.object({
-                maintenanceId: z.string(),
-            }),
-        )
+        .input(z.object({ maintenanceId: z.string() }))
         .handler(async ({ input, context }) => {
-            const activeOrganizationId =
-                context.session.session.activeOrganizationId;
-
-            if (!activeOrganizationId) {
-                throw new ORPCError("UNAUTHORIZED", {
-                    message: "No active organization",
-                });
-            }
-
-            const record = await db.query.maintenance.findFirst({
-                where: and(
-                    eq(maintenance.id, input.maintenanceId),
-                    eq(maintenance.organizationId, activeOrganizationId),
-                ),
-            });
-
-            if (!record) {
-                throw new ORPCError("NOT_FOUND", {
-                    message: "Maintenance not found",
-                });
-            }
-
-            // Delete the maintenance (cascade will delete updates and associations)
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
             await db
-                .delete(maintenance)
-                .where(eq(maintenance.id, input.maintenanceId));
+                .delete(incident)
+                .where(
+                    and(
+                        eq(incident.id, input.maintenanceId),
+                        eq(incident.organizationId, organizationId),
+                        eq(incident.severity, "maintenance"),
+                    ),
+                );
 
             return { success: true };
         }),

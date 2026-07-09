@@ -53,11 +53,16 @@ function mapMaintenanceIncident(maintenance: any, routeSlug?: string) {
         title: maintenance.title,
         status: maintenance.status,
         severity: "maintenance",
-        startedAt: maintenance.createdAt,
+        startedAt: maintenance.startAt,
         endedAt: maintenance.endAt,
         monitors: maintenance.monitors,
-        activities: [],
-        detailsLink: buildPath(`/maintenance/${maintenance.id}`, routeSlug),
+        activities: maintenance.updates.map((u: any) => ({
+            id: u.id,
+            message: u.message,
+            createdAt: u.createdAt,
+            type: u.type,
+        })),
+        detailsLink: buildPath(`/incidents/${maintenance.id}`, routeSlug),
     };
 }
 
@@ -66,17 +71,29 @@ export async function prepareIncidentDetailData(
     incidentId: string,
     routeSlug?: string,
 ): Promise<IncidentDetailData> {
-    const [reports, activeReports, activeMaintenances] = await Promise.all([
+    const [
+        reports,
+        activeReports,
+        activeMaintenances,
+        scheduledMaintenances,
+        history,
+    ] = await Promise.all([
         getStatusPageReports(pageConfig.id, 1000),
         getActiveStatusPageReports(pageConfig.id),
         getActiveMaintenances(pageConfig.id),
+        getScheduledMaintenances(pageConfig.id),
+        getMaintenanceHistory(pageConfig.id, 1000),
     ]);
 
     const reportItem =
         activeReports.find((r: any) => r.id === incidentId) ||
         reports.find((r: any) => r.id === incidentId);
+    const maintenanceItem =
+        activeMaintenances.find((m: any) => m.id === incidentId) ||
+        scheduledMaintenances.find((m: any) => m.id === incidentId) ||
+        history.find((m: any) => m.id === incidentId);
 
-    if (!reportItem) {
+    if (!reportItem && !maintenanceItem) {
         throw new Error("Incident not found");
     }
 
@@ -111,7 +128,9 @@ export async function prepareIncidentDetailData(
                 barDays,
             },
         },
-        incident: mapIncident(reportItem, routeSlug),
+        incident: reportItem
+            ? mapIncident(reportItem, routeSlug)
+            : mapMaintenanceIncident(maintenanceItem, routeSlug),
         activeIssues,
     };
 }
@@ -154,7 +173,7 @@ export async function prepareMaintenanceDetailData(
         endAt: maintenanceItem.endAt,
         createdAt: maintenanceItem.createdAt,
         monitors: maintenanceItem.monitors,
-        detailsLink: buildPath(`/maintenance/${maintenanceItem.id}`, routeSlug),
+        detailsLink: buildPath(`/incidents/${maintenanceItem.id}`, routeSlug),
     };
 
     const activeIssues = [

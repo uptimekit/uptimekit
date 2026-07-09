@@ -256,11 +256,16 @@ export async function prepareStatusPageData(
             title: m.title,
             status: m.status,
             severity: "maintenance",
-            startedAt: m.createdAt,
+            startedAt: m.startAt,
             endedAt: m.endAt,
             monitors: m.monitors,
-            activities: [],
-            detailsLink: buildPath(`/maintenance/${m.id}`, routeSlug),
+            activities: m.updates.map((u: any) => ({
+                id: u.id,
+                message: u.message,
+                createdAt: u.createdAt,
+                type: u.type,
+            })),
+            detailsLink: buildPath(`/incidents/${m.id}`, routeSlug),
         })),
     ].sort(
         (a, b) =>
@@ -291,11 +296,16 @@ export async function prepareStatusPageData(
             title: m.title,
             status: m.status,
             severity: "maintenance",
-            startedAt: m.createdAt,
+            startedAt: m.startAt,
             endedAt: m.endAt,
             monitors: m.monitors.map((mm: any) => ({ monitor: mm.monitor })),
-            activities: [],
-            detailsLink: buildPath(`/maintenance/${m.id}`, routeSlug),
+            activities: m.updates.map((u: any) => ({
+                id: u.id,
+                message: u.message,
+                createdAt: u.createdAt,
+                type: u.type,
+            })),
+            detailsLink: buildPath(`/incidents/${m.id}`, routeSlug),
         })),
     ].sort(
         (a, b) =>
@@ -564,7 +574,7 @@ export async function prepareStatusPageData(
         activeIssues: combinedActive,
         scheduledMaintenances: scheduledMaintenances.map((m: any) => ({
             ...m,
-            detailsLink: buildPath(`/maintenance/${m.id}`, routeSlug),
+            detailsLink: buildPath(`/incidents/${m.id}`, routeSlug),
         })),
         pastIncidents: incidentsByDate,
         lastUpdated: new Date().toISOString(),

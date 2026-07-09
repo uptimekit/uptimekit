@@ -47,10 +47,11 @@ const schema = z
     .object({
         title: z.string().min(1, "Title is required"),
         description: z.string().optional(),
-        severity: z.enum(["minor", "major", "critical"]),
+        severity: z.enum(["minor", "major", "critical", "maintenance"]),
         monitorIds: z.array(z.string()),
         statusPageIds: z.array(z.string()),
         startedAt: z.date(),
+        plannedEndAt: z.date().nullable(),
         endedAt: z.date().nullable(),
     })
     .refine((value) => !value.endedAt || value.endedAt >= value.startedAt, {
@@ -64,6 +65,7 @@ const severityOptions = [
     { label: "Minor", value: "minor" },
     { label: "Major", value: "major" },
     { label: "Critical", value: "critical" },
+    { label: "Maintenance", value: "maintenance" },
 ] as const;
 
 interface StatusPage {
@@ -83,9 +85,11 @@ export function CreateIncidentForm() {
             monitorIds: [],
             statusPageIds: [],
             startedAt: new Date(),
+            plannedEndAt: null,
             endedAt: null,
         },
     });
+    const severity = form.watch("severity");
 
     const { data: monitorsData } = useQuery(
         orpc.monitors.list.queryOptions({ input: { limit: 100 } }),
@@ -241,6 +245,52 @@ export function CreateIncidentForm() {
                                         </FormItem>
                                     )}
                                 />
+
+                                {severity === "maintenance" && (
+                                    <FormField
+                                        control={form.control}
+                                        name="plannedEndAt"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>
+                                                    Planned end
+                                                </FormLabel>
+                                                <div className="space-y-2">
+                                                    <FormControl>
+                                                        <DateTimePicker
+                                                            date={
+                                                                field.value ??
+                                                                undefined
+                                                            }
+                                                            setDate={(date) =>
+                                                                field.onChange(
+                                                                    date ??
+                                                                        null,
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                    {field.value && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="px-0"
+                                                            onClick={() =>
+                                                                field.onChange(
+                                                                    null,
+                                                                )
+                                                            }
+                                                        >
+                                                            Clear planned end
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
 
                                 <FormField
                                     control={form.control}

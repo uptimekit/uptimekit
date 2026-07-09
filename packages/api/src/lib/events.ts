@@ -9,14 +9,14 @@ export interface AppEvents {
         organizationId: string;
         title: string;
         description?: string | null;
-        severity: "minor" | "major" | "critical";
+        severity: "minor" | "major" | "critical" | "maintenance";
     };
     "incident.acknowledged": {
         incidentId: string;
         organizationId: string;
         title: string;
         description?: string | null;
-        severity: "minor" | "major" | "critical";
+        severity: "minor" | "major" | "critical" | "maintenance";
         userId?: string | null;
     };
     "incident.resolved": {
@@ -24,14 +24,14 @@ export interface AppEvents {
         organizationId: string;
         title: string;
         description?: string | null;
-        severity: "minor" | "major" | "critical";
+        severity: "minor" | "major" | "critical" | "maintenance";
     };
     "incident.comment_added": {
         incidentId: string;
         organizationId: string;
         title: string;
         message: string;
-        severity: "minor" | "major" | "critical";
+        severity: "minor" | "major" | "critical" | "maintenance";
         userId?: string | null;
     };
     "incident.merged": {
@@ -39,14 +39,14 @@ export interface AppEvents {
         organizationId: string;
         title: string;
         description?: string | null;
-        severity: "minor" | "major" | "critical";
+        severity: "minor" | "major" | "critical" | "maintenance";
         sourceIncidentIds: string[];
     };
     "incident.deleted": {
         incidentId: string;
         organizationId: string;
         title: string;
-        severity: "minor" | "major" | "critical";
+        severity: "minor" | "major" | "critical" | "maintenance";
     };
     "monitor.ssl.expiring": {
         monitorId: string;

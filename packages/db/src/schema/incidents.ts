@@ -22,11 +22,12 @@ export const incident = pgTable(
         title: text("title").notNull(),
         description: text("description"), // Markdown allowed
         status: text("status").notNull(), // 'investigating', 'identified', 'monitoring', 'resolved'
-        severity: text("severity").default("major").notNull(), // 'minor', 'major', 'critical'
+        severity: text("severity").default("major").notNull(), // 'minor', 'major', 'critical', 'maintenance'
         type: text("type").default("manual").notNull(), // 'manual', 'automatic'
         acknowledgedAt: timestamp("acknowledged_at"),
         acknowledgedBy: text("acknowledged_by").references(() => user.id),
         startedAt: timestamp("started_at").defaultNow().notNull(),
+        plannedEndAt: timestamp("planned_end_at"),
         endedAt: timestamp("ended_at"),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")

@@ -13,10 +13,6 @@ import {
     integrationConfig,
     type MonitorChangeInsert,
     type MonitorEventInsert,
-    maintenance,
-    maintenanceMonitor,
-    maintenanceStatusPage,
-    maintenanceUpdate,
     member,
     monitor,
     monitorGroup,
@@ -38,7 +34,7 @@ import {
     worker,
     workerApiKey,
 } from "@uptimekit/db";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 const SEED = {
     userId: "seed-user-demo-admin",
@@ -111,16 +107,21 @@ const ids = {
 } as const;
 
 const now = new Date();
-const scrypt = promisify(scryptCallback);
+const scrypt = promisify(scryptCallback) as (
+    password: string,
+    salt: string,
+    keylen: number,
+    options: { N: number; r: number; p: number; maxmem: number },
+) => Promise<Buffer>;
 
 async function hashPassword(password: string) {
     const salt = randomBytes(16).toString("hex");
-    const key = (await scrypt(password.normalize("NFKC"), salt, 64, {
+    const key = await scrypt(password.normalize("NFKC"), salt, 64, {
         N: 16_384,
         r: 16,
         p: 1,
         maxmem: 128 * 16_384 * 16 * 2,
-    })) as Buffer;
+    });
 
     return `${salt}:${key.toString("hex")}`;
 }
@@ -563,16 +564,22 @@ const incidentStatusPageLinks = incidents.map((item) => ({
     statusPageId: SEED.statusPageId,
 }));
 
-const maintenances = [
+const maintenanceIncidents = [
     {
         id: ids.maintenance.active,
         organizationId: SEED.orgId,
         title: "Worker queue drain",
         description:
             "Queue consumers are being restarted in batches while jobs continue to process at reduced concurrency.",
-        startAt: activeMaintenanceStart,
-        endAt: activeMaintenanceEnd,
-        status: "in_progress",
+        status: "monitoring",
+        severity: "maintenance",
+        type: "manual",
+        startedAt: activeMaintenanceStart,
+        plannedEndAt: activeMaintenanceEnd,
+        endedAt: null,
+        resolvedAt: null,
+        createdAt: activeMaintenanceStart,
+        updatedAt: activeMaintenanceStart,
     },
     {
         id: ids.maintenance.scheduled,
@@ -580,9 +587,15 @@ const maintenances = [
         title: "Database index rebuild",
         description:
             "Read replicas will rebuild high-cardinality indexes. Brief query latency increases are expected.",
-        startAt: scheduledMaintenanceStart,
-        endAt: scheduledMaintenanceEnd,
-        status: "scheduled",
+        status: "investigating",
+        severity: "maintenance",
+        type: "manual",
+        startedAt: scheduledMaintenanceStart,
+        plannedEndAt: scheduledMaintenanceEnd,
+        endedAt: null,
+        resolvedAt: null,
+        createdAt: daysAgo(1, 8),
+        updatedAt: daysAgo(1, 8),
     },
     {
         id: ids.maintenance.completed,
@@ -590,52 +603,58 @@ const maintenances = [
         title: "Edge cache software update",
         description:
             "Edge cache nodes were upgraded region by region with no customer impact.",
-        startAt: completedMaintenanceStart,
-        endAt: completedMaintenanceEnd,
-        status: "completed",
+        status: "resolved",
+        severity: "maintenance",
+        type: "manual",
+        startedAt: completedMaintenanceStart,
+        plannedEndAt: completedMaintenanceEnd,
+        endedAt: completedMaintenanceEnd,
+        resolvedAt: completedMaintenanceEnd,
+        createdAt: completedMaintenanceStart,
+        updatedAt: completedMaintenanceEnd,
     },
-] satisfies Array<typeof maintenance.$inferInsert>;
+] satisfies Array<typeof incident.$inferInsert>;
 
-const maintenanceMonitorLinks = [
-    { maintenanceId: ids.maintenance.active, monitorId: ids.monitors.queue },
-    { maintenanceId: ids.maintenance.scheduled, monitorId: ids.monitors.db },
-    { maintenanceId: ids.maintenance.scheduled, monitorId: ids.monitors.api },
-    { maintenanceId: ids.maintenance.completed, monitorId: ids.monitors.web },
-    { maintenanceId: ids.maintenance.completed, monitorId: ids.monitors.dns },
-] satisfies Array<typeof maintenanceMonitor.$inferInsert>;
+const maintenanceIncidentMonitorLinks = [
+    { incidentId: ids.maintenance.active, monitorId: ids.monitors.queue },
+    { incidentId: ids.maintenance.scheduled, monitorId: ids.monitors.db },
+    { incidentId: ids.maintenance.scheduled, monitorId: ids.monitors.api },
+    { incidentId: ids.maintenance.completed, monitorId: ids.monitors.web },
+    { incidentId: ids.maintenance.completed, monitorId: ids.monitors.dns },
+] satisfies Array<typeof incidentMonitor.$inferInsert>;
 
-const maintenanceStatusPageLinks = maintenances.map((item) => ({
-    maintenanceId: item.id,
+const maintenanceIncidentStatusPageLinks = maintenanceIncidents.map((item) => ({
+    incidentId: item.id,
     statusPageId: SEED.statusPageId,
-}));
+})) satisfies Array<typeof incidentStatusPage.$inferInsert>;
 
-const maintenanceUpdates = [
+const maintenanceIncidentActivities = [
     {
         id: "seed-maintenance-update-active-1",
-        maintenanceId: ids.maintenance.active,
+        incidentId: ids.maintenance.active,
         message:
             "Queue drain is underway. Job throughput is reduced but stable.",
-        status: "in_progress",
+        type: "comment",
         createdAt: activeMaintenanceStart,
-        updatedAt: activeMaintenanceStart,
+        userId: SEED.userId,
     },
     {
         id: "seed-maintenance-update-scheduled-1",
-        maintenanceId: ids.maintenance.scheduled,
+        incidentId: ids.maintenance.scheduled,
         message: "Maintenance scheduled for the low-traffic window.",
-        status: "scheduled",
+        type: "comment",
         createdAt: daysAgo(1, 8),
-        updatedAt: daysAgo(1, 8),
+        userId: SEED.userId,
     },
     {
         id: "seed-maintenance-update-completed-1",
-        maintenanceId: ids.maintenance.completed,
+        incidentId: ids.maintenance.completed,
         message: "Upgrade completed successfully across all edge regions.",
-        status: "completed",
+        type: "comment",
         createdAt: completedMaintenanceEnd,
-        updatedAt: completedMaintenanceEnd,
+        userId: SEED.userId,
     },
-] satisfies Array<typeof maintenanceUpdate.$inferInsert>;
+] satisfies Array<typeof incidentActivity.$inferInsert>;
 
 function buildStatusPageMonitorLinks() {
     const links = [
@@ -890,30 +909,35 @@ async function seedRelationalData(demoUserId: string) {
         await tx
             .insert(incident)
             .values(
-                incidents.map((item) =>
+                [...incidents, ...maintenanceIncidents].map((item) =>
+                    "acknowledgedBy" in item &&
                     item.acknowledgedBy === SEED.userId
                         ? { ...item, acknowledgedBy: demoUserId }
                         : item,
                 ),
             );
-        await tx.insert(incidentMonitor).values(incidentMonitorLinks);
-        await tx.insert(incidentStatusPage).values(incidentStatusPageLinks);
+        await tx
+            .insert(incidentMonitor)
+            .values([
+                ...incidentMonitorLinks,
+                ...maintenanceIncidentMonitorLinks,
+            ]);
+        await tx
+            .insert(incidentStatusPage)
+            .values([
+                ...incidentStatusPageLinks,
+                ...maintenanceIncidentStatusPageLinks,
+            ]);
         await tx
             .insert(incidentActivity)
             .values(
-                incidentActivities.map((item) =>
-                    item.userId === SEED.userId
-                        ? { ...item, userId: demoUserId }
-                        : item,
+                [...incidentActivities, ...maintenanceIncidentActivities].map(
+                    (item) =>
+                        item.userId === SEED.userId
+                            ? { ...item, userId: demoUserId }
+                            : item,
                 ),
             );
-
-        await tx.insert(maintenance).values(maintenances);
-        await tx.insert(maintenanceMonitor).values(maintenanceMonitorLinks);
-        await tx
-            .insert(maintenanceStatusPage)
-            .values(maintenanceStatusPageLinks);
-        await tx.insert(maintenanceUpdate).values(maintenanceUpdates);
 
         await tx.insert(statusPageReport).values({
             id: ids.reports.legacy,
@@ -1185,7 +1209,13 @@ async function verifySeed() {
         await Promise.all([
             db.$count(monitor, eq(monitor.organizationId, SEED.orgId)),
             db.$count(incident, eq(incident.organizationId, SEED.orgId)),
-            db.$count(maintenance, eq(maintenance.organizationId, SEED.orgId)),
+            db.$count(
+                incident,
+                and(
+                    eq(incident.organizationId, SEED.orgId),
+                    eq(incident.severity, "maintenance"),
+                ),
+            ),
             db.$count(
                 statusPageEmailSubscribers,
                 eq(statusPageEmailSubscribers.statusPageId, SEED.statusPageId),

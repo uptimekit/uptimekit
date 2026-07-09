@@ -1,10 +1,7 @@
 import { db, timeseries } from "@uptimekit/db";
-import {
-    maintenance,
-    maintenanceMonitor,
-} from "@uptimekit/db/schema/maintenance";
+import { incident, incidentMonitor } from "@uptimekit/db/schema/incidents";
 import { worker } from "@uptimekit/db/schema/workers";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
 
 export type MonitorRuntimeStatus =
     | "up"
@@ -501,17 +498,21 @@ async function getActiveMaintenanceMonitorIds(monitorIds: string[]) {
         return new Set<string>();
     }
 
+    const now = new Date();
     const rows = await db
-        .select({ monitorId: maintenanceMonitor.monitorId })
-        .from(maintenanceMonitor)
-        .innerJoin(
-            maintenance,
-            eq(maintenanceMonitor.maintenanceId, maintenance.id),
-        )
+        .select({ monitorId: incidentMonitor.monitorId })
+        .from(incidentMonitor)
+        .innerJoin(incident, eq(incidentMonitor.incidentId, incident.id))
         .where(
             and(
-                inArray(maintenanceMonitor.monitorId, monitorIds),
-                eq(maintenance.status, "in_progress"),
+                inArray(incidentMonitor.monitorId, monitorIds),
+                eq(incident.severity, "maintenance"),
+                isNull(incident.endedAt),
+                lte(incident.startedAt, now),
+                or(
+                    isNull(incident.plannedEndAt),
+                    gt(incident.plannedEndAt, now),
+                ),
             ),
         );
 
