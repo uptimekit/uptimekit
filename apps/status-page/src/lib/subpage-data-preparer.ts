@@ -126,6 +126,7 @@ export async function prepareIncidentDetailData(
                 headerLayout: design.headerLayout || "vertical",
                 barStyle: design.barStyle || "normal",
                 barDays,
+                allowSubscriptions: design.allowSubscriptions !== false,
             },
         },
         incident: reportItem
@@ -205,6 +206,7 @@ export async function prepareMaintenanceDetailData(
                 headerLayout: design.headerLayout || "vertical",
                 barStyle: design.barStyle || "normal",
                 barDays,
+                allowSubscriptions: design.allowSubscriptions !== false,
             },
         },
         maintenance,
@@ -287,6 +289,7 @@ export async function prepareUpdatesPageData(
                 headerLayout: design.headerLayout || "vertical",
                 barStyle: design.barStyle || "normal",
                 barDays,
+                allowSubscriptions: design.allowSubscriptions !== false,
             },
         },
         allUpdates,

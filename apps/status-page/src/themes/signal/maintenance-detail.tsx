@@ -32,7 +32,9 @@ export default function SignalMaintenanceDetail({
                 logoUrl={design.logoUrl}
                 contactUrl={design.contactUrl}
                 websiteUrl={design.websiteUrl}
+                statusPageId={config.id}
                 slug={config.routeSlug}
+                allowSubscriptions={design.allowSubscriptions}
             />
 
             <main className="w-full flex-1">

@@ -99,7 +99,7 @@ async function handlePost(request: NextRequest) {
         }
 
         const design = (page.design as Record<string, unknown> | null) || {};
-        if (!design.allowSubscriptions) {
+        if (design.allowSubscriptions === false) {
             return NextResponse.json(
                 { error: "Subscriptions are disabled for this status page." },
                 { status: 403 },

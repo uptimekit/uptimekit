@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { canAccessStatusPage, checkStatusPageAccess } from "@/lib/access-check";
 import { prepareStatusPageData } from "@/lib/data-preparer";
 import { getStatusPageByDomain } from "@/lib/db-queries";
+import { getFeedAlternates } from "@/lib/feed-links";
 import {
     getDomainFromHost,
     getHostFromHeaders,
@@ -71,6 +72,9 @@ export async function generateMetadata() {
             design.faviconUrl || logoUrl
                 ? { icon: design.faviconUrl || logoUrl }
                 : undefined,
+        alternates: {
+            types: getFeedAlternates(),
+        },
         openGraph: {
             title,
             description,

@@ -1,15 +1,25 @@
 "use client";
 
-import { faCircleCheck, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
+import {
+    faCircleCheck,
+    faEnvelope,
+    faRss,
+    faSpinner,
+    faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type FormEvent, useState } from "react";
+import { getFeedLinks } from "@/lib/feed-links";
 import { cn } from "@/lib/utils";
 
 interface SubscribeFormProps {
     statusPageId: string;
+    slug?: string;
     className?: string;
-    variant?: "default" | "flat" | "signal";
-    mode?: "card" | "compact";
+    variant?: "default" | "flat" | "signal" | "spark";
+    allowEmailSubscriptions?: boolean;
 }
 
 interface SubscribeState {
@@ -19,45 +29,42 @@ interface SubscribeState {
 
 const variantStyles = {
     default: {
-        card: "rounded-2xl border border-border bg-card/90 p-5 shadow-sm",
         trigger:
-            "inline-flex h-9 items-center justify-center rounded-lg bg-primary px-3 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90",
-        panel: "border border-border bg-background shadow-xl",
-        button: "inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-60",
-        cancel: "inline-flex h-11 items-center justify-center rounded-xl bg-muted px-4 font-medium text-foreground text-sm transition-colors hover:bg-muted/80",
+            "inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-4 font-medium text-sm shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+        button: "inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-60",
     },
     flat: {
-        card: "rounded-2xl border border-border/50 bg-background p-5 shadow-sm",
         trigger:
-            "inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-3 font-medium text-foreground text-sm transition-colors hover:bg-neutral-100 dark:bg-muted dark:hover:bg-neutral-700!",
-        panel: "border border-border bg-background shadow-xl",
-        button: "inline-flex h-11 items-center justify-center rounded-xl border border-border bg-white px-4 font-medium text-foreground text-sm transition-colors hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-60 dark:bg-muted dark:hover:bg-neutral-700!",
-        cancel: "inline-flex h-11 items-center justify-center rounded-xl bg-muted px-4 font-medium text-foreground text-sm transition-colors hover:bg-muted/80",
+            "inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-4 font-medium text-foreground text-sm transition-colors hover:bg-neutral-100 dark:bg-muted dark:hover:bg-neutral-700!",
+        button: "inline-flex h-9 items-center justify-center rounded-md border border-border bg-white px-4 font-medium text-foreground text-sm transition-colors hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-60 dark:bg-muted dark:hover:bg-neutral-700!",
     },
     signal: {
-        card: "signal-panel rounded-2xl border border-border/70 p-5",
         trigger:
             "signal-button inline-flex h-8 items-center justify-center rounded-lg px-3 font-medium text-[13px] text-foreground transition-transform duration-150 hover:-translate-y-px",
-        panel: "signal-panel border border-border/70 bg-background shadow-xl",
-        button: "signal-button inline-flex h-11 items-center justify-center rounded-xl px-4 font-medium text-[13px] text-foreground transition-transform duration-150 hover:-translate-y-px disabled:pointer-events-none disabled:opacity-60",
-        cancel: "inline-flex h-11 items-center justify-center rounded-xl bg-muted px-4 font-medium text-foreground text-sm transition-colors hover:bg-muted/80",
+        button: "signal-button inline-flex h-9 items-center justify-center rounded-md px-4 font-medium text-[13px] text-foreground transition-transform duration-150 hover:-translate-y-px disabled:pointer-events-none disabled:opacity-60",
+    },
+    spark: {
+        trigger:
+            "inline-flex h-9 items-center justify-center rounded-md bg-foreground px-3 font-medium text-background text-sm transition-colors hover:bg-foreground/90",
+        button: "inline-flex h-9 items-center justify-center rounded-md bg-foreground px-4 font-medium text-background text-sm transition-colors hover:bg-foreground/90 disabled:pointer-events-none disabled:opacity-60",
     },
 } as const;
 
 export function SubscribeForm({
     statusPageId,
+    slug,
     className,
     variant = "default",
-    mode = "card",
+    allowEmailSubscriptions = true,
 }: SubscribeFormProps) {
-    const [isOpen, setIsOpen] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [state, setState] = useState<SubscribeState>({
         error: "",
         success: "",
     });
-
     const styles = variantStyles[variant];
+    const feedLinks = getFeedLinks(slug);
+    const defaultTab = allowEmailSubscriptions ? "email" : "rss";
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -73,10 +80,9 @@ export function SubscribeForm({
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    statusPageId: formData.get("statusPageId"),
+                    statusPageId,
                     email: formData.get("email"),
                     slackWebhookUrl: formData.get("slackWebhookUrl"),
-                    discordWebhookUrl: formData.get("discordWebhookUrl"),
                 }),
             });
             const result = (await response.json().catch(() => ({}))) as {
@@ -91,6 +97,7 @@ export function SubscribeForm({
                 return;
             }
 
+            event.currentTarget.reset();
             setState({
                 error: "",
                 success: "You're subscribed to status updates.",
@@ -105,196 +112,190 @@ export function SubscribeForm({
         }
     };
 
-    if (mode === "compact") {
-        return (
-            <div className={cn("relative", className)}>
-                <button
-                    type="button"
-                    onClick={() => setIsOpen((open) => !open)}
-                    className={styles.trigger}
-                >
-                    Subscribe
-                </button>
-
-                {isOpen ? (
-                    <div
-                        className={cn(
-                            "absolute top-full right-0 z-30 mt-2 w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
-                            styles.panel,
-                        )}
-                    >
-                        <div className="border-border border-b px-6 py-5">
-                            <h2 className="font-semibold text-[1.375rem] text-foreground leading-none">
-                                Subscribe to Updates
-                            </h2>
-                            <p className="mt-3 text-muted-foreground text-sm">
-                                Get notified about incidents and maintenance for
-                                this status page.
-                            </p>
+    return (
+        <DialogPrimitive.Root>
+            <DialogPrimitive.Trigger className={cn(styles.trigger, className)}>
+                Subscribe to updates
+            </DialogPrimitive.Trigger>
+            <DialogPrimitive.Portal>
+                <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/60 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
+                <DialogPrimitive.Viewport className="fixed inset-0 z-50 grid items-start justify-items-center overflow-y-auto px-3 pt-[12vh] pb-6 sm:px-4">
+                    <DialogPrimitive.Popup className="w-full max-w-[39rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-2xl outline-none transition-[opacity,scale] duration-150 data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0">
+                        <div className="flex items-center justify-between border-border border-b px-4 py-4 sm:px-5">
+                            <DialogPrimitive.Title className="font-semibold text-lg">
+                                Subscribe to updates
+                            </DialogPrimitive.Title>
+                            <DialogPrimitive.Close
+                                aria-label="Close"
+                                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                                <FontAwesomeIcon icon={faXmark} />
+                            </DialogPrimitive.Close>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="px-6 py-5">
-                            <input
-                                type="hidden"
-                                name="statusPageId"
-                                value={statusPageId}
-                            />
-
-                            <div className="space-y-5">
-                                <div className="space-y-2">
-                                    <label
-                                        htmlFor={`status-subscribe-email-${variant}`}
-                                        className="block font-medium text-foreground text-sm"
+                        <TabsPrimitive.Root defaultValue={defaultTab}>
+                            <TabsPrimitive.List className="mx-4 mt-4 flex border-border border-b text-muted-foreground sm:mx-5">
+                                {allowEmailSubscriptions ? (
+                                    <TabsPrimitive.Tab
+                                        value="email"
+                                        className="-mb-px inline-flex h-9 items-center gap-2 border-transparent border-b px-3 font-medium text-sm outline-none transition-colors hover:text-foreground data-active:border-foreground data-active:text-foreground"
                                     >
+                                        <FontAwesomeIcon icon={faEnvelope} />
                                         Email
-                                        <span className="text-destructive">
-                                            *
-                                        </span>
-                                    </label>
-                                    <input
-                                        id={`status-subscribe-email-${variant}`}
-                                        type="email"
-                                        name="email"
-                                        placeholder="you@example.com"
-                                        autoComplete="email"
-                                        required
-                                        disabled={isPending}
-                                        className="h-11 w-full rounded-xl border border-border bg-background px-4 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <label
-                                            htmlFor={`status-subscribe-slack-${variant}`}
-                                            className="block font-medium text-foreground text-sm"
-                                        >
-                                            Slack
-                                        </label>
-                                        <span className="text-muted-foreground text-sm">
-                                            Optional
-                                        </span>
-                                    </div>
-                                    <input
-                                        id={`status-subscribe-slack-${variant}`}
-                                        type="url"
-                                        name="slackWebhookUrl"
-                                        placeholder="https://hooks.slack.com/services/..."
-                                        autoComplete="off"
-                                        disabled={isPending}
-                                        className="h-11 w-full rounded-xl border border-border bg-background px-4 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <label
-                                            htmlFor={`status-subscribe-discord-${variant}`}
-                                            className="block font-medium text-foreground text-sm"
-                                        >
-                                            Discord
-                                        </label>
-                                        <span className="text-muted-foreground text-sm">
-                                            Optional
-                                        </span>
-                                    </div>
-                                    <input
-                                        id={`status-subscribe-discord-${variant}`}
-                                        type="url"
-                                        name="discordWebhookUrl"
-                                        placeholder="https://discord.com/api/webhooks/..."
-                                        autoComplete="off"
-                                        disabled={isPending}
-                                        className="h-11 w-full rounded-xl border border-border bg-background px-4 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
-                                    />
-                                </div>
-
-                                {state.error ? (
-                                    <p className="text-destructive text-sm">
-                                        {state.error}
-                                    </p>
+                                    </TabsPrimitive.Tab>
                                 ) : null}
+                                <TabsPrimitive.Tab
+                                    value="rss"
+                                    className="-mb-px inline-flex h-9 items-center gap-2 border-transparent border-b px-3 font-medium text-sm outline-none transition-colors hover:text-foreground data-active:border-foreground data-active:text-foreground"
+                                >
+                                    <FontAwesomeIcon icon={faRss} />
+                                    RSS
+                                </TabsPrimitive.Tab>
+                                {allowEmailSubscriptions ? (
+                                    <TabsPrimitive.Tab
+                                        value="slack"
+                                        className="-mb-px inline-flex h-9 items-center gap-2 border-transparent border-b px-3 font-medium text-sm outline-none transition-colors hover:text-foreground data-active:border-foreground data-active:text-foreground"
+                                    >
+                                        <span className="font-bold">#</span>
+                                        Slack
+                                    </TabsPrimitive.Tab>
+                                ) : null}
+                            </TabsPrimitive.List>
 
-                                {state.success ? (
-                                    <p className="flex items-center gap-2 text-green-600 text-sm dark:text-green-400">
-                                        <FontAwesomeIcon
-                                            icon={faCircleCheck}
-                                            className="h-4 w-4"
+                            {allowEmailSubscriptions ? (
+                                <TabsPrimitive.Panel value="email">
+                                    <SubscribePanel
+                                        id="email"
+                                        isPending={isPending}
+                                        onSubmit={handleSubmit}
+                                        state={state}
+                                        submitClassName={styles.button}
+                                    />
+                                </TabsPrimitive.Panel>
+                            ) : null}
+
+                            <TabsPrimitive.Panel value="rss">
+                                <div className="space-y-4 px-4 py-5 sm:px-5">
+                                    <p className="text-muted-foreground text-sm">
+                                        Use a feed reader to follow incidents
+                                        and maintenance updates.
+                                    </p>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <FeedLink
+                                            href={feedLinks.rss}
+                                            label="RSS feed"
                                         />
-                                        {state.success}
-                                    </p>
-                                ) : null}
-                            </div>
+                                        <FeedLink
+                                            href={feedLinks.atom}
+                                            label="Atom feed"
+                                        />
+                                    </div>
+                                </div>
+                            </TabsPrimitive.Panel>
 
-                            <div className="mt-6 flex items-center justify-between gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsOpen(false)}
-                                    className={styles.cancel}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isPending}
-                                    className={styles.button}
-                                >
-                                    {isPending ? (
-                                        <>
-                                            <FontAwesomeIcon
-                                                icon={faSpinner}
-                                                className="mr-2 h-4 w-4 animate-spin"
-                                            />
-                                            Subscribing...
-                                        </>
-                                    ) : (
-                                        "Subscribe"
-                                    )}
-                                </button>
-                            </div>
-                        </form>
+                            {allowEmailSubscriptions ? (
+                                <TabsPrimitive.Panel value="slack">
+                                    <SubscribePanel
+                                        id="slack"
+                                        isPending={isPending}
+                                        onSubmit={handleSubmit}
+                                        state={state}
+                                        submitClassName={styles.button}
+                                        slack
+                                    />
+                                </TabsPrimitive.Panel>
+                            ) : null}
+                        </TabsPrimitive.Root>
+                    </DialogPrimitive.Popup>
+                </DialogPrimitive.Viewport>
+            </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
+    );
+}
+
+function SubscribePanel({
+    id,
+    isPending,
+    onSubmit,
+    state,
+    submitClassName,
+    slack = false,
+}: {
+    id: string;
+    isPending: boolean;
+    onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+    state: SubscribeState;
+    submitClassName: string;
+    slack?: boolean;
+}) {
+    return (
+        <form onSubmit={onSubmit}>
+            <div className="space-y-4 px-4 py-5 sm:px-5">
+                <div className="space-y-2">
+                    <label
+                        htmlFor={`status-subscribe-email-${id}`}
+                        className="block font-medium text-sm"
+                    >
+                        Enter your email address
+                    </label>
+                    <input
+                        id={`status-subscribe-email-${id}`}
+                        type="email"
+                        name="email"
+                        placeholder="e.g. hello@example.com"
+                        autoComplete="email"
+                        required
+                        disabled={isPending}
+                        className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+                    />
+                </div>
+
+                {slack ? (
+                    <div className="space-y-2">
+                        <label
+                            htmlFor="status-subscribe-slack"
+                            className="block font-medium text-sm"
+                        >
+                            Slack webhook URL
+                        </label>
+                        <input
+                            id="status-subscribe-slack"
+                            type="url"
+                            name="slackWebhookUrl"
+                            placeholder="https://hooks.slack.com/services/..."
+                            autoComplete="off"
+                            required
+                            disabled={isPending}
+                            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+                        />
                     </div>
                 ) : null}
-            </div>
-        );
-    }
 
-    return (
-        <section className={cn(styles.card, className)}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <input type="hidden" name="statusPageId" value={statusPageId} />
-                <input
-                    type="email"
-                    name="email"
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    required
-                    disabled={isPending}
-                    aria-label="Email address"
-                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
-                />
-                <input
-                    type="url"
-                    name="slackWebhookUrl"
-                    placeholder="https://hooks.slack.com/services/..."
-                    autoComplete="off"
-                    disabled={isPending}
-                    aria-label="Slack webhook URL"
-                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
-                />
-                <input
-                    type="url"
-                    name="discordWebhookUrl"
-                    placeholder="https://discord.com/api/webhooks/..."
-                    autoComplete="off"
-                    disabled={isPending}
-                    aria-label="Discord webhook URL"
-                    className="h-11 w-full rounded-xl border border-border bg-background px-4 text-foreground text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
-                />
+                <div className="rounded-md bg-muted px-4 py-3 text-sm">
+                    You&apos;ll receive emails for new incidents, as well as
+                    updates to existing incidents.
+                </div>
+
+                {state.error ? (
+                    <p className="text-destructive text-sm">{state.error}</p>
+                ) : null}
+
+                {state.success ? (
+                    <p className="flex items-center gap-2 text-green-600 text-sm dark:text-green-400">
+                        <FontAwesomeIcon
+                            icon={faCircleCheck}
+                            className="h-4 w-4"
+                        />
+                        {state.success}
+                    </p>
+                ) : null}
+            </div>
+
+            <div className="flex justify-end border-border border-t px-4 py-4 sm:px-5">
                 <button
                     type="submit"
                     disabled={isPending}
-                    className={styles.button}
+                    className={submitClassName}
                 >
                     {isPending ? (
                         <>
@@ -308,19 +309,20 @@ export function SubscribeForm({
                         "Subscribe"
                     )}
                 </button>
-                {state.error ? (
-                    <p className="text-destructive text-sm">{state.error}</p>
-                ) : null}
-                {state.success ? (
-                    <p className="flex items-center gap-2 text-green-600 text-sm dark:text-green-400">
-                        <FontAwesomeIcon
-                            icon={faCircleCheck}
-                            className="h-4 w-4"
-                        />
-                        {state.success}
-                    </p>
-                ) : null}
-            </form>
-        </section>
+            </div>
+        </form>
+    );
+}
+
+function FeedLink({ href, label }: { href: string; label: string }) {
+    return (
+        <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-border bg-background px-4 py-3 font-medium text-sm transition-colors hover:bg-muted"
+        >
+            {label}
+        </a>
     );
 }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { canAccessStatusPage, checkStatusPageAccess } from "@/lib/access-check";
 import { prepareStatusPageData } from "@/lib/data-preparer";
 import { getStatusPageBySlug } from "@/lib/db-queries";
+import { getFeedAlternates } from "@/lib/feed-links";
 import { getHostFromHeaders, getProtocolFromHeaders } from "@/lib/route-utils";
 import { loadThemeComponent } from "@/lib/theme-loader";
 import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
@@ -51,6 +52,9 @@ export async function generateMetadata({
             design.faviconUrl || logoUrl
                 ? { icon: design.faviconUrl || logoUrl }
                 : undefined,
+        alternates: {
+            types: getFeedAlternates(slug),
+        },
         openGraph: {
             title,
             description,

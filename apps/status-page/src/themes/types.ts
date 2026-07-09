@@ -37,6 +37,7 @@ export interface StatusPageDesign {
     percentDigits?: number;
     defaultSectionCollapsible?: boolean;
     defaultSectionCollapsed?: boolean;
+    allowSubscriptions?: boolean;
 }
 
 export interface MonitorGroup {

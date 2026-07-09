@@ -588,6 +588,7 @@ export async function prepareStatusPageData(
                     design.defaultSectionCollapsible !== false &&
                         design.defaultSectionCollapsed,
                 ),
+                allowSubscriptions: design.allowSubscriptions !== false,
             },
         },
         overallStatus: worstStatus,

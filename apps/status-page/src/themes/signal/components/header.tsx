@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SubscribeForm } from "@/components/subscribe-form";
 import { buildPath } from "@/lib/route-utils";
 
 interface HeaderProps {
@@ -8,7 +9,9 @@ interface HeaderProps {
     logoUrl?: string;
     contactUrl?: string;
     websiteUrl?: string;
+    statusPageId?: string;
     slug?: string;
+    allowSubscriptions?: boolean;
 }
 
 export function Header({
@@ -16,7 +19,9 @@ export function Header({
     logoUrl,
     contactUrl,
     websiteUrl,
+    statusPageId,
     slug,
+    allowSubscriptions = true,
 }: HeaderProps) {
     const homeHref = buildPath("/", slug);
     const isMailto = contactUrl?.startsWith("mailto:");
@@ -68,6 +73,14 @@ export function Header({
                                 Get in touch
                             </a>
                         )}
+                        {statusPageId ? (
+                            <SubscribeForm
+                                statusPageId={statusPageId}
+                                slug={slug}
+                                variant="signal"
+                                allowEmailSubscriptions={allowSubscriptions}
+                            />
+                        ) : null}
                     </div>
                 </div>
                 <div className="signal-divider h-px w-full rounded-full" />

@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { SubscribeForm } from "@/components/subscribe-form";
 import { buildPath } from "@/lib/route-utils";
 
 interface HeaderProps {
     title?: string;
     logoUrl?: string;
     contactUrl?: string;
+    statusPageId?: string;
     slug?: string;
+    allowSubscriptions?: boolean;
     className?: string;
 }
 
@@ -15,7 +18,9 @@ export function Header({
     title = "System Status",
     logoUrl,
     contactUrl,
+    statusPageId,
     slug,
+    allowSubscriptions = true,
     className,
 }: HeaderProps) {
     const isMailto = contactUrl?.startsWith("mailto:");
@@ -56,16 +61,26 @@ export function Header({
                         </Link>
                     </nav>
 
-                    {contactUrl && (
-                        <a
-                            href={contactUrl}
-                            target={isMailto ? undefined : "_blank"}
-                            rel="noopener noreferrer"
-                            className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-4 font-medium text-foreground text-sm transition-colors hover:bg-neutral-100 dark:bg-muted dark:hover:bg-neutral-700!"
-                        >
-                            Get in touch
-                        </a>
-                    )}
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        {contactUrl && (
+                            <a
+                                href={contactUrl}
+                                target={isMailto ? undefined : "_blank"}
+                                rel="noopener noreferrer"
+                                className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-white px-4 font-medium text-foreground text-sm transition-colors hover:bg-neutral-100 dark:bg-muted dark:hover:bg-neutral-700!"
+                            >
+                                Get in touch
+                            </a>
+                        )}
+                        {statusPageId ? (
+                            <SubscribeForm
+                                statusPageId={statusPageId}
+                                slug={slug}
+                                variant="flat"
+                                allowEmailSubscriptions={allowSubscriptions}
+                            />
+                        ) : null}
+                    </div>
                 </div>
             </div>
         </header>

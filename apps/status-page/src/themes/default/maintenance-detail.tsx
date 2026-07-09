@@ -18,6 +18,9 @@ export default function DefaultMaintenanceDetail({
                 title={config.name}
                 logoUrl={design.logoUrl}
                 contactUrl={design.contactUrl}
+                statusPageId={config.id}
+                slug={config.routeSlug}
+                allowSubscriptions={design.allowSubscriptions}
             />
 
             <main className="w-full flex-1">

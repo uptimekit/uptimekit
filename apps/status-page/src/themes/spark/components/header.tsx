@@ -1,3 +1,4 @@
+import { SubscribeForm } from "@/components/subscribe-form";
 import type { ThemePageProps } from "@/themes/types";
 
 export function Header({ data }: ThemePageProps) {
@@ -33,12 +34,12 @@ export function Header({ data }: ThemePageProps) {
                         Report a problem
                     </a>
                 ) : null}
-                <button
-                    type="button"
-                    className="inline-flex h-9 items-center justify-center rounded-md bg-foreground px-3 font-medium text-background text-sm transition-colors hover:bg-foreground/90"
-                >
-                    Subscribe to updates
-                </button>
+                <SubscribeForm
+                    statusPageId={config.id}
+                    slug={config.routeSlug}
+                    variant="spark"
+                    allowEmailSubscriptions={design.allowSubscriptions}
+                />
             </div>
         </header>
     );
