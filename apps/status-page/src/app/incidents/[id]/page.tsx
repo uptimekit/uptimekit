@@ -21,7 +21,10 @@ export async function generateMetadata({
     const host = getHostFromHeaders(headersList);
 
     if (!host) {
-        return { title: "Incident" };
+        return {
+            title: "Incident",
+            robots: { index: false, follow: false },
+        };
     }
 
     const protocol = getProtocolFromHeaders(headersList);
