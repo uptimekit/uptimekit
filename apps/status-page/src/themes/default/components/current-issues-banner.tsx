@@ -28,7 +28,6 @@ export function CurrentIssuesBanner({
                         incident={item as any}
                         isExpanded={true}
                         detailsLink={item.detailsLink}
-                        className="border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
                     />
                 ))}
             </div>
