@@ -1,6 +1,6 @@
 import { IncidentCard } from "@/components/incident-card";
 import { buildPath } from "@/lib/route-utils";
-import type { Maintenance } from "@/themes/types";
+import type { Incident, Maintenance } from "@/themes/types";
 
 interface ScheduledMaintenanceSectionProps {
     scheduledMaintenances: Maintenance[];
@@ -15,19 +15,21 @@ export function ScheduledMaintenanceSection({
         return null;
     }
 
-    const mappedScheduledMaintenances = scheduledMaintenances.map((m) => ({
-        id: m.id,
-        title: m.title,
-        status: m.status,
-        severity: "maintenance",
-        createdAt: m.startAt,
-        resolvedAt: null,
-        monitors: m.monitors,
-        activities: [],
-        detailsLink: slug
-            ? buildPath(`/incidents/${m.id}`, slug)
-            : `/incidents/${m.id}`,
-    }));
+    const mappedScheduledMaintenances: Incident[] = scheduledMaintenances.map(
+        (m) => ({
+            id: m.id,
+            title: m.title,
+            status: m.status,
+            severity: "maintenance",
+            startedAt: m.startAt,
+            endedAt: m.endAt,
+            monitors: m.monitors,
+            activities: [],
+            detailsLink: slug
+                ? buildPath(`/incidents/${m.id}`, slug)
+                : `/incidents/${m.id}`,
+        }),
+    );
 
     return (
         <section className="mb-16 animate-slide-up">
@@ -38,9 +40,9 @@ export function ScheduledMaintenanceSection({
                 {mappedScheduledMaintenances.map((maintenance) => (
                     <IncidentCard
                         key={maintenance.id}
-                        incident={maintenance as any}
+                        incident={maintenance}
                         isExpanded={false}
-                        detailsLink={(maintenance as any).detailsLink}
+                        detailsLink={maintenance.detailsLink}
                         className="border-none bg-card/50 shadow-none hover:bg-card/80"
                     />
                 ))}

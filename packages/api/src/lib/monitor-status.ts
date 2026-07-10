@@ -23,6 +23,7 @@ export interface ConfiguredWorkerStateResult {
 export interface AggregateMonitorStatusResult
     extends ConfiguredWorkerStateResult {
     status: MonitorRuntimeStatus;
+    lastCheck: Date | null;
     allWorkersDownSince: Date | null;
     statusReason: string | null;
     affectedWorkerIds: string[];
@@ -244,6 +245,16 @@ function buildAggregateMonitorStatusResult(input: {
     return {
         ...input.configuredWorkerStates,
         status: input.status,
+        lastCheck:
+            input.workerStatusById.size > 0
+                ? new Date(
+                      Math.max(
+                          ...Array.from(input.workerStatusById.values()).map(
+                              (state) => state.timestamp.getTime(),
+                          ),
+                      ),
+                  )
+                : null,
         allWorkersDownSince: input.allWorkersDownSince,
         statusReason: getAggregateStatusReason({
             status: input.status,
@@ -715,6 +726,7 @@ export async function getAggregateMonitorStatusForMonitor(
     return (
         statuses.get(monitorRecord.id) ?? {
             status: "pending",
+            lastCheck: null,
             allWorkersReporting: false,
             states: [],
             allWorkersDownSince: null,

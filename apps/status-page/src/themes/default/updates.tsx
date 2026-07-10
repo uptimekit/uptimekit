@@ -6,6 +6,7 @@ import { CurrentIssuesBanner } from "./components/current-issues-banner";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { UpdatesList } from "./components/updates-list";
+import "./style.css";
 
 export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
     const { config, incidentsByDate, activeIssues, selectedPeriod } = data;

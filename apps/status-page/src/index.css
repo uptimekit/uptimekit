@@ -241,3 +241,13 @@ body {
         letter-spacing: var(--tracking-normal);
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    [data-theme] *,
+    [data-theme] *::before,
+    [data-theme] *::after {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+        transition-duration: 0.01ms;
+    }
+}

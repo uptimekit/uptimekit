@@ -28,8 +28,8 @@ export function Header({
     return (
         <header className={className}>
             <div className="relative mx-auto max-w-4xl border-border/40 border-b px-4 py-4">
-                <div className="flex items-center justify-between gap-8">
-                    <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-6">
+                    <div className="min-w-0 flex-1">
                         {logoUrl ? (
                             <>
                                 {/* biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos */}
@@ -40,7 +40,7 @@ export function Header({
                                 />
                             </>
                         ) : (
-                            <h1 className="font-bold text-foreground text-xl">
+                            <h1 className="truncate font-bold text-foreground text-xl">
                                 {title}
                             </h1>
                         )}
@@ -61,7 +61,7 @@ export function Header({
                         </Link>
                     </nav>
 
-                    <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                         {contactUrl && (
                             <a
                                 href={contactUrl}

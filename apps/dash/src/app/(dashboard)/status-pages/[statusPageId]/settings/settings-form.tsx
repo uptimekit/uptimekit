@@ -242,7 +242,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
         },
         {
             value: "spark",
-            label: "Spark - Barebones design",
+            label: "Spark - Theme inspired by incident.io",
         },
     ];
 

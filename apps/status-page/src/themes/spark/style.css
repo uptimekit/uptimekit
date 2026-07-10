@@ -1,24 +1,61 @@
 [data-theme="spark"] {
+    --background: #f5f6f7;
+    --card: #ffffff;
+    --card-foreground: #161618;
+    --popover: #ffffff;
+    --popover-foreground: #161618;
+    --foreground: #161618;
+    --muted: #eceef0;
+    --muted-foreground: #66666f;
+    --accent: #e7e9ec;
+    --accent-foreground: #161618;
+    --secondary: #eceef0;
+    --secondary-foreground: #34343b;
+    --border: #d9dbe0;
+    --input: #d1d4d9;
+    --ring: #71717c;
+    --status-operational: #078670;
+    --status-degraded: #9a5b00;
+    --status-partial-outage: #b54708;
+    --status-major-outage: #ce3d22;
+    --status-maintenance: #2563eb;
+    --status-unknown: #73737d;
+    --radius: 0.5rem;
+    color-scheme: light;
+}
+
+[data-theme="spark"].dark {
     --background: #161618;
     --card: #161618;
-    --foreground: #e8e8ec;
+    --card-foreground: #ededf0;
+    --popover: #161618;
+    --popover-foreground: #ededf0;
+    --foreground: #ededf0;
     --muted: #232329;
-    --muted-foreground: #8f8e99;
-    --border: #33333a;
-    --status-operational: #16b89f;
-    --status-degraded: #f59e0b;
-    --status-partial-outage: #f59e0b;
-    --status-major-outage: #f25533;
-    --status-maintenance: #3b82f6;
-    --status-unknown: #50505a;
+    --muted-foreground: #9a99a4;
+    --accent: #292930;
+    --accent-foreground: #ededf0;
+    --secondary: #232329;
+    --secondary-foreground: #d8d8dd;
+    --border: #34343c;
+    --input: #3b3b44;
+    --ring: #9695a1;
+    --status-operational: #1cc5a8;
+    --status-degraded: #f3ad22;
+    --status-partial-outage: #f58a35;
+    --status-major-outage: #f26445;
+    --status-maintenance: #5b91f5;
+    --status-unknown: #62626c;
     color-scheme: dark;
 }
 
 /* checkmark drawn inside the status icon */
-[data-theme="spark"] .spark-status-icon::after {
+[data-theme="spark"] .spark-status-icon[data-status="operational"]::after,
+[data-theme="spark"]
+    .spark-status-icon[data-status="maintenance_completed"]::after {
     width: 4px;
     height: 7px;
-    border: solid #101012;
+    border: solid var(--background);
     border-width: 0 2px 2px 0;
     content: "";
     transform: translateY(-1px) rotate(45deg);

@@ -147,6 +147,31 @@ function buildSegments(days: UptimeDay[]): UptimeSegment[] {
     return segments;
 }
 
+export function UptimePreview({ days }: { days: UptimeDay[] }) {
+    const previewDays = days.slice(-14);
+    const segments = buildSegments(previewDays);
+
+    return (
+        <div
+            className="hidden h-1.5 w-28 grid-cols-[repeat(14,minmax(0,1fr))] gap-x-[3px] min-[400px]:grid"
+            aria-hidden="true"
+        >
+            {segments.map((segment) => (
+                <div
+                    key={`${segment.start}-${segment.status}`}
+                    className={cn(
+                        "h-1.5 rounded-full",
+                        statusColors[segment.status],
+                    )}
+                    style={{
+                        gridColumn: `${segment.start + 1} / span ${segment.length}`,
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
 function calculateSegments(day: UptimeDay): BarSegments {
     const DAY_MS = 24 * 60 * 60 * 1000;
     const segments: BarSegments = {
@@ -293,13 +318,14 @@ export function UptimeBar({
     };
 
     return (
-        <div className={cn("relative pt-2", className)}>
+        <div className={cn("relative", className)}>
             {style === "signal" ? (
                 <>
-                    <div className="mb-3 flex items-center justify-between gap-4 text-[11px] text-muted-foreground">
-                        <span>{days.length} days ago</span>
-                        <div className="signal-divider h-px flex-1" />
-                        <span>Today</span>
+                    <div className="mb-3 flex items-center justify-between px-0.5 text-muted-foreground text-sm leading-[1.2] min-[600px]:text-base">
+                        <span className="font-medium">
+                            {days.length} days ago
+                        </span>
+                        <span className="font-[450]">Today</span>
                     </div>
                     <div className="relative">
                         <div

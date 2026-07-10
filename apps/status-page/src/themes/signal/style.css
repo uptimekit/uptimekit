@@ -1,64 +1,64 @@
 [data-theme="signal"] {
-    --background: #fcfcfb;
-    --card: #ffffff;
+    --background: #ffffff;
+    --card: #f7f7f7;
     --popover: #ffffff;
     --foreground: #14111d;
     --card-foreground: #14111d;
-    --muted: #f4f3f1;
-    --muted-foreground: #6f6b78;
-    --border: rgba(20, 17, 29, 0.1);
-    --input: rgba(20, 17, 29, 0.08);
-    --accent: #f3f2ef;
+    --muted: #f7f7f7;
+    --muted-foreground: #717178;
+    --border: #0000001f;
+    --input: #0000001f;
+    --accent: #0000001f;
     --accent-foreground: #14111d;
-    --secondary: #f4f3f1;
+    --secondary: #f7f7f7;
     --secondary-foreground: #14111d;
-    --ring: rgba(20, 17, 29, 0.25);
-    --radius: 0.95rem;
+    --ring: #2878e1;
+    --radius: 0.75rem;
     --font-sans:
-        Montserrat, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+        ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
     --shadow-sm:
-        0 0 0 0.5px rgba(20, 17, 29, 0.12),
-        0 -1px 2px -1px rgba(20, 17, 29, 0.06),
-        0 2px 5px -3px rgba(20, 17, 29, 0.08);
-    --shadow-md:
-        0 0 0 0.5px rgba(20, 17, 29, 0.12),
-        0 -1px 2px -1px rgba(20, 17, 29, 0.07),
-        0 4px 10px -6px rgba(20, 17, 29, 0.08);
-    --shadow-lg:
-        0 0 0 0.5px rgba(20, 17, 29, 0.12),
-        0 8px 24px -18px rgba(20, 17, 29, 0.14);
+        0 -1px 2px -1px #0000001f, 0 1px 3px -1px #0000001f,
+        0 2px 3px -2px #0000001f, 0 0 0 0.5px #0000001f;
+    --shadow-md: 0 2px 3px -2px #0000001f, 0 0 0 0.5px #0000001f;
+    --shadow-lg: 0 8px 24px -18px #0000004d;
+    --signal-border-subtle: #0000000f;
+    --signal-header-secondary: #95959d;
+    --signal-tree-line: #e8e8e8;
+    --signal-header: #ffffff;
+    --signal-gradient:
+        radial-gradient(ellipse at center top, #ffffff54 0%, #ededed 100%),
+        linear-gradient(90deg, #fff 0%, #fff 100%);
     --status-operational: #06c652;
-    --status-degraded: #f3b61f;
-    --status-partial-outage: #ff8a1f;
+    --status-degraded: #fbbf24;
+    --status-partial-outage: #fb8f24;
     --status-major-outage: #ff2b3c;
-    --status-maintenance: #5f6fff;
-    --status-unknown: #8b8793;
+    --status-maintenance: #2878e1;
+    --status-unknown: #95959d;
 }
 
 [data-theme="signal"].dark {
-    --background: #111018;
-    --card: #191821;
-    --popover: #191821;
-    --foreground: #f5f3fa;
-    --card-foreground: #f5f3fa;
-    --muted: #14131c;
-    --muted-foreground: #aaa5b4;
-    --border: rgba(245, 243, 250, 0.1);
-    --input: rgba(245, 243, 250, 0.08);
-    --accent: #21202b;
-    --accent-foreground: #f5f3fa;
-    --secondary: #21202b;
-    --secondary-foreground: #f5f3fa;
-    --ring: rgba(245, 243, 250, 0.25);
-    --shadow-sm:
-        0 0 0 0.5px rgba(245, 243, 250, 0.08),
-        0 10px 24px -20px rgba(0, 0, 0, 0.5);
-    --shadow-md:
-        0 0 0 0.5px rgba(245, 243, 250, 0.08),
-        0 14px 30px -24px rgba(0, 0, 0, 0.55);
-    --shadow-lg:
-        0 0 0 0.5px rgba(245, 243, 250, 0.08),
-        0 24px 40px -30px rgba(0, 0, 0, 0.6);
+    --background: #171717;
+    --card: #1c1c1c;
+    --popover: #1b1b1b;
+    --foreground: #e5e5e5f2;
+    --card-foreground: #e5e5e5f2;
+    --muted: #0f0f0f;
+    --muted-foreground: #e5e5e580;
+    --border: #252525;
+    --input: #e5e5e51a;
+    --accent: #e5e5e51a;
+    --accent-foreground: #e5e5e5f2;
+    --secondary: #1c1c1c;
+    --secondary-foreground: #e5e5e5f2;
+    --ring: #2878e1;
+    --shadow-sm: inset 0 0 0 1px #e5e5e51a;
+    --shadow-md: 0 0 0 1px #252525;
+    --signal-border-subtle: #e5e5e50d;
+    --signal-header-secondary: #e5e5e5b3;
+    --signal-tree-line: #262626;
+    --signal-header: #171717;
+    --signal-gradient: transparent;
 }
 
 [data-theme="signal"] .signal-surface {
@@ -72,28 +72,206 @@
 }
 
 [data-theme="signal"] .signal-button {
-    background-image: radial-gradient(
-        ellipse at center top,
-        rgba(255, 255, 255, 0.45) 0%,
-        rgba(244, 243, 241, 1) 100%
-    );
+    background-image: var(--signal-gradient);
     box-shadow: var(--shadow-sm);
 }
 
 [data-theme="signal"].dark .signal-button {
-    background-image: radial-gradient(
-        ellipse at center top,
-        rgba(255, 255, 255, 0.08) 0%,
-        rgba(33, 32, 43, 1) 100%
-    );
+    background-image: var(--signal-gradient);
 }
 
 [data-theme="signal"] .signal-divider {
-    background: rgba(20, 17, 29, 0.08);
+    background: var(--signal-border-subtle);
 }
 
 [data-theme="signal"].dark .signal-divider {
-    background: rgba(245, 243, 250, 0.1);
+    background: var(--signal-border-subtle);
+}
+
+[data-theme="signal"] .signal-button:hover {
+    filter: brightness(0.96);
+}
+
+[data-theme="signal"] .signal-monitor-card {
+    position: relative;
+    background: var(--card);
+}
+
+[data-theme="signal"] .signal-group-body::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 21px;
+    width: 2px;
+    background: var(--signal-tree-line);
+    content: "";
+}
+
+[data-theme="signal"] .signal-group-body {
+    position: relative;
+}
+
+[data-theme="signal"] .signal-monitor-tree > .signal-monitor-card::before {
+    position: absolute;
+    top: -14px;
+    left: -15px;
+    width: 15px;
+    height: calc(50% + 14px);
+    content: "";
+}
+
+@media (min-width: 600px) {
+    [data-theme="signal"] .signal-group-body::before {
+        left: 25px;
+    }
+
+    [data-theme="signal"] .signal-monitor-tree > .signal-monitor-card::before {
+        left: -19px;
+        width: 19px;
+    }
+}
+
+[data-theme="signal"] .signal-mark {
+    background: var(--foreground);
+    color: var(--background);
+}
+
+[data-theme="signal"] .signal-section-header {
+    background: var(--signal-header);
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="signal"] .signal-section-secondary {
+    color: var(--signal-header-secondary);
+}
+
+[data-theme="signal"] .signal-status {
+    --signal-status-color: var(--status-unknown);
+    --signal-status-background: var(--card);
+    --signal-status-header: var(--signal-header);
+    --signal-status-header-primary: var(--foreground);
+    --signal-status-header-secondary: var(--muted-foreground);
+    --signal-status-line: var(--muted-foreground);
+    --signal-status-text: var(--muted-foreground);
+
+    background: var(--signal-status-background);
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="signal"] .signal-status[data-severity="degraded"],
+[data-theme="signal"] .signal-status[data-severity="partial_outage"],
+[data-theme="signal"] .signal-status[data-severity="major_outage"],
+[data-theme="signal"] .signal-status[data-severity="maintenance"],
+[data-theme="signal"] .signal-status[data-severity="maintenance_scheduled"],
+[data-theme="signal"] .signal-status[data-severity="maintenance_completed"],
+[data-theme="signal"] .signal-status[data-severity="unknown"] {
+    --signal-status-background: color-mix(
+        in srgb,
+        var(--signal-status-color) 11%,
+        var(--card)
+    );
+    --signal-status-header: color-mix(
+        in srgb,
+        var(--signal-status-color) 75%,
+        #000
+    );
+    --signal-status-header-primary: #ffffff;
+    --signal-status-header-secondary: #ffffffb3;
+    --signal-status-line: var(--signal-status-color);
+    --signal-status-text: color-mix(
+        in srgb,
+        var(--signal-status-color) 55%,
+        #4a4a4a
+    );
+
+    box-shadow: 0 0 0 0.5px
+        color-mix(in srgb, var(--signal-status-color) 45%, transparent);
+}
+
+[data-theme="signal"] .signal-status[data-severity="degraded"] {
+    --signal-status-color: var(--status-degraded);
+}
+
+[data-theme="signal"] .signal-status[data-severity="partial_outage"],
+[data-theme="signal"] .signal-status[data-severity="maintenance_scheduled"] {
+    --signal-status-color: var(--status-partial-outage);
+}
+
+[data-theme="signal"] .signal-status[data-severity="major_outage"] {
+    --signal-status-color: var(--status-major-outage);
+}
+
+[data-theme="signal"] .signal-status[data-severity="maintenance"] {
+    --signal-status-color: var(--status-maintenance);
+}
+
+[data-theme="signal"] .signal-status[data-severity="maintenance_completed"] {
+    --signal-status-color: var(--status-operational);
+}
+
+[data-theme="signal"] .signal-status[data-severity="operational"] {
+    --signal-status-background: #e5fbeb;
+    --signal-status-header: #00bd3c;
+    --signal-status-header-primary: #ffffff;
+    --signal-status-header-secondary: #ffffff;
+    --signal-status-line: #28e163;
+    --signal-status-text: #5b8368;
+
+    box-shadow:
+        0 2px 3px -2px #0033101f,
+        0 0 0 0.5px #00cc414d;
+}
+
+[data-theme="signal"].dark .signal-status[data-severity="operational"] {
+    --signal-status-background: #19251c;
+    --signal-status-header: #1d3f26;
+    --signal-status-header-primary: #e5e5e5b3;
+    --signal-status-header-secondary: #e5e5e580;
+    --signal-status-line: #28e163;
+    --signal-status-text: #5b8368;
+
+    box-shadow: 0 0 0 1px #28442f;
+}
+
+[data-theme="signal"].dark .signal-status[data-severity="degraded"],
+[data-theme="signal"].dark .signal-status[data-severity="partial_outage"],
+[data-theme="signal"].dark .signal-status[data-severity="major_outage"],
+[data-theme="signal"].dark .signal-status[data-severity="maintenance"],
+[data-theme="signal"].dark
+    .signal-status[data-severity="maintenance_scheduled"],
+[data-theme="signal"].dark
+    .signal-status[data-severity="maintenance_completed"],
+[data-theme="signal"].dark .signal-status[data-severity="unknown"] {
+    --signal-status-background: color-mix(
+        in srgb,
+        var(--signal-status-color) 12%,
+        var(--card)
+    );
+    --signal-status-header: color-mix(
+        in srgb,
+        var(--signal-status-color) 22%,
+        var(--card)
+    );
+    --signal-status-header-primary: var(--foreground);
+    --signal-status-header-secondary: var(--muted-foreground);
+    --signal-status-text: color-mix(
+        in srgb,
+        var(--signal-status-color) 55%,
+        var(--muted-foreground)
+    );
+
+    box-shadow: 0 0 0 1px
+        color-mix(in srgb, var(--signal-status-color) 28%, var(--card));
+}
+
+[data-theme="signal"] .signal-status-header {
+    background: var(--signal-status-header);
+    color: var(--signal-status-header-primary);
+    box-shadow: inherit;
+}
+
+[data-theme="signal"] .signal-status-body {
+    color: var(--signal-status-text);
 }
 
 [data-theme="signal"] .text-status-operational {

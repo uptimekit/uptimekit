@@ -6,7 +6,7 @@ import {
     statusPageGroup,
     statusPageMonitor,
 } from "@uptimekit/db/schema/status-pages";
-import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { hashPassword } from "../lib/password";
@@ -75,26 +75,37 @@ export const statusPagesRouter = {
                 db.$count(statusPage, and(...filters)),
             ]);
 
-            const items = await Promise.all(
-                pages.map(async (page) => {
-                    const monitorCount = await db
-                        .select({ count: statusPageMonitor.monitorId })
-                        .from(statusPageMonitor)
-                        .where(eq(statusPageMonitor.statusPageId, page.id))
-                        .then((r) => r.length);
-
-                    // TODO: Implement subscriber count when subscribers table is ready
-                    const subscriberCount = 0;
-
-                    const { password, ...pageData } = page;
-                    return {
-                        ...pageData,
-                        hasPassword: !!password,
-                        monitorsCount: monitorCount,
-                        subscribers: subscriberCount,
-                    };
-                }),
+            const monitorCounts =
+                pages.length > 0
+                    ? await db
+                          .select({
+                              statusPageId: statusPageMonitor.statusPageId,
+                              count: sql<number>`count(*)`.mapWith(Number),
+                          })
+                          .from(statusPageMonitor)
+                          .where(
+                              inArray(
+                                  statusPageMonitor.statusPageId,
+                                  pages.map((page) => page.id),
+                              ),
+                          )
+                          .groupBy(statusPageMonitor.statusPageId)
+                    : [];
+            const monitorCountByPageId = new Map(
+                monitorCounts.map(({ statusPageId, count }) => [
+                    statusPageId,
+                    count,
+                ]),
             );
+            const items = pages.map((page) => {
+                const { password, ...pageData } = page;
+                return {
+                    ...pageData,
+                    hasPassword: !!password,
+                    monitorsCount: monitorCountByPageId.get(page.id) ?? 0,
+                    subscribers: 0,
+                };
+            });
 
             return {
                 items,

@@ -24,24 +24,31 @@ import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 export const dynamic = "force-dynamic";
 
 async function getStats() {
-    const [userCount] = await db.select({ count: count() }).from(user);
-    const [orgCount] = await db.select({ count: count() }).from(organization);
-    const [monitorCount] = await db.select({ count: count() }).from(monitor);
-    const [workerCount] = await db.select({ count: count() }).from(worker);
-
     const heartbeatThreshold = getWorkerHeartbeatThreshold();
-    const [unreachableWorkerCount] = await db
-        .select({ count: count() })
-        .from(worker)
-        .where(
-            and(
-                eq(worker.active, true),
-                or(
-                    isNull(worker.lastHeartbeat),
-                    lt(worker.lastHeartbeat, heartbeatThreshold),
+    const [
+        [userCount],
+        [orgCount],
+        [monitorCount],
+        [workerCount],
+        [unreachableWorkerCount],
+    ] = await Promise.all([
+        db.select({ count: count() }).from(user),
+        db.select({ count: count() }).from(organization),
+        db.select({ count: count() }).from(monitor),
+        db.select({ count: count() }).from(worker),
+        db
+            .select({ count: count() })
+            .from(worker)
+            .where(
+                and(
+                    eq(worker.active, true),
+                    or(
+                        isNull(worker.lastHeartbeat),
+                        lt(worker.lastHeartbeat, heartbeatThreshold),
+                    ),
                 ),
             ),
-        );
+    ]);
 
     return {
         users: userCount?.count || 0,
@@ -90,8 +97,7 @@ function getWorkerStatus(active: boolean, lastHeartbeat: Date | null) {
 }
 
 export default async function AdminPage() {
-    const stats = await getStats();
-    const workers = await getWorkers();
+    const [stats, workers] = await Promise.all([getStats(), getWorkers()]);
     const workerRows = workers.map((worker) => ({
         ...worker,
         status: getWorkerStatus(worker.active, worker.lastHeartbeat),

@@ -36,6 +36,9 @@ describe("aggregate monitor status", () => {
         expect(result.allWorkersDownSince?.toISOString()).toBe(
             "2026-04-26T10:00:05.000Z",
         );
+        expect(result.lastCheck?.toISOString()).toBe(
+            "2026-04-26T10:00:05.000Z",
+        );
     });
 
     it("marks partial regional failure as degraded", () => {

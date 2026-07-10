@@ -1,9 +1,11 @@
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cn } from "@/lib/utils";
+import { statusConfig } from "../../status-config";
 import type { StatusType } from "../../types";
-import { StatusBadge } from "./status-indicator";
 
 const titles: Record<StatusType, string> = {
-    operational: "Fully operational",
+    operational: "Fully Operational",
     degraded: "Degraded performance",
     partial_outage: "Partial outage",
     major_outage: "Major outage",
@@ -15,7 +17,7 @@ const titles: Record<StatusType, string> = {
 
 const descriptions: Record<StatusType, string> = {
     operational:
-        "We’re not aware of any issues affecting the monitored systems.",
+        "This status page reports incidents with significant, widespread user impact. Smaller or isolated issues may not appear here.",
     degraded: "Some services are responding slower than normal.",
     partial_outage: "A subset of services is currently impacted.",
     major_outage: "Multiple services are currently unavailable or unstable.",
@@ -30,41 +32,45 @@ const descriptions: Record<StatusType, string> = {
 
 interface OverallStatusProps {
     status: StatusType;
-    lastUpdated?: string;
     className?: string;
 }
 
-export function OverallStatus({
-    status,
-    lastUpdated,
-    className,
-}: OverallStatusProps) {
+export function OverallStatus({ status, className }: OverallStatusProps) {
     return (
         <section
+            data-severity={status}
             className={cn(
-                "signal-panel overflow-hidden rounded-2xl border border-border",
+                "signal-status overflow-hidden rounded-xl",
                 className,
             )}
         >
-            <div className="flex items-start justify-between gap-4 border-border/80 border-b px-4 py-4 sm:px-5">
-                <div className="min-w-0">
-                    <h1 className="font-semibold text-[18px] text-foreground leading-tight sm:text-[20px]">
+            <div className="signal-status-header relative z-[1] flex w-full select-none items-start gap-2 overflow-hidden rounded-xl p-3 min-[384px]:p-4">
+                <div className="shrink-0 p-1">
+                    <FontAwesomeIcon icon={faChevronDown} className="h-3 w-3" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h1 className="min-w-0 flex-1 font-[550] text-sm leading-none min-[384px]:text-base">
                         {titles[status]}
                     </h1>
+                    <div
+                        className="min-h-[18px] shrink-0 pr-1 font-medium text-xs leading-[1.2] min-[384px]:text-sm"
+                        style={{
+                            color: "var(--signal-status-header-secondary)",
+                        }}
+                    >
+                        {statusConfig[status].label}
+                    </div>
                 </div>
-                <StatusBadge status={status} className="shrink-0" />
             </div>
-            <div className="flex gap-3 px-4 py-4 sm:px-5 sm:py-5">
-                <div className="mt-0.5 w-0.5 shrink-0 rounded-full bg-status-operational opacity-90" />
-                <div className="space-y-2">
-                    <p className="max-w-2xl text-muted-foreground text-sm leading-6 sm:text-[15px]">
+            <div className="signal-status-body flex gap-3 px-4 py-3 min-[384px]:py-5 min-[384px]:pl-[25px]">
+                <div
+                    className="w-0.5 shrink-0 rounded-full"
+                    style={{ background: "var(--signal-status-line)" }}
+                />
+                <div className="py-1">
+                    <p className="max-w-2xl text-sm leading-6">
                         {descriptions[status]}
                     </p>
-                    {lastUpdated ? (
-                        <p className="text-[12px] text-muted-foreground">
-                            Last updated {lastUpdated}
-                        </p>
-                    ) : null}
                 </div>
             </div>
         </section>

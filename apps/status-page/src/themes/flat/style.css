@@ -1,21 +1,36 @@
 [data-theme="flat"] {
-    --radius: 0.5rem;
+    --radius: 0.375rem;
 
     --shadow-sm: none;
     --shadow-md: none;
     --shadow-lg: none;
 
-    --background: #fafafa;
+    --background: #f7f7f6;
+    --card: #ffffff;
+    --card-foreground: #20242c;
+    --popover: #ffffff;
+    --popover-foreground: #20242c;
+    --foreground: #20242c;
+    --muted: #f0f1f2;
+    --muted-foreground: #626976;
+    --accent: #eceeef;
+    --accent-foreground: #20242c;
+    --secondary: #eceeef;
+    --secondary-foreground: #343a46;
+    --border: #dfe2e6;
+    --input: #d7dbe0;
+    --ring: #626976;
 
-    --color-status-operational: #10b981;
-    --color-status-degraded: #f59e0b;
-    --color-status-partial-outage: #fb923c;
-    --color-status-major-outage: #ef4444;
-    --color-status-maintenance: #8b5cf6;
-    --color-status-unknown: var(--color-neutral-100);
+    --color-status-operational: #087a55;
+    --color-status-degraded: #9a5b00;
+    --color-status-partial-outage: #b54708;
+    --color-status-major-outage: #c4323f;
+    --color-status-maintenance: #6941c6;
+    --color-status-unknown: #667085;
 
     --spacing-section: 3rem;
     --spacing-card: 1rem;
+    color-scheme: light;
 }
 
 [data-theme="flat"].dark {
@@ -55,6 +70,7 @@
     --color-status-major-outage: #ef4444;
     --color-status-maintenance: #8b5cf6;
     --color-status-unknown: var(--color-neutral-700);
+    color-scheme: dark;
 }
 
 /* Explicitly define status utilities to overwrite Tailwind generated utilities */

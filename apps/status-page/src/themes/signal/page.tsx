@@ -1,5 +1,4 @@
 import type { ThemePageProps } from "../types";
-import { CurrentIssuesBanner } from "./components/current-issues-banner";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { MonitorGroups } from "./components/monitor-groups";
@@ -13,10 +12,8 @@ export default function SignalTheme({ data }: ThemePageProps) {
         config,
         overallStatus,
         monitorGroups,
-        activeIssues,
         scheduledMaintenances,
         pastIncidents,
-        lastUpdated,
     } = data;
     const { design } = config;
 
@@ -33,16 +30,11 @@ export default function SignalTheme({ data }: ThemePageProps) {
             />
 
             <main className="w-full flex-1">
-                <div className="mx-auto flex w-full max-w-[822px] flex-col gap-10 px-4 pt-6 pb-16 sm:gap-12">
-                    <OverallStatus
-                        status={overallStatus}
-                        lastUpdated={lastUpdated}
-                    />
-                    <CurrentIssuesBanner activeIssues={activeIssues} />
+                <div className="mx-auto flex w-full max-w-[822px] flex-col gap-12 px-4 pt-12 pb-[60px]">
+                    <OverallStatus status={overallStatus} />
+                    <div className="signal-divider h-0.5 w-full rounded-full" />
                     <MonitorGroups
                         monitorGroups={monitorGroups}
-                        layout={design.headerLayout}
-                        barStyle={design.barStyle}
                         toFixed={design.percentDigits}
                     />
                     <ScheduledMaintenanceSection

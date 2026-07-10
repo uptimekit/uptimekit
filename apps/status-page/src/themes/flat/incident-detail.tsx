@@ -5,6 +5,7 @@ import { CurrentIssuesBanner } from "./components/current-issues-banner";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { IncidentDetailCard } from "./components/incident-detail-card";
+import "./style.css";
 
 export default function DefaultIncidentDetail({
     data,

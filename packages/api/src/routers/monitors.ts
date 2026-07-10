@@ -633,7 +633,7 @@ export const monitorsRouter = {
                         eq(monitor.groupId, monitorGroup.id),
                     )
                     .where(and(...filters))
-                    .orderBy(desc(monitor.createdAt))
+                    .orderBy(desc(monitor.createdAt), desc(monitor.id))
                     .limit(input?.limit || 50)
                     .offset(input?.offset || 0),
                 db.$count(monitor, and(...filters)),
@@ -641,14 +641,14 @@ export const monitorsRouter = {
 
             const monitorIds = monitors.map((row) => row.monitor.id);
             const createEmptyMonitorState = () => ({
-                latestEventsMap: new Map<
-                    string,
-                    { status: string; timestamp: Date }
-                >(),
                 latestChangesMap: new Map<string, { timestamp: Date }>(),
                 aggregateStatusesMap: new Map<
                     string,
-                    { status: string; statusReason: string | null }
+                    {
+                        status: string;
+                        statusReason: string | null;
+                        lastCheck: Date | null;
+                    }
                 >(),
             });
 
@@ -663,21 +663,13 @@ export const monitorsRouter = {
                         locations:
                             (row.monitor.locations as string[] | null) ?? [],
                     }));
-                    const [latestEvents, latestChanges, aggregateStatuses] =
+                    const [latestChanges, aggregateStatuses] =
                         await Promise.all([
-                            timeseries.getLatestEventsForMonitors(monitorIds),
                             timeseries.getLatestChangesForMonitors(monitorIds),
                             getAggregateMonitorStatusesForMonitors(
                                 monitorStatusInputs,
                             ),
                         ]);
-
-                    for (const event of latestEvents) {
-                        monitorState.latestEventsMap.set(event.monitorId, {
-                            status: event.status,
-                            timestamp: event.timestamp,
-                        });
-                    }
 
                     for (const change of latestChanges) {
                         monitorState.latestChangesMap.set(change.monitorId, {
@@ -692,6 +684,7 @@ export const monitorsRouter = {
                         monitorState.aggregateStatusesMap.set(monitorId, {
                             status: aggregateStatus.status,
                             statusReason: aggregateStatus.statusReason,
+                            lastCheck: aggregateStatus.lastCheck,
                         });
                     }
                 } catch (error) {
@@ -709,7 +702,7 @@ export const monitorsRouter = {
                 notificationCounts,
                 tagsForMonitors,
                 activeIncidentLinks,
-                { latestEventsMap, latestChangesMap, aggregateStatusesMap },
+                { latestChangesMap, aggregateStatusesMap },
             ] =
                 monitorIds.length > 0
                     ? await Promise.all([
@@ -801,7 +794,6 @@ export const monitorsRouter = {
 
             // Map the results to monitors
             const monitorsWithStatus = monitors.map((row) => {
-                const latestEvent = latestEventsMap.get(row.monitor.id);
                 const latestChange = latestChangesMap.get(row.monitor.id);
                 const aggregateStatus = aggregateStatusesMap.get(
                     row.monitor.id,
@@ -811,12 +803,9 @@ export const monitorsRouter = {
                     ...row.monitor,
                     group: row.monitor_group || null,
                     tags: tagsByMonitor.get(row.monitor.id) || [],
-                    status:
-                        aggregateStatus?.status ||
-                        latestEvent?.status ||
-                        "pending",
+                    status: aggregateStatus?.status || "pending",
                     statusReason: aggregateStatus?.statusReason ?? null,
-                    lastCheck: latestEvent?.timestamp ?? null,
+                    lastCheck: aggregateStatus?.lastCheck ?? null,
                     lastStatusChange: latestChange?.timestamp ?? null,
                     usedOn: usageMap.get(row.monitor.id) || 0,
                     notificationCount:

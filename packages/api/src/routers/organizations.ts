@@ -182,38 +182,40 @@ export const organizationsRouter = {
                 filters.length > 0 ? and(...filters) : undefined;
 
             // Get organizations with member count using subquery
-            const orgsWithCounts = await db
-                .select({
-                    id: organization.id,
-                    name: organization.name,
-                    slug: organization.slug,
-                    logo: organization.logo,
-                    activeMonitorLimit: organization.activeMonitorLimit,
-                    regionsPerMonitorLimit: organization.regionsPerMonitorLimit,
-                    createdAt: organization.createdAt,
-                    memberCount:
-                        sql<number>`(SELECT COUNT(*) FROM "member" WHERE "member"."organization_id" = "organization"."id")`
-                            .mapWith(Number)
-                            .as("member_count"),
-                    totalMonitorCount:
-                        sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id")`
-                            .mapWith(Number)
-                            .as("total_monitor_count"),
-                    activeMonitorCount:
-                        sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id" AND "monitor"."active" = true)`
-                            .mapWith(Number)
-                            .as("active_monitor_count"),
-                })
-                .from(organization)
-                .where(whereClause)
-                .orderBy(desc(organization.createdAt))
-                .limit(input?.limit || 50)
-                .offset(input?.offset || 0);
-
-            const [totalResult] = await db
-                .select({ count: count() })
-                .from(organization)
-                .where(whereClause);
+            const [orgsWithCounts, [totalResult]] = await Promise.all([
+                db
+                    .select({
+                        id: organization.id,
+                        name: organization.name,
+                        slug: organization.slug,
+                        logo: organization.logo,
+                        activeMonitorLimit: organization.activeMonitorLimit,
+                        regionsPerMonitorLimit:
+                            organization.regionsPerMonitorLimit,
+                        createdAt: organization.createdAt,
+                        memberCount:
+                            sql<number>`(SELECT COUNT(*) FROM "member" WHERE "member"."organization_id" = "organization"."id")`
+                                .mapWith(Number)
+                                .as("member_count"),
+                        totalMonitorCount:
+                            sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id")`
+                                .mapWith(Number)
+                                .as("total_monitor_count"),
+                        activeMonitorCount:
+                            sql<number>`(SELECT COUNT(*) FROM "monitor" WHERE "monitor"."organization_id" = "organization"."id" AND "monitor"."active" = true)`
+                                .mapWith(Number)
+                                .as("active_monitor_count"),
+                    })
+                    .from(organization)
+                    .where(whereClause)
+                    .orderBy(desc(organization.createdAt))
+                    .limit(input?.limit || 50)
+                    .offset(input?.offset || 0),
+                db
+                    .select({ count: count() })
+                    .from(organization)
+                    .where(whereClause),
+            ]);
 
             return {
                 items: orgsWithCounts,

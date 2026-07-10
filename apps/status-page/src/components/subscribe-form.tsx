@@ -40,7 +40,7 @@ const variantStyles = {
     },
     signal: {
         trigger:
-            "signal-button inline-flex h-8 items-center justify-center rounded-lg px-3 font-medium text-[13px] text-foreground transition-transform duration-150 hover:-translate-y-px",
+            "signal-button inline-flex items-center justify-center rounded-lg px-3 py-1.5 font-medium text-[14px] text-foreground leading-5",
         button: "signal-button inline-flex h-9 items-center justify-center rounded-md px-4 font-medium text-[13px] text-foreground transition-transform duration-150 hover:-translate-y-px disabled:pointer-events-none disabled:opacity-60",
     },
     spark: {

@@ -26,7 +26,7 @@ export default function SignalIncidentDetail({
             />
 
             <main className="w-full flex-1">
-                <div className="mx-auto flex w-full max-w-[822px] flex-col gap-8 px-4 pt-6 pb-16">
+                <div className="mx-auto flex w-full max-w-[822px] flex-col gap-8 px-4 pt-12 pb-[60px]">
                     <BackLink href={buildPath("/", config.routeSlug)} />
                     <CurrentIssuesBanner activeIssues={activeIssues} />
                     <DetailCard incident={incident} eyebrow="Incident report" />

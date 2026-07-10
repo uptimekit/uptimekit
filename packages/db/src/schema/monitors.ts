@@ -73,7 +73,11 @@ export const monitor = pgTable(
             .notNull(),
     },
     (table) => [
-        index("monitor_organization_idx").on(table.organizationId),
+        index("monitor_organization_created_idx").on(
+            table.organizationId,
+            table.createdAt,
+            table.id,
+        ),
         index("monitor_active_idx").on(table.active),
         index("monitor_group_idx").on(table.groupId),
     ],

@@ -1,4 +1,27 @@
-import type { Incident, StatusType } from "../../types";
+import { calculateAggregateStatus } from "../../../lib/status-utils";
+import type { Incident, Monitor, StatusType, UptimeDay } from "../../types";
+
+export function getGroupHistory(monitors: Monitor[]): UptimeDay[] {
+    return (monitors[0]?.history ?? []).map((day, index) => {
+        const days = monitors
+            .map((monitor) => monitor.history[index])
+            .filter((item): item is UptimeDay => item?.date === day.date);
+
+        return {
+            ...day,
+            status: calculateAggregateStatus(days.map((item) => item.status)),
+            uptime: Math.min(...days.map((item) => item.uptime)),
+            downtimeMs: days.reduce(
+                (total, item) => total + (item.downtimeMs ?? 0),
+                0,
+            ),
+            maintenanceMs: days.reduce(
+                (total, item) => total + (item.maintenanceMs ?? 0),
+                0,
+            ),
+        };
+    });
+}
 
 export function getSeverityStatus(
     severity: string,
