@@ -27,6 +27,7 @@ import { smtpIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions
 import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/telegram-meta";
 import { webhookIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/webhook-meta";
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
+import dynamic from "next/dynamic";
 import {
     parseAsInteger,
     parseAsString,
@@ -36,7 +37,6 @@ import {
 import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
-import { ConfigDialog } from "@/components/integrations/config-dialog";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -88,6 +88,12 @@ import {
 import { cn } from "@/lib/utils";
 import { client } from "@/utils/orpc";
 
+const ConfigDialog = dynamic(() =>
+    import("@/components/integrations/config-dialog").then(
+        (module) => module.ConfigDialog,
+    ),
+);
+
 const PAGE_SIZE_OPTIONS = ["10", "25", "50", "100"] as const;
 const NOTIFICATION_STATUS_FILTERS = ["active", "inactive"] as const;
 const NOTIFICATION_DIRECTION_FILTERS = ["export", "import"] as const;
@@ -129,6 +135,7 @@ const frontendRegistry = {
         handler: async () => {},
     } as IntegrationDefinition,
 };
+const availableIntegrations = Object.values(frontendRegistry);
 
 function getIntegrationDefinition(integration: {
     id: string;
@@ -261,12 +268,6 @@ export function NotificationsTable() {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchInput, setFilters, search]);
-
-    const { data: availableIntegrations, isLoading: isLoadingAvailable } =
-        useQuery({
-            queryKey: ["integrations", "available"],
-            queryFn: async () => client.integrations.listAvailable(),
-        });
 
     const {
         data: configuredConfigs,
@@ -743,7 +744,6 @@ export function NotificationsTable() {
                     </DropdownMenu>
                     <Button
                         className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
-                        disabled={isLoadingAvailable}
                         onClick={() => setProviderDialogOpen(true)}
                     >
                         <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
@@ -1084,14 +1084,7 @@ export function NotificationsTable() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogPanel className="grid gap-3 sm:grid-cols-2">
-                        {isLoadingAvailable ? (
-                            <div className="col-span-full flex h-24 items-center justify-center">
-                                <FontAwesomeIcon
-                                    icon={faSpinner}
-                                    className="h-6 w-6 animate-spin text-muted-foreground"
-                                />
-                            </div>
-                        ) : availableIntegrations?.length ? (
+                        {availableIntegrations.length ? (
                             availableIntegrations.map((integrationMeta) => {
                                 const integration =
                                     getIntegrationDefinition(integrationMeta);

@@ -5,7 +5,7 @@ import {
     monitorNotification,
 } from "@uptimekit/db/schema/integrations";
 import { monitor } from "@uptimekit/db/schema/monitors";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, getTableColumns } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { assertSafeWebhookUrl } from "../lib/safe-url";
@@ -45,17 +45,21 @@ export const integrationsRouter = {
             const organizationId = context.session.session.activeOrganizationId;
             if (!organizationId) return [];
 
-            const configs = await db.query.integrationConfig.findMany({
-                where: (t, { eq }) => eq(t.organizationId, organizationId),
-                with: {
-                    monitorNotifications: true,
-                },
-            });
-
-            return configs.map(({ monitorNotifications, ...config }) => ({
-                ...config,
-                assignedMonitorCount: monitorNotifications.length,
-            }));
+            return db
+                .select({
+                    ...getTableColumns(integrationConfig),
+                    assignedMonitorCount: count(monitorNotification.monitorId),
+                })
+                .from(integrationConfig)
+                .leftJoin(
+                    monitorNotification,
+                    eq(
+                        monitorNotification.integrationConfigId,
+                        integrationConfig.id,
+                    ),
+                )
+                .where(eq(integrationConfig.organizationId, organizationId))
+                .groupBy(integrationConfig.id);
         }),
 
     configure: writeProcedure
