@@ -25,7 +25,7 @@ export function CollapsibleTrigger({
     );
 }
 
-export function CollapsiblePanel({
+function CollapsiblePanel({
     className,
     ...props
 }: CollapsiblePrimitive.Panel.Props): React.ReactElement {

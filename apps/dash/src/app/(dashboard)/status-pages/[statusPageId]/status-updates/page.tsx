@@ -14,8 +14,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { sileo } from "sileo";
-
+import { LocalizedDateTime } from "@/components/localized-date-time";
 import { CreateStatusUpdateForm } from "@/components/status-pages/create-update-form";
+import { getStatusUpdateSeverityIcon } from "@/components/status-pages/status-update-helpers";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -49,48 +50,6 @@ export default function StatusUpdatesPage() {
             input: { statusPageId },
         }),
     );
-
-    const getSeverityIcon = (severity: string, status: string) => {
-        if (status === "resolved") {
-            return (
-                <FontAwesomeIcon
-                    icon={faCircleCheck}
-                    className="h-4 w-4 text-green-500"
-                />
-            );
-        }
-
-        switch (severity) {
-            case "critical":
-                return (
-                    <FontAwesomeIcon
-                        icon={faTriangleExclamation}
-                        className="h-4 w-4 text-red-500"
-                    />
-                );
-            case "major":
-                return (
-                    <FontAwesomeIcon
-                        icon={faTriangleExclamation}
-                        className="h-4 w-4 text-orange-500"
-                    />
-                );
-            case "minor":
-                return (
-                    <FontAwesomeIcon
-                        icon={faTriangleExclamation}
-                        className="h-4 w-4 text-yellow-500"
-                    />
-                );
-            default:
-                return (
-                    <FontAwesomeIcon
-                        icon={faCircleCheck}
-                        className="h-4 w-4 text-green-500"
-                    />
-                );
-        }
-    };
 
     const { mutate: deleteReport, isPending: isDeleting } = useMutation({
         mutationFn: (reportId: string) =>
@@ -208,7 +167,7 @@ export default function StatusUpdatesPage() {
                                         }
                                     >
                                         <TableCell className="w-[50px] pl-6 text-center">
-                                            {getSeverityIcon(
+                                            {getStatusUpdateSeverityIcon(
                                                 report.severity,
                                                 report.status,
                                             )}
@@ -240,15 +199,12 @@ export default function StatusUpdatesPage() {
                                                     </span>
                                                     <span>·</span>
                                                     <span>
-                                                        {new Date(
-                                                            report.createdAt,
-                                                        ).toLocaleDateString(
-                                                            undefined,
-                                                            {
-                                                                month: "short",
-                                                                day: "numeric",
-                                                            },
-                                                        )}
+                                                        <LocalizedDateTime
+                                                            value={
+                                                                report.createdAt
+                                                            }
+                                                            format="date"
+                                                        />
                                                     </span>
                                                     <span>·</span>
                                                     <div className="flex items-center gap-1">

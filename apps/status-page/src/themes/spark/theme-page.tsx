@@ -91,7 +91,7 @@ function Footer() {
                     className="flex items-center gap-1"
                     href="https://github.com/uptimekit/uptimekit"
                     target="_blank"
-                    rel="noopener"
+                    rel="noreferrer"
                 >
                     <Logo className="size-6" />
                     <p className="font-semibold text-md text-muted-foreground">

@@ -25,7 +25,7 @@ export function Card({
     });
 }
 
-export function CardFrame({
+function CardFrame({
     className,
     render,
     ...props
@@ -45,7 +45,7 @@ export function CardFrame({
     });
 }
 
-export function CardFrameHeader({
+function CardFrameHeader({
     className,
     render,
     ...props
@@ -65,7 +65,7 @@ export function CardFrameHeader({
     });
 }
 
-export function CardFrameTitle({
+function CardFrameTitle({
     className,
     render,
     ...props
@@ -82,7 +82,7 @@ export function CardFrameTitle({
     });
 }
 
-export function CardFrameDescription({
+function CardFrameDescription({
     className,
     render,
     ...props
@@ -99,7 +99,7 @@ export function CardFrameDescription({
     });
 }
 
-export function CardFrameAction({
+function CardFrameAction({
     className,
     render,
     ...props
@@ -119,7 +119,7 @@ export function CardFrameAction({
     });
 }
 
-export function CardFrameFooter({
+function CardFrameFooter({
     className,
     render,
     ...props
@@ -190,7 +190,7 @@ export function CardDescription({
     });
 }
 
-export function CardAction({
+function CardAction({
     className,
     render,
     ...props
@@ -210,7 +210,7 @@ export function CardAction({
     });
 }
 
-export function CardPanel({
+function CardPanel({
     className,
     render,
     ...props

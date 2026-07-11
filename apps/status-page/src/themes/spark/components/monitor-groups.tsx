@@ -3,10 +3,8 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef, useState } from "react";
-import {
-    ViewportTooltip,
-    type ViewportTooltipPosition,
-} from "@/components/viewport-tooltip";
+import { ViewportTooltip } from "@/components/viewport-tooltip";
+import type { ViewportTooltipPosition } from "@/components/viewport-tooltip-position";
 import { calculateAggregateStatus } from "@/lib/status-utils";
 import { cn } from "@/lib/utils";
 import type {
@@ -117,10 +115,10 @@ function getTooltipMessages(day: UptimeDay): string[] {
     }
 
     if (day.annotation) {
-        return day.annotation
-            .split(/\n+|\s+\|\s+/)
-            .map((message) => message.trim())
-            .filter(Boolean);
+        return day.annotation.split(/\n+|\s+\|\s+/).flatMap((message) => {
+            const trimmedMessage = message.trim();
+            return trimmedMessage ? [trimmedMessage] : [];
+        });
     }
 
     return [formatStatusText(day.status)];

@@ -137,7 +137,7 @@ function getPauseLabel(pauseReason?: string | null) {
  *
  * @returns The React element for the monitors management UI.
  */
-export function MonitorsTable() {
+function useMonitorsTableModel() {
     const [searchOpen, setSearchOpen] = useState(false);
     const [groupsOpen, setGroupsOpen] = useState(false);
     const [tagsOpen, setTagsOpen] = useState(false);
@@ -163,14 +163,17 @@ export function MonitorsTable() {
     const [selectedMonitorIds, setSelectedMonitorIds] = useState<Set<string>>(
         () => new Set(),
     );
+    const [previousMonitorScope, setPreviousMonitorScope] = useState("");
     const [assignWorkerOpen, setAssignWorkerOpen] = useState(false);
 
     // Debounce search
     const [searchInput, setSearchInput] = useState(search);
+    const [previousSearch, setPreviousSearch] = useState(search);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
-    useEffect(() => {
+    if (search !== previousSearch) {
+        setPreviousSearch(search);
         setSearchInput(search);
-    }, [search]);
+    }
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -303,6 +306,11 @@ export function MonitorsTable() {
     const ungroupedMonitors = monitorsByGroup.ungrouped ?? [];
 
     const allMonitorIds = tableData.map((m) => m.id);
+    const monitorScope = allMonitorIds.join(",");
+    if (monitorScope !== previousMonitorScope) {
+        setPreviousMonitorScope(monitorScope);
+        setSelectedMonitorIds(new Set());
+    }
     const selectedIds = allMonitorIds.filter((id) =>
         selectedMonitorIds.has(id),
     );
@@ -313,19 +321,6 @@ export function MonitorsTable() {
     const someSelected =
         allMonitorIds.length > 0 &&
         allMonitorIds.some((id) => selectedMonitorIds.has(id));
-
-    useEffect(() => {
-        if (!monitors) {
-            return;
-        }
-        const visibleIds = new Set(monitors.map((m) => m.id));
-        setSelectedMonitorIds((previous) => {
-            const next = new Set(
-                Array.from(previous).filter((id) => visibleIds.has(id)),
-            );
-            return next.size === previous.size ? previous : next;
-        });
-    }, [monitors]);
 
     const toggleMonitorSelection = (id: string, checked: boolean) => {
         setSelectedMonitorIds((previous) => {
@@ -611,6 +606,1542 @@ export function MonitorsTable() {
         tagFilter !== null,
     ].filter(Boolean).length;
 
+    return {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    };
+}
+
+type MonitorsTableModel = ReturnType<typeof useMonitorsTableModel>;
+
+function MonitorsTableFiltersSection5({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <DropdownMenuItem
+            onClick={() => {
+                void setFilters({ status: "degraded" });
+            }}
+            className="flex justify-between"
+        >
+            Degraded
+            {statusFilter === "degraded" && (
+                <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+            )}
+        </DropdownMenuItem>
+    );
+}
+
+function MonitorsTableFiltersSection6({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <DropdownMenuItem
+            onClick={() => {
+                void setFilters({ status: "maintenance" });
+            }}
+            className="flex justify-between"
+        >
+            Maintenance
+            {statusFilter === "maintenance" && (
+                <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+            )}
+        </DropdownMenuItem>
+    );
+}
+
+function MonitorsTableFiltersSection7({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <DropdownMenuItem
+            onClick={() => {
+                void setFilters({ type: "keyword" });
+            }}
+            className="flex justify-between"
+        >
+            Keyword
+            {typeFilter === "keyword" && (
+                <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+            )}
+        </DropdownMenuItem>
+    );
+}
+
+function MonitorsTableContentSection8({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <div className="mb-2 flex items-center justify-between px-2 font-semibold text-muted-foreground text-xs uppercase">
+            Group
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4"
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setGroupsOpen(true);
+                }}
+            >
+                <FontAwesomeIcon icon={faPlus} className="h-3 w-3" />
+            </Button>
+        </div>
+    );
+}
+
+function MonitorsTableFiltersSection9({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <>
+            {groupPaths.map(({ group, path, depth }) => (
+                <DropdownMenuItem
+                    key={group.id}
+                    onClick={() => {
+                        void setFilters({ groupId: group.id });
+                    }}
+                    className="flex justify-between"
+                >
+                    <div
+                        className="flex items-center gap-2"
+                        style={{ paddingLeft: depth * 12 }}
+                    >
+                        <FontAwesomeIcon
+                            icon={faFolder}
+                            className="h-3 w-3 text-muted-foreground"
+                        />
+                        {path}
+                    </div>
+                    {groupFilter === group.id && (
+                        <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                    )}
+                </DropdownMenuItem>
+            ))}
+        </>
+    );
+}
+
+function MonitorsTableContentSection10({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <div className="mb-2 flex items-center justify-between px-2 font-semibold text-muted-foreground text-xs uppercase">
+            Tag
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4"
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTagsOpen(true);
+                }}
+            >
+                <FontAwesomeIcon icon={faPlus} className="h-3 w-3" />
+            </Button>
+        </div>
+    );
+}
+
+function MonitorsTableFiltersSection11({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <>
+            {tags?.map((tag) => (
+                <DropdownMenuItem
+                    key={tag.id}
+                    onClick={() => {
+                        void setFilters({ tagId: tag.id });
+                    }}
+                    className="flex justify-between"
+                >
+                    <div className="flex items-center gap-2">
+                        <div
+                            className="h-3 w-3 rounded-full"
+                            style={{
+                                backgroundColor: tag.color,
+                            }}
+                        />
+                        {tag.name}
+                    </div>
+                    {tagFilter === tag.id && (
+                        <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                    )}
+                </DropdownMenuItem>
+            ))}
+        </>
+    );
+}
+
+function MonitorsTableFiltersSection12({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <>
+            {(activeFilter !== null ||
+                typeFilter !== null ||
+                statusFilter !== null ||
+                groupFilter !== null ||
+                tagFilter !== null) && (
+                <>
+                    <div className="my-2 h-px bg-muted" />
+                    <DropdownMenuItem
+                        onClick={clearFilters}
+                        className="justify-center text-red-500 hover:text-red-600"
+                    >
+                        Clear filters
+                    </DropdownMenuItem>
+                </>
+            )}
+        </>
+    );
+}
+
+function MonitorsTableFiltersSection4({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <DropdownMenuContent align="end" className="w-56 p-2">
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Status
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ status: null });
+                }}
+                className="flex justify-between"
+            >
+                All Statuses
+                {!statusFilter && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ status: "up" });
+                }}
+                className="flex justify-between"
+            >
+                Up
+                {statusFilter === "up" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ status: "down" });
+                }}
+                className="flex justify-between"
+            >
+                Down
+                {statusFilter === "down" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <MonitorsTableFiltersSection5 model={model} />
+            <MonitorsTableFiltersSection6 model={model} />
+
+            <div className="my-2 h-px bg-muted" />
+
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Type
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ type: null });
+                }}
+                className="flex justify-between"
+            >
+                All Types
+                {!typeFilter && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ type: "http" });
+                }}
+                className="flex justify-between"
+            >
+                HTTP
+                {typeFilter === "http" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ type: "ping" });
+                }}
+                className="flex justify-between"
+            >
+                Ping
+                {typeFilter === "ping" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ type: "tcp" });
+                }}
+                className="flex justify-between"
+            >
+                TCP
+                {typeFilter === "tcp" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ type: "dns" });
+                }}
+                className="flex justify-between"
+            >
+                DNS
+                {typeFilter === "dns" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+
+            <MonitorsTableFiltersSection7 model={model} />
+
+            <div className="my-2 h-px bg-muted" />
+
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Active
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ active: null });
+                }}
+                className="flex justify-between"
+            >
+                All
+                {activeFilter === null && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ active: true });
+                }}
+                className="flex justify-between"
+            >
+                Active
+                {activeFilter === true && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ active: false });
+                }}
+                className="flex justify-between"
+            >
+                Paused
+                {activeFilter === false && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+
+            <div className="my-2 h-px bg-muted" />
+
+            <MonitorsTableContentSection8 model={model} />
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ groupId: null });
+                }}
+                className="flex justify-between"
+            >
+                All Groups
+                {!groupFilter && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <MonitorsTableFiltersSection9 model={model} />
+
+            <div className="my-2 h-px bg-muted" />
+
+            <MonitorsTableContentSection10 model={model} />
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ tagId: null });
+                }}
+                className="flex justify-between"
+            >
+                All Tags
+                {!tagFilter && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <MonitorsTableFiltersSection11 model={model} />
+
+            <MonitorsTableFiltersSection12 model={model} />
+        </DropdownMenuContent>
+    );
+}
+
+function MonitorsTableFiltersSection3({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+                render={
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="relative"
+                    />
+                }
+            >
+                <FontAwesomeIcon icon={faFilter} className="h-4 w-4" />
+                {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                        <div className="-mt-px">{activeFilterCount}</div>
+                    </span>
+                )}
+            </DropdownMenuTrigger>
+            <MonitorsTableFiltersSection4 model={model} />
+        </DropdownMenu>
+    );
+}
+
+function MonitorsTableContentSection2({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <div className="flex items-center gap-2">
+            <div className="relative hidden w-64 md:block">
+                <FontAwesomeIcon
+                    icon={faMagnifyingGlass}
+                    className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+                />
+                <Input
+                    placeholder="Search monitors..."
+                    className="pl-8"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                />
+            </div>
+            <Button
+                variant="outline"
+                size="icon"
+                className="relative md:hidden"
+                onClick={() => setSearchOpen(true)}
+            >
+                <FontAwesomeIcon icon={faMagnifyingGlass} className="h-4 w-4" />
+                {search && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+                )}
+            </Button>
+            <MonitorsTableFiltersSection3 model={model} />
+            <Button
+                className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
+                render={
+                    <Link href="/monitors/new">
+                        <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
+                        <span className="hidden md:inline">Create monitor</span>
+                    </Link>
+                }
+            />
+        </div>
+    );
+}
+
+function MonitorsTableContentSection1({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <h1 className="font-bold text-2xl tracking-tight">Monitors</h1>
+            <MonitorsTableContentSection2 model={model} />
+        </div>
+    );
+}
+
+function MonitorsTableContentSection13({
+    model,
+}: {
+    model: MonitorsTableModel;
+}) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
+    return (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex min-h-12 flex-col gap-3 border-b bg-muted/20 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-3 font-medium text-muted-foreground text-sm">
+                    {allMonitorIds.length > 0 ? (
+                        <Checkbox
+                            aria-label={
+                                allSelected
+                                    ? "Deselect all monitors"
+                                    : "Select all monitors"
+                            }
+                            checked={allSelected}
+                            indeterminate={someSelected && !allSelected}
+                            onCheckedChange={(checked) =>
+                                toggleSelectAll(checked === true)
+                            }
+                        />
+                    ) : (
+                        <FontAwesomeIcon
+                            icon={faChevronDown}
+                            className="h-4 w-4"
+                        />
+                    )}
+                    <span>Monitors</span>
+                </div>
+                {selectedCount > 0 && (
+                    <div className="flex min-h-7 flex-wrap items-center gap-2 lg:justify-end">
+                        <span className="mr-1 whitespace-nowrap font-medium text-foreground text-sm">
+                            {selectedCount} selected
+                        </span>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={<Button variant="outline" size="xs" />}
+                            >
+                                Actions
+                                <FontAwesomeIcon
+                                    icon={faChevronDown}
+                                    className="h-4 w-4"
+                                />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    onSelect={() => setAssignWorkerOpen(true)}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faServer}
+                                        className="h-4 w-4"
+                                    />
+                                    Assign worker
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label="Clear selection"
+                            onClick={clearSelection}
+                        >
+                            <FontAwesomeIcon
+                                icon={faXmark}
+                                className="h-4 w-4"
+                            />
+                        </Button>
+                    </div>
+                )}
+            </div>
+            {isCapped && (
+                <div className="border-b bg-amber-50 px-4 py-2 text-amber-900 text-sm dark:bg-amber-950/30 dark:text-amber-200">
+                    Showing the first {MONITOR_LIST_LIMIT} of {total} monitors.
+                    Use the filters to narrow the list and see the rest.
+                </div>
+            )}
+            <Table>
+                <TableBody>
+                    {isLoading ? (
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center">
+                                <FontAwesomeIcon
+                                    icon={faSpinner}
+                                    className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
+                                />
+                            </TableCell>
+                        </TableRow>
+                    ) : !tableData || tableData.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center">
+                                <div className="flex flex-col items-center justify-center gap-2 py-6">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+                                        <FontAwesomeIcon
+                                            icon={faCirclePlay}
+                                            className="h-6 w-6 text-muted-foreground"
+                                        />
+                                    </div>
+                                    <p className="font-medium text-lg">
+                                        No monitors found
+                                    </p>
+                                    <p className="text-muted-foreground text-sm">
+                                        {search ||
+                                        activeFilter !== null ||
+                                        typeFilter ||
+                                        statusFilter ||
+                                        groupFilter ||
+                                        tagFilter
+                                            ? "Try adjusting your filters"
+                                            : "Get started by creating your first monitor."}
+                                    </p>
+                                    {!search &&
+                                        activeFilter === null &&
+                                        !typeFilter &&
+                                        !statusFilter &&
+                                        !groupFilter &&
+                                        !tagFilter && (
+                                            <div className="mt-2">
+                                                <Button
+                                                    render={
+                                                        <Link href="/monitors/new" />
+                                                    }
+                                                >
+                                                    Create monitor
+                                                </Button>
+                                            </div>
+                                        )}
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ) : (
+                        <>
+                            {groupTree.flatMap((node) => renderGroupNode(node))}
+                            {ungroupedMonitors.length > 0 && (
+                                <Fragment key="ungrouped">
+                                    <TableRow
+                                        className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
+                                        onClick={() => toggleGroup("ungrouped")}
+                                    >
+                                        <TableCell colSpan={6} className="py-3">
+                                            <div className="flex select-none items-center gap-2 font-medium text-sm">
+                                                <FontAwesomeIcon
+                                                    icon={faChevronRight}
+                                                    className={cn(
+                                                        "h-4 w-4 transition-transform",
+                                                        (expandedGroups.ungrouped ??
+                                                            true) &&
+                                                            "rotate-90",
+                                                    )}
+                                                />
+                                                <FontAwesomeIcon
+                                                    icon={faFolder}
+                                                    className="h-4 w-4 text-muted-foreground"
+                                                />
+                                                <span>Ungrouped</span>
+                                                <span className="text-muted-foreground text-xs">
+                                                    ({ungroupedMonitors.length})
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                    {(expandedGroups.ungrouped ?? true) &&
+                                        ungroupedMonitors.map((monitor) =>
+                                            renderMonitorRow(monitor, 1),
+                                        )}
+                                </Fragment>
+                            )}
+                        </>
+                    )}
+                </TableBody>
+            </Table>
+        </div>
+    );
+}
+function MonitorsTableView({ model }: { model: MonitorsTableModel }) {
+    const {
+        searchOpen,
+        setSearchOpen,
+        groupsOpen,
+        setGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        filters,
+        setFilters,
+        search,
+        activeFilter,
+        typeFilter,
+        statusFilter,
+        groupFilter,
+        tagFilter,
+        expandedGroups,
+        setExpandedGroups,
+        selectedMonitorIds,
+        setSelectedMonitorIds,
+        previousMonitorScope,
+        setPreviousMonitorScope,
+        assignWorkerOpen,
+        setAssignWorkerOpen,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        data,
+        isLoading,
+        groups,
+        tags,
+        monitorIds,
+        sparklineData,
+        monitors,
+        total,
+        isCapped,
+        tableData,
+        monitorsByGroup,
+        groupTree,
+        groupPaths,
+        countSubtreeMonitors,
+        toggleGroup,
+        ungroupedMonitors,
+        allMonitorIds,
+        monitorScope,
+        selectedIds,
+        selectedCount,
+        allSelected,
+        someSelected,
+        toggleMonitorSelection,
+        toggleSelectAll,
+        clearSelection,
+        renderMonitorRow,
+        renderGroupNode,
+        clearFilters,
+        activeFilterCount,
+    } = model;
     return (
         <div className="mx-auto w-full max-w-6xl space-y-4">
             <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
@@ -642,622 +2173,22 @@ export function MonitorsTable() {
                     </div>
                 </DialogContent>
             </Dialog>
-            <div className="flex items-center justify-between gap-4">
-                <h1 className="font-bold text-2xl tracking-tight">Monitors</h1>
-                <div className="flex items-center gap-2">
-                    <div className="relative hidden w-64 md:block">
-                        <FontAwesomeIcon
-                            icon={faMagnifyingGlass}
-                            className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-                        />
-                        <Input
-                            placeholder="Search monitors..."
-                            className="pl-8"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                        />
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="relative md:hidden"
-                        onClick={() => setSearchOpen(true)}
-                    >
-                        <FontAwesomeIcon
-                            icon={faMagnifyingGlass}
-                            className="h-4 w-4"
-                        />
-                        {search && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
-                        )}
-                    </Button>
-                    <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger
-                            render={
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="relative"
-                                />
-                            }
-                        >
-                            <FontAwesomeIcon
-                                icon={faFilter}
-                                className="h-4 w-4"
-                            />
-                            {activeFilterCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-                                    <div className="-mt-px">
-                                        {activeFilterCount}
-                                    </div>
-                                </span>
-                            )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 p-2">
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Status
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ status: null });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Statuses
-                                {!statusFilter && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ status: "up" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Up
-                                {statusFilter === "up" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ status: "down" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Down
-                                {statusFilter === "down" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ status: "degraded" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Degraded
-                                {statusFilter === "degraded" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ status: "maintenance" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Maintenance
-                                {statusFilter === "maintenance" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
+            <MonitorsTableContentSection1 model={model} />
 
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Type
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: null });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Types
-                                {!typeFilter && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: "http" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                HTTP
-                                {typeFilter === "http" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: "ping" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Ping
-                                {typeFilter === "ping" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: "tcp" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                TCP
-                                {typeFilter === "tcp" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: "dns" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                DNS
-                                {typeFilter === "dns" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: "keyword" });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Keyword
-                                {typeFilter === "keyword" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Active
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ active: null });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All
-                                {activeFilter === null && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ active: true });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Active
-                                {activeFilter === true && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ active: false });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Paused
-                                {activeFilter === false && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 flex items-center justify-between px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Group
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-4 w-4"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setGroupsOpen(true);
-                                    }}
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faPlus}
-                                        className="h-3 w-3"
-                                    />
-                                </Button>
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ groupId: null });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Groups
-                                {!groupFilter && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            {groupPaths.map(({ group, path, depth }) => (
-                                <DropdownMenuItem
-                                    key={group.id}
-                                    onClick={() => {
-                                        void setFilters({ groupId: group.id });
-                                    }}
-                                    className="flex justify-between"
-                                >
-                                    <div
-                                        className="flex items-center gap-2"
-                                        style={{ paddingLeft: depth * 12 }}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faFolder}
-                                            className="h-3 w-3 text-muted-foreground"
-                                        />
-                                        {path}
-                                    </div>
-                                    {groupFilter === group.id && (
-                                        <FontAwesomeIcon
-                                            icon={faCheck}
-                                            className="h-4 w-4"
-                                        />
-                                    )}
-                                </DropdownMenuItem>
-                            ))}
-
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 flex items-center justify-between px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Tag
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-4 w-4"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setTagsOpen(true);
-                                    }}
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faPlus}
-                                        className="h-3 w-3"
-                                    />
-                                </Button>
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ tagId: null });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Tags
-                                {!tagFilter && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            {tags?.map((tag) => (
-                                <DropdownMenuItem
-                                    key={tag.id}
-                                    onClick={() => {
-                                        void setFilters({ tagId: tag.id });
-                                    }}
-                                    className="flex justify-between"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className="h-3 w-3 rounded-full"
-                                            style={{
-                                                backgroundColor: tag.color,
-                                            }}
-                                        />
-                                        {tag.name}
-                                    </div>
-                                    {tagFilter === tag.id && (
-                                        <FontAwesomeIcon
-                                            icon={faCheck}
-                                            className="h-4 w-4"
-                                        />
-                                    )}
-                                </DropdownMenuItem>
-                            ))}
-
-                            {(activeFilter !== null ||
-                                typeFilter !== null ||
-                                statusFilter !== null ||
-                                groupFilter !== null ||
-                                tagFilter !== null) && (
-                                <>
-                                    <div className="my-2 h-px bg-muted" />
-                                    <DropdownMenuItem
-                                        onClick={clearFilters}
-                                        className="justify-center text-red-500 hover:text-red-600"
-                                    >
-                                        Clear filters
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                        className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
-                        render={
-                            <Link href="/monitors/new">
-                                <FontAwesomeIcon
-                                    icon={faPlus}
-                                    className="h-4 w-4"
-                                />
-                                <span className="hidden md:inline">
-                                    Create monitor
-                                </span>
-                            </Link>
-                        }
-                    />
-                </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                <div className="flex min-h-12 flex-col gap-3 border-b bg-muted/20 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-center gap-3 font-medium text-muted-foreground text-sm">
-                        {allMonitorIds.length > 0 ? (
-                            <Checkbox
-                                aria-label={
-                                    allSelected
-                                        ? "Deselect all monitors"
-                                        : "Select all monitors"
-                                }
-                                checked={allSelected}
-                                indeterminate={someSelected && !allSelected}
-                                onCheckedChange={(checked) =>
-                                    toggleSelectAll(checked === true)
-                                }
-                            />
-                        ) : (
-                            <FontAwesomeIcon
-                                icon={faChevronDown}
-                                className="h-4 w-4"
-                            />
-                        )}
-                        <span>Monitors</span>
-                    </div>
-                    {selectedCount > 0 && (
-                        <div className="flex min-h-7 flex-wrap items-center gap-2 lg:justify-end">
-                            <span className="mr-1 whitespace-nowrap font-medium text-foreground text-sm">
-                                {selectedCount} selected
-                            </span>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger
-                                    render={
-                                        <Button variant="outline" size="xs" />
-                                    }
-                                >
-                                    Actions
-                                    <FontAwesomeIcon
-                                        icon={faChevronDown}
-                                        className="h-4 w-4"
-                                    />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                        onSelect={() =>
-                                            setAssignWorkerOpen(true)
-                                        }
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faServer}
-                                            className="h-4 w-4"
-                                        />
-                                        Assign worker
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                aria-label="Clear selection"
-                                onClick={clearSelection}
-                            >
-                                <FontAwesomeIcon
-                                    icon={faXmark}
-                                    className="h-4 w-4"
-                                />
-                            </Button>
-                        </div>
-                    )}
-                </div>
-                {isCapped && (
-                    <div className="border-b bg-amber-50 px-4 py-2 text-amber-900 text-sm dark:bg-amber-950/30 dark:text-amber-200">
-                        Showing the first {MONITOR_LIST_LIMIT} of {total}{" "}
-                        monitors. Use the filters to narrow the list and see the
-                        rest.
-                    </div>
-                )}
-                <Table>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={6}
-                                    className="h-24 text-center"
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faSpinner}
-                                        className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
-                                    />
-                                </TableCell>
-                            </TableRow>
-                        ) : !tableData || tableData.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={6}
-                                    className="h-24 text-center"
-                                >
-                                    <div className="flex flex-col items-center justify-center gap-2 py-6">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-                                            <FontAwesomeIcon
-                                                icon={faCirclePlay}
-                                                className="h-6 w-6 text-muted-foreground"
-                                            />
-                                        </div>
-                                        <p className="font-medium text-lg">
-                                            No monitors found
-                                        </p>
-                                        <p className="text-muted-foreground text-sm">
-                                            {search ||
-                                            activeFilter !== null ||
-                                            typeFilter ||
-                                            statusFilter ||
-                                            groupFilter ||
-                                            tagFilter
-                                                ? "Try adjusting your filters"
-                                                : "Get started by creating your first monitor."}
-                                        </p>
-                                        {!search &&
-                                            activeFilter === null &&
-                                            !typeFilter &&
-                                            !statusFilter &&
-                                            !groupFilter &&
-                                            !tagFilter && (
-                                                <div className="mt-2">
-                                                    <Button
-                                                        render={
-                                                            <Link href="/monitors/new" />
-                                                        }
-                                                    >
-                                                        Create monitor
-                                                    </Button>
-                                                </div>
-                                            )}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            <>
-                                {groupTree.flatMap((node) =>
-                                    renderGroupNode(node),
-                                )}
-                                {ungroupedMonitors.length > 0 && (
-                                    <Fragment key="ungrouped">
-                                        <TableRow
-                                            className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
-                                            onClick={() =>
-                                                toggleGroup("ungrouped")
-                                            }
-                                        >
-                                            <TableCell
-                                                colSpan={6}
-                                                className="py-3"
-                                            >
-                                                <div className="flex select-none items-center gap-2 font-medium text-sm">
-                                                    <FontAwesomeIcon
-                                                        icon={faChevronRight}
-                                                        className={cn(
-                                                            "h-4 w-4 transition-transform",
-                                                            (expandedGroups.ungrouped ??
-                                                                true) &&
-                                                                "rotate-90",
-                                                        )}
-                                                    />
-                                                    <FontAwesomeIcon
-                                                        icon={faFolder}
-                                                        className="h-4 w-4 text-muted-foreground"
-                                                    />
-                                                    <span>Ungrouped</span>
-                                                    <span className="text-muted-foreground text-xs">
-                                                        (
-                                                        {
-                                                            ungroupedMonitors.length
-                                                        }
-                                                        )
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                        {(expandedGroups.ungrouped ?? true) &&
-                                            ungroupedMonitors.map((monitor) =>
-                                                renderMonitorRow(monitor, 1),
-                                            )}
-                                    </Fragment>
-                                )}
-                            </>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+            <MonitorsTableContentSection13 model={model} />
 
             <GroupCreationDialog
+                key={groupsOpen ? "group-dialog-open" : "group-dialog-closed"}
                 open={groupsOpen}
                 onOpenChange={setGroupsOpen}
             />
             <TagCreationDialog open={tagsOpen} onOpenChange={setTagsOpen} />
             <BulkAssignWorkerDialog
+                key={
+                    assignWorkerOpen
+                        ? "assign-workers-open"
+                        : "assign-workers-closed"
+                }
                 open={assignWorkerOpen}
                 onOpenChange={setAssignWorkerOpen}
                 monitorIds={selectedIds}
@@ -1265,6 +2196,11 @@ export function MonitorsTable() {
             />
         </div>
     );
+}
+
+export function MonitorsTable() {
+    const model = useMonitorsTableModel();
+    return <MonitorsTableView model={model} />;
 }
 
 type AssignWorkerMode = "add" | "replace";
@@ -1290,13 +2226,6 @@ function BulkAssignWorkerDialog({
         ...orpc.workers.listActive.queryOptions(),
         enabled: open,
     });
-
-    useEffect(() => {
-        if (!open) {
-            setSelectedWorkerIds(new Set());
-            setMode("add");
-        }
-    }, [open]);
 
     const { mutate: assignWorkers, isPending } = useMutation({
         mutationFn: (input: {

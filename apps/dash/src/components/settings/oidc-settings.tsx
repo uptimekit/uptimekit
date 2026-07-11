@@ -3,7 +3,7 @@
 import { faShieldHalved, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,10 +27,10 @@ const emptyForm = {
 function splitList(value: string) {
     return Array.from(
         new Set(
-            value
-                .split(/[\s,]+/)
-                .map((item) => item.trim())
-                .filter(Boolean),
+            value.split(/[\s,]+/).flatMap((item) => {
+                const trimmedItem = item.trim();
+                return trimmedItem ? [trimmedItem] : [];
+            }),
         ),
     );
 }
@@ -39,38 +39,70 @@ function joinList(value: string[]) {
     return value.join(" ");
 }
 
+function OidcSectionHeader() {
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2">
+                <FontAwesomeIcon
+                    icon={faShieldHalved}
+                    className="size-5 text-muted-foreground"
+                />
+                <h2 className="font-semibold text-lg leading-none tracking-tight">
+                    Single Sign-On
+                </h2>
+            </div>
+            <p className="text-muted-foreground text-sm">
+                Configure the OIDC provider used for this organization's email
+                domains.
+            </p>
+        </div>
+    );
+}
+
 export function OidcSettings() {
-    const queryClient = useQueryClient();
-    const [form, setForm] = useState(emptyForm);
     const { data: provider, isLoading } = useQuery(
         orpc.organizations.getActiveOidcProvider.queryOptions(),
     );
 
-    const callbackUrl = useMemo(() => {
+    return (
+        <OidcSettingsContent
+            key={`${provider?.id ?? "none"}:${provider?.updatedAt ?? ""}`}
+            provider={provider}
+            isLoading={isLoading}
+        />
+    );
+}
+
+function OidcSettingsContent({
+    provider,
+    isLoading,
+}: {
+    provider: any;
+    isLoading: boolean;
+}) {
+    const queryClient = useQueryClient();
+    const [form, setForm] = useState(() =>
+        provider
+            ? {
+                  clientId: provider.clientId,
+                  clientSecret: "",
+                  discoveryUrl: provider.discoveryUrl,
+                  domains: joinList(provider.domains),
+                  enabled: provider.enabled,
+                  issuer: provider.issuer,
+                  name: provider.name,
+                  scopes: joinList(provider.scopes),
+              }
+            : emptyForm,
+    );
+
+    const callbackUrl = (() => {
         if (!provider?.callbackPath || typeof window === "undefined") {
             return "";
         }
 
         return `${window.location.origin}${provider.callbackPath}`;
-    }, [provider?.callbackPath]);
-
-    useEffect(() => {
-        if (!provider) {
-            setForm(emptyForm);
-            return;
-        }
-
-        setForm({
-            clientId: provider.clientId,
-            clientSecret: "",
-            discoveryUrl: provider.discoveryUrl,
-            domains: joinList(provider.domains),
-            enabled: provider.enabled,
-            issuer: provider.issuer,
-            name: provider.name,
-            scopes: joinList(provider.scopes),
-        });
-    }, [provider]);
+    })();
 
     const invalidateProvider = async () => {
         await queryClient.invalidateQueries({
@@ -139,21 +171,7 @@ export function OidcSettings() {
 
     return (
         <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-            <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <FontAwesomeIcon
-                        icon={faShieldHalved}
-                        className="size-5 text-muted-foreground"
-                    />
-                    <h2 className="font-semibold text-lg leading-none tracking-tight">
-                        Single Sign-On
-                    </h2>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                    Configure the OIDC provider used for this organization's
-                    email domains.
-                </p>
-            </div>
+            <OidcSectionHeader />
 
             <Card className="md:col-span-2">
                 <CardContent className="grid gap-6 p-6">

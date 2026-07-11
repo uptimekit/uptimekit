@@ -117,7 +117,7 @@ export function EmptyDescription({
     );
 }
 
-export function EmptyContent({
+function EmptyContent({
     className,
     ...props
 }: React.ComponentProps<"div">): React.ReactElement {

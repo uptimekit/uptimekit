@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { SubscribeForm } from "@/components/subscribe-form";
 import { cn } from "@/lib/utils";
 
@@ -29,10 +30,12 @@ export function Header({
                     <div className="min-w-0 flex-1">
                         {logoUrl ? (
                             <>
-                                {/* biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos */}
-                                <img
+                                <Image
                                     src={logoUrl}
                                     alt={title}
+                                    width={160}
+                                    height={32}
+                                    unoptimized
                                     className="h-8 w-auto"
                                 />
                             </>

@@ -82,10 +82,10 @@ function getCalendarEvents(monitorGroups: GroupedMonitors[]) {
 }
 
 function splitAnnotations(annotation: string): string[] {
-    return annotation
-        .split(/\n+|\s+\|\s+/)
-        .map((message) => message.trim())
-        .filter(Boolean);
+    return annotation.split(/\n+|\s+\|\s+/).flatMap((message) => {
+        const trimmedMessage = message.trim();
+        return trimmedMessage ? [trimmedMessage] : [];
+    });
 }
 
 function getCalendarStatus(events: CalendarEvent[]): StatusType | undefined {

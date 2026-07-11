@@ -3,7 +3,7 @@ import Image, { type ImageProps } from "next/image";
 const UPTIMEKIT_LOGO_URL = "/logos_uptimekit.svg";
 type LogoProps = Omit<ImageProps, "alt" | "height" | "src" | "width">;
 
-export const LogoIcon = (props: LogoProps) => (
+const LogoIcon = (props: LogoProps) => (
     <Image
         alt="UptimeKit"
         height={24}

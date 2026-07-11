@@ -2,6 +2,7 @@
 
 import { faImage, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Image from "next/image";
 import { useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
@@ -48,7 +49,7 @@ export function LogoEditor({
     const handleSave = () => {
         try {
             if (tempUrl) {
-                z.string().url().parse(tempUrl);
+                z.url().parse(tempUrl);
             }
             onChange(tempUrl);
             setDialogOpen(false);
@@ -65,11 +66,13 @@ export function LogoEditor({
         return (
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-muted">
                 {value ? (
-                    // biome-ignore lint/performance/noImgElement: arbitrary external logo URL
-                    <img
+                    <Image
                         src={value}
                         alt="Organization logo"
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="80px"
+                        unoptimized
+                        className="object-cover"
                     />
                 ) : (
                     <FontAwesomeIcon
@@ -93,11 +96,13 @@ export function LogoEditor({
                             />
                         }
                     >
-                        {/* biome-ignore lint/performance/noImgElement: arbitrary external logo URL */}
-                        <img
+                        <Image
                             src={value}
                             alt="Organization logo"
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="80px"
+                            unoptimized
+                            className="object-cover"
                         />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
@@ -136,6 +141,7 @@ export function LogoEditor({
         <>
             <button
                 type="button"
+                aria-label="Add organization logo"
                 onClick={handleOpenDialog}
                 className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border border-dashed bg-muted/50 transition-all hover:bg-muted hover:opacity-80"
             >

@@ -43,14 +43,14 @@ function composeActivationHandlers(
     };
 }
 
-export const MenuCreateHandle: typeof MenuPrimitive.createHandle =
+const MenuCreateHandle: typeof MenuPrimitive.createHandle =
     MenuPrimitive.createHandle;
 
-export const Menu: typeof MenuPrimitive.Root = MenuPrimitive.Root;
+const Menu: typeof MenuPrimitive.Root = MenuPrimitive.Root;
 
-export const MenuPortal: typeof MenuPrimitive.Portal = MenuPrimitive.Portal;
+const MenuPortal: typeof MenuPrimitive.Portal = MenuPrimitive.Portal;
 
-export function MenuTrigger({
+function MenuTrigger({
     className,
     children,
     ...props
@@ -66,7 +66,7 @@ export function MenuTrigger({
     );
 }
 
-export function MenuPopup({
+function MenuPopup({
     children,
     className,
     sideOffset = 4,
@@ -116,7 +116,7 @@ export function MenuGroup(
     return <MenuPrimitive.Group data-slot="menu-group" {...props} />;
 }
 
-export function MenuLabel({
+function MenuLabel({
     className,
     inset,
     ...props
@@ -134,7 +134,7 @@ export function MenuLabel({
     );
 }
 
-export function MenuItem({
+function MenuItem({
     className,
     inset,
     onClick,
@@ -160,7 +160,7 @@ export function MenuItem({
     );
 }
 
-export function MenuCheckboxItem({
+function MenuCheckboxItem({
     className,
     children,
     checked,
@@ -220,13 +220,13 @@ export function MenuCheckboxItem({
     );
 }
 
-export function MenuRadioGroup(
+function MenuRadioGroup(
     props: MenuPrimitive.RadioGroup.Props,
 ): React.ReactElement {
     return <MenuPrimitive.RadioGroup data-slot="menu-radio-group" {...props} />;
 }
 
-export function MenuRadioItem({
+function MenuRadioItem({
     className,
     children,
     onClick,
@@ -284,7 +284,7 @@ export function MenuGroupLabel({
     );
 }
 
-export function MenuSeparator({
+function MenuSeparator({
     className,
     ...props
 }: MenuPrimitive.Separator.Props): React.ReactElement {
@@ -297,7 +297,7 @@ export function MenuSeparator({
     );
 }
 
-export function MenuShortcut({
+function MenuShortcut({
     className,
     ...props
 }: React.ComponentProps<"kbd">): React.ReactElement {
@@ -313,13 +313,11 @@ export function MenuShortcut({
     );
 }
 
-export function MenuSub(
-    props: MenuPrimitive.SubmenuRoot.Props,
-): React.ReactElement {
+function MenuSub(props: MenuPrimitive.SubmenuRoot.Props): React.ReactElement {
     return <MenuPrimitive.SubmenuRoot data-slot="menu-sub" {...props} />;
 }
 
-export function MenuSubTrigger({
+function MenuSubTrigger({
     className,
     inset,
     children,
@@ -346,7 +344,7 @@ export function MenuSubTrigger({
     );
 }
 
-export function MenuSubPopup({
+function MenuSubPopup({
     className,
     sideOffset = 0,
     alignOffset,
@@ -375,20 +373,12 @@ export function MenuSubPopup({
 export {
     Menu as DropdownMenu,
     MenuCheckboxItem as DropdownMenuCheckboxItem,
-    MenuCreateHandle as DropdownMenuCreateHandle,
     MenuGroup as DropdownMenuGroup,
     MenuGroupLabel as DropdownMenuGroupLabel,
     MenuItem as DropdownMenuItem,
     MenuLabel as DropdownMenuLabel,
     MenuPopup as DropdownMenuContent,
-    MenuPortal as DropdownMenuPortal,
     MenuPrimitive,
-    MenuRadioGroup as DropdownMenuRadioGroup,
-    MenuRadioItem as DropdownMenuRadioItem,
     MenuSeparator as DropdownMenuSeparator,
-    MenuShortcut as DropdownMenuShortcut,
-    MenuSub as DropdownMenuSub,
-    MenuSubPopup as DropdownMenuSubContent,
-    MenuSubTrigger as DropdownMenuSubTrigger,
     MenuTrigger as DropdownMenuTrigger,
 };

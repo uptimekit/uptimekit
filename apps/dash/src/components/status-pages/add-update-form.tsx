@@ -4,7 +4,7 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { sileo } from "sileo";
 import * as z from "zod";
 
@@ -127,8 +127,12 @@ export function AddUpdateForm({
         mutate(values);
     }
 
+    const watchedMonitors = useWatch({
+        control: form.control,
+        name: "monitors",
+    });
     const selectedMonitors = monitors.filter((m) =>
-        form.watch("monitors").some((sm) => sm.id === m.id),
+        watchedMonitors.some((sm) => sm.id === m.id),
     );
 
     const handleMonitorChange = (newValue: Monitor[]) => {
@@ -242,112 +246,109 @@ export function AddUpdateForm({
                         )}
                     />
 
-                    {form.watch("monitors").length > 0 && (
+                    {watchedMonitors.length > 0 && (
                         <div className="divide-y rounded-md border">
-                            {form
-                                .watch("monitors")
-                                .map((selectedMonitor, index) => {
-                                    const monitor = monitors?.find(
-                                        (m) => m.id === selectedMonitor.id,
-                                    );
-                                    if (!monitor) return null;
+                            {watchedMonitors.map((selectedMonitor, index) => {
+                                const monitor = monitors?.find(
+                                    (m) => m.id === selectedMonitor.id,
+                                );
+                                if (!monitor) return null;
 
-                                    return (
-                                        <div
-                                            key={monitor.id}
-                                            className="flex items-center justify-between p-3"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="font-medium text-sm">
-                                                    {monitor.name}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Select
-                                                    value={
-                                                        selectedMonitor.status ||
-                                                        "degraded"
-                                                    }
-                                                    onValueChange={(val) => {
-                                                        const current =
-                                                            form.getValues(
-                                                                "monitors",
-                                                            );
-                                                        current[index].status =
-                                                            val || "degraded";
-                                                        form.setValue(
-                                                            "monitors",
-                                                            [...current],
-                                                        );
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="h-7 w-[130px] text-xs">
-                                                        <SelectValue>
-                                                            {
-                                                                MONITOR_STATUSES.find(
-                                                                    (status) =>
-                                                                        status.value ===
-                                                                        (selectedMonitor.status ||
-                                                                            "degraded"),
-                                                                )?.label
-                                                            }
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {MONITOR_STATUSES.map(
-                                                            (status) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        status.value
-                                                                    }
-                                                                    value={
-                                                                        status.value
-                                                                    }
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div
-                                                                            className={`h-2 w-2 rounded-full bg-current ${status.color.replace("text-", "bg-")}`}
-                                                                        />
-                                                                        {
-                                                                            status.label
-                                                                        }
-                                                                    </div>
-                                                                </SelectItem>
-                                                            ),
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                                    onClick={() => {
-                                                        const current =
-                                                            form.getValues(
-                                                                "monitors",
-                                                            );
-                                                        form.setValue(
-                                                            "monitors",
-                                                            current.filter(
-                                                                (m) =>
-                                                                    m.id !==
-                                                                    selectedMonitor.id,
-                                                            ),
-                                                        );
-                                                    }}
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faXmark}
-                                                        className="h-3.5 w-3.5"
-                                                    />
-                                                </Button>
+                                return (
+                                    <div
+                                        key={monitor.id}
+                                        className="flex items-center justify-between p-3"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="font-medium text-sm">
+                                                {monitor.name}
                                             </div>
                                         </div>
-                                    );
-                                })}
+                                        <div className="flex items-center gap-2">
+                                            <Select
+                                                value={
+                                                    selectedMonitor.status ||
+                                                    "degraded"
+                                                }
+                                                onValueChange={(val) => {
+                                                    const current =
+                                                        form.getValues(
+                                                            "monitors",
+                                                        );
+                                                    current[index].status =
+                                                        val || "degraded";
+                                                    form.setValue("monitors", [
+                                                        ...current,
+                                                    ]);
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-7 w-[130px] text-xs">
+                                                    <SelectValue>
+                                                        {
+                                                            MONITOR_STATUSES.find(
+                                                                (status) =>
+                                                                    status.value ===
+                                                                    (selectedMonitor.status ||
+                                                                        "degraded"),
+                                                            )?.label
+                                                        }
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {MONITOR_STATUSES.map(
+                                                        (status) => (
+                                                            <SelectItem
+                                                                key={
+                                                                    status.value
+                                                                }
+                                                                value={
+                                                                    status.value
+                                                                }
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    <div
+                                                                        className={`h-2 w-2 rounded-full bg-current ${status.color.replace("text-", "bg-")}`}
+                                                                    />
+                                                                    {
+                                                                        status.label
+                                                                    }
+                                                                </div>
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                                onClick={() => {
+                                                    const current =
+                                                        form.getValues(
+                                                            "monitors",
+                                                        );
+                                                    form.setValue(
+                                                        "monitors",
+                                                        current.filter(
+                                                            (m) =>
+                                                                m.id !==
+                                                                selectedMonitor.id,
+                                                        ),
+                                                    );
+                                                }}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faXmark}
+                                                    className="h-3.5 w-3.5"
+                                                />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
-                    {form.watch("monitors").length === 0 && (
+                    {watchedMonitors.length === 0 && (
                         <p className="text-muted-foreground text-sm italic">
                             No services affected by this update.
                         </p>

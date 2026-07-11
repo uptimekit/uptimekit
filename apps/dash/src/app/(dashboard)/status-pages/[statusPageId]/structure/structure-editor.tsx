@@ -34,9 +34,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { sileo } from "sileo";
-import { groupMonitorOptions } from "@/components/monitors/grouped-monitor-combobox";
+import { groupMonitorOptions } from "@/components/monitors/group-tree";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -107,6 +107,28 @@ interface StructureEditorProps {
     statusPageId: string;
 }
 
+function toGroupItems(structure: any): GroupItem[] {
+    if (!structure) return [];
+
+    return structure.groups.map((group: any) => ({
+        id: group.id,
+        name: group.name,
+        collapsible: group.collapsible,
+        defaultCollapsed: group.defaultCollapsed,
+        monitors: group.monitors.map((monitor: any) => ({
+            instanceId: generateId(),
+            id: monitor.id,
+            name: monitor.name,
+            type: monitor.type,
+            style: getMonitorStyle({
+                type: monitor.type,
+                style: monitor.style as MonitorStyle,
+            }),
+            description: monitor.description,
+        })),
+    }));
+}
+
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 function isExternalMonitor(monitor: { type?: string }) {
@@ -126,7 +148,7 @@ function getMonitorStyle(monitor: { type?: string; style: MonitorStyle }) {
  * @param statusPageId - The ID of the status page being edited
  * @returns A JSX element containing the structure editor UI
  */
-export function StructureEditor({ statusPageId }: StructureEditorProps) {
+function useStructureEditorState(statusPageId: string) {
     const queryClient = useQueryClient();
     const { data: statusPage, isLoading: isPageLoading } = useQuery(
         orpc.statusPages.get.queryOptions({ input: { id: statusPageId } }),
@@ -155,34 +177,17 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
         }),
     );
 
-    const [groups, setGroups] = useState<GroupItem[]>([]);
+    const [groups, setGroups] = useState<GroupItem[]>(() =>
+        toGroupItems(structure),
+    );
+    const [previousStructure, setPreviousStructure] = useState(structure);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeItem, setActiveItem] = useState<any>(null);
 
-    // Sync structure -> local state
-    useEffect(() => {
-        if (structure) {
-            setGroups(
-                structure.groups.map((g) => ({
-                    id: g.id,
-                    name: g.name,
-                    collapsible: g.collapsible,
-                    defaultCollapsed: g.defaultCollapsed,
-                    monitors: g.monitors.map((m) => ({
-                        instanceId: generateId(),
-                        id: m.id,
-                        name: m.name,
-                        type: m.type,
-                        style: getMonitorStyle({
-                            type: m.type,
-                            style: m.style as MonitorStyle,
-                        }),
-                        description: m.description,
-                    })),
-                })),
-            );
-        }
-    }, [structure]);
+    if (structure !== previousStructure) {
+        setPreviousStructure(structure);
+        setGroups(toGroupItems(structure));
+    }
 
     const [layout] = useState<"vertical" | "horizontal">("vertical");
     const statusPageDesign =
@@ -470,6 +475,58 @@ export function StructureEditor({ statusPageId }: StructureEditorProps) {
             })),
         });
     };
+
+    return {
+        activeId,
+        activeItem,
+        addGroup,
+        addMonitorToGroup,
+        allMonitors,
+        barStyle,
+        groups,
+        handleDragEnd,
+        handleDragOver,
+        handleDragStart,
+        handleSave,
+        isMonitorsLoading,
+        isPageLoading,
+        isStructureLoading,
+        layout,
+        removeGroup,
+        removeMonitor,
+        sensors,
+        updateGroupCollapseSettings,
+        updateGroupName,
+        updateMonitorConfig,
+        updateStructureMutation,
+    };
+}
+
+export function StructureEditor({ statusPageId }: StructureEditorProps) {
+    const {
+        activeId,
+        activeItem,
+        addGroup,
+        addMonitorToGroup,
+        allMonitors,
+        barStyle,
+        groups,
+        handleDragEnd,
+        handleDragOver,
+        handleDragStart,
+        handleSave,
+        isMonitorsLoading,
+        isPageLoading,
+        isStructureLoading,
+        layout,
+        removeGroup,
+        removeMonitor,
+        sensors,
+        updateGroupCollapseSettings,
+        updateGroupName,
+        updateMonitorConfig,
+        updateStructureMutation,
+    } = useStructureEditorState(statusPageId);
 
     if (isStructureLoading || isMonitorsLoading || isPageLoading) {
         return (

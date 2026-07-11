@@ -12,10 +12,10 @@ const themeLoaders: Record<
     string,
     () => Promise<{ default: ComponentType<ThemePageProps> }>
 > = {
-    default: () => import("@/themes/default/page"),
-    flat: () => import("@/themes/flat/page"),
-    signal: () => import("@/themes/signal/page"),
-    spark: () => import("@/themes/spark/page"),
+    default: () => import("@/themes/default/theme-page"),
+    flat: () => import("@/themes/flat/theme-page"),
+    signal: () => import("@/themes/signal/theme-page"),
+    spark: () => import("@/themes/spark/theme-page"),
 };
 
 const incidentDetailLoaders: Record<
@@ -65,7 +65,7 @@ export async function loadIncidentDetailComponent(
     return module.default;
 }
 
-export async function loadMaintenanceDetailComponent(
+async function loadMaintenanceDetailComponent(
     themeId: string,
 ): Promise<ComponentType<ThemeMaintenanceDetailProps>> {
     const loader =
@@ -82,6 +82,6 @@ export async function loadUpdatesComponent(
     return module.default;
 }
 
-export function getThemeManifest(themeId: string): ThemeManifest | undefined {
+function getThemeManifest(themeId: string): ThemeManifest | undefined {
     return themeRegistry[themeId];
 }

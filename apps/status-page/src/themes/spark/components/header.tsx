@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { SubscribeForm } from "@/components/subscribe-form";
 import type { ThemePageProps } from "@/themes/types";
 
@@ -10,10 +11,12 @@ export function Header({ data }: ThemePageProps) {
         <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div className="min-w-0">
                 {design.logoUrl ? (
-                    // biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos
-                    <img
+                    <Image
                         src={design.logoUrl}
                         alt={config.name}
+                        width={160}
+                        height={32}
+                        unoptimized
                         className="max-h-8 w-auto"
                     />
                 ) : (

@@ -14,7 +14,7 @@ This is a monorepo with the following structure:
 
 - **`apps/dash/`** - Main dashboard application (Next.js)
 - **`apps/status-page/`** - Public status page application (Next.js)
-- **`apps/docs/`** - Documentation site (Next.js)
+- **`apps/docs/`** - Documentation site (Mintlify)
 
 ### Packages
 
@@ -26,16 +26,16 @@ This is a monorepo with the following structure:
 
 ## Available Scripts
 
-- `bun run dev` - Start all apps in development mode
+- `pnpm run dev` - Start all apps in development mode
 
 ## Database Commands
 
 All database operations should be run from the web workspace:
 
-- `bun run db:push` - Push schema changes to database
-- `bun run db:studio` - Open database studio
-- `bun run db:generate` - Generate Drizzle files
-- `bun run db:migrate` - Run database migrations
+- `pnpm run db:push` - Push schema changes to database
+- `pnpm run db:studio` - Open database studio
+- `pnpm run db:generate` - Generate Drizzle files
+- `pnpm run db:migrate` - Run database migrations
 
 Database schema files are located in `packages/db/src/schema/`
 
@@ -66,10 +66,10 @@ Authentication is enabled in this project:
 
 ## Key Points
 
-- This is a Turborepo monorepo using bun workspaces
+- This is a Turborepo monorepo using pnpm workspaces
 - Each app has its own `package.json` and dependencies
 - Run commands from the root to execute across all workspaces
-- Run workspace-specific commands with `bun run command-name`
+- Run workspace-specific commands with `pnpm run command-name`
 - Turborepo handles build caching and parallel execution
 
 ## Code Guidelines
@@ -90,10 +90,11 @@ Authentication is enabled in this project:
 ### Comments
 
 - **Self-Documenting Code First**: Write code that is self-explanatory through clear function names, variable names, and structure. If your function name and code clearly describe what it does, **do not add unnecessary comments**.
-- **Explain "Why", Not "What"**: The code itself explains what is happening. Use comments to explain the *intent*, business logic, or complex decisions behind the code.
+- **Explain "Why", Not "What"**: The code itself explains what is happening. Use comments to explain the _intent_, business logic, or complex decisions behind the code.
 - **Avoid Clutter**: Do not comment obvious logic (e.g., `// Update count` above `count++`). Unnecessary comments add noise and maintenance burden.
 - **Function headers**: Use JSDoc/TSDoc for public-facing utilities to document params and return values, but only when the signature isn't self-evident.
 - **TODOs**: Use `// TODO:` to mark areas for improvement, but address them sooner rather than later.
+- **DONT FUCKING USE RECORDS**: Records are useless, let typescript inffer the types more
 
 ### Self Hosting
 

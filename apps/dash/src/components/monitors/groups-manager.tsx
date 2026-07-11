@@ -9,7 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { sileo } from "sileo";
 import {
     AlertDialog,
@@ -76,7 +76,7 @@ interface GroupsManagerProps {
  * @param autoCreate - If true, opens the Create Group dialog when the component mounts
  * @returns A React element that renders the groups management interface
  */
-export function GroupsManager({
+function useGroupsManagerModel({
     autoCreate = false,
     readOnly = false,
 }: GroupsManagerProps) {
@@ -90,9 +90,7 @@ export function GroupsManager({
     const [editParentId, setEditParentId] = useState<string | null>(null);
 
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const [deletingGroup, setDeletingGroup] = useState<GroupRecord | null>(
-        null,
-    );
+    const deletingGroupRef = useRef<GroupRecord | null>(null);
 
     const queryClient = useQueryClient();
 
@@ -150,7 +148,7 @@ export function GroupsManager({
                 queryKey: orpc.monitors.list.key(),
             });
             setDeleteOpen(false);
-            setDeletingGroup(null);
+            deletingGroupRef.current = null;
         },
         onError: () => sileo.error({ title: "Failed to delete group" }),
     });
@@ -177,7 +175,7 @@ export function GroupsManager({
     };
 
     const openDelete = (group: GroupRecord) => {
-        setDeletingGroup(group);
+        deletingGroupRef.current = group;
         setDeleteOpen(true);
     };
 
@@ -191,133 +189,239 @@ export function GroupsManager({
     const parentLabel = (value: string) =>
         resolveGroupPathLabel(value, groupPaths);
 
+    return {
+        autoCreate,
+        readOnly,
+        createOpen,
+        setCreateOpen,
+        createName,
+        setCreateName,
+        createParentId,
+        setCreateParentId,
+        editOpen,
+        setEditOpen,
+        editingGroup,
+        setEditingGroup,
+        editName,
+        setEditName,
+        editParentId,
+        setEditParentId,
+        deleteOpen,
+        setDeleteOpen,
+        deletingGroupRef,
+        queryClient,
+        groups,
+        groupPaths,
+        createGroup,
+        isCreating,
+        updateGroup,
+        isUpdating,
+        deleteGroup,
+        isDeleting,
+        submitCreate,
+        submitEdit,
+        openEdit,
+        openDelete,
+        invalidParentIds,
+        parentLabel,
+    };
+}
+
+type GroupsManagerModel = ReturnType<typeof useGroupsManagerModel>;
+
+function GroupsManagerDialog1({ model }: { model: GroupsManagerModel }) {
+    const {
+        autoCreate,
+        readOnly,
+        createOpen,
+        setCreateOpen,
+        createName,
+        setCreateName,
+        createParentId,
+        setCreateParentId,
+        editOpen,
+        setEditOpen,
+        editingGroup,
+        setEditingGroup,
+        editName,
+        setEditName,
+        editParentId,
+        setEditParentId,
+        deleteOpen,
+        setDeleteOpen,
+        deletingGroupRef,
+        queryClient,
+        groups,
+        groupPaths,
+        createGroup,
+        isCreating,
+        updateGroup,
+        isUpdating,
+        deleteGroup,
+        isDeleting,
+        submitCreate,
+        submitEdit,
+        openEdit,
+        openDelete,
+        invalidParentIds,
+        parentLabel,
+    } = model;
+    return (
+        <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Groups</h3>
+            {!readOnly && (
+                <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                    <DialogTrigger
+                        render={<Button variant="outline" size="sm" />}
+                    >
+                        <FontAwesomeIcon
+                            icon={faPlus}
+                            className="mr-2 h-4 w-4"
+                        />
+                        New Group
+                    </DialogTrigger>
+                    <DialogPopup className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Create Group</DialogTitle>
+                            <DialogDescription>
+                                Create a new group to organize your monitors.
+                                Nest it under another group to build a folder
+                                structure.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogPanel>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="group-name">
+                                        Group Name
+                                    </Label>
+                                    <Input
+                                        id="group-name"
+                                        placeholder="Production, Staging, etc."
+                                        value={createName}
+                                        onChange={(e) =>
+                                            setCreateName(e.target.value)
+                                        }
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                submitCreate();
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="group-parent">
+                                        Parent group
+                                    </Label>
+                                    <Select
+                                        value={
+                                            createParentId ?? NONE_SELECT_VALUE
+                                        }
+                                        onValueChange={(value) =>
+                                            setCreateParentId(
+                                                value === NONE_SELECT_VALUE
+                                                    ? null
+                                                    : value,
+                                            )
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="group-parent"
+                                            className="w-full"
+                                        >
+                                            <SelectValue
+                                                placeholder={NO_PARENT_LABEL}
+                                            >
+                                                {(value) =>
+                                                    parentLabel(value as string)
+                                                }
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem
+                                                value={NONE_SELECT_VALUE}
+                                            >
+                                                {NO_PARENT_LABEL}
+                                            </SelectItem>
+                                            {groupPaths.map(
+                                                ({ group, path, depth }) => (
+                                                    <SelectItem
+                                                        key={group.id}
+                                                        value={group.id}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                paddingLeft:
+                                                                    depth * 12,
+                                                            }}
+                                                        >
+                                                            {path}
+                                                        </span>
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </DialogPanel>
+                        <DialogFooter>
+                            <DialogClose render={<Button variant="ghost" />}>
+                                Cancel
+                            </DialogClose>
+                            <Button
+                                onClick={submitCreate}
+                                disabled={!createName.trim() || isCreating}
+                            >
+                                Create
+                            </Button>
+                        </DialogFooter>
+                    </DialogPopup>
+                </Dialog>
+            )}
+        </div>
+    );
+}
+function GroupsManagerView({ model }: { model: GroupsManagerModel }) {
+    const {
+        autoCreate,
+        readOnly,
+        createOpen,
+        setCreateOpen,
+        createName,
+        setCreateName,
+        createParentId,
+        setCreateParentId,
+        editOpen,
+        setEditOpen,
+        editingGroup,
+        setEditingGroup,
+        editName,
+        setEditName,
+        editParentId,
+        setEditParentId,
+        deleteOpen,
+        setDeleteOpen,
+        deletingGroupRef,
+        queryClient,
+        groups,
+        groupPaths,
+        createGroup,
+        isCreating,
+        updateGroup,
+        isUpdating,
+        deleteGroup,
+        isDeleting,
+        submitCreate,
+        submitEdit,
+        openEdit,
+        openDelete,
+        invalidParentIds,
+        parentLabel,
+    } = model;
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm">Groups</h3>
-                {!readOnly && (
-                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                        <DialogTrigger
-                            render={<Button variant="outline" size="sm" />}
-                        >
-                            <FontAwesomeIcon
-                                icon={faPlus}
-                                className="mr-2 h-4 w-4"
-                            />
-                            New Group
-                        </DialogTrigger>
-                        <DialogPopup className="sm:max-w-[425px]">
-                            <DialogHeader>
-                                <DialogTitle>Create Group</DialogTitle>
-                                <DialogDescription>
-                                    Create a new group to organize your
-                                    monitors. Nest it under another group to
-                                    build a folder structure.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogPanel>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="group-name">
-                                            Group Name
-                                        </Label>
-                                        <Input
-                                            id="group-name"
-                                            placeholder="Production, Staging, etc."
-                                            value={createName}
-                                            onChange={(e) =>
-                                                setCreateName(e.target.value)
-                                            }
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                    submitCreate();
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="group-parent">
-                                            Parent group
-                                        </Label>
-                                        <Select
-                                            value={
-                                                createParentId ??
-                                                NONE_SELECT_VALUE
-                                            }
-                                            onValueChange={(value) =>
-                                                setCreateParentId(
-                                                    value === NONE_SELECT_VALUE
-                                                        ? null
-                                                        : value,
-                                                )
-                                            }
-                                        >
-                                            <SelectTrigger
-                                                id="group-parent"
-                                                className="w-full"
-                                            >
-                                                <SelectValue
-                                                    placeholder={
-                                                        NO_PARENT_LABEL
-                                                    }
-                                                >
-                                                    {(value) =>
-                                                        parentLabel(
-                                                            value as string,
-                                                        )
-                                                    }
-                                                </SelectValue>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem
-                                                    value={NONE_SELECT_VALUE}
-                                                >
-                                                    {NO_PARENT_LABEL}
-                                                </SelectItem>
-                                                {groupPaths.map(
-                                                    ({
-                                                        group,
-                                                        path,
-                                                        depth,
-                                                    }) => (
-                                                        <SelectItem
-                                                            key={group.id}
-                                                            value={group.id}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    paddingLeft:
-                                                                        depth *
-                                                                        12,
-                                                                }}
-                                                            >
-                                                                {path}
-                                                            </span>
-                                                        </SelectItem>
-                                                    ),
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </DialogPanel>
-                            <DialogFooter>
-                                <DialogClose
-                                    render={<Button variant="ghost" />}
-                                >
-                                    Cancel
-                                </DialogClose>
-                                <Button
-                                    onClick={submitCreate}
-                                    disabled={!createName.trim() || isCreating}
-                                >
-                                    Create
-                                </Button>
-                            </DialogFooter>
-                        </DialogPopup>
-                    </Dialog>
-                )}
-            </div>
+            <GroupsManagerDialog1 model={model} />
 
             <div className="space-y-2">
                 {groupPaths.map(({ group, depth }) => (
@@ -448,35 +552,31 @@ export function GroupsManager({
                                             >
                                                 {NO_PARENT_LABEL}
                                             </SelectItem>
-                                            {groupPaths
-                                                .filter(
-                                                    ({ group }) =>
-                                                        !invalidParentIds.has(
-                                                            group.id,
-                                                        ),
-                                                )
-                                                .map(
-                                                    ({
-                                                        group,
-                                                        path,
-                                                        depth,
-                                                    }) => (
-                                                        <SelectItem
-                                                            key={group.id}
-                                                            value={group.id}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    paddingLeft:
-                                                                        depth *
-                                                                        12,
-                                                                }}
-                                                            >
-                                                                {path}
-                                                            </span>
-                                                        </SelectItem>
-                                                    ),
-                                                )}
+                                            {groupPaths.flatMap(
+                                                ({ group, path, depth }) =>
+                                                    invalidParentIds.has(
+                                                        group.id,
+                                                    )
+                                                        ? []
+                                                        : [
+                                                              <SelectItem
+                                                                  key={group.id}
+                                                                  value={
+                                                                      group.id
+                                                                  }
+                                                              >
+                                                                  <span
+                                                                      style={{
+                                                                          paddingLeft:
+                                                                              depth *
+                                                                              12,
+                                                                      }}
+                                                                  >
+                                                                      {path}
+                                                                  </span>
+                                                              </SelectItem>,
+                                                          ],
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -515,8 +615,10 @@ export function GroupsManager({
                                 className="bg-red-500 hover:bg-red-600"
                                 disabled={isDeleting}
                                 onClick={() => {
-                                    if (deletingGroup) {
-                                        deleteGroup(deletingGroup.id);
+                                    if (deletingGroupRef.current) {
+                                        deleteGroup(
+                                            deletingGroupRef.current.id,
+                                        );
                                     }
                                 }}
                             >
@@ -528,4 +630,12 @@ export function GroupsManager({
             )}
         </div>
     );
+}
+
+export function GroupsManager({
+    autoCreate = false,
+    readOnly = false,
+}: GroupsManagerProps) {
+    const model = useGroupsManagerModel({ autoCreate, readOnly });
+    return <GroupsManagerView model={model} />;
 }

@@ -28,6 +28,7 @@ import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definit
 import { webhookIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/webhook-meta";
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import {
     parseAsInteger,
     parseAsString,
@@ -170,10 +171,11 @@ function IntegrationIcon({
     if (integration.logo) {
         return (
             <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-                {/* biome-ignore lint/performance/noImgElement: integration logos are static public assets */}
-                <img
+                <Image
                     src={integration.logo}
                     alt={integration.name}
+                    width={24}
+                    height={24}
                     className="size-6 object-contain"
                 />
             </div>
@@ -220,7 +222,7 @@ function matchesSearch(
         .some((value) => value?.toLowerCase().includes(search));
 }
 
-export function NotificationsTable() {
+function useNotificationsTableModel() {
     const [providerDialogOpen, setProviderDialogOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [selectedIntegration, setSelectedIntegration] =
@@ -250,11 +252,12 @@ export function NotificationsTable() {
     const page = Math.max(pageParam, 1);
     const pageSize = Number(pageSizeParam);
     const [searchInput, setSearchInput] = useState(search);
+    const [previousSearch, setPreviousSearch] = useState(search);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
-
-    useEffect(() => {
+    if (search !== previousSearch) {
+        setPreviousSearch(search);
         setSearchInput(search);
-    }, [search]);
+    }
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -393,6 +396,1191 @@ export function NotificationsTable() {
         }
     };
 
+    return {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    };
+}
+
+type NotificationsTableModel = ReturnType<typeof useNotificationsTableModel>;
+
+function NotificationsTableFiltersSection5({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <>
+            {availableIntegrations?.map((integrationMeta) => {
+                const integration = getIntegrationDefinition(integrationMeta);
+
+                return (
+                    <DropdownMenuItem
+                        key={integration.id}
+                        onClick={() => {
+                            void setFilters({
+                                type: integration.id,
+                                page: 1,
+                            });
+                        }}
+                        className="flex justify-between gap-2"
+                    >
+                        <span className="truncate">{integration.name}</span>
+                        {typeFilter === integration.id && (
+                            <FontAwesomeIcon
+                                icon={faCheck}
+                                className="h-4 w-4"
+                            />
+                        )}
+                    </DropdownMenuItem>
+                );
+            })}
+        </>
+    );
+}
+
+function NotificationsTableFiltersSection6({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <div
+            className="px-2"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+        >
+            <Select
+                value={pageSizeParam}
+                onValueChange={(value) => {
+                    void setFilters({
+                        pageSize: value as (typeof PAGE_SIZE_OPTIONS)[number],
+                        page: 1,
+                    });
+                }}
+            >
+                <SelectTrigger
+                    className="h-8 w-full"
+                    onPointerDown={(e) => e.stopPropagation()}
+                >
+                    <SelectValue placeholder="Page size">
+                        {pageSize} per page
+                    </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={size}>
+                            {size} per page
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
+
+function NotificationsTableFiltersSection4({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <DropdownMenuContent align="end" className="w-56 p-2">
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Status
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ status: null, page: 1 });
+                }}
+                className="flex justify-between"
+            >
+                All Statuses
+                {statusFilter === null && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        status: "active",
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                Active
+                {statusFilter === "active" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        status: "inactive",
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                Inactive
+                {statusFilter === "inactive" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+
+            <div className="my-2 h-px bg-muted" />
+
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Direction
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        direction: null,
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                All Directions
+                {directionFilter === null && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        direction: "export",
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                Export
+                {directionFilter === "export" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        direction: "import",
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                Import
+                {directionFilter === "import" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+
+            <div className="my-2 h-px bg-muted" />
+
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Provider
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ type: null, page: 1 });
+                }}
+                className="flex justify-between"
+            >
+                All Providers
+                {typeFilter === null && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <NotificationsTableFiltersSection5 model={model} />
+
+            <div className="my-2 h-px bg-muted" />
+
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Default
+            </div>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({ default: null, page: 1 });
+                }}
+                className="flex justify-between"
+            >
+                All Notifications
+                {defaultFilter === null && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        default: "default",
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                Default
+                {defaultFilter === "default" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+                onClick={() => {
+                    void setFilters({
+                        default: "custom",
+                        page: 1,
+                    });
+                }}
+                className="flex justify-between"
+            >
+                Custom
+                {defaultFilter === "custom" && (
+                    <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                )}
+            </DropdownMenuItem>
+
+            <div className="my-2 h-px bg-muted" />
+
+            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
+                Page Size
+            </div>
+            {/** biome-ignore lint/a11y/noStaticElementInteractions: keep Select interactions inside the filter menu */}
+            {/** biome-ignore lint/a11y/useKeyWithClickEvents: Select handles keyboard interaction */}
+            <NotificationsTableFiltersSection6 model={model} />
+
+            {activeFilterCount > 0 && (
+                <>
+                    <div className="my-2 h-px bg-muted" />
+                    <DropdownMenuItem
+                        onClick={clearFilters}
+                        className="justify-center text-red-500 hover:text-red-600"
+                    >
+                        Clear filters
+                    </DropdownMenuItem>
+                </>
+            )}
+        </DropdownMenuContent>
+    );
+}
+
+function NotificationsTableFiltersSection3({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+                render={
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="relative"
+                    />
+                }
+            >
+                <FontAwesomeIcon icon={faFilter} className="h-4 w-4" />
+                {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
+                        {activeFilterCount}
+                    </span>
+                )}
+            </DropdownMenuTrigger>
+            <NotificationsTableFiltersSection4 model={model} />
+        </DropdownMenu>
+    );
+}
+
+function NotificationsTableContentSection2({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <div className="flex items-center gap-2">
+            <div className="relative hidden w-64 md:block">
+                <FontAwesomeIcon
+                    icon={faMagnifyingGlass}
+                    className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
+                />
+                <Input
+                    placeholder="Search notifications..."
+                    className="pl-8"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                />
+            </div>
+            <Button
+                variant="outline"
+                size="icon"
+                className="relative md:hidden"
+                onClick={() => setSearchOpen(true)}
+            >
+                <FontAwesomeIcon icon={faMagnifyingGlass} className="h-4 w-4" />
+                {search && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
+                )}
+            </Button>
+            <NotificationsTableFiltersSection3 model={model} />
+            <Button
+                className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
+                onClick={() => setProviderDialogOpen(true)}
+            >
+                <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
+                <span className="hidden md:inline">Add notification</span>
+            </Button>
+        </div>
+    );
+}
+
+function NotificationsTableContentSection1({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <h1 className="font-bold text-2xl tracking-tight">Notifications</h1>
+            <NotificationsTableContentSection2 model={model} />
+        </div>
+    );
+}
+
+function NotificationsTableDataTable9({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <TableBody>
+            {isLoadingConfigured ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        <FontAwesomeIcon
+                            icon={faSpinner}
+                            className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
+                        />
+                    </TableCell>
+                </TableRow>
+            ) : paginatedNotifications.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2 py-6">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+                                <FontAwesomeIcon
+                                    icon={faPaperPlane}
+                                    className="h-6 w-6 text-muted-foreground"
+                                />
+                            </div>
+                            <p className="font-medium text-lg">
+                                No notifications found
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                                {hasActiveSearchOrFilters
+                                    ? "Try adjusting your filters"
+                                    : "Add a notification channel before assigning it to monitors."}
+                            </p>
+                            {!hasActiveSearchOrFilters && (
+                                <div className="mt-2">
+                                    <Button
+                                        onClick={() =>
+                                            setProviderDialogOpen(true)
+                                        }
+                                    >
+                                        Add notification
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </TableCell>
+                </TableRow>
+            ) : (
+                paginatedNotifications.map((config) => {
+                    const integration = getIntegrationDefinition({
+                        id: config.type,
+                    });
+
+                    return (
+                        <TableRow
+                            key={config.id}
+                            className="group h-[72px] hover:bg-muted/40"
+                        >
+                            <TableCell className="min-w-[280px] pl-4">
+                                <div className="flex items-center gap-4">
+                                    <IntegrationIcon
+                                        integration={integration}
+                                    />
+                                    <div className="grid min-w-0 gap-1">
+                                        <span className="truncate font-semibold leading-none transition-colors group-hover:text-primary">
+                                            {config.name}
+                                        </span>
+                                        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+                                            <span>{integration.name}</span>
+                                            {config.isDefault && (
+                                                <Badge
+                                                    variant="warning"
+                                                    className="h-5 px-1.5 text-[10px]"
+                                                >
+                                                    Default
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    variant={
+                                        integration.type === "export"
+                                            ? "info"
+                                            : "secondary"
+                                    }
+                                    className="capitalize"
+                                >
+                                    {integration.type}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-muted-foreground text-sm">
+                                {formatMonitorAssignmentCount(
+                                    config.assignedMonitorCount,
+                                )}
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className={cn(
+                                            "h-2 w-2 rounded-full",
+                                            config.active
+                                                ? "bg-emerald-500"
+                                                : "bg-muted-foreground/30",
+                                        )}
+                                    />
+                                    <span
+                                        className={cn(
+                                            "font-medium text-sm",
+                                            config.active
+                                                ? "text-emerald-500"
+                                                : "text-muted-foreground",
+                                        )}
+                                    >
+                                        {config.active ? "Active" : "Inactive"}
+                                    </span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="w-[52px] pr-4">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        render={
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                                            />
+                                        }
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={faEllipsis}
+                                            className="h-4 w-4"
+                                        />
+                                        <span className="sr-only">
+                                            Open menu
+                                        </span>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onSelect={() => {
+                                                setSelectedIntegration(
+                                                    integration,
+                                                );
+                                                setSelectedConfig(config);
+                                            }}
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faGear}
+                                                className="h-4 w-4"
+                                            />
+                                            Edit
+                                        </DropdownMenuItem>
+                                        {integration.type === "export" && (
+                                            <DropdownMenuItem
+                                                disabled={
+                                                    testMutation.isPending
+                                                }
+                                                onSelect={() => {
+                                                    void handleTestNotification(
+                                                        config.id,
+                                                    );
+                                                }}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faPaperPlane}
+                                                    className="h-4 w-4"
+                                                />
+                                                Test
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            variant="destructive"
+                                            onSelect={() =>
+                                                setConfigToRemove(config)
+                                            }
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faTrash}
+                                                className="h-4 w-4"
+                                            />
+                                            Remove
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                    );
+                })
+            )}
+        </TableBody>
+    );
+}
+
+function NotificationsTableDataTable8({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                    <TableHead className="min-w-[280px] pl-4">
+                        Notification
+                    </TableHead>
+                    <TableHead className="w-[140px]">Direction</TableHead>
+                    <TableHead className="w-[170px]">
+                        Monitor Assignments
+                    </TableHead>
+                    <TableHead className="w-[150px]">Status</TableHead>
+                    <TableHead className="w-[52px] pr-4 text-right">
+                        <span className="sr-only">Actions</span>
+                    </TableHead>
+                </TableRow>
+            </TableHeader>
+            <NotificationsTableDataTable9 model={model} />
+        </Table>
+    );
+}
+
+function NotificationsTableContentSection7({
+    model,
+}: {
+    model: NotificationsTableModel;
+}) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
+    return (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex min-h-12 items-center gap-3 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+                <FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
+                <span>Notifications</span>
+                {total > 0 && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
+                        {visibleStart}-{visibleEnd} of {total}
+                    </span>
+                )}
+            </div>
+            <NotificationsTableDataTable8 model={model} />
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
+                    <Pagination className="mx-0 w-auto">
+                        <PaginationContent>
+                            <PaginationItem>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={page === 1}
+                                    onClick={() =>
+                                        void setFilters({ page: page - 1 })
+                                    }
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faChevronLeft}
+                                        className="h-4 w-4"
+                                    />
+                                </Button>
+                            </PaginationItem>
+                            {Array.from(
+                                { length: totalPages },
+                                (_, i) => i + 1,
+                            ).map((p) => {
+                                if (
+                                    totalPages > 7 &&
+                                    (p < page - 2 || p > page + 2) &&
+                                    p !== 1 &&
+                                    p !== totalPages
+                                ) {
+                                    if (p === page - 3 || p === page + 3) {
+                                        return (
+                                            <PaginationItem key={p}>
+                                                <PaginationEllipsis />
+                                            </PaginationItem>
+                                        );
+                                    }
+                                    return null;
+                                }
+
+                                return (
+                                    <PaginationItem key={p}>
+                                        <Button
+                                            variant={
+                                                p === page ? "outline" : "ghost"
+                                            }
+                                            size="icon"
+                                            onClick={() =>
+                                                void setFilters({ page: p })
+                                            }
+                                            className="h-8 w-8"
+                                        >
+                                            {p}
+                                        </Button>
+                                    </PaginationItem>
+                                );
+                            })}
+                            <PaginationItem>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                        void setFilters({ page: page + 1 })
+                                    }
+                                    disabled={page === totalPages}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faChevronRight}
+                                        className="h-4 w-4"
+                                    />
+                                </Button>
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+        </div>
+    );
+}
+function NotificationsTableView({ model }: { model: NotificationsTableModel }) {
+    const {
+        providerDialogOpen,
+        setProviderDialogOpen,
+        searchOpen,
+        setSearchOpen,
+        selectedIntegration,
+        setSelectedIntegration,
+        selectedConfig,
+        setSelectedConfig,
+        configToRemove,
+        setConfigToRemove,
+        filters,
+        setFilters,
+        search,
+        statusFilter,
+        directionFilter,
+        typeFilter,
+        defaultFilter,
+        pageParam,
+        pageSizeParam,
+        page,
+        pageSize,
+        searchInput,
+        setSearchInput,
+        previousSearch,
+        setPreviousSearch,
+        debouncedSearch,
+        setDebouncedSearch,
+        configuredConfigs,
+        isLoadingConfigured,
+        refetch,
+        configureMutation,
+        deleteMutation,
+        testMutation,
+        configuredNotifications,
+        normalizedSearch,
+        filteredNotifications,
+        total,
+        totalPages,
+        visibleStart,
+        visibleEnd,
+        paginatedNotifications,
+        activeFilterCount,
+        hasActiveSearchOrFilters,
+        clearFilters,
+        handleTestNotification,
+    } = model;
     return (
         <div className="mx-auto w-full max-w-6xl space-y-4">
             <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
@@ -425,651 +1613,9 @@ export function NotificationsTable() {
                 </DialogContent>
             </Dialog>
 
-            <div className="flex items-center justify-between gap-4">
-                <h1 className="font-bold text-2xl tracking-tight">
-                    Notifications
-                </h1>
-                <div className="flex items-center gap-2">
-                    <div className="relative hidden w-64 md:block">
-                        <FontAwesomeIcon
-                            icon={faMagnifyingGlass}
-                            className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-                        />
-                        <Input
-                            placeholder="Search notifications..."
-                            className="pl-8"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                        />
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="relative md:hidden"
-                        onClick={() => setSearchOpen(true)}
-                    >
-                        <FontAwesomeIcon
-                            icon={faMagnifyingGlass}
-                            className="h-4 w-4"
-                        />
-                        {search && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary" />
-                        )}
-                    </Button>
-                    <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger
-                            render={
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="relative"
-                                />
-                            }
-                        >
-                            <FontAwesomeIcon
-                                icon={faFilter}
-                                className="h-4 w-4"
-                            />
-                            {activeFilterCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary text-[8px] text-primary-foreground">
-                                    {activeFilterCount}
-                                </span>
-                            )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 p-2">
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Status
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ status: null, page: 1 });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Statuses
-                                {statusFilter === null && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        status: "active",
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Active
-                                {statusFilter === "active" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        status: "inactive",
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Inactive
-                                {statusFilter === "inactive" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
+            <NotificationsTableContentSection1 model={model} />
 
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Direction
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        direction: null,
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Directions
-                                {directionFilter === null && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        direction: "export",
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Export
-                                {directionFilter === "export" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        direction: "import",
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Import
-                                {directionFilter === "import" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Provider
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ type: null, page: 1 });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Providers
-                                {typeFilter === null && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            {availableIntegrations?.map((integrationMeta) => {
-                                const integration =
-                                    getIntegrationDefinition(integrationMeta);
-
-                                return (
-                                    <DropdownMenuItem
-                                        key={integration.id}
-                                        onClick={() => {
-                                            void setFilters({
-                                                type: integration.id,
-                                                page: 1,
-                                            });
-                                        }}
-                                        className="flex justify-between gap-2"
-                                    >
-                                        <span className="truncate">
-                                            {integration.name}
-                                        </span>
-                                        {typeFilter === integration.id && (
-                                            <FontAwesomeIcon
-                                                icon={faCheck}
-                                                className="h-4 w-4"
-                                            />
-                                        )}
-                                    </DropdownMenuItem>
-                                );
-                            })}
-
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Default
-                            </div>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({ default: null, page: 1 });
-                                }}
-                                className="flex justify-between"
-                            >
-                                All Notifications
-                                {defaultFilter === null && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        default: "default",
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Default
-                                {defaultFilter === "default" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    void setFilters({
-                                        default: "custom",
-                                        page: 1,
-                                    });
-                                }}
-                                className="flex justify-between"
-                            >
-                                Custom
-                                {defaultFilter === "custom" && (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </DropdownMenuItem>
-
-                            <div className="my-2 h-px bg-muted" />
-
-                            <div className="mb-2 px-2 font-semibold text-muted-foreground text-xs uppercase">
-                                Page Size
-                            </div>
-                            {/** biome-ignore lint/a11y/noStaticElementInteractions: keep Select interactions inside the filter menu */}
-                            {/** biome-ignore lint/a11y/useKeyWithClickEvents: Select handles keyboard interaction */}
-                            <div
-                                className="px-2"
-                                onClick={(e) => e.stopPropagation()}
-                                onPointerDown={(e) => e.stopPropagation()}
-                            >
-                                <Select
-                                    value={pageSizeParam}
-                                    onValueChange={(value) => {
-                                        void setFilters({
-                                            pageSize:
-                                                value as (typeof PAGE_SIZE_OPTIONS)[number],
-                                            page: 1,
-                                        });
-                                    }}
-                                >
-                                    <SelectTrigger
-                                        className="h-8 w-full"
-                                        onPointerDown={(e) =>
-                                            e.stopPropagation()
-                                        }
-                                    >
-                                        <SelectValue placeholder="Page size">
-                                            {pageSize} per page
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {PAGE_SIZE_OPTIONS.map((size) => (
-                                            <SelectItem key={size} value={size}>
-                                                {size} per page
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {activeFilterCount > 0 && (
-                                <>
-                                    <div className="my-2 h-px bg-muted" />
-                                    <DropdownMenuItem
-                                        onClick={clearFilters}
-                                        className="justify-center text-red-500 hover:text-red-600"
-                                    >
-                                        Clear filters
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                        className="w-9 gap-2 border-none bg-white p-0 text-black shadow-md shadow-white/10 hover:bg-gray-100 md:w-auto md:px-4"
-                        onClick={() => setProviderDialogOpen(true)}
-                    >
-                        <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
-                        <span className="hidden md:inline">
-                            Add notification
-                        </span>
-                    </Button>
-                </div>
-            </div>
-
-            <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                <div className="flex min-h-12 items-center gap-3 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
-                    <FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
-                    <span>Notifications</span>
-                    {total > 0 && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-                            {visibleStart}-{visibleEnd} of {total}
-                        </span>
-                    )}
-                </div>
-                <Table>
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead className="min-w-[280px] pl-4">
-                                Notification
-                            </TableHead>
-                            <TableHead className="w-[140px]">
-                                Direction
-                            </TableHead>
-                            <TableHead className="w-[170px]">
-                                Monitor Assignments
-                            </TableHead>
-                            <TableHead className="w-[150px]">Status</TableHead>
-                            <TableHead className="w-[52px] pr-4 text-right">
-                                <span className="sr-only">Actions</span>
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoadingConfigured ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={5}
-                                    className="h-24 text-center"
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faSpinner}
-                                        className="mx-auto h-6 w-6 animate-spin text-muted-foreground"
-                                    />
-                                </TableCell>
-                            </TableRow>
-                        ) : paginatedNotifications.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={5}
-                                    className="h-24 text-center"
-                                >
-                                    <div className="flex flex-col items-center justify-center gap-2 py-6">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-                                            <FontAwesomeIcon
-                                                icon={faPaperPlane}
-                                                className="h-6 w-6 text-muted-foreground"
-                                            />
-                                        </div>
-                                        <p className="font-medium text-lg">
-                                            No notifications found
-                                        </p>
-                                        <p className="text-muted-foreground text-sm">
-                                            {hasActiveSearchOrFilters
-                                                ? "Try adjusting your filters"
-                                                : "Add a notification channel before assigning it to monitors."}
-                                        </p>
-                                        {!hasActiveSearchOrFilters && (
-                                            <div className="mt-2">
-                                                <Button
-                                                    onClick={() =>
-                                                        setProviderDialogOpen(
-                                                            true,
-                                                        )
-                                                    }
-                                                >
-                                                    Add notification
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            paginatedNotifications.map((config) => {
-                                const integration = getIntegrationDefinition({
-                                    id: config.type,
-                                });
-
-                                return (
-                                    <TableRow
-                                        key={config.id}
-                                        className="group h-[72px] hover:bg-muted/40"
-                                    >
-                                        <TableCell className="min-w-[280px] pl-4">
-                                            <div className="flex items-center gap-4">
-                                                <IntegrationIcon
-                                                    integration={integration}
-                                                />
-                                                <div className="grid min-w-0 gap-1">
-                                                    <span className="truncate font-semibold leading-none transition-colors group-hover:text-primary">
-                                                        {config.name}
-                                                    </span>
-                                                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-                                                        <span>
-                                                            {integration.name}
-                                                        </span>
-                                                        {config.isDefault && (
-                                                            <Badge
-                                                                variant="warning"
-                                                                className="h-5 px-1.5 text-[10px]"
-                                                            >
-                                                                Default
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    integration.type ===
-                                                    "export"
-                                                        ? "info"
-                                                        : "secondary"
-                                                }
-                                                className="capitalize"
-                                            >
-                                                {integration.type}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="font-medium text-muted-foreground text-sm">
-                                            {formatMonitorAssignmentCount(
-                                                config.assignedMonitorCount,
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className={cn(
-                                                        "h-2 w-2 rounded-full",
-                                                        config.active
-                                                            ? "bg-emerald-500"
-                                                            : "bg-muted-foreground/30",
-                                                    )}
-                                                />
-                                                <span
-                                                    className={cn(
-                                                        "font-medium text-sm",
-                                                        config.active
-                                                            ? "text-emerald-500"
-                                                            : "text-muted-foreground",
-                                                    )}
-                                                >
-                                                    {config.active
-                                                        ? "Active"
-                                                        : "Inactive"}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="w-[52px] pr-4">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger
-                                                    render={
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                                                        />
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faEllipsis}
-                                                        className="h-4 w-4"
-                                                    />
-                                                    <span className="sr-only">
-                                                        Open menu
-                                                    </span>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onSelect={() => {
-                                                            setSelectedIntegration(
-                                                                integration,
-                                                            );
-                                                            setSelectedConfig(
-                                                                config,
-                                                            );
-                                                        }}
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faGear}
-                                                            className="h-4 w-4"
-                                                        />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    {integration.type ===
-                                                        "export" && (
-                                                        <DropdownMenuItem
-                                                            disabled={
-                                                                testMutation.isPending
-                                                            }
-                                                            onSelect={() => {
-                                                                void handleTestNotification(
-                                                                    config.id,
-                                                                );
-                                                            }}
-                                                        >
-                                                            <FontAwesomeIcon
-                                                                icon={
-                                                                    faPaperPlane
-                                                                }
-                                                                className="h-4 w-4"
-                                                            />
-                                                            Test
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        variant="destructive"
-                                                        onSelect={() =>
-                                                            setConfigToRemove(
-                                                                config,
-                                                            )
-                                                        }
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faTrash}
-                                                            className="h-4 w-4"
-                                                        />
-                                                        Remove
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
-                        <Pagination className="mx-0 w-auto">
-                            <PaginationContent>
-                                <PaginationItem>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        disabled={page === 1}
-                                        onClick={() =>
-                                            void setFilters({ page: page - 1 })
-                                        }
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faChevronLeft}
-                                            className="h-4 w-4"
-                                        />
-                                    </Button>
-                                </PaginationItem>
-                                {Array.from(
-                                    { length: totalPages },
-                                    (_, i) => i + 1,
-                                ).map((p) => {
-                                    if (
-                                        totalPages > 7 &&
-                                        (p < page - 2 || p > page + 2) &&
-                                        p !== 1 &&
-                                        p !== totalPages
-                                    ) {
-                                        if (p === page - 3 || p === page + 3) {
-                                            return (
-                                                <PaginationItem key={p}>
-                                                    <PaginationEllipsis />
-                                                </PaginationItem>
-                                            );
-                                        }
-                                        return null;
-                                    }
-
-                                    return (
-                                        <PaginationItem key={p}>
-                                            <Button
-                                                variant={
-                                                    p === page
-                                                        ? "outline"
-                                                        : "ghost"
-                                                }
-                                                size="icon"
-                                                onClick={() =>
-                                                    void setFilters({ page: p })
-                                                }
-                                                className="h-8 w-8"
-                                            >
-                                                {p}
-                                            </Button>
-                                        </PaginationItem>
-                                    );
-                                })}
-                                <PaginationItem>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() =>
-                                            void setFilters({ page: page + 1 })
-                                        }
-                                        disabled={page === totalPages}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faChevronRight}
-                                            className="h-4 w-4"
-                                        />
-                                    </Button>
-                                </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
-                    </div>
-                )}
-            </div>
+            <NotificationsTableContentSection7 model={model} />
 
             <Dialog
                 open={providerDialogOpen}
@@ -1133,6 +1679,7 @@ export function NotificationsTable() {
 
             {selectedIntegration && (
                 <ConfigDialog
+                    key={`${selectedIntegration.id}:${selectedConfig?.id ?? "new"}`}
                     open={!!selectedIntegration}
                     onOpenChange={(open) => {
                         if (!open) {
@@ -1227,4 +1774,9 @@ export function NotificationsTable() {
             </AlertDialog>
         </div>
     );
+}
+
+export function NotificationsTable() {
+    const model = useNotificationsTableModel();
+    return <NotificationsTableView model={model} />;
 }

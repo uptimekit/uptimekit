@@ -9,7 +9,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type * as React from "react";
-import { type Button, buttonVariants } from "@/components/ui/button";
+import type { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
 export function Pagination({
@@ -79,7 +80,7 @@ export function PaginationLink({
     });
 }
 
-export function PaginationPrevious({
+function PaginationPrevious({
     className,
     ...props
 }: React.ComponentProps<typeof PaginationLink>): React.ReactElement {
@@ -96,7 +97,7 @@ export function PaginationPrevious({
     );
 }
 
-export function PaginationNext({
+function PaginationNext({
     className,
     ...props
 }: React.ComponentProps<typeof PaginationLink>): React.ReactElement {

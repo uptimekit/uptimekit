@@ -91,7 +91,7 @@ export function BreadcrumbSeparator({
     );
 }
 
-export function BreadcrumbEllipsis({
+function BreadcrumbEllipsis({
     className,
     ...props
 }: React.ComponentProps<"span">): React.ReactElement {

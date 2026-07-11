@@ -321,7 +321,7 @@ export const getStatusPageBySlug = cache(async (slug: string) => {
     );
 });
 
-export const getMonitorUptime = async (monitorId: string, days = 90) => {
+const getMonitorUptime = async (monitorId: string, days = 90) => {
     return cached(
         `monitor-uptime:${monitorId}:${days}`,
         60, // 1 minute
@@ -343,7 +343,7 @@ export const getMonitorUptime = async (monitorId: string, days = 90) => {
     );
 };
 
-export const getActiveIncidents = async (organizationId: string) => {
+const getActiveIncidents = async (organizationId: string) => {
     return cached(
         `active-incidents:${organizationId}`,
         60, // 1 minute
@@ -387,8 +387,10 @@ export const getActiveMaintenances = async (statusPageId: string) => {
                     maintenanceOnly: true,
                 })
             )
-                .map(mapPublishedMaintenanceRecord)
-                .filter((item) => item.status === "in_progress")
+                .flatMap((record) => {
+                    const item = mapPublishedMaintenanceRecord(record);
+                    return item.status === "in_progress" ? [item] : [];
+                })
                 .sort(
                     (a, b) =>
                         new Date(b.startAt).getTime() -
@@ -404,8 +406,10 @@ export const getScheduledMaintenances = async (statusPageId: string) => {
                 maintenanceOnly: true,
             })
         )
-            .map(mapPublishedMaintenanceRecord)
-            .filter((item) => item.status === "scheduled")
+            .flatMap((record) => {
+                const item = mapPublishedMaintenanceRecord(record);
+                return item.status === "scheduled" ? [item] : [];
+            })
             .sort(
                 (a, b) =>
                     new Date(a.startAt).getTime() -

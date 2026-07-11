@@ -30,6 +30,7 @@ import {
     SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { authClient } from "@/lib/auth-client";
 
 // Admin Navigation items
@@ -134,12 +135,8 @@ export function AdminSidebar({
 }
 
 function AdminUserMenu() {
-    const [isMounted, setIsMounted] = useState(false);
+    const isMounted = useHydrated();
     const { data: session, isPending } = authClient.useSession();
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     if (!isMounted || isPending) {
         return <Skeleton className="h-12 w-full rounded-lg" />;

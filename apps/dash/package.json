@@ -26,7 +26,6 @@
         "@orpc/zod": "^1.14.3",
         "@tanstack/react-form": "^1.32.0",
         "@tanstack/react-query": "^5.100.10",
-        "@tanstack/react-virtual": "^3.13.24",
         "@uptimekit/api": "workspace:*",
         "@uptimekit/auth": "workspace:*",
         "@uptimekit/config": "workspace:*",
@@ -58,7 +57,6 @@
     "devDependencies": {
         "@next/bundle-analyzer": "^16.2.6",
         "@tailwindcss/postcss": "^4.3.0",
-        "@tanstack/react-query-devtools": "^5.100.10",
         "@types/node": "^20.19.41",
         "@types/react": "19.2.16",
         "@types/react-dom": "19.2.3",

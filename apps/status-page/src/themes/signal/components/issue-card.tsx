@@ -54,6 +54,7 @@ export function IssueCard({
                     {detailsLink ? (
                         <Link
                             href={detailsLink as any}
+                            aria-label={`View details for ${incident.title}`}
                             className="signal-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform duration-150 hover:-translate-y-px hover:text-foreground"
                         >
                             <FontAwesomeIcon
@@ -64,6 +65,11 @@ export function IssueCard({
                     ) : (
                         <button
                             type="button"
+                            aria-label={
+                                isExpanded
+                                    ? "Collapse incident"
+                                    : "Expand incident"
+                            }
                             onClick={onToggle}
                             className="signal-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform duration-150 hover:-translate-y-px hover:text-foreground"
                         >

@@ -32,16 +32,14 @@ export function PasswordForm({ statusPageId, redirectUrl }: PasswordFormProps) {
 
             if (!response.ok) {
                 setError(data.error || "Invalid password");
-                return;
+            } else {
+                router.push(redirectUrl as never);
+                router.refresh();
             }
-
-            router.push(redirectUrl as never);
-            router.refresh();
         } catch {
             setError("An error occurred. Please try again.");
-        } finally {
-            setIsLoading(false);
         }
+        setIsLoading(false);
     }
 
     return (

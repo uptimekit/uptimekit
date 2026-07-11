@@ -4,7 +4,7 @@ import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
-export const PopoverCreateHandle: typeof PopoverPrimitive.createHandle =
+const PopoverCreateHandle: typeof PopoverPrimitive.createHandle =
     PopoverPrimitive.createHandle;
 
 export const Popover: typeof PopoverPrimitive.Root = PopoverPrimitive.Root;
@@ -27,7 +27,7 @@ export function PopoverTrigger({
     );
 }
 
-export function PopoverPopup({
+function PopoverPopup({
     children,
     className,
     side = "bottom",
@@ -83,13 +83,13 @@ export function PopoverPopup({
     );
 }
 
-export function PopoverClose({
+function PopoverClose({
     ...props
 }: PopoverPrimitive.Close.Props): React.ReactElement {
     return <PopoverPrimitive.Close data-slot="popover-close" {...props} />;
 }
 
-export function PopoverTitle({
+function PopoverTitle({
     className,
     ...props
 }: PopoverPrimitive.Title.Props): React.ReactElement {
@@ -102,7 +102,7 @@ export function PopoverTitle({
     );
 }
 
-export function PopoverDescription({
+function PopoverDescription({
     className,
     ...props
 }: PopoverPrimitive.Description.Props): React.ReactElement {

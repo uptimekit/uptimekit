@@ -76,6 +76,7 @@ export function IncidentCard({
                 {detailsLink ? (
                     <Link
                         href={detailsLink as any}
+                        aria-label={`View details for ${incident.title}`}
                         className="rounded-full p-2 transition-colors hover:bg-muted"
                     >
                         <FontAwesomeIcon
@@ -86,6 +87,9 @@ export function IncidentCard({
                 ) : (
                     <button
                         type="button"
+                        aria-label={
+                            isExpanded ? "Collapse incident" : "Expand incident"
+                        }
                         onClick={onToggle}
                         className="rounded-full p-2 transition-colors hover:bg-muted"
                     >

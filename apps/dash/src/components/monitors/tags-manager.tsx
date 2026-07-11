@@ -8,7 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { sileo } from "sileo";
 import {
     AlertDialog,
@@ -58,6 +58,64 @@ interface TagsManagerProps {
     readOnly?: boolean;
 }
 
+function TagDialogFields({
+    inputId,
+    name,
+    color,
+    placeholder,
+    onNameChange,
+    onColorChange,
+    onEnter,
+}: {
+    inputId: string;
+    name: string;
+    color: string;
+    placeholder?: string;
+    onNameChange: (name: string) => void;
+    onColorChange: (color: string) => void;
+    onEnter: () => void;
+}) {
+    return (
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor={inputId}>Tag Name</Label>
+                <Input
+                    id={inputId}
+                    placeholder={placeholder}
+                    value={name}
+                    onChange={(event) => onNameChange(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" && name.trim()) {
+                            onEnter();
+                        }
+                    }}
+                />
+            </div>
+            <div className="space-y-2">
+                <Label>Color</Label>
+                <div className="flex gap-2">
+                    {PRESET_COLORS.map((presetColor) => (
+                        <button
+                            key={presetColor}
+                            type="button"
+                            aria-label={`Select ${presetColor} tag color`}
+                            className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
+                            style={{
+                                backgroundColor: presetColor,
+                                borderColor:
+                                    color === presetColor
+                                        ? "#000"
+                                        : "transparent",
+                            }}
+                            onClick={() => onColorChange(presetColor)}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /**
  * Render a UI for listing, creating, editing, and deleting monitor tags.
  *
@@ -75,7 +133,7 @@ export function TagsManager({
 }: TagsManagerProps) {
     const [createOpen, setCreateOpen] = useState(readOnly ? false : autoCreate);
     const [editOpen, setEditOpen] = useState(false);
-    const [editingTag, setEditingTag] = useState<{
+    const editingTagRef = useRef<{
         id: string;
         name: string;
         color: string;
@@ -123,7 +181,7 @@ export function TagsManager({
                 queryKey: orpc.monitors.list.key(),
             });
             setEditOpen(false);
-            setEditingTag(null);
+            editingTagRef.current = null;
             setTagName("");
             setTagColor(PRESET_COLORS[0]);
         },
@@ -168,54 +226,20 @@ export function TagsManager({
                                 </DialogDescription>
                             </DialogHeader>
                             <DialogPanel>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tag-name">
-                                            Tag Name
-                                        </Label>
-                                        <Input
-                                            id="tag-name"
-                                            placeholder="Critical, API, Frontend, etc."
-                                            value={tagName}
-                                            onChange={(e) =>
-                                                setTagName(e.target.value)
-                                            }
-                                            onKeyDown={(e) => {
-                                                if (
-                                                    e.key === "Enter" &&
-                                                    tagName.trim()
-                                                ) {
-                                                    createTag({
-                                                        name: tagName.trim(),
-                                                        color: tagColor,
-                                                    });
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Color</Label>
-                                        <div className="flex gap-2">
-                                            {PRESET_COLORS.map((color) => (
-                                                <button
-                                                    key={color}
-                                                    type="button"
-                                                    className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
-                                                    style={{
-                                                        backgroundColor: color,
-                                                        borderColor:
-                                                            tagColor === color
-                                                                ? "#000"
-                                                                : "transparent",
-                                                    }}
-                                                    onClick={() =>
-                                                        setTagColor(color)
-                                                    }
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
+                                <TagDialogFields
+                                    inputId="tag-name"
+                                    name={tagName}
+                                    color={tagColor}
+                                    placeholder="Critical, API, Frontend, etc."
+                                    onNameChange={setTagName}
+                                    onColorChange={setTagColor}
+                                    onEnter={() =>
+                                        createTag({
+                                            name: tagName.trim(),
+                                            color: tagColor,
+                                        })
+                                    }
+                                />
                             </DialogPanel>
                             <DialogFooter>
                                 <DialogClose
@@ -272,7 +296,7 @@ export function TagsManager({
                                     <DropdownMenuItem
                                         onSelect={(e) => {
                                             e.preventDefault();
-                                            setEditingTag(tag);
+                                            editingTagRef.current = tag;
                                             setTagName(tag.name);
                                             setTagColor(tag.color);
                                             setEditOpen(true);
@@ -352,55 +376,21 @@ export function TagsManager({
                             </DialogDescription>
                         </DialogHeader>
                         <DialogPanel>
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-tag-name">
-                                        Tag Name
-                                    </Label>
-                                    <Input
-                                        id="edit-tag-name"
-                                        value={tagName}
-                                        onChange={(e) =>
-                                            setTagName(e.target.value)
-                                        }
-                                        onKeyDown={(e) => {
-                                            if (
-                                                e.key === "Enter" &&
-                                                tagName.trim() &&
-                                                editingTag
-                                            ) {
-                                                updateTag({
-                                                    id: editingTag.id,
-                                                    name: tagName.trim(),
-                                                    color: tagColor,
-                                                });
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Color</Label>
-                                    <div className="flex gap-2">
-                                        {PRESET_COLORS.map((color) => (
-                                            <button
-                                                key={color}
-                                                type="button"
-                                                className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
-                                                style={{
-                                                    backgroundColor: color,
-                                                    borderColor:
-                                                        tagColor === color
-                                                            ? "#000"
-                                                            : "transparent",
-                                                }}
-                                                onClick={() =>
-                                                    setTagColor(color)
-                                                }
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+                            <TagDialogFields
+                                inputId="edit-tag-name"
+                                name={tagName}
+                                color={tagColor}
+                                onNameChange={setTagName}
+                                onColorChange={setTagColor}
+                                onEnter={() => {
+                                    if (!editingTagRef.current) return;
+                                    updateTag({
+                                        id: editingTagRef.current.id,
+                                        name: tagName.trim(),
+                                        color: tagColor,
+                                    });
+                                }}
+                            />
                         </DialogPanel>
                         <DialogFooter>
                             <DialogClose render={<Button variant="ghost" />}>
@@ -408,10 +398,10 @@ export function TagsManager({
                             </DialogClose>
                             <Button
                                 onClick={() =>
-                                    editingTag &&
+                                    editingTagRef.current &&
                                     tagName.trim() &&
                                     updateTag({
-                                        id: editingTag.id,
+                                        id: editingTagRef.current.id,
                                         name: tagName.trim(),
                                         color: tagColor,
                                     })

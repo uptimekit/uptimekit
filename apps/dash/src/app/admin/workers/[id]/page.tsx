@@ -70,6 +70,7 @@ export default async function EditWorkerPage({
 
             <div className="grid gap-6 md:grid-cols-2">
                 <WorkerGeneralInfoForm
+                    key={`${w.id}:${w.name}:${w.location}`}
                     worker={{
                         id: w.id,
                         name: w.name,

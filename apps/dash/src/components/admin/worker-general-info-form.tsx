@@ -4,7 +4,7 @@ import { faCheck, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,13 +52,6 @@ export function WorkerGeneralInfoForm({ worker }: WorkerGeneralInfoFormProps) {
 
     const router = useRouter();
     const queryClient = useQueryClient();
-
-    useEffect(() => {
-        setSavedName(worker.name);
-        setSavedLocation(worker.location);
-        setName(worker.name);
-        setSelectedLocation(worker.location);
-    }, [worker.name, worker.location]);
 
     const { mutate, isPending } = useMutation({
         ...orpc.workers.update.mutationOptions(),

@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { sileo } from "sileo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,10 +89,7 @@ export function ApiKeySettings() {
     const [copied, setCopied] = useState(false);
     const [deletingKey, setDeletingKey] = useState<ApiKeyRecord | null>(null);
 
-    const queryKey = useMemo(
-        () => ["organization-api-keys", activeOrg?.id],
-        [activeOrg?.id],
-    );
+    const queryKey = ["organization-api-keys", activeOrg?.id];
 
     const apiKeysQuery = useQuery({
         queryKey,
@@ -334,117 +331,174 @@ export function ApiKeySettings() {
                 </CardContent>
             </Card>
 
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Create API key</DialogTitle>
-                        <DialogDescription>
-                            This key will be scoped to{" "}
-                            {activeOrg?.name || "the active organization"}.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogPanel>
-                        <div className="grid gap-2">
-                            <Label htmlFor="api-key-name">Name</Label>
-                            <Input
-                                id="api-key-name"
-                                value={keyName}
-                                placeholder="Production deploy"
-                                onChange={(event) =>
-                                    setKeyName(event.target.value)
-                                }
-                            />
-                        </div>
-                    </DialogPanel>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsCreateOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            loading={createMutation.isPending}
-                            onClick={() => createMutation.mutate()}
-                        >
-                            Create key
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog
-                open={Boolean(createdKey)}
-                onOpenChange={(open) => {
-                    if (!open) setCreatedKey(null);
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Copy API key</DialogTitle>
-                        <DialogDescription>
-                            This organization-scoped key is only shown once.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogPanel>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                className="font-mono"
-                                readOnly
-                                type={copied ? "text" : "password"}
-                                value={createdKey?.key || ""}
-                            />
-                            <Button size="icon" onClick={copyCreatedKey}>
-                                {copied ? (
-                                    <FontAwesomeIcon icon={faCheck} />
-                                ) : (
-                                    <FontAwesomeIcon icon={faCopy} />
-                                )}
-                            </Button>
-                        </div>
-                    </DialogPanel>
-                    <DialogFooter>
-                        <Button onClick={() => setCreatedKey(null)}>
-                            Done
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog
-                open={Boolean(deletingKey)}
-                onOpenChange={(open) => {
-                    if (!open) setDeletingKey(null);
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete API key?</DialogTitle>
-                        <DialogDescription>
-                            Requests using this organization-scoped key will
-                            stop working immediately.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setDeletingKey(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            loading={deleteMutation.isPending}
-                            onClick={() => {
-                                if (deletingKey)
-                                    deleteMutation.mutate(deletingKey.id);
-                            }}
-                        >
-                            Delete key
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <CreateApiKeyDialog
+                open={isCreateOpen}
+                organizationName={activeOrg?.name}
+                keyName={keyName}
+                isPending={createMutation.isPending}
+                onOpenChange={setIsCreateOpen}
+                onKeyNameChange={setKeyName}
+                onCreate={() => createMutation.mutate()}
+            />
+            <CreatedApiKeyDialog
+                createdKey={createdKey}
+                copied={copied}
+                onCopy={copyCreatedKey}
+                onClose={() => setCreatedKey(null)}
+            />
+            <DeleteApiKeyDialog
+                apiKey={deletingKey}
+                isPending={deleteMutation.isPending}
+                onClose={() => setDeletingKey(null)}
+                onDelete={(keyId) => deleteMutation.mutate(keyId)}
+            />
         </div>
+    );
+}
+
+function CreateApiKeyDialog({
+    open,
+    organizationName,
+    keyName,
+    isPending,
+    onOpenChange,
+    onKeyNameChange,
+    onCreate,
+}: {
+    open: boolean;
+    organizationName?: string;
+    keyName: string;
+    isPending: boolean;
+    onOpenChange: (open: boolean) => void;
+    onKeyNameChange: (name: string) => void;
+    onCreate: () => void;
+}) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create API key</DialogTitle>
+                    <DialogDescription>
+                        This key will be scoped to{" "}
+                        {organizationName || "the active organization"}.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogPanel>
+                    <div className="grid gap-2">
+                        <Label htmlFor="api-key-name">Name</Label>
+                        <Input
+                            id="api-key-name"
+                            value={keyName}
+                            placeholder="Production deploy"
+                            onChange={(event) =>
+                                onKeyNameChange(event.target.value)
+                            }
+                        />
+                    </div>
+                </DialogPanel>
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button loading={isPending} onClick={onCreate}>
+                        Create key
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function CreatedApiKeyDialog({
+    createdKey,
+    copied,
+    onCopy,
+    onClose,
+}: {
+    createdKey: CreatedApiKey | null;
+    copied: boolean;
+    onCopy: () => void;
+    onClose: () => void;
+}) {
+    return (
+        <Dialog
+            open={Boolean(createdKey)}
+            onOpenChange={(open) => !open && onClose()}
+        >
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Copy API key</DialogTitle>
+                    <DialogDescription>
+                        This organization-scoped key is only shown once.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogPanel>
+                    <div className="flex items-center gap-2">
+                        <Input
+                            className="font-mono"
+                            readOnly
+                            type={copied ? "text" : "password"}
+                            value={createdKey?.key || ""}
+                        />
+                        <Button size="icon" onClick={onCopy}>
+                            {copied ? (
+                                <FontAwesomeIcon icon={faCheck} />
+                            ) : (
+                                <FontAwesomeIcon icon={faCopy} />
+                            )}
+                        </Button>
+                    </div>
+                </DialogPanel>
+                <DialogFooter>
+                    <Button onClick={onClose}>Done</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function DeleteApiKeyDialog({
+    apiKey,
+    isPending,
+    onClose,
+    onDelete,
+}: {
+    apiKey: ApiKeyRecord | null;
+    isPending: boolean;
+    onClose: () => void;
+    onDelete: (keyId: string) => void;
+}) {
+    return (
+        <Dialog
+            open={Boolean(apiKey)}
+            onOpenChange={(open) => !open && onClose()}
+        >
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Delete API key?</DialogTitle>
+                    <DialogDescription>
+                        Requests using this organization-scoped key will stop
+                        working immediately.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        loading={isPending}
+                        onClick={() => {
+                            if (apiKey) onDelete(apiKey.id);
+                        }}
+                    >
+                        Delete key
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

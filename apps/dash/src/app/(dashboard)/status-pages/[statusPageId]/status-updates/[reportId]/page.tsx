@@ -10,8 +10,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { LocalizedDateTime } from "@/components/localized-date-time";
 import { AddUpdateForm } from "@/components/status-pages/add-update-form";
 import { EditUpdateForm } from "@/components/status-pages/edit-update-form";
+import {
+    getStatusUpdateColor,
+    getStatusUpdateSeverityIcon,
+} from "@/components/status-pages/status-update-helpers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,63 +45,6 @@ export default function IncidentDetailsPage() {
             input: { statusPageId, reportId },
         }),
     );
-
-    const getSeverityIcon = (severity: string, status: string) => {
-        if (status === "resolved") {
-            return (
-                <FontAwesomeIcon
-                    icon={faCircleCheck}
-                    className="h-5 w-5 text-green-500"
-                />
-            );
-        }
-
-        switch (severity) {
-            case "critical":
-                return (
-                    <FontAwesomeIcon
-                        icon={faTriangleExclamation}
-                        className="h-5 w-5 text-red-500"
-                    />
-                );
-            case "major":
-                return (
-                    <FontAwesomeIcon
-                        icon={faTriangleExclamation}
-                        className="h-5 w-5 text-orange-500"
-                    />
-                );
-            case "minor":
-                return (
-                    <FontAwesomeIcon
-                        icon={faTriangleExclamation}
-                        className="h-5 w-5 text-yellow-500"
-                    />
-                );
-            default:
-                return (
-                    <FontAwesomeIcon
-                        icon={faCircleCheck}
-                        className="h-5 w-5 text-green-500"
-                    />
-                );
-        }
-    };
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "investigating":
-                return "bg-red-500 ring-red-100 dark:ring-red-900/30";
-            case "identified":
-                return "bg-orange-500 ring-orange-100 dark:ring-orange-900/30";
-            case "monitoring":
-                return "bg-blue-500 ring-blue-100 dark:ring-blue-900/30";
-            case "resolved":
-                return "bg-green-500 ring-green-100 dark:ring-green-900/30";
-            default:
-                return "bg-gray-500 ring-gray-100 dark:ring-gray-900/30";
-        }
-    };
 
     if (isLoading) {
         return (
@@ -130,11 +78,16 @@ export default function IncidentDetailsPage() {
                 </Button>
                 <div>
                     <h2 className="flex items-center gap-2 font-medium text-xl">
-                        {getSeverityIcon(report.severity, report.status)}
+                        {getStatusUpdateSeverityIcon(
+                            report.severity,
+                            report.status,
+                            "h-5 w-5",
+                        )}
                         {report.title}
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                        Started on {new Date(report.createdAt).toLocaleString()}
+                        Started on{" "}
+                        <LocalizedDateTime value={report.createdAt} />
                     </p>
                 </div>
                 <Badge variant="outline" className="ml-auto capitalize">
@@ -171,7 +124,7 @@ export default function IncidentDetailsPage() {
                                     />
                                 )}
                                 <div
-                                    className={`absolute top-1.5 -left-[31px] h-3 w-3 rounded-full ring-4 ${getStatusColor(update.status)}`}
+                                    className={`absolute top-1.5 -left-[31px] h-3 w-3 rounded-full ring-4 ${getStatusUpdateColor(update.status)}`}
                                 />
                                 <div className="mb-2 flex flex-col gap-1">
                                     <div className="flex items-center justify-between gap-2">
@@ -183,9 +136,9 @@ export default function IncidentDetailsPage() {
                                                 {update.status}
                                             </Badge>
                                             <span className="text-muted-foreground text-xs">
-                                                {new Date(
-                                                    update.createdAt,
-                                                ).toLocaleString()}
+                                                <LocalizedDateTime
+                                                    value={update.createdAt}
+                                                />
                                             </span>
                                         </div>
                                         <Button

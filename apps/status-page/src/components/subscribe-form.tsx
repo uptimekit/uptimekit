@@ -94,22 +94,20 @@ export function SubscribeForm({
                     error: result.error || "Unable to subscribe right now.",
                     success: "",
                 });
-                return;
+            } else {
+                event.currentTarget.reset();
+                setState({
+                    error: "",
+                    success: "You're subscribed to status updates.",
+                });
             }
-
-            event.currentTarget.reset();
-            setState({
-                error: "",
-                success: "You're subscribed to status updates.",
-            });
         } catch {
             setState({
                 error: "Unable to subscribe right now.",
                 success: "",
             });
-        } finally {
-            setIsPending(false);
         }
+        setIsPending(false);
     };
 
     return (

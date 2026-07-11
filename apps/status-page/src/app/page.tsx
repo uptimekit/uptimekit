@@ -150,9 +150,10 @@ export default async function StatusPage() {
     const design = (pageConfig.design as any) || {};
     const themeId = design.themeId || "default";
 
-    const ThemePage = await loadThemeComponent(themeId);
-
-    const data = await prepareStatusPageData(pageConfig);
+    const [ThemePage, data] = await Promise.all([
+        loadThemeComponent(themeId),
+        prepareStatusPageData(pageConfig),
+    ]);
 
     return (
         <ThemePageWrapper

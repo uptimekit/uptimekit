@@ -1,11 +1,11 @@
 "use client";
 
 import { type MouseEvent, useState } from "react";
+import { ViewportTooltip } from "@/components/viewport-tooltip";
 import {
     getViewportTooltipPosition,
-    ViewportTooltip,
     type ViewportTooltipPosition,
-} from "@/components/viewport-tooltip";
+} from "@/components/viewport-tooltip-position";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
 import type { StatusType, UptimeDay } from "../../types";

@@ -54,7 +54,7 @@ export function TableBody({
     );
 }
 
-export function TableFooter({
+function TableFooter({
     className,
     ...props
 }: React.ComponentProps<"tfoot">): React.ReactElement {
@@ -118,7 +118,7 @@ export function TableCell({
     );
 }
 
-export function TableCaption({
+function TableCaption({
     className,
     ...props
 }: React.ComponentProps<"caption">): React.ReactElement {

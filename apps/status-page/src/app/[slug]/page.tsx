@@ -101,9 +101,10 @@ export default async function SlugStatusPage({
     const design = (pageConfig.design as any) || {};
     const themeId = design.themeId || "default";
 
-    const ThemePage = await loadThemeComponent(themeId);
-
-    const data = await prepareStatusPageData(pageConfig, slug);
+    const [ThemePage, data] = await Promise.all([
+        loadThemeComponent(themeId),
+        prepareStatusPageData(pageConfig, slug),
+    ]);
 
     return (
         <ThemePageWrapper

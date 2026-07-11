@@ -88,7 +88,7 @@ const workerStatusMeta: Record<
  *
  * @returns The rendered JSX element for the Workers table and its associated controls.
  */
-export function WorkersTable() {
+function useWorkersTableModel() {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<
@@ -162,6 +162,374 @@ export function WorkersTable() {
     const total = data?.total || 0;
     const totalPages = Math.ceil(total / pageSize);
 
+    return {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        statusFilter,
+        setStatusFilter,
+        page,
+        setPage,
+        deleteDialogOpen,
+        setDeleteDialogOpen,
+        workerToDelete,
+        setWorkerToDelete,
+        currentTime,
+        setCurrentTime,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        deleteMutation,
+        handleDeleteClick,
+        confirmDelete,
+        workers,
+        total,
+        totalPages,
+    };
+}
+
+type WorkersTableModel = ReturnType<typeof useWorkersTableModel>;
+
+function WorkersDataTable({ model }: { model: WorkersTableModel }) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        statusFilter,
+        setStatusFilter,
+        page,
+        setPage,
+        deleteDialogOpen,
+        setDeleteDialogOpen,
+        workerToDelete,
+        setWorkerToDelete,
+        currentTime,
+        setCurrentTime,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        deleteMutation,
+        handleDeleteClick,
+        confirmDelete,
+        workers,
+        total,
+        totalPages,
+    } = model;
+    return (
+        <Table>
+            <TableBody>
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            Loading...
+                        </TableCell>
+                    </TableRow>
+                ) : workers.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2 py-6">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+                                    <FontAwesomeIcon
+                                        icon={faMagnifyingGlass}
+                                        className="h-6 w-6 text-muted-foreground"
+                                    />
+                                </div>
+                                <p className="font-medium text-lg">
+                                    No workers found
+                                </p>
+                                <p className="text-muted-foreground text-sm">
+                                    {searchQuery || statusFilter !== "all"
+                                        ? "No workers matching your search."
+                                        : "Get started by adding your first worker."}
+                                </p>
+                                {!searchQuery && statusFilter === "all" && (
+                                    <div className="mt-2">
+                                        <CreateWorkerDialog />
+                                    </div>
+                                )}
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                ) : (
+                    workers.map((worker) => {
+                        const status = getWorkerAvailabilityStatus({
+                            active: worker.active,
+                            lastHeartbeat: worker.lastHeartbeat,
+                            now: currentTime,
+                        });
+                        const statusMeta = workerStatusMeta[status];
+
+                        return (
+                            <TableRow
+                                key={worker.id}
+                                className="group h-[72px] cursor-pointer hover:bg-muted/40"
+                            >
+                                <TableCell className="w-[50px] pl-6">
+                                    <div
+                                        className={cn(
+                                            "h-2.5 w-2.5 rounded-full shadow-sm",
+                                            statusMeta.dotClassName,
+                                        )}
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    <div className="grid gap-1">
+                                        <span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
+                                            {worker.name}
+                                            <span className="ml-2 rounded border px-1 font-normal text-muted-foreground text-xs">
+                                                {worker.version}
+                                            </span>
+                                        </span>
+                                        <div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+                                            <span
+                                                className={
+                                                    statusMeta.textClassName
+                                                }
+                                            >
+                                                {statusMeta.label}
+                                            </span>
+                                            <span>·</span>
+                                            <span className="flex items-center gap-1.5 align-middle">
+                                                {(() => {
+                                                    const regionInfo =
+                                                        getRegionInfo(
+                                                            worker.location,
+                                                        );
+                                                    const Flag =
+                                                        regionInfo.Flag;
+                                                    return (
+                                                        <>
+                                                            {isFontAwesomeRegionFlag(
+                                                                Flag,
+                                                            ) ? (
+                                                                <FontAwesomeIcon
+                                                                    icon={Flag}
+                                                                    className="size-3.5 shrink-0 rounded-sm"
+                                                                />
+                                                            ) : (
+                                                                <Flag className="size-3.5 shrink-0 rounded-sm" />
+                                                            )}
+                                                            <span>
+                                                                {
+                                                                    regionInfo.label
+                                                                }
+                                                            </span>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </span>
+                                            <span>·</span>
+                                            <span>
+                                                Last seen{" "}
+                                                {worker.lastHeartbeat
+                                                    ? formatDistanceToNow(
+                                                          new Date(
+                                                              worker.lastHeartbeat,
+                                                          ),
+                                                          {
+                                                              addSuffix: true,
+                                                          },
+                                                      )
+                                                    : "Never"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="w-[200px] text-right font-medium text-muted-foreground text-sm" />
+                                <TableCell className="w-[50px] pr-4">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger
+                                            render={
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                />
+                                            }
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faEllipsis}
+                                                className="h-4 w-4"
+                                            />
+                                            <span className="sr-only">
+                                                Open menu
+                                            </span>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                                render={
+                                                    <Link
+                                                        href={`/admin/workers/${worker.id}`}
+                                                    />
+                                                }
+                                            >
+                                                Edit worker
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem>
+                                                Rotate Token
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                className="text-red-500"
+                                                variant="destructive"
+                                                onClick={() =>
+                                                    handleDeleteClick(
+                                                        worker.id,
+                                                        worker.name,
+                                                    )
+                                                }
+                                            >
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })
+                )}
+            </TableBody>
+        </Table>
+    );
+}
+
+function WorkersListSection({ model }: { model: WorkersTableModel }) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        statusFilter,
+        setStatusFilter,
+        page,
+        setPage,
+        deleteDialogOpen,
+        setDeleteDialogOpen,
+        workerToDelete,
+        setWorkerToDelete,
+        currentTime,
+        setCurrentTime,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        deleteMutation,
+        handleDeleteClick,
+        confirmDelete,
+        workers,
+        total,
+        totalPages,
+    } = model;
+    return (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+                <FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
+                Workers
+            </div>
+            <WorkersDataTable model={model} />
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
+                    <Pagination className="mx-0 w-auto">
+                        <PaginationContent>
+                            <PaginationItem>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={page === 1}
+                                    onClick={() => setPage(page - 1)}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faChevronLeft}
+                                        className="h-4 w-4"
+                                    />
+                                </Button>
+                            </PaginationItem>
+                            {Array.from(
+                                { length: totalPages },
+                                (_, i) => i + 1,
+                            ).map((p) => {
+                                if (
+                                    totalPages > 7 &&
+                                    (p < page - 2 || p > page + 2) &&
+                                    p !== 1 &&
+                                    p !== totalPages
+                                ) {
+                                    if (p === page - 3 || p === page + 3) {
+                                        return (
+                                            <PaginationItem key={p}>
+                                                <PaginationEllipsis />
+                                            </PaginationItem>
+                                        );
+                                    }
+                                    return null;
+                                }
+
+                                return (
+                                    <PaginationItem key={p}>
+                                        <Button
+                                            variant={
+                                                p === page ? "outline" : "ghost"
+                                            }
+                                            size="icon"
+                                            onClick={() => setPage(p)}
+                                            className="h-8 w-8"
+                                        >
+                                            {p}
+                                        </Button>
+                                    </PaginationItem>
+                                );
+                            })}
+                            <PaginationItem>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setPage(page + 1)}
+                                    disabled={page === totalPages}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faChevronRight}
+                                        className="h-4 w-4"
+                                    />
+                                </Button>
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+        </div>
+    );
+}
+function WorkersTableView({ model }: { model: WorkersTableModel }) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        statusFilter,
+        setStatusFilter,
+        page,
+        setPage,
+        deleteDialogOpen,
+        setDeleteDialogOpen,
+        workerToDelete,
+        setWorkerToDelete,
+        currentTime,
+        setCurrentTime,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        deleteMutation,
+        handleDeleteClick,
+        confirmDelete,
+        workers,
+        total,
+        totalPages,
+    } = model;
     return (
         <div className="mx-auto w-full max-w-6xl space-y-4">
             <div className="flex items-center justify-between gap-4">
@@ -208,267 +576,7 @@ export function WorkersTable() {
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                <div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
-                    <FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
-                    Workers
-                </div>
-                <Table>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={4}
-                                    className="h-24 text-center"
-                                >
-                                    Loading...
-                                </TableCell>
-                            </TableRow>
-                        ) : workers.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={4}
-                                    className="h-24 text-center"
-                                >
-                                    <div className="flex flex-col items-center justify-center gap-2 py-6">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-                                            <FontAwesomeIcon
-                                                icon={faMagnifyingGlass}
-                                                className="h-6 w-6 text-muted-foreground"
-                                            />
-                                        </div>
-                                        <p className="font-medium text-lg">
-                                            No workers found
-                                        </p>
-                                        <p className="text-muted-foreground text-sm">
-                                            {searchQuery ||
-                                            statusFilter !== "all"
-                                                ? "No workers matching your search."
-                                                : "Get started by adding your first worker."}
-                                        </p>
-                                        {!searchQuery &&
-                                            statusFilter === "all" && (
-                                                <div className="mt-2">
-                                                    <CreateWorkerDialog />
-                                                </div>
-                                            )}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            workers.map((worker) => {
-                                const status = getWorkerAvailabilityStatus({
-                                    active: worker.active,
-                                    lastHeartbeat: worker.lastHeartbeat,
-                                    now: currentTime,
-                                });
-                                const statusMeta = workerStatusMeta[status];
-
-                                return (
-                                    <TableRow
-                                        key={worker.id}
-                                        className="group h-[72px] cursor-pointer hover:bg-muted/40"
-                                    >
-                                        <TableCell className="w-[50px] pl-6">
-                                            <div
-                                                className={cn(
-                                                    "h-2.5 w-2.5 rounded-full shadow-sm",
-                                                    statusMeta.dotClassName,
-                                                )}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="grid gap-1">
-                                                <span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
-                                                    {worker.name}
-                                                    <span className="ml-2 rounded border px-1 font-normal text-muted-foreground text-xs">
-                                                        {worker.version}
-                                                    </span>
-                                                </span>
-                                                <div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
-                                                    <span
-                                                        className={
-                                                            statusMeta.textClassName
-                                                        }
-                                                    >
-                                                        {statusMeta.label}
-                                                    </span>
-                                                    <span>·</span>
-                                                    <span className="flex items-center gap-1.5 align-middle">
-                                                        {(() => {
-                                                            const regionInfo =
-                                                                getRegionInfo(
-                                                                    worker.location,
-                                                                );
-                                                            const Flag =
-                                                                regionInfo.Flag;
-                                                            return (
-                                                                <>
-                                                                    {isFontAwesomeRegionFlag(
-                                                                        Flag,
-                                                                    ) ? (
-                                                                        <FontAwesomeIcon
-                                                                            icon={
-                                                                                Flag
-                                                                            }
-                                                                            className="size-3.5 shrink-0 rounded-sm"
-                                                                        />
-                                                                    ) : (
-                                                                        <Flag className="size-3.5 shrink-0 rounded-sm" />
-                                                                    )}
-                                                                    <span>
-                                                                        {
-                                                                            regionInfo.label
-                                                                        }
-                                                                    </span>
-                                                                </>
-                                                            );
-                                                        })()}
-                                                    </span>
-                                                    <span>·</span>
-                                                    <span>
-                                                        Last seen{" "}
-                                                        {worker.lastHeartbeat
-                                                            ? formatDistanceToNow(
-                                                                  new Date(
-                                                                      worker.lastHeartbeat,
-                                                                  ),
-                                                                  {
-                                                                      addSuffix: true,
-                                                                  },
-                                                              )
-                                                            : "Never"}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="w-[200px] text-right font-medium text-muted-foreground text-sm" />
-                                        <TableCell className="w-[50px] pr-4">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger
-                                                    render={
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                        />
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faEllipsis}
-                                                        className="h-4 w-4"
-                                                    />
-                                                    <span className="sr-only">
-                                                        Open menu
-                                                    </span>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        render={
-                                                            <Link
-                                                                href={`/admin/workers/${worker.id}`}
-                                                            />
-                                                        }
-                                                    >
-                                                        Edit worker
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        Rotate Token
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-red-500"
-                                                        variant="destructive"
-                                                        onClick={() =>
-                                                            handleDeleteClick(
-                                                                worker.id,
-                                                                worker.name,
-                                                            )
-                                                        }
-                                                    >
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
-                        <Pagination className="mx-0 w-auto">
-                            <PaginationContent>
-                                <PaginationItem>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        disabled={page === 1}
-                                        onClick={() => setPage(page - 1)}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faChevronLeft}
-                                            className="h-4 w-4"
-                                        />
-                                    </Button>
-                                </PaginationItem>
-                                {Array.from(
-                                    { length: totalPages },
-                                    (_, i) => i + 1,
-                                ).map((p) => {
-                                    if (
-                                        totalPages > 7 &&
-                                        (p < page - 2 || p > page + 2) &&
-                                        p !== 1 &&
-                                        p !== totalPages
-                                    ) {
-                                        if (p === page - 3 || p === page + 3) {
-                                            return (
-                                                <PaginationItem key={p}>
-                                                    <PaginationEllipsis />
-                                                </PaginationItem>
-                                            );
-                                        }
-                                        return null;
-                                    }
-
-                                    return (
-                                        <PaginationItem key={p}>
-                                            <Button
-                                                variant={
-                                                    p === page
-                                                        ? "outline"
-                                                        : "ghost"
-                                                }
-                                                size="icon"
-                                                onClick={() => setPage(p)}
-                                                className="h-8 w-8"
-                                            >
-                                                {p}
-                                            </Button>
-                                        </PaginationItem>
-                                    );
-                                })}
-                                <PaginationItem>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setPage(page + 1)}
-                                        disabled={page === totalPages}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faChevronRight}
-                                            className="h-4 w-4"
-                                        />
-                                    </Button>
-                                </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
-                    </div>
-                )}
-            </div>
+            <WorkersListSection model={model} />
 
             <AlertDialog
                 open={deleteDialogOpen}
@@ -500,4 +608,9 @@ export function WorkersTable() {
             </AlertDialog>
         </div>
     );
+}
+
+export function WorkersTable() {
+    const model = useWorkersTableModel();
+    return <WorkersTableView model={model} />;
 }

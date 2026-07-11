@@ -23,9 +23,9 @@ const issueStatuses = new Set<StatusType>([
 ]);
 
 function getAffectedMonitors(monitorGroups: GroupedMonitors[] = []): Monitor[] {
-    return monitorGroups
-        .flatMap(({ monitors }) => monitors)
-        .filter((monitor) => issueStatuses.has(monitor.currentStatus));
+    return monitorGroups.flatMap(({ monitors }) =>
+        monitors.filter((monitor) => issueStatuses.has(monitor.currentStatus)),
+    );
 }
 
 function getActiveIncidents(activeIssues: Incident[] = []): Incident[] {

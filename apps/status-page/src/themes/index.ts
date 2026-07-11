@@ -11,10 +11,10 @@ export const themeRegistry: Record<string, ThemeManifest> = {
     spark: sparkManifest,
 };
 
-export function getThemeManifest(themeId: string): ThemeManifest | undefined {
+function getThemeManifest(themeId: string): ThemeManifest | undefined {
     return themeRegistry[themeId];
 }
 
-export function getAllThemes(): ThemeManifest[] {
+function getAllThemes(): ThemeManifest[] {
     return Object.values(themeRegistry);
 }

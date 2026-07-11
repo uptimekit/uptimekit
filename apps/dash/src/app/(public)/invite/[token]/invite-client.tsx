@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { sileo } from "sileo";
 import SignInForm from "@/components/auth/sign-in-form";
 import SignUpForm from "@/components/auth/sign-up-form";
@@ -18,6 +18,24 @@ interface InviteClientProps {
     };
 }
 
+async function acceptInvitation(
+    token: string,
+    router: ReturnType<typeof useRouter>,
+) {
+    await authClient.organization.acceptInvitation(
+        { invitationId: token },
+        {
+            onSuccess: () => {
+                sileo.success({ title: "Joined organization successfully" });
+                router.push("/");
+            },
+            onError: (ctx) => {
+                sileo.error({ title: ctx.error.message });
+            },
+        },
+    );
+}
+
 export default function InviteClient({ token, invitation }: InviteClientProps) {
     const { data: session, isPending: isSessionPending } =
         authClient.useSession();
@@ -25,31 +43,13 @@ export default function InviteClient({ token, invitation }: InviteClientProps) {
 
     const [activeTab, setActiveTab] = useState("register");
 
-    const acceptInvite = useCallback(async () => {
-        await authClient.organization.acceptInvitation(
-            {
-                invitationId: token,
-            },
-            {
-                onSuccess: () => {
-                    // better-auth might return organizationId in response
-                    sileo.success({
-                        title: "Joined organization successfully",
-                    });
-                    router.push("/");
-                },
-                onError: (ctx) => {
-                    sileo.error({ title: ctx.error.message });
-                },
-            },
-        );
-    }, [token, router]);
+    const acceptInvite = () => acceptInvitation(token, router);
 
     useEffect(() => {
         if (session) {
-            acceptInvite();
+            void acceptInvitation(token, router);
         }
-    }, [session, acceptInvite]);
+    }, [session, token, router]);
 
     if (isSessionPending || session) {
         return <Loader />;

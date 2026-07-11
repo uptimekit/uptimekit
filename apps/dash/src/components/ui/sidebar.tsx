@@ -62,10 +62,10 @@ export interface SidebarContextProps {
     toggleSidebar: () => void;
 }
 
-export const SidebarContext: React.Context<SidebarContextProps | null> =
+const SidebarContext: React.Context<SidebarContextProps | null> =
     React.createContext<SidebarContextProps | null>(null);
 
-export function useSidebar(): SidebarContextProps {
+function useSidebar(): SidebarContextProps {
     const context = React.useContext(SidebarContext);
     if (!context) {
         throw new Error("useSidebar must be used within a SidebarProvider.");
@@ -94,32 +94,30 @@ export function SidebarProvider({
     // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen);
     const open = openProp ?? _open;
-    const setOpen = React.useCallback(
-        async (value: boolean | ((value: boolean) => boolean)) => {
-            const openState = typeof value === "function" ? value(open) : value;
-            if (setOpenProp) {
-                setOpenProp(openState);
-            } else {
-                _setOpen(openState);
-            }
+    const setOpen = async (value: boolean | ((value: boolean) => boolean)) => {
+        const openState = typeof value === "function" ? value(open) : value;
+        if (setOpenProp) {
+            setOpenProp(openState);
+        } else {
+            _setOpen(openState);
+        }
 
-            // This sets the cookie to keep the sidebar state.
-            await cookieStore.set({
-                expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
-                name: SIDEBAR_COOKIE_NAME,
-                path: "/",
-                value: String(openState),
-            });
-        },
-        [setOpenProp, open],
-    );
+        // This sets the cookie to keep the sidebar state.
+        await cookieStore.set({
+            expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
+            name: SIDEBAR_COOKIE_NAME,
+            path: "/",
+            value: String(openState),
+        });
+    };
 
     // Helper to toggle the sidebar.
-    const toggleSidebar = React.useCallback(() => {
+    const toggleSidebar = () => {
         return isMobile
             ? setOpenMobile((open) => !open)
             : setOpen((open) => !open);
-    }, [isMobile, setOpen]);
+    };
+    const handleKeyboardToggle = React.useEffectEvent(toggleSidebar);
 
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
@@ -129,30 +127,27 @@ export function SidebarProvider({
                 (event.metaKey || event.ctrlKey)
             ) {
                 event.preventDefault();
-                toggleSidebar();
+                handleKeyboardToggle();
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [toggleSidebar]);
+    }, []);
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed";
 
-    const contextValue = React.useMemo<SidebarContextProps>(
-        () => ({
-            isMobile,
-            open,
-            openMobile,
-            setOpen,
-            setOpenMobile,
-            state,
-            toggleSidebar,
-        }),
-        [state, open, setOpen, isMobile, openMobile, toggleSidebar],
-    );
+    const contextValue: SidebarContextProps = {
+        isMobile,
+        open,
+        openMobile,
+        setOpen,
+        setOpenMobile,
+        state,
+        toggleSidebar,
+    };
 
     return (
         <SidebarContext.Provider value={contextValue}>
@@ -355,7 +350,7 @@ export function SidebarInset({
     );
 }
 
-export function SidebarInput({
+function SidebarInput({
     className,
     ...props
 }: React.ComponentProps<typeof Input>): React.ReactElement {
@@ -472,7 +467,7 @@ export function SidebarGroupLabel({
     });
 }
 
-export function SidebarGroupAction({
+function SidebarGroupAction({
     className,
     render,
     ...props
@@ -595,7 +590,7 @@ export function SidebarMenuButton({
     );
 }
 
-export function SidebarMenuAction({
+function SidebarMenuAction({
     className,
     showOnHover = false,
     render,
@@ -627,7 +622,7 @@ export function SidebarMenuAction({
     });
 }
 
-export function SidebarMenuBadge({
+function SidebarMenuBadge({
     className,
     ...props
 }: React.ComponentProps<"div">): React.ReactElement {
@@ -649,17 +644,14 @@ export function SidebarMenuBadge({
     );
 }
 
-export function SidebarMenuSkeleton({
+function SidebarMenuSkeleton({
     className,
     showIcon = false,
     ...props
 }: React.ComponentProps<"div"> & {
     showIcon?: boolean;
 }): React.ReactElement {
-    // Random width between 50 to 90%.
-    const width = React.useMemo(() => {
-        return `${Math.floor(Math.random() * 40) + 50}%`;
-    }, []);
+    const width = "70%";
 
     return (
         <div
@@ -690,7 +682,7 @@ export function SidebarMenuSkeleton({
     );
 }
 
-export function SidebarMenuSub({
+function SidebarMenuSub({
     className,
     ...props
 }: React.ComponentProps<"ul">): React.ReactElement {
@@ -708,7 +700,7 @@ export function SidebarMenuSub({
     );
 }
 
-export function SidebarMenuSubItem({
+function SidebarMenuSubItem({
     className,
     ...props
 }: React.ComponentProps<"li">): React.ReactElement {
@@ -722,7 +714,7 @@ export function SidebarMenuSubItem({
     );
 }
 
-export function SidebarMenuSubButton({
+function SidebarMenuSubButton({
     size = "md",
     isActive = false,
     className,

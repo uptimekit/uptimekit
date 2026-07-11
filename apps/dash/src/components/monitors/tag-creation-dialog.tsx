@@ -107,6 +107,7 @@ export function TagCreationDialog({
                                 <button
                                     key={color}
                                     type="button"
+                                    aria-label={`Select ${color} tag color`}
                                     className="h-8 w-8 rounded-md border-2 transition-all hover:scale-110"
                                     style={{
                                         backgroundColor: color,

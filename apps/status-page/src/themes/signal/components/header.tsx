@@ -6,6 +6,7 @@ import {
     faHouse,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Image from "next/image";
 import Link from "next/link";
 import { SubscribeForm } from "@/components/subscribe-form";
 import { buildPath } from "@/lib/route-utils";
@@ -131,10 +132,12 @@ function Brand({ title, logoUrl }: { title: string; logoUrl?: string }) {
         <>
             {logoUrl ? (
                 <>
-                    {/* biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos */}
-                    <img
+                    <Image
                         src={logoUrl}
                         alt={title}
+                        width={120}
+                        height={24}
+                        unoptimized
                         className="h-6 w-auto rounded"
                     />
                 </>

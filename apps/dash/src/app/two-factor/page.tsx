@@ -86,9 +86,8 @@ export default function TwoFactorPage() {
             }
         } catch (_) {
             sileo.error({ title: "Failed to verify code" });
-        } finally {
-            setIsVerifying(false);
         }
+        setIsVerifying(false);
     };
 
     return (

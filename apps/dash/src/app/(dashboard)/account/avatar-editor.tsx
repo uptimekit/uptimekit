@@ -44,7 +44,7 @@ export function AvatarEditor({ value, onChange, name }: AvatarEditorProps) {
     const handleSave = () => {
         try {
             if (tempUrl) {
-                z.string().url().parse(tempUrl);
+                z.url().parse(tempUrl);
             }
             onChange(tempUrl);
             setDialogOpen(false);
@@ -114,6 +114,7 @@ export function AvatarEditor({ value, onChange, name }: AvatarEditorProps) {
         <>
             <button
                 type="button"
+                aria-label="Add profile picture"
                 onClick={handleOpenDialog}
                 className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-full border border-dashed bg-muted/50 transition-all hover:bg-muted hover:opacity-80"
             >

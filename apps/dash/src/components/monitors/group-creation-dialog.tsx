@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,12 +67,6 @@ export function GroupCreationDialog({
     const { data: groups } = useQuery({
         ...orpc.monitors.listGroups.queryOptions(),
     });
-
-    useEffect(() => {
-        if (open) {
-            setParentId(defaultParentId ?? null);
-        }
-    }, [open, defaultParentId]);
 
     const groupOptions = buildGroupPaths(groups);
 

@@ -43,7 +43,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 
 const formSchema = z.object({
-    email: z.string().email(),
+    email: z.email(),
     role: z.enum(["member", "admin"]),
 });
 

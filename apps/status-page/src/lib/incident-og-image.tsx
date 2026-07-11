@@ -2,15 +2,17 @@ import { ImageResponse } from "next/og";
 import { privateImageResponse } from "./og-responses";
 import { prepareIncidentDetailData } from "./subpage-data-preparer";
 
+const incidentDateFormatter = new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+});
+
 function humanize(value: string) {
     return value.replaceAll("_", " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
 function formatDate(value: Date) {
-    return new Intl.DateTimeFormat("en", {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(value);
+    return incidentDateFormatter.format(value);
 }
 
 export async function incidentImageResponse(
@@ -34,9 +36,9 @@ export async function incidentImageResponse(
                     : incident.severity === "maintenance"
                       ? "#3b82f6"
                       : "#f97316";
-        const monitors = incident.monitors
-            .map((item) => item.monitor?.name)
-            .filter(Boolean);
+        const monitors = incident.monitors.flatMap((item) =>
+            item.monitor?.name ? [item.monitor.name] : [],
+        );
         const affected = monitors.length
             ? `${monitors.slice(0, 3).join(", ")}${monitors.length > 3 ? ` +${monitors.length - 3} more` : ""}`
             : "All services";

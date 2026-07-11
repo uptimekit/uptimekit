@@ -10,13 +10,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export const DialogCreateHandle: typeof DialogPrimitive.createHandle =
+const DialogCreateHandle: typeof DialogPrimitive.createHandle =
     DialogPrimitive.createHandle;
 
 export const Dialog: typeof DialogPrimitive.Root = DialogPrimitive.Root;
 
-export const DialogPortal: typeof DialogPrimitive.Portal =
-    DialogPrimitive.Portal;
+const DialogPortal: typeof DialogPrimitive.Portal = DialogPrimitive.Portal;
 
 export function DialogTrigger({
     render,
@@ -37,7 +36,7 @@ export function DialogClose(
     return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
-export function DialogBackdrop({
+function DialogBackdrop({
     className,
     ...props
 }: DialogPrimitive.Backdrop.Props): React.ReactElement {
@@ -53,7 +52,7 @@ export function DialogBackdrop({
     );
 }
 
-export function DialogViewport({
+function DialogViewport({
     className,
     ...props
 }: DialogPrimitive.Viewport.Props): React.ReactElement {
@@ -219,8 +218,4 @@ export function DialogPanel({
     );
 }
 
-export {
-    DialogBackdrop as DialogOverlay,
-    DialogPopup as DialogContent,
-    DialogPrimitive,
-};
+export { DialogPopup as DialogContent, DialogPrimitive };

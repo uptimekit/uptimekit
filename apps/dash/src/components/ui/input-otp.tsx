@@ -99,5 +99,3 @@ export function InputOTPSeparator({
         />
     );
 }
-
-export { OTPInput as InputOTPPrimitive };

@@ -3,6 +3,7 @@
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
@@ -45,13 +46,29 @@ const profileFormSchema = z.object({
         message: "Name must be at least 2 characters.",
     }),
     image: z
-        .string()
         .url({
             message: "Please enter a valid URL.",
         })
         .optional()
         .or(z.literal("")),
 });
+
+async function submitProfile(values: z.infer<typeof profileFormSchema>) {
+    await authClient.updateUser(
+        {
+            name: values.name,
+            image: values.image || "",
+        },
+        {
+            onSuccess: () => {
+                sileo.success({ title: "Profile updated" });
+            },
+            onError: (ctx) => {
+                sileo.error({ title: ctx.error.message });
+            },
+        },
+    );
+}
 
 const setPasswordSchema = z
     .object({
@@ -145,28 +162,10 @@ function ProfileSettings({ session }: { session: any }) {
         },
     });
 
-    async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
-        await authClient.updateUser(
-            {
-                name: values.name,
-                // Send empty string to clear the image, undefined does nothing
-                image: values.image || "",
-            },
-            {
-                onSuccess: () => {
-                    sileo.success({ title: "Profile updated" });
-                },
-                onError: (ctx) => {
-                    sileo.error({ title: ctx.error.message });
-                },
-            },
-        );
-    }
-
     return (
         <Form {...profileForm}>
             <form
-                onSubmit={profileForm.handleSubmit(onProfileSubmit)}
+                onSubmit={profileForm.handleSubmit(submitProfile)}
                 className="space-y-10"
             >
                 {/* Public Profile Section */}
@@ -461,9 +460,8 @@ function TwoFactorSettings({ session }: { session: any }) {
             }
         } catch (e) {
             console.error(e);
-        } finally {
-            setIsSubmitting(false);
         }
+        setIsSubmitting(false);
     };
 
     const handleVerifyTwoFactor = async () => {
@@ -487,9 +485,8 @@ function TwoFactorSettings({ session }: { session: any }) {
             );
         } catch (e) {
             console.error(e);
-        } finally {
-            setIsSubmitting(false);
         }
+        setIsSubmitting(false);
     };
 
     const handleDisableTwoFactor = async () => {
@@ -567,220 +564,229 @@ function TwoFactorSettings({ session }: { session: any }) {
 
                     <Dialog open={isOpen} onOpenChange={onOpenChange}>
                         <DialogContent>
-                            {!session.user.twoFactorEnabled && (
-                                <>
-                                    <DialogHeader>
-                                        <DialogTitle>
-                                            {step === "password" &&
-                                                "Enable Two-Factor Authentication"}
-                                            {step === "qr" && "Scan QR Code"}
-                                            {step === "backup" &&
-                                                "Backup Codes"}
-                                        </DialogTitle>
-                                        <DialogDescription>
-                                            {step === "password" &&
-                                                "Enter your password to continue."}
-                                            {step === "qr" &&
-                                                "Scan the QR code with your authenticator app."}
-                                            {step === "backup" &&
-                                                "Save these backup codes in a safe place."}
-                                        </DialogDescription>
-                                    </DialogHeader>
-
-                                    <DialogPanel>
-                                        {step === "password" && (
-                                            <div className="space-y-2">
-                                                <Label>Password</Label>
-                                                <Input
-                                                    type="password"
-                                                    value={password}
-                                                    onChange={(e) =>
-                                                        setPassword(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                        )}
-
-                                        {step === "qr" && (
-                                            <div className="flex flex-col items-center gap-4">
-                                                <div className="overflow-hidden rounded-lg border bg-white p-2">
-                                                    {/* biome-ignore lint/performance/noImgElement: external QR generator URL */}
-                                                    <img
-                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpURI)}`}
-                                                        alt="QR Code"
-                                                        className="h-48 w-48"
-                                                    />
-                                                </div>
-                                                <div className="w-full space-y-2">
-                                                    <Label className="block text-center">
-                                                        Verification Code
-                                                    </Label>
-                                                    <div className="flex justify-center">
-                                                        <InputOTP
-                                                            maxLength={6}
-                                                            value={
-                                                                verificationCode
-                                                            }
-                                                            onChange={
-                                                                setVerificationCode
-                                                            }
-                                                        >
-                                                            <InputOTPGroup>
-                                                                <InputOTPSlot
-                                                                    index={0}
-                                                                />
-                                                                <InputOTPSlot
-                                                                    index={1}
-                                                                />
-                                                                <InputOTPSlot
-                                                                    index={2}
-                                                                />
-                                                            </InputOTPGroup>
-                                                            <InputOTPSeparator />
-                                                            <InputOTPGroup>
-                                                                <InputOTPSlot
-                                                                    index={3}
-                                                                />
-                                                                <InputOTPSlot
-                                                                    index={4}
-                                                                />
-                                                                <InputOTPSlot
-                                                                    index={5}
-                                                                />
-                                                            </InputOTPGroup>
-                                                        </InputOTP>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {step === "backup" && (
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {backupCodes.map((code) => (
-                                                        <div
-                                                            key={code}
-                                                            className="rounded bg-muted p-2 text-center font-mono text-sm"
-                                                        >
-                                                            {code}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <Button
-                                                    variant="outline"
-                                                    className="w-full"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(
-                                                            backupCodes.join(
-                                                                "\n",
-                                                            ),
-                                                        );
-                                                        sileo.success({
-                                                            title: "Copied to clipboard",
-                                                        });
-                                                    }}
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faCopy}
-                                                        className="mr-2 h-4 w-4"
-                                                    />{" "}
-                                                    Copy Codes
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </DialogPanel>
-
-                                    <DialogFooter>
-                                        {step === "password" && (
-                                            <Button
-                                                onClick={handleEnableTwoFactor}
-                                                disabled={
-                                                    !password || isSubmitting
-                                                }
-                                            >
-                                                {isSubmitting
-                                                    ? "Verifying..."
-                                                    : "Continue"}
-                                            </Button>
-                                        )}
-                                        {step === "qr" && (
-                                            <Button
-                                                onClick={handleVerifyTwoFactor}
-                                                disabled={
-                                                    verificationCode.length <
-                                                        6 || isSubmitting
-                                                }
-                                            >
-                                                {isSubmitting
-                                                    ? "Activating..."
-                                                    : "Activate"}
-                                            </Button>
-                                        )}
-                                        {step === "backup" && (
-                                            <Button
-                                                onClick={() =>
-                                                    onOpenChange(false)
-                                                }
-                                            >
-                                                Done
-                                            </Button>
-                                        )}
-                                    </DialogFooter>
-                                </>
-                            )}
-
-                            {session.user.twoFactorEnabled && (
-                                <>
-                                    <DialogHeader>
-                                        <DialogTitle>
-                                            Disable Two-Factor Authentication
-                                        </DialogTitle>
-                                        <DialogDescription>
-                                            Enter your password to disable
-                                            two-factor authentication.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogPanel>
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label>Password</Label>
-                                                <Input
-                                                    type="password"
-                                                    value={password}
-                                                    onChange={(e) =>
-                                                        setPassword(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                    </DialogPanel>
-                                    <DialogFooter>
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setIsOpen(false)}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            onClick={handleDisableTwoFactor}
-                                            disabled={!password || isSubmitting}
-                                        >
-                                            {isSubmitting
-                                                ? "Disabling..."
-                                                : "Disable 2FA"}
-                                        </Button>
-                                    </DialogFooter>
-                                </>
+                            {session.user.twoFactorEnabled ? (
+                                <DisableTwoFactorDialog
+                                    password={password}
+                                    isSubmitting={isSubmitting}
+                                    setPassword={setPassword}
+                                    onCancel={() => onOpenChange(false)}
+                                    onDisable={handleDisableTwoFactor}
+                                />
+                            ) : (
+                                <EnableTwoFactorDialog
+                                    step={step}
+                                    password={password}
+                                    totpURI={totpURI}
+                                    verificationCode={verificationCode}
+                                    backupCodes={backupCodes}
+                                    isSubmitting={isSubmitting}
+                                    setPassword={setPassword}
+                                    setVerificationCode={setVerificationCode}
+                                    onContinue={handleEnableTwoFactor}
+                                    onVerify={handleVerifyTwoFactor}
+                                    onDone={() => onOpenChange(false)}
+                                />
                             )}
                         </DialogContent>
                     </Dialog>
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+type EnableTwoFactorDialogProps = {
+    step: "password" | "qr" | "backup";
+    password: string;
+    totpURI: string;
+    verificationCode: string;
+    backupCodes: string[];
+    isSubmitting: boolean;
+    setPassword: (password: string) => void;
+    setVerificationCode: (code: string) => void;
+    onContinue: () => void;
+    onVerify: () => void;
+    onDone: () => void;
+};
+
+function EnableTwoFactorDialog({
+    step,
+    password,
+    totpURI,
+    verificationCode,
+    backupCodes,
+    isSubmitting,
+    setPassword,
+    setVerificationCode,
+    onContinue,
+    onVerify,
+    onDone,
+}: EnableTwoFactorDialogProps) {
+    return (
+        <>
+            <DialogHeader>
+                <DialogTitle>
+                    {step === "password" && "Enable Two-Factor Authentication"}
+                    {step === "qr" && "Scan QR Code"}
+                    {step === "backup" && "Backup Codes"}
+                </DialogTitle>
+                <DialogDescription>
+                    {step === "password" && "Enter your password to continue."}
+                    {step === "qr" &&
+                        "Scan the QR code with your authenticator app."}
+                    {step === "backup" &&
+                        "Save these backup codes in a safe place."}
+                </DialogDescription>
+            </DialogHeader>
+            <DialogPanel>
+                {step === "password" && (
+                    <div className="space-y-2">
+                        <Label>Password</Label>
+                        <Input
+                            type="password"
+                            value={password}
+                            onChange={(event) =>
+                                setPassword(event.target.value)
+                            }
+                        />
+                    </div>
+                )}
+                {step === "qr" && (
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="overflow-hidden rounded-lg border bg-white p-2">
+                            <Image
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpURI)}`}
+                                alt="QR Code"
+                                width={200}
+                                height={200}
+                                className="h-48 w-48"
+                            />
+                        </div>
+                        <div className="w-full space-y-2">
+                            <Label className="block text-center">
+                                Verification Code
+                            </Label>
+                            <div className="flex justify-center">
+                                <InputOTP
+                                    maxLength={6}
+                                    value={verificationCode}
+                                    onChange={setVerificationCode}
+                                >
+                                    <InputOTPGroup>
+                                        <InputOTPSlot index={0} />
+                                        <InputOTPSlot index={1} />
+                                        <InputOTPSlot index={2} />
+                                    </InputOTPGroup>
+                                    <InputOTPSeparator />
+                                    <InputOTPGroup>
+                                        <InputOTPSlot index={3} />
+                                        <InputOTPSlot index={4} />
+                                        <InputOTPSlot index={5} />
+                                    </InputOTPGroup>
+                                </InputOTP>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {step === "backup" && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-2">
+                            {backupCodes.map((code) => (
+                                <div
+                                    key={code}
+                                    className="rounded bg-muted p-2 text-center font-mono text-sm"
+                                >
+                                    {code}
+                                </div>
+                            ))}
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => {
+                                navigator.clipboard.writeText(
+                                    backupCodes.join("\n"),
+                                );
+                                sileo.success({
+                                    title: "Copied to clipboard",
+                                });
+                            }}
+                        >
+                            <FontAwesomeIcon
+                                icon={faCopy}
+                                className="mr-2 h-4 w-4"
+                            />{" "}
+                            Copy Codes
+                        </Button>
+                    </div>
+                )}
+            </DialogPanel>
+            <DialogFooter>
+                {step === "password" && (
+                    <Button
+                        onClick={onContinue}
+                        disabled={!password || isSubmitting}
+                    >
+                        {isSubmitting ? "Verifying..." : "Continue"}
+                    </Button>
+                )}
+                {step === "qr" && (
+                    <Button
+                        onClick={onVerify}
+                        disabled={verificationCode.length < 6 || isSubmitting}
+                    >
+                        {isSubmitting ? "Activating..." : "Activate"}
+                    </Button>
+                )}
+                {step === "backup" && <Button onClick={onDone}>Done</Button>}
+            </DialogFooter>
+        </>
+    );
+}
+
+function DisableTwoFactorDialog({
+    password,
+    isSubmitting,
+    setPassword,
+    onCancel,
+    onDisable,
+}: {
+    password: string;
+    isSubmitting: boolean;
+    setPassword: (password: string) => void;
+    onCancel: () => void;
+    onDisable: () => void;
+}) {
+    return (
+        <>
+            <DialogHeader>
+                <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+                <DialogDescription>
+                    Enter your password to disable two-factor authentication.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogPanel>
+                <div className="space-y-2">
+                    <Label>Password</Label>
+                    <Input
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                    />
+                </div>
+            </DialogPanel>
+            <DialogFooter>
+                <Button variant="outline" onClick={onCancel}>
+                    Cancel
+                </Button>
+                <Button
+                    variant="destructive"
+                    onClick={onDisable}
+                    disabled={!password || isSubmitting}
+                >
+                    {isSubmitting ? "Disabling..." : "Disable 2FA"}
+                </Button>
+            </DialogFooter>
+        </>
     );
 }

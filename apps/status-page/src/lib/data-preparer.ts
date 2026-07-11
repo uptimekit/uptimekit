@@ -219,14 +219,17 @@ export async function prepareStatusPageData(
     const barDays = getBarDays(design);
     const percentDigits = getPercentDigits(design);
 
-    const [activeReports, activeMaintenances, scheduledMaintenances] =
-        await Promise.all([
-            getActiveStatusPageReports(pageConfig.id),
-            getActiveMaintenances(pageConfig.id),
-            getScheduledMaintenances(pageConfig.id),
-        ]);
-
-    const [reports, maintenances, events] = await Promise.all([
+    const [
+        activeReports,
+        activeMaintenances,
+        scheduledMaintenances,
+        reports,
+        maintenances,
+        events,
+    ] = await Promise.all([
+        getActiveStatusPageReports(pageConfig.id),
+        getActiveMaintenances(pageConfig.id),
+        getScheduledMaintenances(pageConfig.id),
         getStatusPageReports(pageConfig.id),
         getMaintenanceHistory(pageConfig.id),
         getStatusPageEvents(pageConfig.id, barDays),
@@ -438,9 +441,9 @@ export async function prepareStatusPageData(
                 if (totalIncidentMs > 0) {
                     const annotation = Array.from(
                         new Set(
-                            reportsOutsideMaintenance
-                                .map((report: any) => report.title)
-                                .filter(Boolean),
+                            reportsOutsideMaintenance.flatMap((report: any) =>
+                                report.title ? [report.title] : [],
+                            ),
                         ),
                     ).join("\n");
 
@@ -461,9 +464,9 @@ export async function prepareStatusPageData(
                 if (maintenanceMs > 0) {
                     const annotation = Array.from(
                         new Set(
-                            maintenanceItems
-                                .map((item: any) => item.title)
-                                .filter(Boolean),
+                            maintenanceItems.flatMap((item: any) =>
+                                item.title ? [item.title] : [],
+                            ),
                         ),
                     ).join("\n");
 

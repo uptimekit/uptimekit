@@ -3,24 +3,7 @@
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-
-export interface ViewportTooltipPosition {
-    left: number;
-    top: number;
-}
-
-const TOOLTIP_OFFSET_PX = 8;
-
-export function getViewportTooltipPosition(
-    element: HTMLElement,
-): ViewportTooltipPosition {
-    const rect = element.getBoundingClientRect();
-
-    return {
-        left: rect.left + rect.width / 2,
-        top: rect.top - TOOLTIP_OFFSET_PX,
-    };
-}
+import type { ViewportTooltipPosition } from "./viewport-tooltip-position";
 
 export function ViewportTooltip({
     children,

@@ -76,19 +76,17 @@ export default async function SlugIncidentDetailsPage({
     const design = (pageConfig.design as any) || {};
     const themeId = design.themeId || "default";
 
-    const IncidentDetailPage = await loadIncidentDetailComponent(themeId);
+    const [IncidentDetailPage, data] = await Promise.all([
+        loadIncidentDetailComponent(themeId),
+        prepareIncidentDetailData(pageConfig, id, slug).catch(() => notFound()),
+    ]);
 
-    try {
-        const data = await prepareIncidentDetailData(pageConfig, id, slug);
-        return (
-            <ThemePageWrapper
-                themeId={themeId}
-                theme={design.theme}
-                ThemeComponent={IncidentDetailPage}
-                componentProps={{ data }}
-            />
-        );
-    } catch {
-        notFound();
-    }
+    return (
+        <ThemePageWrapper
+            themeId={themeId}
+            theme={design.theme}
+            ThemeComponent={IncidentDetailPage}
+            componentProps={{ data }}
+        />
+    );
 }

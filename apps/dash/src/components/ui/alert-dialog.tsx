@@ -5,13 +5,13 @@ import type React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export const AlertDialogCreateHandle: typeof AlertDialogPrimitive.createHandle =
+const AlertDialogCreateHandle: typeof AlertDialogPrimitive.createHandle =
     AlertDialogPrimitive.createHandle;
 
 export const AlertDialog: typeof AlertDialogPrimitive.Root =
     AlertDialogPrimitive.Root;
 
-export const AlertDialogPortal: typeof AlertDialogPrimitive.Portal =
+const AlertDialogPortal: typeof AlertDialogPrimitive.Portal =
     AlertDialogPrimitive.Portal;
 
 export function AlertDialogTrigger({
@@ -27,7 +27,7 @@ export function AlertDialogTrigger({
     );
 }
 
-export function AlertDialogBackdrop({
+function AlertDialogBackdrop({
     className,
     ...props
 }: AlertDialogPrimitive.Backdrop.Props): React.ReactElement {
@@ -43,7 +43,7 @@ export function AlertDialogBackdrop({
     );
 }
 
-export function AlertDialogViewport({
+function AlertDialogViewport({
     className,
     ...props
 }: AlertDialogPrimitive.Viewport.Props): React.ReactElement {
@@ -59,7 +59,7 @@ export function AlertDialogViewport({
     );
 }
 
-export function AlertDialogPopup({
+function AlertDialogPopup({
     className,
     bottomStickOnMobile = true,
     ...props
@@ -156,7 +156,7 @@ export function AlertDialogDescription({
     );
 }
 
-export function AlertDialogClose(
+function AlertDialogClose(
     props: AlertDialogPrimitive.Close.Props,
 ): React.ReactElement {
     return (
@@ -178,7 +178,7 @@ export function AlertDialogCancel({
     );
 }
 
-export function AlertDialogAction({
+function AlertDialogAction({
     className,
     ...props
 }: AlertDialogPrimitive.Close.Props): React.ReactElement {
@@ -192,8 +192,4 @@ export function AlertDialogAction({
     );
 }
 
-export {
-    AlertDialogBackdrop as AlertDialogOverlay,
-    AlertDialogPopup as AlertDialogContent,
-    AlertDialogPrimitive,
-};
+export { AlertDialogPopup as AlertDialogContent, AlertDialogPrimitive };

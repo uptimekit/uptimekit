@@ -114,17 +114,14 @@ const baseSchema = withMonitorTimingRelations(
     }),
 );
 
-const httpUrlSchema = z
-    .string()
-    .url("Must be a valid URL")
-    .refine((value) => {
-        try {
-            const url = new URL(value);
-            return url.protocol === "http:" || url.protocol === "https:";
-        } catch {
-            return false;
-        }
-    }, "URL must start with http:// or https://");
+const httpUrlSchema = z.url("Must be a valid URL").refine((value) => {
+    try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+        return false;
+    }
+}, "URL must start with http:// or https://");
 
 const httpSchema = z.object({
     type: z.literal("http"),
@@ -594,11 +591,53 @@ const InstatusFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
             name: "url" as any,
         }) as string | undefined) ?? "";
     const trimmedStatusPageUrl = statusPageUrl.trim();
+    const previousStatusPageUrlRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        const previousStatusPageUrl = previousStatusPageUrlRef.current;
+        previousStatusPageUrlRef.current = trimmedStatusPageUrl;
+
+        if (
+            previousStatusPageUrl === null ||
+            previousStatusPageUrl === trimmedStatusPageUrl
+        ) {
+            return;
+        }
+
+        form.setValue("componentId" as any, "", {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+        form.setValue("hostname", "", {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+    }, [form, trimmedStatusPageUrl]);
+
+    return (
+        <>
+            <UrlField form={form} />
+            <InstatusComponentField
+                key={trimmedStatusPageUrl}
+                form={form}
+                statusPageUrl={trimmedStatusPageUrl}
+            />
+        </>
+    );
+};
+
+function InstatusComponentField({
+    form,
+    statusPageUrl,
+}: {
+    form: UseFormReturn<FormValues>;
+    statusPageUrl: string;
+}) {
+    const trimmedStatusPageUrl = statusPageUrl;
     const canLoadComponents = isHttpStatusPageUrl(trimmedStatusPageUrl);
     const [componentsRequestedUrl, setComponentsRequestedUrl] = useState<
         string | null
     >(null);
-    const previousStatusPageUrlRef = useRef<string | null>(null);
     const { data, isLoading, error } = useQuery({
         ...orpc.monitors.listExternalComponents.queryOptions({
             input: {
@@ -635,28 +674,6 @@ const InstatusFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
             ? `Previously matched by name: ${selectedComponentName}. Select the exact component to avoid duplicate names.`
             : "Select the exact upstream component. The component ID is saved so duplicate names stay separate.";
 
-    useEffect(() => {
-        const previousStatusPageUrl = previousStatusPageUrlRef.current;
-        previousStatusPageUrlRef.current = trimmedStatusPageUrl;
-
-        if (
-            previousStatusPageUrl === null ||
-            previousStatusPageUrl === trimmedStatusPageUrl
-        ) {
-            return;
-        }
-
-        form.setValue("componentId" as any, "", {
-            shouldDirty: true,
-            shouldValidate: true,
-        });
-        form.setValue("hostname", "", {
-            shouldDirty: true,
-            shouldValidate: true,
-        });
-        setComponentsRequestedUrl(null);
-    }, [form, trimmedStatusPageUrl]);
-
     const handleSelectComponent = (component: ExternalComponentOption) => {
         form.setValue("componentId" as any, component.id, {
             shouldDirty: true,
@@ -669,115 +686,108 @@ const InstatusFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
     };
 
     return (
-        <>
-            <UrlField form={form} />
-            <FormField
-                control={form.control}
-                name={"componentId" as any}
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Status component</FormLabel>
-                        <Select
-                            disabled={!canLoadComponents}
-                            onOpenChange={(open) => {
-                                if (open && canLoadComponents) {
-                                    setComponentsRequestedUrl(
-                                        trimmedStatusPageUrl,
-                                    );
-                                }
-                            }}
-                            onValueChange={(componentId) => {
-                                const component = components.find(
-                                    (item) => item.id === componentId,
-                                );
-                                if (component) {
-                                    handleSelectComponent(component);
-                                }
-                            }}
-                            value={(field.value as string | undefined) || ""}
-                        >
-                            <FormControl>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue
-                                        placeholder={
-                                            canLoadComponents
-                                                ? "Select a status component"
-                                                : "Enter a valid Instatus URL first"
-                                        }
-                                    >
-                                        {selectedComponentLabel}
-                                    </SelectValue>
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="max-h-80">
-                                {isLoading ? (
-                                    <div className="p-3 text-muted-foreground text-sm">
-                                        Loading components...
-                                    </div>
-                                ) : error ? (
-                                    <div className="p-3 text-destructive text-sm">
-                                        Unable to load components.
-                                    </div>
-                                ) : groupedComponents.length === 0 ? (
-                                    <div className="p-3 text-muted-foreground text-sm">
-                                        No components found.
-                                    </div>
-                                ) : (
-                                    groupedComponents.map(
-                                        ([groupName, groupComponents]) => (
-                                            <SelectGroup key={groupName}>
-                                                <SelectGroupLabel>
-                                                    {groupName}
-                                                </SelectGroupLabel>
-                                                {groupComponents.map(
-                                                    (component) => (
-                                                        <SelectItem
-                                                            key={component.id}
-                                                            value={component.id}
-                                                        >
-                                                            <div className="min-w-0 space-y-1">
-                                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                                                    <span className="truncate font-medium">
-                                                                        {
-                                                                            component.name
-                                                                        }
-                                                                    </span>
-                                                                    <Badge
-                                                                        size="sm"
-                                                                        variant={getExternalStatusBadgeVariant(
-                                                                            component.status,
-                                                                        )}
-                                                                    >
-                                                                        {formatExternalStatus(
-                                                                            component.status,
-                                                                        )}
-                                                                    </Badge>
-                                                                </div>
-                                                                <div className="truncate text-muted-foreground text-xs">
-                                                                    {formatShortComponentId(
-                                                                        component.id,
+        <FormField
+            control={form.control}
+            name={"componentId" as any}
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Status component</FormLabel>
+                    <Select
+                        disabled={!canLoadComponents}
+                        onOpenChange={(open) => {
+                            if (open && canLoadComponents) {
+                                setComponentsRequestedUrl(trimmedStatusPageUrl);
+                            }
+                        }}
+                        onValueChange={(componentId) => {
+                            const component = components.find(
+                                (item) => item.id === componentId,
+                            );
+                            if (component) {
+                                handleSelectComponent(component);
+                            }
+                        }}
+                        value={(field.value as string | undefined) || ""}
+                    >
+                        <FormControl>
+                            <SelectTrigger className="w-full">
+                                <SelectValue
+                                    placeholder={
+                                        canLoadComponents
+                                            ? "Select a status component"
+                                            : "Enter a valid Instatus URL first"
+                                    }
+                                >
+                                    {selectedComponentLabel}
+                                </SelectValue>
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-80">
+                            {isLoading ? (
+                                <div className="p-3 text-muted-foreground text-sm">
+                                    Loading components...
+                                </div>
+                            ) : error ? (
+                                <div className="p-3 text-destructive text-sm">
+                                    Unable to load components.
+                                </div>
+                            ) : groupedComponents.length === 0 ? (
+                                <div className="p-3 text-muted-foreground text-sm">
+                                    No components found.
+                                </div>
+                            ) : (
+                                groupedComponents.map(
+                                    ([groupName, groupComponents]) => (
+                                        <SelectGroup key={groupName}>
+                                            <SelectGroupLabel>
+                                                {groupName}
+                                            </SelectGroupLabel>
+                                            {groupComponents.map(
+                                                (component) => (
+                                                    <SelectItem
+                                                        key={component.id}
+                                                        value={component.id}
+                                                    >
+                                                        <div className="min-w-0 space-y-1">
+                                                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                                <span className="truncate font-medium">
+                                                                    {
+                                                                        component.name
+                                                                    }
+                                                                </span>
+                                                                <Badge
+                                                                    size="sm"
+                                                                    variant={getExternalStatusBadgeVariant(
+                                                                        component.status,
                                                                     )}
-                                                                </div>
+                                                                >
+                                                                    {formatExternalStatus(
+                                                                        component.status,
+                                                                    )}
+                                                                </Badge>
                                                             </div>
-                                                        </SelectItem>
-                                                    ),
-                                                )}
-                                            </SelectGroup>
-                                        ),
-                                    )
-                                )}
-                            </SelectContent>
-                        </Select>
-                        <FormDescription>
-                            {componentDescription}
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-        </>
+                                                            <div className="truncate text-muted-foreground text-xs">
+                                                                {formatShortComponentId(
+                                                                    component.id,
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectGroup>
+                                    ),
+                                )
+                            )}
+                        </SelectContent>
+                    </Select>
+                    <FormDescription>{componentDescription}</FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
     );
-};
+}
 
 const monitorTypes: MonitorTypeDefinition[] = [
     {
@@ -1102,6 +1112,62 @@ const HttpAdvancedFields = ({ form }: { form: UseFormReturn<FormValues> }) => {
     );
 };
 
+function WorkerSelectionItem({
+    form,
+    worker,
+}: {
+    form: UseFormReturn<FormValues>;
+    worker: ActiveWorkerOption;
+}) {
+    const regionInfo = getRegionInfo(worker.location);
+    const Flag = regionInfo.Flag;
+
+    return (
+        <FormField
+            control={form.control}
+            name="workerIds"
+            render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md bg-muted/50 p-4">
+                    <FormControl>
+                        <Checkbox
+                            checked={field.value?.includes(worker.id)}
+                            onCheckedChange={(checked) =>
+                                field.onChange(
+                                    checked
+                                        ? [...field.value, worker.id]
+                                        : field.value?.filter(
+                                              (value) => value !== worker.id,
+                                          ),
+                                )
+                            }
+                        />
+                    </FormControl>
+                    <div className="flex items-center gap-2 space-y-1 leading-none">
+                        <div className="relative size-6 overflow-hidden shadow-sm">
+                            {isFontAwesomeRegionFlag(Flag) ? (
+                                <FontAwesomeIcon
+                                    icon={Flag}
+                                    className="h-full w-full"
+                                />
+                            ) : (
+                                <Flag className="h-full w-full" />
+                            )}
+                        </div>
+                        <div className="min-w-0">
+                            <FormLabel className="cursor-pointer font-normal">
+                                {worker.name}
+                            </FormLabel>
+                            <p className="truncate text-muted-foreground text-xs">
+                                {regionInfo.label}
+                            </p>
+                        </div>
+                    </div>
+                </FormItem>
+            )}
+        />
+    );
+}
+
 // ... (CreateMonitorForm update)
 
 interface CreateMonitorFormProps {
@@ -1120,7 +1186,7 @@ interface CreateMonitorFormProps {
  * @param initialData - Optional initial values used to prefill the form for editing.
  * @returns The rendered CreateMonitorForm component UI.
  */
-export function CreateMonitorForm({
+function useCreateMonitorFormModel({
     monitorId,
     initialData,
 }: CreateMonitorFormProps) {
@@ -1141,8 +1207,7 @@ export function CreateMonitorForm({
     const [manageGroupsOpen, setManageGroupsOpen] = useState(false);
     const [tagsOpen, setTagsOpen] = useState(false);
     const [manageTagsOpen, setManageTagsOpen] = useState(false);
-    const [defaultNotificationsApplied, setDefaultNotificationsApplied] =
-        useState(false);
+    const defaultNotificationsAppliedRef = useRef(false);
 
     const getFormValuesFromInitialData = (): FormValues => {
         const defaults = (initialData as any) || {};
@@ -1200,7 +1265,7 @@ export function CreateMonitorForm({
     useEffect(() => {
         if (
             monitorId ||
-            defaultNotificationsApplied ||
+            defaultNotificationsAppliedRef.current ||
             !configuredNotifications
         ) {
             return;
@@ -1208,12 +1273,12 @@ export function CreateMonitorForm({
 
         form.setValue(
             "notificationIds",
-            configuredNotifications
-                .filter((notification) => notification.isDefault)
-                .map((notification) => notification.id),
+            configuredNotifications.flatMap((notification) =>
+                notification.isDefault ? [notification.id] : [],
+            ),
         );
-        setDefaultNotificationsApplied(true);
-    }, [configuredNotifications, defaultNotificationsApplied, form, monitorId]);
+        defaultNotificationsAppliedRef.current = true;
+    }, [configuredNotifications, form, monitorId]);
 
     const { mutate, isPending } = useMutation({
         mutationFn: async (data: FormValues) => {
@@ -1348,8 +1413,11 @@ export function CreateMonitorForm({
         }
     };
 
-    const type = form.watch("type");
-    const heartbeatInterval = form.watch("interval");
+    const type = useWatch({ control: form.control, name: "type" });
+    const heartbeatInterval = useWatch({
+        control: form.control,
+        name: "interval",
+    });
     const selectedType =
         monitorTypes.find((t) => t.id === type) || monitorTypes[0];
 
@@ -1366,14 +1434,16 @@ export function CreateMonitorForm({
         }
     }, [heartbeatInterval, form]);
 
-    const workerIds = form.watch("workerIds") || [];
+    const workerIds =
+        useWatch({ control: form.control, name: "workerIds" }) || [];
     const hasAnySelection = workerIds.length > 0;
     const regionLimit = organizationQuota?.regionsPerMonitorLimit ?? null;
     const activeMonitorLimit = organizationQuota?.activeMonitorLimit ?? null;
     const selectedRegionCount = workerIds.length;
     const isOverRegionLimit =
         regionLimit !== null && selectedRegionCount > regionLimit;
-    const selectedNotificationIds = form.watch("notificationIds") || [];
+    const selectedNotificationIds =
+        useWatch({ control: form.control, name: "notificationIds" }) || [];
 
     // State for collapsible continents
     const [openContinents, setOpenContinents] = useState<
@@ -1413,1196 +1483,1913 @@ export function CreateMonitorForm({
         }
     };
 
+    return {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    };
+}
+
+type CreateMonitorFormModel = ReturnType<typeof useCreateMonitorFormModel>;
+
+function CreateMonitorFormFiltersSection7({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
     return (
-        <>
-            <Form {...form}>
-                <form
-                    onSubmit={form.handleSubmit(submitForm)}
-                    className="space-y-10 pb-20"
-                >
-                    {/* ... (What to monitor Section remains same) ... */}
+        <FormField
+            control={form.control}
+            name="tags"
+            render={({ field }) => {
+                const selectedTags = (tags || []).filter((tag) =>
+                    field.value?.includes(tag.id),
+                );
+                type TagOption = NonNullable<typeof tags>[number];
 
-                    {/* ... (General Settings Section updated) ... */}
-                    {/* Section: What to monitor */}
-                    <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-                        <div className="col-span-1">
-                            <h2 className="font-semibold text-lg leading-tight tracking-tight">
-                                What to monitor
-                            </h2>
-                            <p className="mt-1 text-muted-foreground text-sm">
-                                Select the type of monitor and enter the target
-                                details.
-                            </p>
+                return (
+                    <FormItem>
+                        <FormLabel>Tags</FormLabel>
+                        <Combobox
+                            items={tags || []}
+                            value={selectedTags}
+                            onValueChange={(newValue) => {
+                                const values = newValue as Array<
+                                    TagOption | "create_tag"
+                                >;
+
+                                if (values.includes("create_tag")) {
+                                    setTagsOpen(true);
+                                    return;
+                                }
+
+                                const tagValues = values.filter(
+                                    (tag): tag is TagOption =>
+                                        tag !== "create_tag",
+                                );
+
+                                field.onChange(tagValues.map((tag) => tag.id));
+                            }}
+                            multiple
+                        >
+                            <ComboboxChips>
+                                <ComboboxValue>
+                                    {(value: typeof selectedTags) => (
+                                        <>
+                                            {value?.map((tag) => (
+                                                <ComboboxChip
+                                                    key={tag.id}
+                                                    aria-label={tag.name}
+                                                    style={{
+                                                        backgroundColor: `${tag.color}20`,
+                                                        color: tag.color,
+                                                    }}
+                                                >
+                                                    {tag.name}
+                                                </ComboboxChip>
+                                            ))}
+                                            <ComboboxChipsInput
+                                                aria-label="Select tags"
+                                                placeholder={
+                                                    value && value.length > 0
+                                                        ? undefined
+                                                        : "Select tags"
+                                                }
+                                            />
+                                        </>
+                                    )}
+                                </ComboboxValue>
+                            </ComboboxChips>
+                            <ComboboxPopup>
+                                <ComboboxEmpty>No tags found.</ComboboxEmpty>
+                                <ComboboxList>
+                                    {(tags || []).map((tag) => (
+                                        <ComboboxItem key={tag.id} value={tag}>
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="h-2 w-2 rounded-full"
+                                                    style={{
+                                                        backgroundColor:
+                                                            tag.color,
+                                                    }}
+                                                />
+                                                {tag.name}
+                                            </div>
+                                        </ComboboxItem>
+                                    ))}
+
+                                    <ComboboxSeparator />
+
+                                    <ComboboxItem
+                                        key="create_tag"
+                                        value="create_tag"
+                                        className="hover:bg-muted"
+                                    >
+                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                            <FontAwesomeIcon
+                                                icon={faPlus}
+                                                className="h-4 w-4"
+                                            />
+                                            <span>Create tag</span>
+                                        </div>
+                                    </ComboboxItem>
+                                </ComboboxList>
+                            </ComboboxPopup>
+                        </Combobox>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setManageTagsOpen(true)}
+                            >
+                                Edit tags
+                            </Button>
                         </div>
+                        <FormMessage />
+                    </FormItem>
+                );
+            }}
+        />
+    );
+}
 
-                        <Card className="col-span-1 md:col-span-2">
-                            <CardContent className="space-y-6 p-6">
-                                <FormField
-                                    control={form.control}
-                                    name="type"
-                                    render={({ field }) => {
-                                        const selectedType = monitorTypes.find(
-                                            (t) => t.id === field.value,
-                                        );
-                                        return (
-                                            <FormItem className="flex flex-col">
-                                                <FormLabel>
-                                                    Monitor Type
-                                                </FormLabel>
-                                                <Combobox
-                                                    items={monitorTypes}
-                                                    value={selectedType}
-                                                    onValueChange={(value) =>
-                                                        value &&
-                                                        handleMonitorTypeChange(
-                                                            value.id,
+function CreateMonitorFormContentSection6({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+            <FormField
+                control={form.control}
+                name="groupId"
+                render={({ field }) => {
+                    const groupOptions = buildGroupPaths(groups);
+                    return (
+                        <FormItem>
+                            <FormLabel>Group</FormLabel>
+                            <Select
+                                onValueChange={(val) => {
+                                    if (val === CREATE_GROUP_SELECT_VALUE) {
+                                        setGroupsOpen(true);
+                                        return;
+                                    }
+
+                                    field.onChange(
+                                        val === NONE_SELECT_VALUE ? null : val,
+                                    );
+                                }}
+                                value={field.value || NONE_SELECT_VALUE}
+                            >
+                                <FormControl>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue
+                                            placeholder={NO_GROUP_LABEL}
+                                        >
+                                            {(value) =>
+                                                resolveGroupPathLabel(
+                                                    value as string,
+                                                    groupOptions,
+                                                    NO_GROUP_LABEL,
+                                                )
+                                            }
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value={NONE_SELECT_VALUE}>
+                                        {NO_GROUP_LABEL}
+                                    </SelectItem>
+                                    {groupOptions.map(
+                                        ({ group, path, depth }) => (
+                                            <SelectItem
+                                                key={group.id}
+                                                value={group.id}
+                                            >
+                                                <span
+                                                    style={{
+                                                        paddingLeft: depth * 12,
+                                                    }}
+                                                >
+                                                    {path}
+                                                </span>
+                                            </SelectItem>
+                                        ),
+                                    )}
+                                    <div className="my-1 border-t" />
+                                    <SelectItem
+                                        value={CREATE_GROUP_SELECT_VALUE}
+                                    >
+                                        <span className="flex items-center gap-2 text-muted-foreground">
+                                            <FontAwesomeIcon
+                                                icon={faPlus}
+                                                className="h-4 w-4"
+                                            />
+                                            <span>Create group</span>
+                                        </span>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setManageGroupsOpen(true)}
+                                >
+                                    Edit groups
+                                </Button>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    );
+                }}
+            />
+
+            <CreateMonitorFormFiltersSection7 model={model} />
+        </div>
+    );
+}
+
+function CreateMonitorFormCardSection5({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <CardContent className="space-y-6 p-6">
+            <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Display name</FormLabel>
+                        <FormControl>
+                            <Input placeholder="My Monitor" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+
+            <CreateMonitorFormContentSection6 model={model} />
+            {!(selectedType.id === "instatus") ? (
+                <>
+                    <TimingNumberField
+                        form={form}
+                        name="interval"
+                        min={10}
+                        label={(value) =>
+                            `Heartbeat Interval (Check every ${formatSeconds(value)})`
+                        }
+                        description={(value) => formatSeconds(value)}
+                    />
+
+                    {/* Workers Field */}
+                    <FormField
+                        control={form.control}
+                        name="workerIds"
+                        render={() => (
+                            <FormItem>
+                                <FormLabel className="flex items-center justify-between">
+                                    Workers
+                                    <Button
+                                        type="button"
+                                        variant="link"
+                                        className="h-auto p-0 text-xs"
+                                        onClick={handleSelectAllWorkers}
+                                    >
+                                        {hasAnySelection
+                                            ? "Deselect all"
+                                            : "Select all"}
+                                    </Button>
+                                </FormLabel>
+                                <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                        {activeMonitorLimit === null ? (
+                                            ""
+                                        ) : (
+                                            <span className="font-medium">
+                                                Active monitors:{" "}
+                                                {organizationQuota?.activeMonitorCount ??
+                                                    0}
+                                                {` / ${activeMonitorLimit}`}
+                                            </span>
+                                        )}
+                                        {regionLimit === null ? (
+                                            ""
+                                        ) : (
+                                            <span className="text-muted-foreground">
+                                                Selected workers:{" "}
+                                                {selectedRegionCount}
+                                                {` / ${regionLimit}`}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {isOverRegionLimit && (
+                                        <p className="mt-2 text-destructive text-xs">
+                                            This organization allows at most{" "}
+                                            {regionLimit} worker(s) per monitor.
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    {Object.entries(workersByContinent)
+                                        .sort(([a], [b]) => a.localeCompare(b))
+                                        .map(
+                                            ([continent, continentWorkers]) => (
+                                                <Collapsible
+                                                    key={continent}
+                                                    open={
+                                                        openContinents[
+                                                            continent
+                                                        ]
+                                                    }
+                                                    onOpenChange={() =>
+                                                        toggleContinent(
+                                                            continent,
                                                         )
                                                     }
                                                 >
-                                                    <ComboboxValue>
-                                                        {(
-                                                            value: (typeof monitorTypes)[number],
-                                                        ) => (
-                                                            <ComboboxInput
-                                                                placeholder="Select type"
-                                                                startAddon={
-                                                                    value ? (
-                                                                        <FontAwesomeIcon
-                                                                            icon={
-                                                                                value.icon
-                                                                            }
-                                                                            className="h-4 w-4 text-muted-foreground"
-                                                                        />
-                                                                    ) : undefined
-                                                                }
-                                                            />
-                                                        )}
-                                                    </ComboboxValue>
-                                                    <ComboboxPopup>
-                                                        <ComboboxEmpty>
-                                                            No type found.
-                                                        </ComboboxEmpty>
-                                                        <ComboboxList>
-                                                            {(type) => (
-                                                                <ComboboxItem
-                                                                    key={
-                                                                        type.id
-                                                                    }
-                                                                    value={type}
-                                                                >
-                                                                    <div className="flex items-center gap-3">
-                                                                        <FontAwesomeIcon
-                                                                            icon={
-                                                                                type.icon
-                                                                            }
-                                                                            className="h-4 w-4 text-muted-foreground"
-                                                                        />
-                                                                        <div className="flex flex-col">
-                                                                            <span>
-                                                                                {
-                                                                                    type.label
-                                                                                }
-                                                                            </span>
-                                                                            <span className="text-muted-foreground text-xs">
-                                                                                {
-                                                                                    type.description
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </ComboboxItem>
-                                                            )}
-                                                        </ComboboxList>
-                                                    </ComboboxPopup>
-                                                </Combobox>
-                                                <FormMessage />
-                                            </FormItem>
-                                        );
-                                    }}
-                                />
-
-                                {/* Dynamic Fields based on Type */}
-                                {selectedType && (
-                                    <selectedType.Fields form={form} />
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <Separator />
-
-                    {/* Section: General Settings */}
-                    <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-                        <div className="col-span-1">
-                            <h2 className="font-semibold text-lg leading-tight tracking-tight">
-                                General settings
-                            </h2>
-                            <p className="mt-1 text-muted-foreground text-sm">
-                                Configure the display name and monitoring
-                                frequency.
-                            </p>
-                        </div>
-
-                        <Card className="col-span-1 md:col-span-2">
-                            <CardContent className="space-y-6 p-6">
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Display name</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="My Monitor"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-                                    <FormField
-                                        control={form.control}
-                                        name="groupId"
-                                        render={({ field }) => {
-                                            const groupOptions =
-                                                buildGroupPaths(groups);
-                                            return (
-                                                <FormItem>
-                                                    <FormLabel>Group</FormLabel>
-                                                    <Select
-                                                        onValueChange={(
-                                                            val,
-                                                        ) => {
-                                                            if (
-                                                                val ===
-                                                                CREATE_GROUP_SELECT_VALUE
-                                                            ) {
-                                                                setGroupsOpen(
-                                                                    true,
-                                                                );
-                                                                return;
+                                                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-muted/30 px-4 py-2 font-semibold text-sm hover:bg-muted/50">
+                                                        <span>{continent}</span>
+                                                        <FontAwesomeIcon
+                                                            icon={
+                                                                faChevronRight
                                                             }
-
-                                                            field.onChange(
-                                                                val ===
-                                                                    NONE_SELECT_VALUE
-                                                                    ? null
-                                                                    : val,
-                                                            );
-                                                        }}
-                                                        value={
-                                                            field.value ||
-                                                            NONE_SELECT_VALUE
-                                                        }
-                                                    >
-                                                        <FormControl>
-                                                            <SelectTrigger className="w-full">
-                                                                <SelectValue
-                                                                    placeholder={
-                                                                        NO_GROUP_LABEL
-                                                                    }
-                                                                >
-                                                                    {(value) =>
-                                                                        resolveGroupPathLabel(
-                                                                            value as string,
-                                                                            groupOptions,
-                                                                            NO_GROUP_LABEL,
-                                                                        )
-                                                                    }
-                                                                </SelectValue>
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem
-                                                                value={
-                                                                    NONE_SELECT_VALUE
-                                                                }
-                                                            >
-                                                                {NO_GROUP_LABEL}
-                                                            </SelectItem>
-                                                            {groupOptions.map(
-                                                                ({
-                                                                    group,
-                                                                    path,
-                                                                    depth,
-                                                                }) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            group.id
-                                                                        }
-                                                                        value={
-                                                                            group.id
-                                                                        }
-                                                                    >
-                                                                        <span
-                                                                            style={{
-                                                                                paddingLeft:
-                                                                                    depth *
-                                                                                    12,
-                                                                            }}
-                                                                        >
-                                                                            {
-                                                                                path
-                                                                            }
-                                                                        </span>
-                                                                    </SelectItem>
-                                                                ),
+                                                            className={cn(
+                                                                "h-4 w-4 transition-transform duration-200",
+                                                                openContinents[
+                                                                    continent
+                                                                ] &&
+                                                                    "rotate-90",
                                                             )}
-                                                            <div className="my-1 border-t" />
-                                                            <SelectItem
-                                                                value={
-                                                                    CREATE_GROUP_SELECT_VALUE
-                                                                }
-                                                            >
-                                                                <span className="flex items-center gap-2 text-muted-foreground">
-                                                                    <FontAwesomeIcon
-                                                                        icon={
-                                                                            faPlus
+                                                        />
+                                                    </CollapsibleTrigger>
+                                                    <CollapsibleContent>
+                                                        <div className="grid grid-cols-2 gap-2 pt-2">
+                                                            {continentWorkers?.map(
+                                                                (worker) => (
+                                                                    <WorkerSelectionItem
+                                                                        key={
+                                                                            worker.id
                                                                         }
-                                                                        className="h-4 w-4"
+                                                                        form={
+                                                                            form
+                                                                        }
+                                                                        worker={
+                                                                            worker
+                                                                        }
                                                                     />
-                                                                    <span>
-                                                                        Create
-                                                                        group
-                                                                    </span>
-                                                                </span>
-                                                            </SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                setManageGroupsOpen(
-                                                                    true,
-                                                                )
-                                                            }
-                                                        >
-                                                            Edit groups
-                                                        </Button>
-                                                    </div>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            );
-                                        }}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="tags"
-                                        render={({ field }) => {
-                                            const selectedTags = (
-                                                tags || []
-                                            ).filter((tag) =>
-                                                field.value?.includes(tag.id),
-                                            );
-                                            type TagOption = NonNullable<
-                                                typeof tags
-                                            >[number];
-
-                                            return (
-                                                <FormItem>
-                                                    <FormLabel>Tags</FormLabel>
-                                                    <Combobox
-                                                        items={tags || []}
-                                                        value={selectedTags}
-                                                        onValueChange={(
-                                                            newValue,
-                                                        ) => {
-                                                            const values =
-                                                                newValue as Array<
-                                                                    | TagOption
-                                                                    | "create_tag"
-                                                                >;
-
-                                                            if (
-                                                                values.includes(
-                                                                    "create_tag",
-                                                                )
-                                                            ) {
-                                                                setTagsOpen(
-                                                                    true,
-                                                                );
-                                                                return;
-                                                            }
-
-                                                            const tagValues =
-                                                                values.filter(
-                                                                    (
-                                                                        tag,
-                                                                    ): tag is TagOption =>
-                                                                        tag !==
-                                                                        "create_tag",
-                                                                );
-
-                                                            field.onChange(
-                                                                tagValues.map(
-                                                                    (tag) =>
-                                                                        tag.id,
                                                                 ),
-                                                            );
-                                                        }}
-                                                        multiple
-                                                    >
-                                                        <ComboboxChips>
-                                                            <ComboboxValue>
-                                                                {(
-                                                                    value: typeof selectedTags,
-                                                                ) => (
-                                                                    <>
-                                                                        {value?.map(
-                                                                            (
-                                                                                tag,
-                                                                            ) => (
-                                                                                <ComboboxChip
-                                                                                    key={
-                                                                                        tag.id
-                                                                                    }
-                                                                                    aria-label={
-                                                                                        tag.name
-                                                                                    }
-                                                                                    style={{
-                                                                                        backgroundColor: `${tag.color}20`,
-                                                                                        color: tag.color,
-                                                                                    }}
-                                                                                >
-                                                                                    {
-                                                                                        tag.name
-                                                                                    }
-                                                                                </ComboboxChip>
-                                                                            ),
-                                                                        )}
-                                                                        <ComboboxChipsInput
-                                                                            aria-label="Select tags"
-                                                                            placeholder={
-                                                                                value &&
-                                                                                value.length >
-                                                                                    0
-                                                                                    ? undefined
-                                                                                    : "Select tags"
-                                                                            }
-                                                                        />
-                                                                    </>
-                                                                )}
-                                                            </ComboboxValue>
-                                                        </ComboboxChips>
-                                                        <ComboboxPopup>
-                                                            <ComboboxEmpty>
-                                                                No tags found.
-                                                            </ComboboxEmpty>
-                                                            <ComboboxList>
-                                                                {(
-                                                                    tags || []
-                                                                ).map((tag) => (
-                                                                    <ComboboxItem
-                                                                        key={
-                                                                            tag.id
-                                                                        }
-                                                                        value={
-                                                                            tag
-                                                                        }
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <div
-                                                                                className="h-2 w-2 rounded-full"
-                                                                                style={{
-                                                                                    backgroundColor:
-                                                                                        tag.color,
-                                                                                }}
-                                                                            />
-                                                                            {
-                                                                                tag.name
-                                                                            }
-                                                                        </div>
-                                                                    </ComboboxItem>
-                                                                ))}
-
-                                                                <ComboboxSeparator />
-
-                                                                <ComboboxItem
-                                                                    key="create_tag"
-                                                                    value="create_tag"
-                                                                    className="hover:bg-muted"
-                                                                >
-                                                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                                                        <FontAwesomeIcon
-                                                                            icon={
-                                                                                faPlus
-                                                                            }
-                                                                            className="h-4 w-4"
-                                                                        />
-                                                                        <span>
-                                                                            Create
-                                                                            tag
-                                                                        </span>
-                                                                    </div>
-                                                                </ComboboxItem>
-                                                            </ComboboxList>
-                                                        </ComboboxPopup>
-                                                    </Combobox>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                setManageTagsOpen(
-                                                                    true,
-                                                                )
-                                                            }
-                                                        >
-                                                            Edit tags
-                                                        </Button>
-                                                    </div>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            );
-                                        }}
-                                    />
-                                </div>
-                                {!(selectedType.id === "instatus") ? (
-                                    <>
-                                        <TimingNumberField
-                                            form={form}
-                                            name="interval"
-                                            min={10}
-                                            label={(value) =>
-                                                `Heartbeat Interval (Check every ${formatSeconds(value)})`
-                                            }
-                                            description={(value) =>
-                                                formatSeconds(value)
-                                            }
-                                        />
-
-                                        {/* Workers Field */}
-                                        <FormField
-                                            control={form.control}
-                                            name="workerIds"
-                                            render={() => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center justify-between">
-                                                        Workers
-                                                        <Button
-                                                            type="button"
-                                                            variant="link"
-                                                            className="h-auto p-0 text-xs"
-                                                            onClick={
-                                                                handleSelectAllWorkers
-                                                            }
-                                                        >
-                                                            {hasAnySelection
-                                                                ? "Deselect all"
-                                                                : "Select all"}
-                                                        </Button>
-                                                    </FormLabel>
-                                                    <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                                            {activeMonitorLimit ===
-                                                            null ? (
-                                                                ""
-                                                            ) : (
-                                                                <span className="font-medium">
-                                                                    Active
-                                                                    monitors:{" "}
-                                                                    {organizationQuota?.activeMonitorCount ??
-                                                                        0}
-                                                                    {` / ${activeMonitorLimit}`}
-                                                                </span>
-                                                            )}
-                                                            {regionLimit ===
-                                                            null ? (
-                                                                ""
-                                                            ) : (
-                                                                <span className="text-muted-foreground">
-                                                                    Selected
-                                                                    workers:{" "}
-                                                                    {
-                                                                        selectedRegionCount
-                                                                    }
-                                                                    {` / ${regionLimit}`}
-                                                                </span>
                                                             )}
                                                         </div>
-                                                        {isOverRegionLimit && (
-                                                            <p className="mt-2 text-destructive text-xs">
-                                                                This
-                                                                organization
-                                                                allows at most{" "}
-                                                                {regionLimit}{" "}
-                                                                worker(s) per
-                                                                monitor.
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {Object.entries(
-                                                            workersByContinent,
-                                                        )
-                                                            .sort(([a], [b]) =>
-                                                                a.localeCompare(
-                                                                    b,
-                                                                ),
-                                                            )
-                                                            .map(
-                                                                ([
-                                                                    continent,
-                                                                    continentWorkers,
-                                                                ]) => (
-                                                                    <Collapsible
-                                                                        key={
-                                                                            continent
-                                                                        }
-                                                                        open={
-                                                                            openContinents[
-                                                                                continent
-                                                                            ]
-                                                                        }
-                                                                        onOpenChange={() =>
-                                                                            toggleContinent(
-                                                                                continent,
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-muted/30 px-4 py-2 font-semibold text-sm hover:bg-muted/50">
-                                                                            <span>
-                                                                                {
-                                                                                    continent
-                                                                                }
-                                                                            </span>
-                                                                            <FontAwesomeIcon
-                                                                                icon={
-                                                                                    faChevronRight
-                                                                                }
-                                                                                className={cn(
-                                                                                    "h-4 w-4 transition-transform duration-200",
-                                                                                    openContinents[
-                                                                                        continent
-                                                                                    ] &&
-                                                                                        "rotate-90",
-                                                                                )}
-                                                                            />
-                                                                        </CollapsibleTrigger>
-                                                                        <CollapsibleContent>
-                                                                            <div className="grid grid-cols-2 gap-2 pt-2">
-                                                                                {continentWorkers?.map(
-                                                                                    (
-                                                                                        activeWorker,
-                                                                                    ) => {
-                                                                                        const regionInfo =
-                                                                                            getRegionInfo(
-                                                                                                activeWorker.location,
-                                                                                            );
-                                                                                        const Flag =
-                                                                                            regionInfo.Flag;
-
-                                                                                        return (
-                                                                                            <FormField
-                                                                                                key={
-                                                                                                    activeWorker.id
-                                                                                                }
-                                                                                                control={
-                                                                                                    form.control
-                                                                                                }
-                                                                                                name="workerIds"
-                                                                                                render={({
-                                                                                                    field,
-                                                                                                }) => {
-                                                                                                    return (
-                                                                                                        <FormItem
-                                                                                                            key={
-                                                                                                                activeWorker.id
-                                                                                                            }
-                                                                                                            className="flex flex-row items-start space-x-3 space-y-0 rounded-md bg-muted/50 p-4"
-                                                                                                        >
-                                                                                                            <FormControl>
-                                                                                                                <Checkbox
-                                                                                                                    checked={field.value?.includes(
-                                                                                                                        activeWorker.id,
-                                                                                                                    )}
-                                                                                                                    onCheckedChange={(
-                                                                                                                        checked,
-                                                                                                                    ) => {
-                                                                                                                        return checked
-                                                                                                                            ? field.onChange(
-                                                                                                                                  [
-                                                                                                                                      ...field.value,
-                                                                                                                                      activeWorker.id,
-                                                                                                                                  ],
-                                                                                                                              )
-                                                                                                                            : field.onChange(
-                                                                                                                                  field.value?.filter(
-                                                                                                                                      (
-                                                                                                                                          value,
-                                                                                                                                      ) =>
-                                                                                                                                          value !==
-                                                                                                                                          activeWorker.id,
-                                                                                                                                  ),
-                                                                                                                              );
-                                                                                                                    }}
-                                                                                                                />
-                                                                                                            </FormControl>
-                                                                                                            <div className="flex items-center gap-2 space-y-1 leading-none">
-                                                                                                                <div className="relative size-6 overflow-hidden shadow-sm">
-                                                                                                                    {isFontAwesomeRegionFlag(
-                                                                                                                        Flag,
-                                                                                                                    ) ? (
-                                                                                                                        <FontAwesomeIcon
-                                                                                                                            icon={
-                                                                                                                                Flag
-                                                                                                                            }
-                                                                                                                            className="h-full w-full"
-                                                                                                                        />
-                                                                                                                    ) : (
-                                                                                                                        <Flag className="h-full w-full" />
-                                                                                                                    )}
-                                                                                                                </div>
-                                                                                                                <div className="min-w-0">
-                                                                                                                    <FormLabel className="cursor-pointer font-normal">
-                                                                                                                        {
-                                                                                                                            activeWorker.name
-                                                                                                                        }
-                                                                                                                    </FormLabel>
-                                                                                                                    <p className="truncate text-muted-foreground text-xs">
-                                                                                                                        {
-                                                                                                                            regionInfo.label
-                                                                                                                        }
-                                                                                                                    </p>
-                                                                                                                </div>
-                                                                                                            </div>
-                                                                                                        </FormItem>
-                                                                                                    );
-                                                                                                }}
-                                                                                            />
-                                                                                        );
-                                                                                    },
-                                                                                )}
-                                                                            </div>
-                                                                        </CollapsibleContent>
-                                                                    </Collapsible>
-                                                                ),
-                                                            )}
-                                                    </div>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </>
-                                ) : (
-                                    ""
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {!(selectedType.id === "instatus") ? (
-                        <>
-                            <Separator />
-
-                            {/* Section: Notifications */}
-                            <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
-                                <div className="col-span-1">
-                                    <h2 className="font-semibold text-lg leading-tight tracking-tight">
-                                        Notifications
-                                    </h2>
-                                    <p className="mt-1 text-muted-foreground text-sm">
-                                        Choose which notification channels
-                                        should receive this monitor&apos;s
-                                        incident events.
-                                    </p>
+                                                    </CollapsibleContent>
+                                                </Collapsible>
+                                            ),
+                                        )}
                                 </div>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </>
+            ) : (
+                ""
+            )}
+        </CardContent>
+    );
+}
 
-                                <Card className="col-span-1 md:col-span-2">
-                                    <CardContent className="flex flex-col gap-4 p-6">
-                                        <FormField
-                                            control={form.control}
-                                            name="notificationIds"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <div className="flex items-center justify-between gap-4">
-                                                        <FormLabel>
-                                                            Selected
-                                                            notifications (
-                                                            {
-                                                                selectedNotificationIds.length
+function CreateMonitorFormCardSection4({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <Card className="col-span-1 md:col-span-2">
+            <CreateMonitorFormCardSection5 model={model} />
+        </Card>
+    );
+}
+
+function CreateMonitorFormContentSection3({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+            <div className="col-span-1">
+                <h2 className="font-semibold text-lg leading-tight tracking-tight">
+                    General settings
+                </h2>
+                <p className="mt-1 text-muted-foreground text-sm">
+                    Configure the display name and monitoring frequency.
+                </p>
+            </div>
+
+            <CreateMonitorFormCardSection4 model={model} />
+        </div>
+    );
+}
+
+function useCreateMonitorFormContentSection8Model({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    };
+}
+
+type CreateMonitorFormContentSection8Model = ReturnType<
+    typeof useCreateMonitorFormContentSection8Model
+>;
+
+function CreateMonitorFormContentSection8ContentSection7({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <div className="grid gap-6 md:grid-cols-2">
+            <FormField
+                control={form.control}
+                name="incidentPendingDuration"
+                render={({ field }) => {
+                    const selectedPendingDuration =
+                        confirmationPeriodOptions.find(
+                            (option) => option.value === field.value.toString(),
+                        );
+
+                    return (
+                        <FormItem>
+                            <FormLabel>Confirmation period (Pending)</FormLabel>
+                            <Select
+                                onValueChange={(val) =>
+                                    field.onChange(Number(val))
+                                }
+                                value={field.value.toString()}
+                            >
+                                <FormControl>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select duration">
+                                            {selectedPendingDuration?.label}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {confirmationPeriodOptions.map(
+                                        ({ label, value }) => (
+                                            <SelectItem
+                                                key={value}
+                                                value={value}
+                                            >
+                                                {label}
+                                            </SelectItem>
+                                        ),
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>
+                                How long to wait before alerting.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    );
+                }}
+            />
+            <FormField
+                control={form.control}
+                name="incidentRecoveryDuration"
+                render={({ field }) => {
+                    const selectedRecoveryDuration = recoveryPeriodOptions.find(
+                        (option) => option.value === field.value.toString(),
+                    );
+
+                    return (
+                        <FormItem>
+                            <FormLabel>Recovery period</FormLabel>
+                            <Select
+                                onValueChange={(val) =>
+                                    field.onChange(Number(val))
+                                }
+                                value={field.value.toString()}
+                            >
+                                <FormControl>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select duration">
+                                            {selectedRecoveryDuration?.label}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {recoveryPeriodOptions.map(
+                                        ({ label, value }) => (
+                                            <SelectItem
+                                                key={value}
+                                                value={value}
+                                            >
+                                                {label}
+                                            </SelectItem>
+                                        ),
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>
+                                How long it must be up to resolve.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    );
+                }}
+            />
+        </div>
+    );
+}
+
+function CreateMonitorFormContentSection8CardSection6({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <CardContent className="space-y-6 p-6">
+            <div className="grid gap-6 md:grid-cols-2">
+                <TimingNumberField
+                    form={form}
+                    name="retries"
+                    min={0}
+                    max={10}
+                    label={() => "Retries"}
+                    description={() =>
+                        "Maximum retries before the service is marked as down and a notification is sent"
+                    }
+                />
+                <TimingNumberField
+                    form={form}
+                    name="retryInterval"
+                    min={1}
+                    max={
+                        Number.isFinite(heartbeatInterval)
+                            ? heartbeatInterval
+                            : 300
+                    }
+                    label={(value) =>
+                        `Heartbeat Retry Interval (Retry every ${formatSeconds(value)})`
+                    }
+                    description={() =>
+                        "Must be less than or equal to the heartbeat interval"
+                    }
+                />
+                <TimingNumberField
+                    form={form}
+                    name="timeout"
+                    min={1}
+                    max={300}
+                    label={(value) =>
+                        `Request Timeout (Timeout after ${formatSeconds(value)})`
+                    }
+                />
+            </div>
+
+            <CreateMonitorFormContentSection8ContentSection7 model={model} />
+
+            <FormField
+                control={form.control}
+                name="publishIncidentToStatusPage"
+                render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
+                        <div className="space-y-0.5">
+                            <FormLabel className="text-base">
+                                Publish incidents to status pages
+                            </FormLabel>
+                            <FormDescription>
+                                When this monitor opens an automatic incident,
+                                publish it to every status page that already
+                                includes this monitor.
+                            </FormDescription>
+                        </div>
+                        <FormControl>
+                            <Checkbox
+                                checked={field.value}
+                                onCheckedChange={(checked) =>
+                                    field.onChange(checked === true)
+                                }
+                            />
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+
+            {["http", "http-json", "keyword"].includes(selectedType.id) && (
+                <HttpAdvancedFields form={form} />
+            )}
+        </CardContent>
+    );
+}
+
+function CreateMonitorFormContentSection8CardSection5({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <Card>
+            <CreateMonitorFormContentSection8CardSection6 model={model} />
+        </Card>
+    );
+}
+
+function CreateMonitorFormContentSection8CardSection4({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <CollapsibleContent className="col-span-1 md:col-span-2">
+            <CreateMonitorFormContentSection8CardSection5 model={model} />
+        </CollapsibleContent>
+    );
+}
+
+function CreateMonitorFormContentSection8ContentSection3({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <Collapsible
+            open={isAdvancedOpen}
+            onOpenChange={setIsAdvancedOpen}
+            className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3"
+        >
+            <div className="col-span-1">
+                <CollapsibleTrigger
+                    render={
+                        <Button
+                            variant="ghost"
+                            className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
+                        >
+                            <FontAwesomeIcon
+                                icon={faChevronRight}
+                                className={cn(
+                                    "h-4 w-4 transition-transform",
+                                    isAdvancedOpen && "rotate-90",
+                                )}
+                            />
+                            Advanced settings
+                        </Button>
+                    }
+                />
+                {isAdvancedOpen && (
+                    <p className="mt-1 text-muted-foreground text-sm">
+                        Detailed configurations for requests, timeouts, and
+                        headers.
+                    </p>
+                )}
+            </div>
+
+            <CreateMonitorFormContentSection8CardSection4 model={model} />
+        </Collapsible>
+    );
+}
+
+function CreateMonitorFormContentSection8ContentSection2({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <>
+            <Separator />
+
+            {/* Section: Notifications */}
+            <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+                <div className="col-span-1">
+                    <h2 className="font-semibold text-lg leading-tight tracking-tight">
+                        Notifications
+                    </h2>
+                    <p className="mt-1 text-muted-foreground text-sm">
+                        Choose which notification channels should receive this
+                        monitor&apos;s incident events.
+                    </p>
+                </div>
+
+                <Card className="col-span-1 md:col-span-2">
+                    <CardContent className="flex flex-col gap-4 p-6">
+                        <FormField
+                            control={form.control}
+                            name="notificationIds"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="flex items-center justify-between gap-4">
+                                        <FormLabel>
+                                            Selected notifications (
+                                            {selectedNotificationIds.length})
+                                        </FormLabel>
+                                        {configuredNotifications &&
+                                            configuredNotifications.length >
+                                                0 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="link"
+                                                    className="h-auto p-0 text-xs"
+                                                    onClick={() => {
+                                                        if (
+                                                            field.value?.length
+                                                        ) {
+                                                            field.onChange([]);
+                                                            return;
+                                                        }
+
+                                                        field.onChange(
+                                                            configuredNotifications.map(
+                                                                (
+                                                                    notification,
+                                                                ) =>
+                                                                    notification.id,
+                                                            ),
+                                                        );
+                                                    }}
+                                                >
+                                                    {field.value?.length
+                                                        ? "Deselect all"
+                                                        : "Select all"}
+                                                </Button>
+                                            )}
+                                    </div>
+
+                                    {configuredNotifications &&
+                                    configuredNotifications.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {configuredNotifications.map(
+                                                (notification) => {
+                                                    const checked =
+                                                        field.value?.includes(
+                                                            notification.id,
+                                                        );
+
+                                                    return (
+                                                        <FormItem
+                                                            key={
+                                                                notification.id
                                                             }
-                                                            )
-                                                        </FormLabel>
-                                                        {configuredNotifications &&
-                                                            configuredNotifications.length >
-                                                                0 && (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="link"
-                                                                    className="h-auto p-0 text-xs"
-                                                                    onClick={() => {
+                                                            className="flex flex-row items-start gap-3 rounded-md bg-muted/50 p-4"
+                                                        >
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={
+                                                                        checked
+                                                                    }
+                                                                    onCheckedChange={(
+                                                                        nextChecked,
+                                                                    ) => {
                                                                         if (
-                                                                            field
-                                                                                .value
-                                                                                ?.length
+                                                                            nextChecked
                                                                         ) {
                                                                             field.onChange(
-                                                                                [],
+                                                                                [
+                                                                                    ...(field.value ||
+                                                                                        []),
+                                                                                    notification.id,
+                                                                                ],
                                                                             );
                                                                             return;
                                                                         }
 
                                                                         field.onChange(
-                                                                            configuredNotifications.map(
+                                                                            field.value?.filter(
                                                                                 (
-                                                                                    notification,
+                                                                                    value,
                                                                                 ) =>
+                                                                                    value !==
                                                                                     notification.id,
-                                                                            ),
+                                                                            ) ||
+                                                                                [],
                                                                         );
                                                                     }}
-                                                                >
-                                                                    {field.value
-                                                                        ?.length
-                                                                        ? "Deselect all"
-                                                                        : "Select all"}
-                                                                </Button>
-                                                            )}
-                                                    </div>
+                                                                />
+                                                            </FormControl>
+                                                            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <FormLabel className="cursor-pointer font-normal">
+                                                                        {
+                                                                            notification.name
+                                                                        }
+                                                                    </FormLabel>
+                                                                    <Badge variant="outline">
+                                                                        {
+                                                                            notification.type
+                                                                        }
+                                                                    </Badge>
+                                                                    {notification.isDefault && (
+                                                                        <Badge variant="warning">
+                                                                            Default
+                                                                        </Badge>
+                                                                    )}
+                                                                    {notification.active ? (
+                                                                        <Badge variant="success">
+                                                                            Active
+                                                                        </Badge>
+                                                                    ) : (
+                                                                        <Badge variant="secondary">
+                                                                            Inactive
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </FormItem>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed p-6">
+                                            <div className="flex items-center gap-2 font-medium">
+                                                <FontAwesomeIcon
+                                                    icon={faBell}
+                                                    className="h-4 w-4"
+                                                />
+                                                No notifications configured
+                                            </div>
+                                            <p className="text-muted-foreground text-sm">
+                                                Add a notification channel
+                                                before assigning one to this
+                                                monitor.
+                                            </p>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.push("/integrations")
+                                                }
+                                            >
+                                                Manage notifications
+                                            </Button>
+                                        </div>
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
 
-                                                    {configuredNotifications &&
-                                                    configuredNotifications.length >
-                                                        0 ? (
-                                                        <div className="grid grid-cols-1 gap-2">
-                                                            {configuredNotifications.map(
-                                                                (
-                                                                    notification,
-                                                                ) => {
-                                                                    const checked =
-                                                                        field.value?.includes(
-                                                                            notification.id,
-                                                                        );
+            {/* Section: Advanced Settings */}
+            <CreateMonitorFormContentSection8ContentSection3 model={model} />
+        </>
+    );
+}
 
-                                                                    return (
-                                                                        <FormItem
-                                                                            key={
-                                                                                notification.id
-                                                                            }
-                                                                            className="flex flex-row items-start gap-3 rounded-md bg-muted/50 p-4"
-                                                                        >
-                                                                            <FormControl>
-                                                                                <Checkbox
-                                                                                    checked={
-                                                                                        checked
-                                                                                    }
-                                                                                    onCheckedChange={(
-                                                                                        nextChecked,
-                                                                                    ) => {
-                                                                                        if (
-                                                                                            nextChecked
-                                                                                        ) {
-                                                                                            field.onChange(
-                                                                                                [
-                                                                                                    ...(field.value ||
-                                                                                                        []),
-                                                                                                    notification.id,
-                                                                                                ],
-                                                                                            );
-                                                                                            return;
-                                                                                        }
+function CreateMonitorFormContentSection8ContentSection1({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <>
+            {!(selectedType.id === "instatus") ? (
+                <CreateMonitorFormContentSection8ContentSection2
+                    model={model}
+                />
+            ) : (
+                ""
+            )}
+        </>
+    );
+}
+function CreateMonitorFormContentSection8View({
+    model,
+}: {
+    model: CreateMonitorFormContentSection8Model;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <>
+            <CreateMonitorFormContentSection8ContentSection1 model={model} />
+        </>
+    );
+}
 
-                                                                                        field.onChange(
-                                                                                            field.value?.filter(
-                                                                                                (
-                                                                                                    value,
-                                                                                                ) =>
-                                                                                                    value !==
-                                                                                                    notification.id,
-                                                                                            ) ||
-                                                                                                [],
-                                                                                        );
-                                                                                    }}
-                                                                                />
-                                                                            </FormControl>
-                                                                            <div className="flex min-w-0 flex-1 flex-col gap-2">
-                                                                                <div className="flex flex-wrap items-center gap-2">
-                                                                                    <FormLabel className="cursor-pointer font-normal">
-                                                                                        {
-                                                                                            notification.name
-                                                                                        }
-                                                                                    </FormLabel>
-                                                                                    <Badge variant="outline">
-                                                                                        {
-                                                                                            notification.type
-                                                                                        }
-                                                                                    </Badge>
-                                                                                    {notification.isDefault && (
-                                                                                        <Badge variant="warning">
-                                                                                            Default
-                                                                                        </Badge>
-                                                                                    )}
-                                                                                    {notification.active ? (
-                                                                                        <Badge variant="success">
-                                                                                            Active
-                                                                                        </Badge>
-                                                                                    ) : (
-                                                                                        <Badge variant="secondary">
-                                                                                            Inactive
-                                                                                        </Badge>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        </FormItem>
-                                                                    );
-                                                                },
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed p-6">
-                                                            <div className="flex items-center gap-2 font-medium">
+function CreateMonitorFormContentSection8({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const sectionModel = useCreateMonitorFormContentSection8Model({ model });
+    return <CreateMonitorFormContentSection8View model={sectionModel} />;
+}
+
+function CreateMonitorFormFormSection2({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <form
+            onSubmit={form.handleSubmit(submitForm)}
+            className="space-y-10 pb-20"
+        >
+            {/* ... (What to monitor Section remains same) ... */}
+
+            {/* ... (General Settings Section updated) ... */}
+            {/* Section: What to monitor */}
+            <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+                <div className="col-span-1">
+                    <h2 className="font-semibold text-lg leading-tight tracking-tight">
+                        What to monitor
+                    </h2>
+                    <p className="mt-1 text-muted-foreground text-sm">
+                        Select the type of monitor and enter the target details.
+                    </p>
+                </div>
+
+                <Card className="col-span-1 md:col-span-2">
+                    <CardContent className="space-y-6 p-6">
+                        <FormField
+                            control={form.control}
+                            name="type"
+                            render={({ field }) => {
+                                const selectedType = monitorTypes.find(
+                                    (t) => t.id === field.value,
+                                );
+                                return (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Monitor Type</FormLabel>
+                                        <Combobox
+                                            items={monitorTypes}
+                                            value={selectedType}
+                                            onValueChange={(value) =>
+                                                value &&
+                                                handleMonitorTypeChange(
+                                                    value.id,
+                                                )
+                                            }
+                                        >
+                                            <ComboboxValue>
+                                                {(
+                                                    value: (typeof monitorTypes)[number],
+                                                ) => (
+                                                    <ComboboxInput
+                                                        placeholder="Select type"
+                                                        startAddon={
+                                                            value ? (
                                                                 <FontAwesomeIcon
                                                                     icon={
-                                                                        faBell
+                                                                        value.icon
                                                                     }
-                                                                    className="h-4 w-4"
+                                                                    className="h-4 w-4 text-muted-foreground"
                                                                 />
-                                                                No notifications
-                                                                configured
-                                                            </div>
-                                                            <p className="text-muted-foreground text-sm">
-                                                                Add a
-                                                                notification
-                                                                channel before
-                                                                assigning one to
-                                                                this monitor.
-                                                            </p>
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                onClick={() =>
-                                                                    router.push(
-                                                                        "/integrations",
-                                                                    )
-                                                                }
-                                                            >
-                                                                Manage
-                                                                notifications
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* Section: Advanced Settings */}
-                            <Collapsible
-                                open={isAdvancedOpen}
-                                onOpenChange={setIsAdvancedOpen}
-                                className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3"
-                            >
-                                <div className="col-span-1">
-                                    <CollapsibleTrigger
-                                        render={
-                                            <Button
-                                                variant="ghost"
-                                                className="flex items-center gap-2 pl-0 font-semibold text-lg leading-tight tracking-tight hover:bg-transparent"
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faChevronRight}
-                                                    className={cn(
-                                                        "h-4 w-4 transition-transform",
-                                                        isAdvancedOpen &&
-                                                            "rotate-90",
-                                                    )}
-                                                />
-                                                Advanced settings
-                                            </Button>
-                                        }
-                                    />
-                                    {isAdvancedOpen && (
-                                        <p className="mt-1 text-muted-foreground text-sm">
-                                            Detailed configurations for
-                                            requests, timeouts, and headers.
-                                        </p>
-                                    )}
-                                </div>
-
-                                <CollapsibleContent className="col-span-1 md:col-span-2">
-                                    <Card>
-                                        <CardContent className="space-y-6 p-6">
-                                            <div className="grid gap-6 md:grid-cols-2">
-                                                <TimingNumberField
-                                                    form={form}
-                                                    name="retries"
-                                                    min={0}
-                                                    max={10}
-                                                    label={() => "Retries"}
-                                                    description={() =>
-                                                        "Maximum retries before the service is marked as down and a notification is sent"
-                                                    }
-                                                />
-                                                <TimingNumberField
-                                                    form={form}
-                                                    name="retryInterval"
-                                                    min={1}
-                                                    max={
-                                                        Number.isFinite(
-                                                            heartbeatInterval,
-                                                        )
-                                                            ? heartbeatInterval
-                                                            : 300
-                                                    }
-                                                    label={(value) =>
-                                                        `Heartbeat Retry Interval (Retry every ${formatSeconds(value)})`
-                                                    }
-                                                    description={() =>
-                                                        "Must be less than or equal to the heartbeat interval"
-                                                    }
-                                                />
-                                                <TimingNumberField
-                                                    form={form}
-                                                    name="timeout"
-                                                    min={1}
-                                                    max={300}
-                                                    label={(value) =>
-                                                        `Request Timeout (Timeout after ${formatSeconds(value)})`
-                                                    }
-                                                />
-                                            </div>
-
-                                            <div className="grid gap-6 md:grid-cols-2">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="incidentPendingDuration"
-                                                    render={({ field }) => {
-                                                        const selectedPendingDuration =
-                                                            confirmationPeriodOptions.find(
-                                                                (option) =>
-                                                                    option.value ===
-                                                                    field.value.toString(),
-                                                            );
-
-                                                        return (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    Confirmation
-                                                                    period
-                                                                    (Pending)
-                                                                </FormLabel>
-                                                                <Select
-                                                                    onValueChange={(
-                                                                        val,
-                                                                    ) =>
-                                                                        field.onChange(
-                                                                            Number(
-                                                                                val,
-                                                                            ),
-                                                                        )
-                                                                    }
-                                                                    value={field.value.toString()}
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger className="w-full">
-                                                                            <SelectValue placeholder="Select duration">
-                                                                                {
-                                                                                    selectedPendingDuration?.label
-                                                                                }
-                                                                            </SelectValue>
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {confirmationPeriodOptions.map(
-                                                                            ({
-                                                                                label,
-                                                                                value,
-                                                                            }) => (
-                                                                                <SelectItem
-                                                                                    key={
-                                                                                        value
-                                                                                    }
-                                                                                    value={
-                                                                                        value
-                                                                                    }
-                                                                                >
-                                                                                    {
-                                                                                        label
-                                                                                    }
-                                                                                </SelectItem>
-                                                                            ),
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormDescription>
-                                                                    How long to
-                                                                    wait before
-                                                                    alerting.
-                                                                </FormDescription>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        );
-                                                    }}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="incidentRecoveryDuration"
-                                                    render={({ field }) => {
-                                                        const selectedRecoveryDuration =
-                                                            recoveryPeriodOptions.find(
-                                                                (option) =>
-                                                                    option.value ===
-                                                                    field.value.toString(),
-                                                            );
-
-                                                        return (
-                                                            <FormItem>
-                                                                <FormLabel>
-                                                                    Recovery
-                                                                    period
-                                                                </FormLabel>
-                                                                <Select
-                                                                    onValueChange={(
-                                                                        val,
-                                                                    ) =>
-                                                                        field.onChange(
-                                                                            Number(
-                                                                                val,
-                                                                            ),
-                                                                        )
-                                                                    }
-                                                                    value={field.value.toString()}
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger className="w-full">
-                                                                            <SelectValue placeholder="Select duration">
-                                                                                {
-                                                                                    selectedRecoveryDuration?.label
-                                                                                }
-                                                                            </SelectValue>
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        {recoveryPeriodOptions.map(
-                                                                            ({
-                                                                                label,
-                                                                                value,
-                                                                            }) => (
-                                                                                <SelectItem
-                                                                                    key={
-                                                                                        value
-                                                                                    }
-                                                                                    value={
-                                                                                        value
-                                                                                    }
-                                                                                >
-                                                                                    {
-                                                                                        label
-                                                                                    }
-                                                                                </SelectItem>
-                                                                            ),
-                                                                        )}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormDescription>
-                                                                    How long it
-                                                                    must be up
-                                                                    to resolve.
-                                                                </FormDescription>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-
-                                            <FormField
-                                                control={form.control}
-                                                name="publishIncidentToStatusPage"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg bg-muted/50 p-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel className="text-base">
-                                                                Publish
-                                                                incidents to
-                                                                status pages
-                                                            </FormLabel>
-                                                            <FormDescription>
-                                                                When this
-                                                                monitor opens an
-                                                                automatic
-                                                                incident,
-                                                                publish it to
-                                                                every status
-                                                                page that
-                                                                already includes
-                                                                this monitor.
-                                                            </FormDescription>
-                                                        </div>
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={
-                                                                    field.value
-                                                                }
-                                                                onCheckedChange={(
-                                                                    checked,
-                                                                ) =>
-                                                                    field.onChange(
-                                                                        checked ===
-                                                                            true,
-                                                                    )
-                                                                }
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
+                                                            ) : undefined
+                                                        }
+                                                    />
                                                 )}
-                                            />
+                                            </ComboboxValue>
+                                            <ComboboxPopup>
+                                                <ComboboxEmpty>
+                                                    No type found.
+                                                </ComboboxEmpty>
+                                                <ComboboxList>
+                                                    {(type) => (
+                                                        <ComboboxItem
+                                                            key={type.id}
+                                                            value={type}
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <FontAwesomeIcon
+                                                                    icon={
+                                                                        type.icon
+                                                                    }
+                                                                    className="h-4 w-4 text-muted-foreground"
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span>
+                                                                        {
+                                                                            type.label
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-muted-foreground text-xs">
+                                                                        {
+                                                                            type.description
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </ComboboxItem>
+                                                    )}
+                                                </ComboboxList>
+                                            </ComboboxPopup>
+                                        </Combobox>
+                                        <FormMessage />
+                                    </FormItem>
+                                );
+                            }}
+                        />
 
-                                            {[
-                                                "http",
-                                                "http-json",
-                                                "keyword",
-                                            ].includes(selectedType.id) && (
-                                                <HttpAdvancedFields
-                                                    form={form}
-                                                />
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </CollapsibleContent>
-                            </Collapsible>
-                        </>
-                    ) : (
-                        ""
-                    )}
+                        {/* Dynamic Fields based on Type */}
+                        {selectedType && <selectedType.Fields form={form} />}
+                    </CardContent>
+                </Card>
+            </div>
 
-                    <div className="bottom-0 z-10 flex flex justify-end gap-4 p-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDiscard}
-                            disabled={isPending}
-                        >
-                            Discard
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={isPending}
-                        >
-                            {isPending
-                                ? monitorId
-                                    ? "Updating..."
-                                    : "Creating..."
-                                : monitorId
-                                  ? "Update Monitor"
-                                  : "Create Monitor"}
-                        </Button>
-                    </div>
-                </form>
-            </Form>
+            <Separator />
+
+            {/* Section: General Settings */}
+            <CreateMonitorFormContentSection3 model={model} />
+
+            <CreateMonitorFormContentSection8 model={model} />
+
+            <div className="bottom-0 z-10 flex flex justify-end gap-4 p-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDiscard}
+                    disabled={isPending}
+                >
+                    Discard
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isPending}>
+                    {isPending
+                        ? monitorId
+                            ? "Updating..."
+                            : "Creating..."
+                        : monitorId
+                          ? "Update Monitor"
+                          : "Create Monitor"}
+                </Button>
+            </div>
+        </form>
+    );
+}
+
+function CreateMonitorFormFormSection1({
+    model,
+}: {
+    model: CreateMonitorFormModel;
+}) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <Form {...form}>
+            <CreateMonitorFormFormSection2 model={model} />
+        </Form>
+    );
+}
+function CreateMonitorFormView({ model }: { model: CreateMonitorFormModel }) {
+    const {
+        monitorId,
+        initialData,
+        workers,
+        organizationQuota,
+        groups,
+        tags,
+        configuredNotifications,
+        isAdvancedOpen,
+        setIsAdvancedOpen,
+        groupsOpen,
+        setGroupsOpen,
+        manageGroupsOpen,
+        setManageGroupsOpen,
+        tagsOpen,
+        setTagsOpen,
+        manageTagsOpen,
+        setManageTagsOpen,
+        defaultNotificationsAppliedRef,
+        getFormValuesFromInitialData,
+        form,
+        router,
+        utils,
+        mutate,
+        isPending,
+        submitForm,
+        handleDiscard,
+        handleSave,
+        handleMonitorTypeChange,
+        type,
+        heartbeatInterval,
+        selectedType,
+        workerIds,
+        hasAnySelection,
+        regionLimit,
+        activeMonitorLimit,
+        selectedRegionCount,
+        isOverRegionLimit,
+        selectedNotificationIds,
+        openContinents,
+        setOpenContinents,
+        workersByContinent,
+        toggleContinent,
+        handleSelectAllWorkers,
+    } = model;
+    return (
+        <>
+            <CreateMonitorFormFormSection1 model={model} />
             <GroupCreationDialog
+                key={groupsOpen ? "group-dialog-open" : "group-dialog-closed"}
                 open={groupsOpen}
                 onOpenChange={setGroupsOpen}
                 onCreated={(group) => form.setValue("groupId", group.id)}
@@ -2638,4 +3425,12 @@ export function CreateMonitorForm({
             </Dialog>
         </>
     );
+}
+
+export function CreateMonitorForm({
+    monitorId,
+    initialData,
+}: CreateMonitorFormProps) {
+    const model = useCreateMonitorFormModel({ monitorId, initialData });
+    return <CreateMonitorFormView model={model} />;
 }

@@ -3,7 +3,7 @@
 import { faCalendar, faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
-import * as React from "react";
+import type * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -20,33 +20,22 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
-    const [selectedDateTime, setSelectedDateTime] = React.useState<
-        Date | undefined
-    >(date);
-
-    // Sync local state when prop changes
-    React.useEffect(() => {
-        setSelectedDateTime(date);
-    }, [date]);
-
     const handleSelect = (day: Date | undefined) => {
         if (!day) {
-            setSelectedDateTime(undefined);
             setDate(undefined);
             return;
         }
 
         const newDateTime = new Date(day);
-        if (selectedDateTime) {
-            newDateTime.setHours(selectedDateTime.getHours());
-            newDateTime.setMinutes(selectedDateTime.getMinutes());
+        if (date) {
+            newDateTime.setHours(date.getHours());
+            newDateTime.setMinutes(date.getMinutes());
         } else {
             // Default to current time if no time was set
             const now = new Date();
             newDateTime.setHours(now.getHours());
             newDateTime.setMinutes(now.getMinutes());
         }
-        setSelectedDateTime(newDateTime);
         setDate(newDateTime);
     };
 
@@ -54,11 +43,10 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
         const time = e.target.value;
         if (!time) return;
         const [hours, minutes] = time.split(":").map(Number);
-        if (selectedDateTime) {
-            const newDateTime = new Date(selectedDateTime);
+        if (date) {
+            const newDateTime = new Date(date);
             newDateTime.setHours(hours);
             newDateTime.setMinutes(minutes);
-            setSelectedDateTime(newDateTime);
             setDate(newDateTime);
         }
     };
@@ -82,7 +70,7 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
             <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                     mode="single"
-                    selected={selectedDateTime}
+                    selected={date}
                     onSelect={handleSelect}
                     autoFocus
                 />
@@ -95,13 +83,9 @@ export function DateTimePicker({ date, setDate }: DateTimePickerProps) {
                         <Input
                             type="time"
                             className="h-8"
-                            value={
-                                selectedDateTime
-                                    ? format(selectedDateTime, "HH:mm")
-                                    : ""
-                            }
+                            value={date ? format(date, "HH:mm") : ""}
                             onChange={handleTimeChange}
-                            disabled={!selectedDateTime}
+                            disabled={!date}
                         />
                     </div>
                 </div>

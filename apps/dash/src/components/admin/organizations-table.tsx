@@ -17,13 +17,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import {
-    type Dispatch,
-    type SetStateAction,
-    useEffect,
-    useMemo,
-    useState,
-} from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { sileo } from "sileo";
 import {
     AlertDialog,
@@ -156,7 +150,7 @@ function getUsageText(result: {
     return "Organization updated";
 }
 
-export function OrganizationsTable() {
+function useOrganizationsTableModel() {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -273,22 +267,16 @@ export function OrganizationsTable() {
         },
     });
 
-    const createCanSave = useMemo(
-        () =>
-            createForm.name.trim().length >= 2 &&
-            createForm.slug.trim().length >= 2 &&
-            createForm.ownerEmail.trim().length > 0 &&
-            hasValidLimits(createForm),
-        [createForm],
-    );
+    const createCanSave =
+        createForm.name.trim().length >= 2 &&
+        createForm.slug.trim().length >= 2 &&
+        createForm.ownerEmail.trim().length > 0 &&
+        hasValidLimits(createForm);
 
-    const editCanSave = useMemo(
-        () =>
-            editForm.name.trim().length >= 2 &&
-            editForm.slug.trim().length >= 2 &&
-            hasValidLimits(editForm),
-        [editForm],
-    );
+    const editCanSave =
+        editForm.name.trim().length >= 2 &&
+        editForm.slug.trim().length >= 2 &&
+        hasValidLimits(editForm);
 
     const openEditDialog = (organization: OrganizationRow) => {
         setEditingOrg(organization);
@@ -304,398 +292,564 @@ export function OrganizationsTable() {
         });
     };
 
+    return {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        page,
+        setPage,
+        createOpen,
+        setCreateOpen,
+        createForm,
+        setCreateForm,
+        editingOrg,
+        setEditingOrg,
+        editForm,
+        setEditForm,
+        deletingOrg,
+        setDeletingOrg,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        organizations,
+        total,
+        totalPages,
+        invalidateOrganizations,
+        createMutation,
+        updateMutation,
+        deleteMutation,
+        createCanSave,
+        editCanSave,
+        openEditDialog,
+    };
+}
+
+type OrganizationsTableModel = ReturnType<typeof useOrganizationsTableModel>;
+
+function OrganizationsTableDataTable3({
+    model,
+}: {
+    model: OrganizationsTableModel;
+}) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        page,
+        setPage,
+        createOpen,
+        setCreateOpen,
+        createForm,
+        setCreateForm,
+        editingOrg,
+        setEditingOrg,
+        editForm,
+        setEditForm,
+        deletingOrg,
+        setDeletingOrg,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        organizations,
+        total,
+        totalPages,
+        invalidateOrganizations,
+        createMutation,
+        updateMutation,
+        deleteMutation,
+        createCanSave,
+        editCanSave,
+        openEditDialog,
+    } = model;
     return (
-        <>
-            <div className="mx-auto w-full max-w-6xl space-y-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <h1 className="font-bold text-2xl tracking-tight">
-                        Organizations
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                            <DialogTrigger render={<Button />}>
-                                <FontAwesomeIcon
-                                    icon={faPlus}
-                                    className="mr-2 h-4 w-4"
-                                />
-                                Create Organization
-                            </DialogTrigger>
-                            <DialogPopup className="sm:max-w-lg">
-                                <DialogHeader>
-                                    <DialogTitle>
-                                        Create Organization
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                        Create an organization for an existing
-                                        owner user.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogPanel className="grid gap-4">
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="create-org-name">
-                                                Name
-                                            </Label>
-                                            <Input
-                                                id="create-org-name"
-                                                value={createForm.name}
-                                                onChange={(event) => {
-                                                    const name =
-                                                        event.target.value;
-                                                    setCreateForm(
-                                                        (current) => ({
-                                                            ...current,
-                                                            name,
-                                                            slug: slugFromName(
-                                                                name,
-                                                            ),
-                                                        }),
-                                                    );
-                                                }}
-                                                placeholder="Acme Corp"
+        <Table>
+            <TableBody>
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            Loading...
+                        </TableCell>
+                    </TableRow>
+                ) : organizations.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2 py-6">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
+                                    <FontAwesomeIcon
+                                        icon={faBuilding}
+                                        className="h-6 w-6 text-muted-foreground"
+                                    />
+                                </div>
+                                <p className="font-medium text-lg">
+                                    No organizations found
+                                </p>
+                                <p className="text-muted-foreground text-sm">
+                                    {searchQuery
+                                        ? "No organizations matching your search."
+                                        : "No organizations created yet."}
+                                </p>
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                ) : (
+                    organizations.map((org) => (
+                        <TableRow
+                            key={org.id}
+                            className="group h-[88px] hover:bg-muted/40"
+                        >
+                            <TableCell className="w-[56px] pl-6">
+                                <Avatar className="h-10 w-10 rounded-lg">
+                                    <AvatarImage
+                                        src={org.logo || ""}
+                                        alt={org.name}
+                                    />
+                                    <AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+                                        {getInitials(org)}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </TableCell>
+                            <TableCell>
+                                <div className="grid gap-1">
+                                    <span className="font-semibold leading-none">
+                                        {org.name}
+                                    </span>
+                                    <span className="text-muted-foreground text-sm">
+                                        /{org.slug}
+                                    </span>
+                                    <span className="text-muted-foreground text-xs">
+                                        Created{" "}
+                                        {formatDistanceToNow(
+                                            new Date(org.createdAt),
+                                            {
+                                                addSuffix: true,
+                                            },
+                                        )}
+                                    </span>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex flex-col gap-1 text-muted-foreground text-sm">
+                                    <span className="flex items-center gap-1.5">
+                                        <FontAwesomeIcon
+                                            icon={faUsers}
+                                            className="h-4 w-4"
+                                        />
+                                        <span className="text-foreground">
+                                            {org.memberCount}
+                                        </span>{" "}
+                                        members
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <FontAwesomeIcon
+                                            icon={faSignal}
+                                            className="h-4 w-4"
+                                        />
+                                        <span className="text-foreground">
+                                            {org.activeMonitorCount}
+                                        </span>{" "}
+                                        active /{" "}
+                                        <span className="text-foreground">
+                                            {org.totalMonitorCount}
+                                        </span>{" "}
+                                        total
+                                    </span>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div className="grid gap-1 text-sm">
+                                    <span className="text-muted-foreground">
+                                        Active monitor limit:{" "}
+                                        <span className="font-medium text-foreground">
+                                            {formatLimit(
+                                                org.activeMonitorLimit,
+                                            )}
+                                        </span>
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        Regions per monitor:{" "}
+                                        <span className="font-medium text-foreground">
+                                            {formatLimit(
+                                                org.regionsPerMonitorLimit,
+                                            )}
+                                        </span>
+                                    </span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="w-[60px] pr-6 text-right">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                        render={
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                             />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="create-org-slug">
-                                                Slug
-                                            </Label>
-                                            <Input
-                                                id="create-org-slug"
-                                                value={createForm.slug}
-                                                onChange={(event) =>
-                                                    setCreateForm(
-                                                        (current) => ({
-                                                            ...current,
-                                                            slug: event.target
-                                                                .value,
-                                                        }),
-                                                    )
-                                                }
-                                                placeholder="acme-corp"
+                                        }
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={faEllipsis}
+                                            className="h-4 w-4"
+                                        />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() => openEditDialog(org)}
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faPen}
+                                                className="mr-2 h-4 w-4"
                                             />
-                                        </div>
-                                    </div>
+                                            Edit Organization
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => setDeletingOrg(org)}
+                                            className="text-red-500"
+                                        >
+                                            <FontAwesomeIcon
+                                                icon={faTrash}
+                                                className="mr-2 h-4 w-4"
+                                            />
+                                            Delete Organization
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                )}
+            </TableBody>
+        </Table>
+    );
+}
+
+function OrganizationsTableDataTable2({
+    model,
+}: {
+    model: OrganizationsTableModel;
+}) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        page,
+        setPage,
+        createOpen,
+        setCreateOpen,
+        createForm,
+        setCreateForm,
+        editingOrg,
+        setEditingOrg,
+        editForm,
+        setEditForm,
+        deletingOrg,
+        setDeletingOrg,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        organizations,
+        total,
+        totalPages,
+        invalidateOrganizations,
+        createMutation,
+        updateMutation,
+        deleteMutation,
+        createCanSave,
+        editCanSave,
+        openEditDialog,
+    } = model;
+    return (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+                <FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
+                Organizations ({total})
+            </div>
+            <OrganizationsTableDataTable3 model={model} />
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
+                    <Pagination className="mx-0 w-auto">
+                        <PaginationContent>
+                            <PaginationItem>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={page === 1}
+                                    onClick={() => setPage(page - 1)}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faChevronLeft}
+                                        className="h-4 w-4"
+                                    />
+                                </Button>
+                            </PaginationItem>
+                            {Array.from(
+                                { length: totalPages },
+                                (_, index) => index + 1,
+                            ).map((pageNumber) => {
+                                if (
+                                    totalPages > 7 &&
+                                    (pageNumber < page - 2 ||
+                                        pageNumber > page + 2) &&
+                                    pageNumber !== 1 &&
+                                    pageNumber !== totalPages
+                                ) {
+                                    if (
+                                        pageNumber === page - 3 ||
+                                        pageNumber === page + 3
+                                    ) {
+                                        return (
+                                            <PaginationItem key={pageNumber}>
+                                                <PaginationEllipsis />
+                                            </PaginationItem>
+                                        );
+                                    }
+                                    return null;
+                                }
+
+                                return (
+                                    <PaginationItem key={pageNumber}>
+                                        <Button
+                                            variant={
+                                                pageNumber === page
+                                                    ? "outline"
+                                                    : "ghost"
+                                            }
+                                            size="icon"
+                                            onClick={() => setPage(pageNumber)}
+                                        >
+                                            {pageNumber}
+                                        </Button>
+                                    </PaginationItem>
+                                );
+                            })}
+                            <PaginationItem>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={page === totalPages}
+                                    onClick={() => setPage(page + 1)}
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faChevronRight}
+                                        className="h-4 w-4"
+                                    />
+                                </Button>
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function OrganizationsTableDialog1({
+    model,
+}: {
+    model: OrganizationsTableModel;
+}) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        page,
+        setPage,
+        createOpen,
+        setCreateOpen,
+        createForm,
+        setCreateForm,
+        editingOrg,
+        setEditingOrg,
+        editForm,
+        setEditForm,
+        deletingOrg,
+        setDeletingOrg,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        organizations,
+        total,
+        totalPages,
+        invalidateOrganizations,
+        createMutation,
+        updateMutation,
+        deleteMutation,
+        createCanSave,
+        editCanSave,
+        openEditDialog,
+    } = model;
+    return (
+        <div className="mx-auto w-full max-w-6xl space-y-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <h1 className="font-bold text-2xl tracking-tight">
+                    Organizations
+                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                        <DialogTrigger render={<Button />}>
+                            <FontAwesomeIcon
+                                icon={faPlus}
+                                className="mr-2 h-4 w-4"
+                            />
+                            Create Organization
+                        </DialogTrigger>
+                        <DialogPopup className="sm:max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>Create Organization</DialogTitle>
+                                <DialogDescription>
+                                    Create an organization for an existing owner
+                                    user.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogPanel className="grid gap-4">
+                                <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label htmlFor="create-owner-email">
-                                            Owner Email
+                                        <Label htmlFor="create-org-name">
+                                            Name
                                         </Label>
                                         <Input
-                                            id="create-owner-email"
-                                            type="email"
-                                            value={createForm.ownerEmail}
+                                            id="create-org-name"
+                                            value={createForm.name}
+                                            onChange={(event) => {
+                                                const name = event.target.value;
+                                                setCreateForm((current) => ({
+                                                    ...current,
+                                                    name,
+                                                    slug: slugFromName(name),
+                                                }));
+                                            }}
+                                            placeholder="Acme Corp"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="create-org-slug">
+                                            Slug
+                                        </Label>
+                                        <Input
+                                            id="create-org-slug"
+                                            value={createForm.slug}
                                             onChange={(event) =>
                                                 setCreateForm((current) => ({
                                                     ...current,
-                                                    ownerEmail:
-                                                        event.target.value,
+                                                    slug: event.target.value,
                                                 }))
                                             }
-                                            placeholder="owner@example.com"
+                                            placeholder="acme-corp"
                                         />
                                     </div>
-                                    <OrganizationFields
-                                        form={createForm}
-                                        idPrefix="create"
-                                        setForm={setCreateForm}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="create-owner-email">
+                                        Owner Email
+                                    </Label>
+                                    <Input
+                                        id="create-owner-email"
+                                        type="email"
+                                        value={createForm.ownerEmail}
+                                        onChange={(event) =>
+                                            setCreateForm((current) => ({
+                                                ...current,
+                                                ownerEmail: event.target.value,
+                                            }))
+                                        }
+                                        placeholder="owner@example.com"
                                     />
-                                </DialogPanel>
-                                <DialogFooter>
-                                    <DialogClose
-                                        render={<Button variant="ghost" />}
-                                    >
-                                        Cancel
-                                    </DialogClose>
-                                    <Button
-                                        onClick={() => createMutation.mutate()}
-                                        disabled={
-                                            !createCanSave ||
-                                            createMutation.isPending
-                                        }
-                                    >
-                                        {createMutation.isPending && (
-                                            <FontAwesomeIcon
-                                                icon={faSpinner}
-                                                className="mr-2 h-4 w-4 animate-spin"
-                                            />
-                                        )}
-                                        Create Organization
-                                    </Button>
-                                </DialogFooter>
-                            </DialogPopup>
-                        </Dialog>
-                        <div className="relative w-full sm:w-64">
-                            <FontAwesomeIcon
-                                icon={faMagnifyingGlass}
-                                className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
-                            />
-                            <Input
-                                placeholder="Search by name or slug"
-                                className="pl-8"
-                                value={searchQuery}
-                                onChange={(event) =>
-                                    setSearchQuery(event.target.value)
-                                }
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                    <div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+                                </div>
+                                <OrganizationFields
+                                    form={createForm}
+                                    idPrefix="create"
+                                    setForm={setCreateForm}
+                                />
+                            </DialogPanel>
+                            <DialogFooter>
+                                <DialogClose
+                                    render={<Button variant="ghost" />}
+                                >
+                                    Cancel
+                                </DialogClose>
+                                <Button
+                                    onClick={() => createMutation.mutate()}
+                                    disabled={
+                                        !createCanSave ||
+                                        createMutation.isPending
+                                    }
+                                >
+                                    {createMutation.isPending && (
+                                        <FontAwesomeIcon
+                                            icon={faSpinner}
+                                            className="mr-2 h-4 w-4 animate-spin"
+                                        />
+                                    )}
+                                    Create Organization
+                                </Button>
+                            </DialogFooter>
+                        </DialogPopup>
+                    </Dialog>
+                    <div className="relative w-full sm:w-64">
                         <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className="h-4 w-4"
+                            icon={faMagnifyingGlass}
+                            className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"
                         />
-                        Organizations ({total})
+                        <Input
+                            placeholder="Search by name or slug"
+                            className="pl-8"
+                            value={searchQuery}
+                            onChange={(event) =>
+                                setSearchQuery(event.target.value)
+                            }
+                        />
                     </div>
-                    <Table>
-                        <TableBody>
-                            {isLoading ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={5}
-                                        className="h-24 text-center"
-                                    >
-                                        Loading...
-                                    </TableCell>
-                                </TableRow>
-                            ) : organizations.length === 0 ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={5}
-                                        className="h-24 text-center"
-                                    >
-                                        <div className="flex flex-col items-center justify-center gap-2 py-6">
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-                                                <FontAwesomeIcon
-                                                    icon={faBuilding}
-                                                    className="h-6 w-6 text-muted-foreground"
-                                                />
-                                            </div>
-                                            <p className="font-medium text-lg">
-                                                No organizations found
-                                            </p>
-                                            <p className="text-muted-foreground text-sm">
-                                                {searchQuery
-                                                    ? "No organizations matching your search."
-                                                    : "No organizations created yet."}
-                                            </p>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                organizations.map((org) => (
-                                    <TableRow
-                                        key={org.id}
-                                        className="group h-[88px] hover:bg-muted/40"
-                                    >
-                                        <TableCell className="w-[56px] pl-6">
-                                            <Avatar className="h-10 w-10 rounded-lg">
-                                                <AvatarImage
-                                                    src={org.logo || ""}
-                                                    alt={org.name}
-                                                />
-                                                <AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-                                                    {getInitials(org)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="grid gap-1">
-                                                <span className="font-semibold leading-none">
-                                                    {org.name}
-                                                </span>
-                                                <span className="text-muted-foreground text-sm">
-                                                    /{org.slug}
-                                                </span>
-                                                <span className="text-muted-foreground text-xs">
-                                                    Created{" "}
-                                                    {formatDistanceToNow(
-                                                        new Date(org.createdAt),
-                                                        {
-                                                            addSuffix: true,
-                                                        },
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col gap-1 text-muted-foreground text-sm">
-                                                <span className="flex items-center gap-1.5">
-                                                    <FontAwesomeIcon
-                                                        icon={faUsers}
-                                                        className="h-4 w-4"
-                                                    />
-                                                    <span className="text-foreground">
-                                                        {org.memberCount}
-                                                    </span>{" "}
-                                                    members
-                                                </span>
-                                                <span className="flex items-center gap-1.5">
-                                                    <FontAwesomeIcon
-                                                        icon={faSignal}
-                                                        className="h-4 w-4"
-                                                    />
-                                                    <span className="text-foreground">
-                                                        {org.activeMonitorCount}
-                                                    </span>{" "}
-                                                    active /{" "}
-                                                    <span className="text-foreground">
-                                                        {org.totalMonitorCount}
-                                                    </span>{" "}
-                                                    total
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="grid gap-1 text-sm">
-                                                <span className="text-muted-foreground">
-                                                    Active monitor limit:{" "}
-                                                    <span className="font-medium text-foreground">
-                                                        {formatLimit(
-                                                            org.activeMonitorLimit,
-                                                        )}
-                                                    </span>
-                                                </span>
-                                                <span className="text-muted-foreground">
-                                                    Regions per monitor:{" "}
-                                                    <span className="font-medium text-foreground">
-                                                        {formatLimit(
-                                                            org.regionsPerMonitorLimit,
-                                                        )}
-                                                    </span>
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="w-[60px] pr-6 text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger
-                                                    render={
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                        />
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faEllipsis}
-                                                        className="h-4 w-4"
-                                                    />
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            openEditDialog(org)
-                                                        }
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faPen}
-                                                            className="mr-2 h-4 w-4"
-                                                        />
-                                                        Edit Organization
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            setDeletingOrg(org)
-                                                        }
-                                                        className="text-red-500"
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faTrash}
-                                                            className="mr-2 h-4 w-4"
-                                                        />
-                                                        Delete Organization
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-
-                    {totalPages > 1 && (
-                        <div className="flex items-center justify-end border-t bg-muted/20 px-4 py-3">
-                            <Pagination className="mx-0 w-auto">
-                                <PaginationContent>
-                                    <PaginationItem>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            disabled={page === 1}
-                                            onClick={() => setPage(page - 1)}
-                                        >
-                                            <FontAwesomeIcon
-                                                icon={faChevronLeft}
-                                                className="h-4 w-4"
-                                            />
-                                        </Button>
-                                    </PaginationItem>
-                                    {Array.from(
-                                        { length: totalPages },
-                                        (_, index) => index + 1,
-                                    ).map((pageNumber) => {
-                                        if (
-                                            totalPages > 7 &&
-                                            (pageNumber < page - 2 ||
-                                                pageNumber > page + 2) &&
-                                            pageNumber !== 1 &&
-                                            pageNumber !== totalPages
-                                        ) {
-                                            if (
-                                                pageNumber === page - 3 ||
-                                                pageNumber === page + 3
-                                            ) {
-                                                return (
-                                                    <PaginationItem
-                                                        key={pageNumber}
-                                                    >
-                                                        <PaginationEllipsis />
-                                                    </PaginationItem>
-                                                );
-                                            }
-                                            return null;
-                                        }
-
-                                        return (
-                                            <PaginationItem key={pageNumber}>
-                                                <Button
-                                                    variant={
-                                                        pageNumber === page
-                                                            ? "outline"
-                                                            : "ghost"
-                                                    }
-                                                    size="icon"
-                                                    onClick={() =>
-                                                        setPage(pageNumber)
-                                                    }
-                                                >
-                                                    {pageNumber}
-                                                </Button>
-                                            </PaginationItem>
-                                        );
-                                    })}
-                                    <PaginationItem>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            disabled={page === totalPages}
-                                            onClick={() => setPage(page + 1)}
-                                        >
-                                            <FontAwesomeIcon
-                                                icon={faChevronRight}
-                                                className="h-4 w-4"
-                                            />
-                                        </Button>
-                                    </PaginationItem>
-                                </PaginationContent>
-                            </Pagination>
-                        </div>
-                    )}
                 </div>
             </div>
+
+            <OrganizationsTableDataTable2 model={model} />
+        </div>
+    );
+}
+function OrganizationsTableView({ model }: { model: OrganizationsTableModel }) {
+    const {
+        searchQuery,
+        setSearchQuery,
+        debouncedSearch,
+        setDebouncedSearch,
+        page,
+        setPage,
+        createOpen,
+        setCreateOpen,
+        createForm,
+        setCreateForm,
+        editingOrg,
+        setEditingOrg,
+        editForm,
+        setEditForm,
+        deletingOrg,
+        setDeletingOrg,
+        pageSize,
+        queryClient,
+        data,
+        isLoading,
+        organizations,
+        total,
+        totalPages,
+        invalidateOrganizations,
+        createMutation,
+        updateMutation,
+        deleteMutation,
+        createCanSave,
+        editCanSave,
+        openEditDialog,
+    } = model;
+    return (
+        <>
+            <OrganizationsTableDialog1 model={model} />
 
             <Dialog
                 open={!!editingOrg}
@@ -833,6 +987,11 @@ export function OrganizationsTable() {
             </AlertDialog>
         </>
     );
+}
+
+export function OrganizationsTable() {
+    const model = useOrganizationsTableModel();
+    return <OrganizationsTableView model={model} />;
 }
 
 function OrganizationFields({

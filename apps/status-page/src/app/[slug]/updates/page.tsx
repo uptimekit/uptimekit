@@ -13,8 +13,7 @@ export default async function SlugUpdatesPage({
     params: Promise<{ slug: string }>;
     searchParams: Promise<{ period?: string }>;
 }) {
-    const { slug } = await params;
-    const query = await searchParams;
+    const [{ slug }, query] = await Promise.all([params, searchParams]);
 
     const pageConfig = await getStatusPageBySlug(slug);
 
@@ -33,14 +32,12 @@ export default async function SlugUpdatesPage({
     const design = (pageConfig.design as any) || {};
     const themeId = design.themeId || "default";
 
-    const UpdatesPage = await loadUpdatesComponent(themeId);
-
-    let data: Awaited<ReturnType<typeof prepareUpdatesPageData>>;
-    try {
-        data = await prepareUpdatesPageData(pageConfig, period, slug);
-    } catch (_error) {
-        notFound();
-    }
+    const [UpdatesPage, data] = await Promise.all([
+        loadUpdatesComponent(themeId),
+        prepareUpdatesPageData(pageConfig, period, slug).catch(() =>
+            notFound(),
+        ),
+    ]);
 
     return (
         <ThemePageWrapper

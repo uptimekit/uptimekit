@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
@@ -57,6 +57,14 @@ interface OrganizationSettingsClientProps {
     organizationId: string;
 }
 
+function getOrganizationFormValues(activeOrg: any): z.infer<typeof formSchema> {
+    return {
+        name: activeOrg?.name || "",
+        slug: activeOrg?.slug || "",
+        logo: activeOrg?.logo || "",
+    };
+}
+
 function LoadingState({ label = "Loading organization settings..." }) {
     return (
         <div className="flex h-full min-h-80 w-full items-center justify-center">
@@ -81,195 +89,31 @@ export function OrganizationSettingsClient({
     );
 }
 
-function OrganizationSettingsPageContent({
-    organizationId,
-}: OrganizationSettingsClientProps) {
-    const router = useRouter();
-    const queryClient = useQueryClient();
-    const [isSwitchingOrg, setIsSwitchingOrg] = useState(false);
-    const {
-        data: activeOrg,
-        isPending: isLoadingActiveOrg,
-        refetch: refetchActiveOrg,
-    } = authClient.useActiveOrganization();
-    const { data: session, isPending: isLoadingSession } =
-        authClient.useSession();
-    const { data: organizations, isPending: isLoadingOrganizations } =
-        authClient.useListOrganizations();
-    const [activeTab, setActiveTab] = useQueryState(
-        "activeTab",
-        parseAsStringEnum([
-            "general",
-            "team",
-            "sso",
-            "api-keys",
-            "groups",
-            "tags",
-        ]).withDefault("general"),
-    );
+type OrganizationSettingsTab =
+    | "general"
+    | "team"
+    | "sso"
+    | "api-keys"
+    | "groups"
+    | "tags";
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: "",
-            slug: "",
-            logo: "",
-        },
-    });
-
-    const targetOrganization = useMemo(
-        () => organizations?.find((org) => org.id === organizationId),
-        [organizations, organizationId],
-    );
-
-    const currentMember = activeOrg?.members?.find(
-        (member) => member.userId === session?.user.id,
-    );
-    const canManageOrganization =
-        currentMember?.role === "owner" || currentMember?.role === "admin";
-
-    const getFormValuesFromActiveOrg = useCallback(
-        (): z.infer<typeof formSchema> => ({
-            name: activeOrg?.name || "",
-            slug: activeOrg?.slug || "",
-            logo: activeOrg?.logo || "",
-        }),
-        [activeOrg],
-    );
-
-    useEffect(() => {
-        if (
-            isLoadingActiveOrg ||
-            isLoadingOrganizations ||
-            !targetOrganization ||
-            activeOrg?.id === organizationId
-        ) {
-            return;
-        }
-
-        setIsSwitchingOrg(true);
-        void authClient.organization.setActive(
-            { organizationId },
-            {
-                onSuccess: async () => {
-                    await queryClient.invalidateQueries();
-                    await refetchActiveOrg();
-                    router.refresh();
-                    setIsSwitchingOrg(false);
-                },
-                onError: (ctx) => {
-                    sileo.error({ title: ctx.error.message });
-                    setIsSwitchingOrg(false);
-                },
-            },
-        );
-    }, [
-        activeOrg?.id,
-        isLoadingActiveOrg,
-        isLoadingOrganizations,
-        organizationId,
-        queryClient,
-        refetchActiveOrg,
-        router,
-        targetOrganization,
-    ]);
-
-    useEffect(() => {
-        if (activeOrg) {
-            form.reset(getFormValuesFromActiveOrg());
-        }
-    }, [activeOrg, form, getFormValuesFromActiveOrg]);
-
-    useEffect(() => {
-        if (
-            !canManageOrganization &&
-            (activeTab === "api-keys" || activeTab === "sso")
-        ) {
-            void setActiveTab("general");
-        }
-    }, [activeTab, canManageOrganization, setActiveTab]);
-
-    const submitForm = async (values: z.infer<typeof formSchema>) => {
-        if (!activeOrg?.id || !canManageOrganization) return;
-
-        const nextValues = {
-            name: values.name.trim(),
-            slug: values.slug.trim(),
-            logo: values.logo?.trim() || "",
-        };
-
-        await authClient.organization.update(
-            {
-                organizationId: activeOrg.id,
-                data: nextValues,
-            },
-            {
-                onSuccess: async () => {
-                    sileo.success({ title: "Organization settings updated" });
-                    form.reset(nextValues);
-                    await refetchActiveOrg();
-                },
-                onError: (ctx) => {
-                    sileo.error({ title: ctx.error.message });
-                    if (
-                        ctx.error.message?.toLowerCase().includes("slug") ||
-                        ctx.error.message?.toLowerCase().includes("unique")
-                    ) {
-                        form.setError("slug", {
-                            message: "This slug is already taken",
-                        });
-                    }
-                },
-            },
-        );
-    };
-
-    const handleDiscard = () => {
-        form.reset(getFormValuesFromActiveOrg());
-    };
-
-    const handleSave = () => {
-        void form.handleSubmit(submitForm)();
-    };
-
-    if (
-        isLoadingActiveOrg ||
-        isLoadingOrganizations ||
-        isLoadingSession ||
-        isSwitchingOrg
-    ) {
-        return <LoadingState />;
-    }
-
-    if (!targetOrganization) {
-        return (
-            <div className="flex h-full min-h-80 w-full items-center justify-center">
-                <div className="text-center">
-                    <h1 className="font-semibold text-lg">
-                        Organization not found
-                    </h1>
-                    <p className="text-muted-foreground text-sm">
-                        You do not have access to this organization.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    if (activeOrg?.id !== organizationId) {
-        return <LoadingState label="Switching organization..." />;
-    }
-
-    if (!activeOrg) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <div className="text-muted-foreground">
-                    No active organization
-                </div>
-            </div>
-        );
-    }
-
+function OrganizationSettingsContent({
+    activeTab,
+    setActiveTab,
+    canManageOrganization,
+    form,
+    submitForm,
+    handleDiscard,
+    handleSave,
+}: {
+    activeTab: OrganizationSettingsTab;
+    setActiveTab: (tab: OrganizationSettingsTab) => void;
+    canManageOrganization: boolean;
+    form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
+    submitForm: (values: z.infer<typeof formSchema>) => void;
+    handleDiscard: () => void;
+    handleSave: () => void;
+}) {
     return (
         <div className="flex flex-1 flex-col py-8 pb-20">
             <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4">
@@ -484,5 +328,199 @@ function OrganizationSettingsPageContent({
                 </Tabs>
             </div>
         </div>
+    );
+}
+
+function OrganizationSettingsPageContent({
+    organizationId,
+}: OrganizationSettingsClientProps) {
+    const router = useRouter();
+    const queryClient = useQueryClient();
+    const {
+        data: activeOrg,
+        isPending: isLoadingActiveOrg,
+        refetch: refetchActiveOrg,
+    } = authClient.useActiveOrganization();
+    const { data: session, isPending: isLoadingSession } =
+        authClient.useSession();
+    const { data: organizations, isPending: isLoadingOrganizations } =
+        authClient.useListOrganizations();
+    const [activeTab, setActiveTab] = useQueryState(
+        "activeTab",
+        parseAsStringEnum([
+            "general",
+            "team",
+            "sso",
+            "api-keys",
+            "groups",
+            "tags",
+        ]).withDefault("general"),
+    );
+
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            name: "",
+            slug: "",
+            logo: "",
+        },
+    });
+
+    const targetOrganization = organizations?.find(
+        (organization) => organization.id === organizationId,
+    );
+    const isSwitchingOrg = Boolean(
+        !isLoadingActiveOrg &&
+            !isLoadingOrganizations &&
+            targetOrganization &&
+            activeOrg?.id !== organizationId,
+    );
+
+    const currentMember = activeOrg?.members?.find(
+        (member) => member.userId === session?.user.id,
+    );
+    const canManageOrganization =
+        currentMember?.role === "owner" || currentMember?.role === "admin";
+
+    useEffect(() => {
+        if (
+            isLoadingActiveOrg ||
+            isLoadingOrganizations ||
+            !targetOrganization ||
+            activeOrg?.id === organizationId
+        ) {
+            return;
+        }
+
+        void authClient.organization.setActive(
+            { organizationId },
+            {
+                onSuccess: async () => {
+                    await queryClient.invalidateQueries();
+                    await refetchActiveOrg();
+                    router.refresh();
+                },
+                onError: (ctx) => {
+                    sileo.error({ title: ctx.error.message });
+                },
+            },
+        );
+    }, [
+        activeOrg?.id,
+        isLoadingActiveOrg,
+        isLoadingOrganizations,
+        organizationId,
+        queryClient,
+        refetchActiveOrg,
+        router,
+        targetOrganization,
+    ]);
+
+    useEffect(() => {
+        if (activeOrg) {
+            form.reset(getOrganizationFormValues(activeOrg));
+        }
+    }, [activeOrg, form]);
+
+    useEffect(() => {
+        if (
+            !canManageOrganization &&
+            (activeTab === "api-keys" || activeTab === "sso")
+        ) {
+            void setActiveTab("general");
+        }
+    }, [activeTab, canManageOrganization, setActiveTab]);
+
+    const submitForm = async (values: z.infer<typeof formSchema>) => {
+        if (!activeOrg?.id || !canManageOrganization) return;
+
+        const nextValues = {
+            name: values.name.trim(),
+            slug: values.slug.trim(),
+            logo: values.logo?.trim() || "",
+        };
+
+        await authClient.organization.update(
+            {
+                organizationId: activeOrg.id,
+                data: nextValues,
+            },
+            {
+                onSuccess: async () => {
+                    sileo.success({ title: "Organization settings updated" });
+                    form.reset(nextValues);
+                    await refetchActiveOrg();
+                },
+                onError: (ctx) => {
+                    sileo.error({ title: ctx.error.message });
+                    if (
+                        ctx.error.message?.toLowerCase().includes("slug") ||
+                        ctx.error.message?.toLowerCase().includes("unique")
+                    ) {
+                        form.setError("slug", {
+                            message: "This slug is already taken",
+                        });
+                    }
+                },
+            },
+        );
+    };
+
+    const handleDiscard = () => {
+        form.reset(getOrganizationFormValues(activeOrg));
+    };
+
+    const handleSave = () => {
+        void form.handleSubmit(submitForm)();
+    };
+
+    if (
+        isLoadingActiveOrg ||
+        isLoadingOrganizations ||
+        isLoadingSession ||
+        isSwitchingOrg
+    ) {
+        return <LoadingState />;
+    }
+
+    if (!targetOrganization) {
+        return (
+            <div className="flex h-full min-h-80 w-full items-center justify-center">
+                <div className="text-center">
+                    <h1 className="font-semibold text-lg">
+                        Organization not found
+                    </h1>
+                    <p className="text-muted-foreground text-sm">
+                        You do not have access to this organization.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (activeOrg?.id !== organizationId) {
+        return <LoadingState label="Switching organization..." />;
+    }
+
+    if (!activeOrg) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <div className="text-muted-foreground">
+                    No active organization
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <OrganizationSettingsContent
+            activeTab={activeTab}
+            setActiveTab={(tab) => void setActiveTab(tab)}
+            canManageOrganization={canManageOrganization}
+            form={form}
+            submitForm={submitForm}
+            handleDiscard={handleDiscard}
+            handleSave={handleSave}
+        />
     );
 }

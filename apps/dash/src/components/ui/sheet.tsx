@@ -12,21 +12,17 @@ import { cn } from "@/lib/utils";
 
 export const Sheet: typeof SheetPrimitive.Root = SheetPrimitive.Root;
 
-export const SheetPortal: typeof SheetPrimitive.Portal = SheetPrimitive.Portal;
+const SheetPortal: typeof SheetPrimitive.Portal = SheetPrimitive.Portal;
 
-export function SheetTrigger(
-    props: SheetPrimitive.Trigger.Props,
-): React.ReactElement {
+function SheetTrigger(props: SheetPrimitive.Trigger.Props): React.ReactElement {
     return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
 }
 
-export function SheetClose(
-    props: SheetPrimitive.Close.Props,
-): React.ReactElement {
+function SheetClose(props: SheetPrimitive.Close.Props): React.ReactElement {
     return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
 }
 
-export function SheetBackdrop({
+function SheetBackdrop({
     className,
     ...props
 }: SheetPrimitive.Backdrop.Props): React.ReactElement {
@@ -42,7 +38,7 @@ export function SheetBackdrop({
     );
 }
 
-export function SheetViewport({
+function SheetViewport({
     className,
     side,
     variant = "default",
@@ -141,7 +137,7 @@ export function SheetHeader({
     });
 }
 
-export function SheetFooter({
+function SheetFooter({
     className,
     variant = "default",
     render,
@@ -196,7 +192,7 @@ export function SheetDescription({
     );
 }
 
-export function SheetPanel({
+function SheetPanel({
     className,
     scrollFade = true,
     render,
@@ -223,8 +219,4 @@ export function SheetPanel({
     );
 }
 
-export {
-    SheetBackdrop as SheetOverlay,
-    SheetPopup as SheetContent,
-    SheetPrimitive,
-};
+export { SheetPrimitive };

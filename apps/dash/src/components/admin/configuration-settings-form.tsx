@@ -3,7 +3,7 @@
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,27 +67,17 @@ function getFormString(formData: FormData, key: keyof ConfigFormData) {
  */
 export function ConfigurationSettingsForm() {
     const queryClient = useQueryClient();
-    const [formValues, setFormValues] = useState<ConfigFormData>({
-        instanceName: "",
-        dataRetentionDays: "30",
-    });
 
     // Fetch all configuration values
     const { data, isLoading } = useQuery(
         orpc.configuration.list.queryOptions(),
     );
 
-    // Populate form with fetched values
-    useEffect(() => {
-        if (data?.items) {
-            const instanceName =
-                data.items.find((i) => i.key === "instance_name")?.value || "";
-            const dataRetentionDays =
-                data.items.find((i) => i.key === "data_retention_days")
-                    ?.value || "30";
-            setFormValues({ instanceName, dataRetentionDays });
-        }
-    }, [data]);
+    const instanceName =
+        data?.items.find((item) => item.key === "instance_name")?.value || "";
+    const dataRetentionDays =
+        data?.items.find((item) => item.key === "data_retention_days")?.value ||
+        "30";
 
     // Save mutation
     const saveMutation = useMutation({
@@ -107,8 +97,7 @@ export function ConfigurationSettingsForm() {
 
             return nextValues;
         },
-        onSuccess: async (nextValues) => {
-            setFormValues(nextValues);
+        onSuccess: async () => {
             await queryClient.invalidateQueries({
                 queryKey: orpc.configuration.list.key(),
             });
@@ -154,22 +143,20 @@ export function ConfigurationSettingsForm() {
                 <CardDescription>Instance-wide configuration.</CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={onSubmit} className="space-y-4">
+                <form
+                    key={`${instanceName}:${dataRetentionDays}`}
+                    onSubmit={onSubmit}
+                    className="space-y-4"
+                >
                     <div className="space-y-2">
                         <Label htmlFor="instance-name">Instance Name</Label>
                         <Input
                             id="instance-name"
                             name="instanceName"
                             nativeInput
-                            onChange={(event) =>
-                                setFormValues((current) => ({
-                                    ...current,
-                                    instanceName: event.target.value,
-                                }))
-                            }
+                            defaultValue={instanceName}
                             placeholder="UptimeKit Self-Hosted"
                             required
-                            value={formValues.instanceName}
                         />
                         <p className="text-muted-foreground text-sm">
                             The name displayed in the dashboard and status
@@ -186,17 +173,11 @@ export function ConfigurationSettingsForm() {
                             max={DATA_RETENTION_MAX_DAYS}
                             name="dataRetentionDays"
                             nativeInput
-                            onChange={(event) =>
-                                setFormValues((current) => ({
-                                    ...current,
-                                    dataRetentionDays: event.target.value,
-                                }))
-                            }
+                            defaultValue={dataRetentionDays}
                             placeholder="30"
                             required
                             step={1}
                             type="number"
-                            value={formValues.dataRetentionDays}
                         />
                         <p className="text-muted-foreground text-sm">
                             How long to keep monitoring data before automatic

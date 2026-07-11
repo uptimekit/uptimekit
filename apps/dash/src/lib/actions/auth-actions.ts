@@ -5,6 +5,11 @@ import { headers } from "next/headers";
 
 export async function setUserPassword(password: string) {
     const userHeaders = await headers();
+    const session = await auth.api.getSession({ headers: userHeaders });
+    if (!session?.user) {
+        throw new Error("Unauthorized");
+    }
+
     try {
         await auth.api.setPassword({
             body: { newPassword: password },

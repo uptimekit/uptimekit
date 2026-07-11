@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export const ComboboxContext: React.Context<{
+const ComboboxContext: React.Context<{
     chipsRef: React.RefObject<Element | null> | null;
     multiple: boolean;
     searchQuery: string;
@@ -323,7 +323,7 @@ export function ComboboxInput({
     );
 }
 
-export function ComboboxTrigger({
+function ComboboxTrigger({
     className,
     children,
     ...props
@@ -481,7 +481,7 @@ export function ComboboxEmpty({
     );
 }
 
-export function ComboboxRow({
+function ComboboxRow({
     className,
     ...props
 }: ComboboxPrimitive.Row.Props): React.ReactElement {
@@ -525,7 +525,7 @@ export function ComboboxList({
     );
 }
 
-export function ComboboxClear({
+function ComboboxClear({
     className,
     ...props
 }: ComboboxPrimitive.Clear.Props): React.ReactElement {
@@ -538,7 +538,7 @@ export function ComboboxClear({
     );
 }
 
-export function ComboboxStatus({
+function ComboboxStatus({
     className,
     ...props
 }: ComboboxPrimitive.Status.Props): React.ReactElement {
@@ -554,7 +554,7 @@ export function ComboboxStatus({
     );
 }
 
-export function ComboboxCollection(
+function ComboboxCollection(
     props: ComboboxPrimitive.Collection.Props,
 ): React.ReactElement {
     return (
@@ -618,7 +618,7 @@ export function ComboboxChip({
     );
 }
 
-export function ComboboxChipRemove(
+function ComboboxChipRemove(
     props: ComboboxPrimitive.ChipRemove.Props,
 ): React.ReactElement {
     return (
@@ -633,7 +633,7 @@ export function ComboboxChipRemove(
     );
 }
 
-export const useComboboxFilter: typeof ComboboxPrimitive.useFilter =
+const useComboboxFilter: typeof ComboboxPrimitive.useFilter =
     ComboboxPrimitive.useFilter;
 
 export { ComboboxPrimitive };

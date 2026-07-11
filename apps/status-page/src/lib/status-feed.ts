@@ -135,9 +135,11 @@ function buildAtomEntry(item: Incident, pageUrl: string) {
 }
 
 function getItemDate(item: Incident) {
-    const latestActivity = item.activities
-        .map((activity) => new Date(activity.createdAt).getTime())
-        .sort((a, b) => b - a)[0];
+    const latestActivity = item.activities.reduce(
+        (latest, activity) =>
+            Math.max(latest, new Date(activity.createdAt).getTime()),
+        0,
+    );
 
     return new Date(latestActivity || item.endedAt || item.startedAt);
 }
@@ -145,8 +147,7 @@ function getItemDate(item: Incident) {
 function getItemSummary(item: Incident) {
     const latestMessage = item.activities[0]?.message;
     const monitors = item.monitors
-        .map(({ monitor }) => monitor.name)
-        .filter(Boolean)
+        .flatMap(({ monitor }) => (monitor.name ? [monitor.name] : []))
         .join(", ");
 
     return [latestMessage, monitors ? `Affected components: ${monitors}` : ""]

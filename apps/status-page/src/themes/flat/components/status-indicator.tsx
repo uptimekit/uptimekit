@@ -16,7 +16,7 @@ const sizeConfig = {
     lg: { dot: "h-3 w-3", icon: "h-5 w-5", text: "text-base" },
 };
 
-export function StatusIndicator({
+function StatusIndicator({
     status,
     showLabel = true,
     size = "md",

@@ -44,6 +44,79 @@ import {
 } from "@/lib/regions";
 import { orpc } from "@/utils/orpc";
 
+function WorkerLocationField({
+    selectedRegion,
+    onChange,
+}: {
+    selectedRegion: (typeof ALL_REGIONS)[number] | null;
+    onChange: (location: string) => void;
+}) {
+    return (
+        <Field>
+            <FieldLabel htmlFor="location">Location</FieldLabel>
+            <input
+                id="location"
+                name="location"
+                aria-label="Location"
+                value={selectedRegion?.value ?? ""}
+                readOnly
+                tabIndex={-1}
+                className="sr-only"
+            />
+            <Combobox
+                items={ALL_REGIONS}
+                value={selectedRegion}
+                onValueChange={(value) => value && onChange(value.value)}
+            >
+                <ComboboxValue>
+                    {() => (
+                        <ComboboxInput
+                            aria-label="Location"
+                            placeholder="Select a region"
+                            className="w-full"
+                        />
+                    )}
+                </ComboboxValue>
+                <ComboboxPopup>
+                    <ComboboxEmpty>No regions found.</ComboboxEmpty>
+                    <ComboboxList className="max-h-[400px]">
+                        {REGIONS_BY_CONTINENT.map((group) => (
+                            <ComboboxGroup key={group.continent}>
+                                <ComboboxGroupLabel>
+                                    {group.continent}
+                                </ComboboxGroupLabel>
+                                {group.regions.map((region) => {
+                                    const Flag = region.Flag;
+                                    return (
+                                        <ComboboxItem
+                                            key={region.value}
+                                            value={region}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {isFontAwesomeRegionFlag(
+                                                    Flag,
+                                                ) ? (
+                                                    <FontAwesomeIcon
+                                                        icon={Flag}
+                                                        className="size-4 shrink-0 rounded-sm"
+                                                    />
+                                                ) : (
+                                                    <Flag className="size-4 shrink-0 rounded-sm" />
+                                                )}
+                                                <span>{region.label}</span>
+                                            </div>
+                                        </ComboboxItem>
+                                    );
+                                })}
+                            </ComboboxGroup>
+                        ))}
+                    </ComboboxList>
+                </ComboboxPopup>
+            </Combobox>
+        </Field>
+    );
+}
+
 export function CreateWorkerDialog() {
     const [open, setOpen] = useState(false);
     const [newWorkerKey, setNewWorkerKey] = useState<string | null>(null);
@@ -245,98 +318,10 @@ export function CreateWorkerDialog() {
                                 />
                             </Field>
 
-                            <Field>
-                                <FieldLabel htmlFor="location">
-                                    Location
-                                </FieldLabel>
-
-                                <input
-                                    id="location"
-                                    name="location"
-                                    value={selectedLocation}
-                                    readOnly
-                                    tabIndex={-1}
-                                    className="sr-only"
-                                />
-
-                                <Combobox
-                                    items={ALL_REGIONS}
-                                    value={selectedRegion || null}
-                                    onValueChange={(value) => {
-                                        if (value) {
-                                            setSelectedLocation(value.value);
-                                        }
-                                    }}
-                                >
-                                    <ComboboxValue>
-                                        {(
-                                            _value:
-                                                | (typeof ALL_REGIONS)[number]
-                                                | null,
-                                        ) => (
-                                            <ComboboxInput
-                                                placeholder="Select a region"
-                                                className="w-full"
-                                            />
-                                        )}
-                                    </ComboboxValue>
-                                    <ComboboxPopup>
-                                        <ComboboxEmpty>
-                                            No regions found.
-                                        </ComboboxEmpty>
-                                        <ComboboxList className="max-h-[400px]">
-                                            {REGIONS_BY_CONTINENT.map(
-                                                (group) => (
-                                                    <ComboboxGroup
-                                                        key={group.continent}
-                                                    >
-                                                        <ComboboxGroupLabel>
-                                                            {group.continent}
-                                                        </ComboboxGroupLabel>
-                                                        {group.regions.map(
-                                                            (region) => {
-                                                                const Flag =
-                                                                    region.Flag;
-
-                                                                return (
-                                                                    <ComboboxItem
-                                                                        key={
-                                                                            region.value
-                                                                        }
-                                                                        value={
-                                                                            region
-                                                                        }
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            {isFontAwesomeRegionFlag(
-                                                                                Flag,
-                                                                            ) ? (
-                                                                                <FontAwesomeIcon
-                                                                                    icon={
-                                                                                        Flag
-                                                                                    }
-                                                                                    className="size-4 shrink-0 rounded-sm"
-                                                                                />
-                                                                            ) : (
-                                                                                <Flag className="size-4 shrink-0 rounded-sm" />
-                                                                            )}
-                                                                            <span>
-                                                                                {
-                                                                                    region.label
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                    </ComboboxItem>
-                                                                );
-                                                            },
-                                                        )}
-                                                    </ComboboxGroup>
-                                                ),
-                                            )}
-                                        </ComboboxList>
-                                    </ComboboxPopup>
-                                </Combobox>
-                            </Field>
+                            <WorkerLocationField
+                                selectedRegion={selectedRegion || null}
+                                onChange={setSelectedLocation}
+                            />
                         </DialogPanel>
 
                         <DialogFooter>

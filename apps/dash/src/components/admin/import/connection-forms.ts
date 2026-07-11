@@ -2,8 +2,8 @@ import type { ComponentType } from "react";
 import {
     emptyKumaConnection,
     type KumaConnectionValues,
-    UptimeKumaConnectionForm,
-} from "./uptime-kuma-connection-form";
+} from "./uptime-kuma-connection";
+import { UptimeKumaConnectionForm } from "./uptime-kuma-connection-form";
 
 export interface ConnectionFormProps<TValues> {
     values: TValues;

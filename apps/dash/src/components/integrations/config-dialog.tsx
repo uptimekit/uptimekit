@@ -2,7 +2,7 @@
 "use client";
 
 import type { IntegrationDefinition } from "@uptimekit/api/pkg/integrations/registry";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
 import { AlertManagerConfig } from "@/components/integrations/alertmanager-config";
@@ -78,20 +78,6 @@ export function ConfigDialog({
     const [deleting, setDeleting] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    useEffect(() => {
-        setName(initialName || integration.name);
-        setConfig(initialConfig || {});
-        setActive(initialActive);
-        setIsDefault(initialIsDefault);
-        setApplyToExistingMonitors(false);
-    }, [
-        initialActive,
-        initialConfig,
-        initialIsDefault,
-        initialName,
-        integration.name,
-    ]);
-
     // Basic schema parsing for MVP (assumes object with string fields)
     // In a real robust system, use something like 'auto-form'
     const shape = (integration.configSchema as any).shape;
@@ -134,9 +120,8 @@ export function ConfigDialog({
                 title: error.message || "Failed to save notification",
             });
             console.error(error);
-        } finally {
-            setSaving(false);
         }
+        setSaving(false);
     };
 
     const handleTest = async () => {
@@ -153,9 +138,8 @@ export function ConfigDialog({
                 title: error.message || "Failed to send test event",
             });
             console.error(error);
-        } finally {
-            setTesting(false);
         }
+        setTesting(false);
     };
 
     const handleDelete = async () => {
@@ -172,9 +156,8 @@ export function ConfigDialog({
                 title: error.message || "Failed to remove notification",
             });
             console.error(error);
-        } finally {
-            setDeleting(false);
         }
+        setDeleting(false);
     };
 
     return (

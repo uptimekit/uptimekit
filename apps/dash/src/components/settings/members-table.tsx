@@ -224,105 +224,83 @@ export function MembersTable({ canManageMembers }: MembersTableProps) {
                                 </TableCell>
                             </TableRow>
                         ))}
-                        {activeOrg?.invitations
-                            ?.filter((inv) => inv.status === "pending")
-                            .map((invitation) => (
-                                <TableRow key={invitation.id}>
-                                    <TableCell className="flex items-center gap-3">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarFallback>
-                                                {invitation.email
-                                                    .charAt(0)
-                                                    .toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-sm">
-                                                {invitation.email}
-                                            </span>
-                                            <span className="text-muted-foreground text-xs">
-                                                Invited
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="secondary"
-                                            className="capitalize"
-                                        >
-                                            {invitation.role}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {format(
-                                            new Date(invitation.createdAt),
-                                            "MMM d, yyyy",
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {canManageMembers && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                onClick={async () => {
-                                                    await authClient.organization.cancelInvitation(
-                                                        {
-                                                            invitationId:
-                                                                invitation.id,
-                                                        },
-                                                    );
-                                                    sileo.success({
-                                                        title: "Invitation revoked",
-                                                    });
-                                                    refetch();
-                                                }}
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faTrash}
-                                                    className="h-4 w-4"
-                                                />
-                                            </Button>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                        {activeOrg?.invitations?.flatMap((invitation) =>
+                            invitation.status === "pending"
+                                ? [
+                                      <TableRow key={invitation.id}>
+                                          <TableCell className="flex items-center gap-3">
+                                              <Avatar className="h-8 w-8">
+                                                  <AvatarFallback>
+                                                      {invitation.email
+                                                          .charAt(0)
+                                                          .toUpperCase()}
+                                                  </AvatarFallback>
+                                              </Avatar>
+                                              <div className="flex flex-col">
+                                                  <span className="font-medium text-sm">
+                                                      {invitation.email}
+                                                  </span>
+                                                  <span className="text-muted-foreground text-xs">
+                                                      Invited
+                                                  </span>
+                                              </div>
+                                          </TableCell>
+                                          <TableCell>
+                                              <Badge
+                                                  variant="secondary"
+                                                  className="capitalize"
+                                              >
+                                                  {invitation.role}
+                                              </Badge>
+                                          </TableCell>
+                                          <TableCell className="text-muted-foreground text-sm">
+                                              {format(
+                                                  new Date(
+                                                      invitation.createdAt,
+                                                  ),
+                                                  "MMM d, yyyy",
+                                              )}
+                                          </TableCell>
+                                          <TableCell>
+                                              {canManageMembers && (
+                                                  <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                      onClick={async () => {
+                                                          await authClient.organization.cancelInvitation(
+                                                              {
+                                                                  invitationId:
+                                                                      invitation.id,
+                                                              },
+                                                          );
+                                                          sileo.success({
+                                                              title: "Invitation revoked",
+                                                          });
+                                                          refetch();
+                                                      }}
+                                                  >
+                                                      <FontAwesomeIcon
+                                                          icon={faTrash}
+                                                          className="h-4 w-4"
+                                                      />
+                                                  </Button>
+                                              )}
+                                          </TableCell>
+                                      </TableRow>,
+                                  ]
+                                : [],
+                        )}
                     </TableBody>
                 </Table>
             </div>
 
-            <AlertDialog
+            <RemoveMemberDialog
+                memberName={selectedMember?.user.name}
                 open={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Remove member?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to remove{" "}
-                            <span className="font-medium">
-                                {selectedMember?.user.name}
-                            </span>{" "}
-                            from the organization? They will lose access to all
-                            resources.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            onClick={() => setIsDeleteDialogOpen(false)}
-                        >
-                            Cancel
-                        </AlertDialogCancel>
-                        <Button
-                            type="button"
-                            onClick={handleRemoveMember}
-                            variant="destructive"
-                        >
-                            Remove
-                        </Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                onRemove={handleRemoveMember}
+            />
 
             <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
                 <DialogPopup className="sm:max-w-[425px]">
@@ -374,5 +352,45 @@ export function MembersTable({ canManageMembers }: MembersTableProps) {
                 </DialogPopup>
             </Dialog>
         </>
+    );
+}
+
+function RemoveMemberDialog({
+    memberName,
+    open,
+    onOpenChange,
+    onRemove,
+}: {
+    memberName?: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onRemove: () => Promise<void>;
+}) {
+    return (
+        <AlertDialog open={open} onOpenChange={onOpenChange}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Are you sure you want to remove{" "}
+                        <span className="font-medium">{memberName}</span> from
+                        the organization? They will lose access to all
+                        resources.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => onOpenChange(false)}>
+                        Cancel
+                    </AlertDialogCancel>
+                    <Button
+                        type="button"
+                        onClick={onRemove}
+                        variant="destructive"
+                    >
+                        Remove
+                    </Button>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }

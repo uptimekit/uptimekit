@@ -37,9 +37,10 @@ export default async function UpdatesPage({
     const design = (pageConfig.design as any) || {};
     const themeId = design.themeId || "default";
 
-    const UpdatesPage = await loadUpdatesComponent(themeId);
-
-    const data = await prepareUpdatesPageData(pageConfig, period);
+    const [UpdatesPage, data] = await Promise.all([
+        loadUpdatesComponent(themeId),
+        prepareUpdatesPageData(pageConfig, period),
+    ]);
 
     return (
         <ThemePageWrapper

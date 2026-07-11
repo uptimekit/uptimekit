@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import dynamic from "next/dynamic";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Select,
@@ -12,6 +12,26 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { orpc } from "@/utils/orpc";
+
+const Cell = dynamic(() => import("recharts").then((module) => module.Cell), {
+    ssr: false,
+});
+const Pie = dynamic<any>(
+    () => import("recharts").then((module) => module.Pie as any),
+    { ssr: false },
+);
+const PieChart = dynamic(
+    () => import("recharts").then((module) => module.PieChart),
+    { ssr: false },
+);
+const ResponsiveContainer = dynamic(
+    () => import("recharts").then((module) => module.ResponsiveContainer),
+    { ssr: false },
+);
+const Tooltip = dynamic<any>(
+    () => import("recharts").then((module) => module.Tooltip as any),
+    { ssr: false },
+);
 
 const RANGE_OPTIONS = [
     { label: "Last 3 hours", value: "3h" },
@@ -93,22 +113,15 @@ export function StatusCodePieChart({ monitorId }: StatusCodePieChartProps) {
         }),
     );
 
-    const total = useMemo(
-        () => data.reduce((sum, point) => sum + point.count, 0),
-        [data],
-    );
+    const total = data.reduce((sum, point) => sum + point.count, 0);
 
-    const chartData = useMemo(
-        () =>
-            data.map((point, index) => ({
-                statusCode: point.statusCode,
-                label: String(point.statusCode),
-                count: point.count,
-                percentage: total > 0 ? (point.count / total) * 100 : 0,
-                fill: STATUS_CODE_COLORS[index % STATUS_CODE_COLORS.length],
-            })),
-        [data, total],
-    );
+    const chartData = data.map((point, index) => ({
+        statusCode: point.statusCode,
+        label: String(point.statusCode),
+        count: point.count,
+        percentage: total > 0 ? (point.count / total) * 100 : 0,
+        fill: STATUS_CODE_COLORS[index % STATUS_CODE_COLORS.length],
+    }));
 
     return (
         <Card>

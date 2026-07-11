@@ -4,6 +4,46 @@ export interface GroupNodeInput {
     parentId?: string | null;
 }
 
+export interface MonitorGroupOption extends GroupNodeInput {}
+
+export interface GroupedMonitorOption {
+    id: string;
+    name: string;
+    group?: MonitorGroupOption | null;
+}
+
+export function groupMonitorOptions(
+    monitors: GroupedMonitorOption[],
+    groupPaths?: Map<string, string>,
+) {
+    const groups = monitors.reduce(
+        (result, monitor) => {
+            const groupName =
+                (monitor.group &&
+                    (groupPaths?.get(monitor.group.id) ??
+                        monitor.group.name)) ||
+                "Ungrouped";
+            (result[groupName] ??= []).push(monitor);
+            return result;
+        },
+        {} as Record<string, GroupedMonitorOption[]>,
+    );
+
+    return Object.entries(groups)
+        .map(
+            ([groupName, items]) =>
+                [
+                    groupName,
+                    [...items].sort((a, b) => a.name.localeCompare(b.name)),
+                ] as const,
+        )
+        .sort(([left], [right]) => {
+            if (left === "Ungrouped") return 1;
+            if (right === "Ungrouped") return -1;
+            return left.localeCompare(right);
+        });
+}
+
 export interface GroupWithPath<T extends GroupNodeInput> {
     group: T;
     path: string;

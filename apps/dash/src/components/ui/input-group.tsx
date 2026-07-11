@@ -55,32 +55,12 @@ export function InputGroupAddon({
             className={cn(inputGroupAddonVariants({ align }), className)}
             data-align={align}
             data-slot="input-group-addon"
-            role="button"
-            tabIndex={-1}
-            onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
-                const target = e.target as HTMLElement;
-                const isInteractive = target.closest(
-                    "button, a, input, select, textarea, [role='button'], [role='combobox'], [role='listbox'], [data-slot='select-trigger']",
-                );
-                if (isInteractive) return;
-                e.preventDefault();
-                const parent = e.currentTarget.parentElement;
-                const input = parent?.querySelector<
-                    HTMLInputElement | HTMLTextAreaElement
-                >("input, textarea");
-                if (
-                    input &&
-                    !parent?.querySelector("input:focus, textarea:focus")
-                ) {
-                    input.focus();
-                }
-            }}
             {...props}
         />
     );
 }
 
-export function InputGroupText({
+function InputGroupText({
     className,
     ...props
 }: React.ComponentProps<"span">): React.ReactElement {
@@ -102,7 +82,7 @@ export function InputGroupInput({
     return <Input className={className} unstyled {...props} />;
 }
 
-export function InputGroupTextarea({
+function InputGroupTextarea({
     className,
     ...props
 }: TextareaProps): React.ReactElement {

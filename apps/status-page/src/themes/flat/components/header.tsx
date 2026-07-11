@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { SubscribeForm } from "@/components/subscribe-form";
 import { buildPath } from "@/lib/route-utils";
@@ -32,10 +33,12 @@ export function Header({
                     <div className="min-w-0 flex-1">
                         {logoUrl ? (
                             <>
-                                {/* biome-ignore lint/performance/noImgElement: theme headers render arbitrary remote logos */}
-                                <img
+                                <Image
                                     src={logoUrl}
                                     alt={title}
+                                    width={160}
+                                    height={32}
+                                    unoptimized
                                     className="h-8 w-auto"
                                 />
                             </>

@@ -33,7 +33,7 @@ export function FieldLabel({
     );
 }
 
-export function FieldItem({
+function FieldItem({
     className,
     ...props
 }: FieldPrimitive.Item.Props): React.ReactElement {
@@ -59,7 +59,7 @@ export function FieldDescription({
     );
 }
 
-export function FieldError({
+function FieldError({
     className,
     ...props
 }: FieldPrimitive.Error.Props): React.ReactElement {
@@ -72,9 +72,7 @@ export function FieldError({
     );
 }
 
-export const FieldControl: typeof FieldPrimitive.Control =
-    FieldPrimitive.Control;
-export const FieldValidity: typeof FieldPrimitive.Validity =
-    FieldPrimitive.Validity;
+const FieldControl: typeof FieldPrimitive.Control = FieldPrimitive.Control;
+const FieldValidity: typeof FieldPrimitive.Validity = FieldPrimitive.Validity;
 
 export { FieldPrimitive };

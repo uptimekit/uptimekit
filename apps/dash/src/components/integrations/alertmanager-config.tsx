@@ -53,6 +53,64 @@ function generateToken(): string {
     );
 }
 
+function AdvancedSettings({ config, onChange }: AlertManagerConfigProps) {
+    const [open, setOpen] = useState(false);
+    const selectedSeverity = severityOptions.find(
+        ({ value }) => value === (config.defaultSeverity || "major"),
+    );
+
+    return (
+        <Collapsible open={open} onOpenChange={setOpen}>
+            <CollapsibleTrigger
+                render={
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-between"
+                    />
+                }
+            >
+                Advanced Settings
+                <FontAwesomeIcon
+                    icon={faChevronDown}
+                    className={cn(
+                        "h-4 w-4 transition-transform",
+                        open && "rotate-180",
+                    )}
+                />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+                <div className="grid gap-2">
+                    <Label>Default Severity</Label>
+                    <Select
+                        value={config.defaultSeverity || "major"}
+                        onValueChange={(
+                            value: "minor" | "major" | "critical" | null,
+                        ) => onChange({ ...config, defaultSeverity: value })}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select severity">
+                                {selectedSeverity?.label}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {severityOptions.map(({ label, value }) => (
+                                <SelectItem key={value} value={value}>
+                                    {label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-muted-foreground text-sm">
+                        Default severity when alert doesn't specify one. Alerts
+                        with severity label will map: critical=critical,
+                        warning=major, info=minor.
+                    </p>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 export function AlertManagerConfig({
     config,
     configId,
@@ -61,7 +119,6 @@ export function AlertManagerConfig({
     const [copied, setCopied] = useState<"url" | "token" | "config" | null>(
         null,
     );
-    const [advancedOpen, setAdvancedOpen] = useState(false);
     const [configRevealed, setConfigRevealed] = useState(false);
     const [tokenRevealed, setTokenRevealed] = useState(false);
 
@@ -265,78 +322,7 @@ route:
                 </p>
             </div>
 
-            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                <CollapsibleTrigger
-                    render={
-                        <Button
-                            variant="ghost"
-                            className="w-full justify-between"
-                        />
-                    }
-                >
-                    Advanced Settings
-                    <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className={cn(
-                            "h-4 w-4 transition-transform",
-                            advancedOpen && "rotate-180",
-                        )}
-                    />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                    <div className="grid gap-2">
-                        <Label>Default Severity</Label>
-                        {(() => {
-                            const selectedSeverity = severityOptions.find(
-                                (option) =>
-                                    option.value ===
-                                    (config.defaultSeverity || "major"),
-                            );
-
-                            return (
-                                <Select
-                                    value={config.defaultSeverity || "major"}
-                                    onValueChange={(
-                                        value:
-                                            | "minor"
-                                            | "major"
-                                            | "critical"
-                                            | null,
-                                    ) =>
-                                        onChange({
-                                            ...config,
-                                            defaultSeverity: value,
-                                        })
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select severity">
-                                            {selectedSeverity?.label}
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {severityOptions.map(
-                                            ({ label, value }) => (
-                                                <SelectItem
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {label}
-                                                </SelectItem>
-                                            ),
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            );
-                        })()}
-                        <p className="text-muted-foreground text-sm">
-                            Default severity when alert doesn't specify one.
-                            Alerts with severity label will map:
-                            critical=critical, warning=major, info=minor.
-                        </p>
-                    </div>
-                </CollapsibleContent>
-            </Collapsible>
+            <AdvancedSettings config={config} onChange={onChange} />
 
             <div className="grid gap-2">
                 <Label>AlertManager Configuration</Label>

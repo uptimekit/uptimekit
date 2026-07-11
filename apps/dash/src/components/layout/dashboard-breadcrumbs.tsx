@@ -72,13 +72,11 @@ export function DashboardBreadcrumbs() {
         authClient.useListOrganizations();
     const segments = pathname.split("/").filter((segment) => segment !== "");
 
-    const uuidSegments = segments
-        .map((segment, index) => ({
-            segment,
-            index,
-            previousSegment: segments[index - 1],
-        }))
-        .filter(({ segment }) => isUUID(segment));
+    const uuidSegments = segments.flatMap((segment, index) =>
+        isUUID(segment)
+            ? [{ segment, index, previousSegment: segments[index - 1] }]
+            : [],
+    );
 
     const uuidQueryResults = useQueries({
         queries: uuidSegments.map(({ segment, previousSegment }) => {

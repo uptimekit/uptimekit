@@ -1,15 +1,13 @@
 "use client";
 
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { sileo } from "sileo";
 import * as z from "zod";
 
-import { GroupedMonitorCombobox } from "@/components/monitors/grouped-monitor-combobox";
+import { AffectedMonitorsField } from "@/components/status-pages/affected-monitors-field";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -76,13 +74,6 @@ interface Monitor {
     id: string;
     name: string;
 }
-
-const MONITOR_STATUSES = [
-    { label: "Degraded", value: "degraded", color: "text-yellow-500" },
-    { label: "Downtime", value: "down", color: "text-red-500" },
-    { label: "Resolved", value: "resolved", color: "text-green-500" },
-    { label: "Not affected", value: "up", color: "text-gray-500" },
-] as const;
 
 export function EditUpdateForm({
     statusPageId,
@@ -158,8 +149,12 @@ export function EditUpdateForm({
         mutate(values);
     }
 
+    const watchedMonitors = useWatch({
+        control: form.control,
+        name: "monitors",
+    });
     const selectedMonitors = monitors.filter((m) =>
-        form.watch("monitors").some((sm) => sm.id === m.id),
+        watchedMonitors.some((sm) => sm.id === m.id),
     );
 
     const handleMonitorChange = (newValue: Monitor[]) => {
@@ -258,139 +253,34 @@ export function EditUpdateForm({
                             control={form.control}
                             name="monitors"
                             render={() => (
-                                <FormItem>
-                                    <FormControl>
-                                        <GroupedMonitorCombobox
-                                            ariaLabel="Select monitors"
-                                            inputClassName="h-8 border-dashed"
-                                            monitors={monitors}
-                                            value={selectedMonitors}
-                                            onValueChange={handleMonitorChange}
-                                            placeholder="Modify services..."
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
+                                <AffectedMonitorsField
+                                    monitors={monitors}
+                                    selectedMonitors={selectedMonitors}
+                                    values={watchedMonitors}
+                                    placeholder="Modify services..."
+                                    emptyMessage="No services affected by this update."
+                                    compact
+                                    onSelectionChange={handleMonitorChange}
+                                    onStatusChange={(index, status) => {
+                                        const current =
+                                            form.getValues("monitors");
+                                        current[index].status = status;
+                                        form.setValue("monitors", [...current]);
+                                    }}
+                                    onRemove={(id) =>
+                                        form.setValue(
+                                            "monitors",
+                                            form
+                                                .getValues("monitors")
+                                                .filter(
+                                                    (monitor) =>
+                                                        monitor.id !== id,
+                                                ),
+                                        )
+                                    }
+                                />
                             )}
                         />
-
-                        {form.watch("monitors").length > 0 && (
-                            <div className="divide-y rounded-md border">
-                                {form
-                                    .watch("monitors")
-                                    .map((selectedMonitor, index) => {
-                                        const monitor = monitors?.find(
-                                            (m) => m.id === selectedMonitor.id,
-                                        );
-                                        if (!monitor) return null;
-
-                                        return (
-                                            <div
-                                                key={monitor.id}
-                                                className="flex items-center justify-between p-3"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="font-medium text-sm">
-                                                        {monitor.name}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Select
-                                                        value={
-                                                            selectedMonitor.status ||
-                                                            "degraded"
-                                                        }
-                                                        onValueChange={(
-                                                            val,
-                                                        ) => {
-                                                            const current =
-                                                                form.getValues(
-                                                                    "monitors",
-                                                                );
-                                                            current[
-                                                                index
-                                                            ].status =
-                                                                val ||
-                                                                "degraded";
-                                                            form.setValue(
-                                                                "monitors",
-                                                                [...current],
-                                                            );
-                                                        }}
-                                                    >
-                                                        <SelectTrigger className="h-7 w-[130px] text-xs">
-                                                            <SelectValue>
-                                                                {
-                                                                    MONITOR_STATUSES.find(
-                                                                        (
-                                                                            status,
-                                                                        ) =>
-                                                                            status.value ===
-                                                                            (selectedMonitor.status ||
-                                                                                "degraded"),
-                                                                    )?.label
-                                                                }
-                                                            </SelectValue>
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {MONITOR_STATUSES.map(
-                                                                (status) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            status.value
-                                                                        }
-                                                                        value={
-                                                                            status.value
-                                                                        }
-                                                                    >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <div
-                                                                                className={`h-2 w-2 rounded-full bg-current ${status.color.replace("text-", "bg-")}`}
-                                                                            />
-                                                                            {
-                                                                                status.label
-                                                                            }
-                                                                        </div>
-                                                                    </SelectItem>
-                                                                ),
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                                        onClick={() => {
-                                                            const current =
-                                                                form.getValues(
-                                                                    "monitors",
-                                                                );
-                                                            form.setValue(
-                                                                "monitors",
-                                                                current.filter(
-                                                                    (m) =>
-                                                                        m.id !==
-                                                                        selectedMonitor.id,
-                                                                ),
-                                                            );
-                                                        }}
-                                                    >
-                                                        <FontAwesomeIcon
-                                                            icon={faXmark}
-                                                            className="h-3.5 w-3.5"
-                                                        />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-                        )}
-                        {form.watch("monitors").length === 0 && (
-                            <p className="text-muted-foreground text-sm italic">
-                                No services affected by this update.
-                            </p>
-                        )}
                     </div>
 
                     <div className="flex justify-between gap-2">

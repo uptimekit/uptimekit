@@ -136,7 +136,7 @@ export async function prepareIncidentDetailData(
     };
 }
 
-export async function prepareMaintenanceDetailData(
+async function prepareMaintenanceDetailData(
     pageConfig: any,
     maintenanceId: string,
     routeSlug?: string,
@@ -179,9 +179,11 @@ export async function prepareMaintenanceDetailData(
 
     const activeIssues = [
         ...activeReports.map((report: any) => mapIncident(report, routeSlug)),
-        ...activeMaintenances
-            .filter((item: any) => item.id !== maintenanceId)
-            .map((item: any) => mapMaintenanceIncident(item, routeSlug)),
+        ...activeMaintenances.flatMap((item: any) =>
+            item.id !== maintenanceId
+                ? [mapMaintenanceIncident(item, routeSlug)]
+                : [],
+        ),
     ].sort(
         (a, b) =>
             new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),

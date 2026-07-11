@@ -15,54 +15,11 @@ import {
     ComboboxValue,
 } from "@/components/ui/combobox";
 import { orpc } from "@/utils/orpc";
-import { buildGroupPaths } from "./group-tree";
-
-export interface MonitorGroupOption {
-    id: string;
-    name: string;
-    parentId?: string | null;
-}
-
-export interface GroupedMonitorOption {
-    id: string;
-    name: string;
-    group?: MonitorGroupOption | null;
-}
-
-export function groupMonitorOptions(
-    monitors: GroupedMonitorOption[],
-    groupPaths?: Map<string, string>,
-) {
-    const groups = monitors.reduce(
-        (acc, monitor) => {
-            const groupName =
-                (monitor.group &&
-                    (groupPaths?.get(monitor.group.id) ??
-                        monitor.group.name)) ||
-                "Ungrouped";
-            if (!acc[groupName]) {
-                acc[groupName] = [];
-            }
-            acc[groupName].push(monitor);
-            return acc;
-        },
-        {} as Record<string, GroupedMonitorOption[]>,
-    );
-
-    return Object.entries(groups)
-        .map(
-            ([groupName, items]) =>
-                [
-                    groupName,
-                    [...items].sort((a, b) => a.name.localeCompare(b.name)),
-                ] as const,
-        )
-        .sort(([groupNameA], [groupNameB]) => {
-            if (groupNameA === "Ungrouped") return 1;
-            if (groupNameB === "Ungrouped") return -1;
-            return groupNameA.localeCompare(groupNameB);
-        });
-}
+import {
+    buildGroupPaths,
+    type GroupedMonitorOption,
+    groupMonitorOptions,
+} from "./group-tree";
 
 interface GroupedMonitorComboboxProps {
     ariaLabel: string;

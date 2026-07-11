@@ -42,6 +42,7 @@ import {
     SidebarRail,
     SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { authClient } from "@/lib/auth-client";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -88,16 +89,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter(); // Use useRouter from next/navigation
     const [showCreateOrgModal, setShowCreateOrgModal] = React.useState(false);
-    const [isMounted, setIsMounted] = React.useState(false);
+    const isMounted = useHydrated();
 
     const { data: organizations, isPending: isLoadingOrgs } =
         authClient.useListOrganizations();
     const { data: activeOrg } = authClient.useActiveOrganization();
     const { data: session } = authClient.useSession();
-
-    React.useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     const displayedOrganizations = isMounted ? organizations : undefined;
     const displayedActiveOrg = isMounted ? activeOrg : undefined;
@@ -364,12 +361,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function UserMenuComponent() {
     const router = useRouter();
-    const [isMounted, setIsMounted] = React.useState(false);
+    const isMounted = useHydrated();
     const { data: session, isPending } = authClient.useSession();
-
-    React.useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     if (!isMounted || isPending) {
         return <Skeleton className="h-12 w-full rounded-lg" />;
