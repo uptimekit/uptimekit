@@ -208,7 +208,7 @@ export default async function AdminPage() {
                     <CardHeader>
                         <CardTitle>Workers Overview</CardTitle>
                     </CardHeader>
-                    <CardContent className="pl-2">
+                    <CardContent className="border-t p-0">
                         <div className="flex h-[calc(100svh-25rem)] w-full items-center justify-center text-muted-foreground">
                             <WorkersMap />
                         </div>

@@ -28,15 +28,6 @@ interface Coordinates {
 
 const DEFAULT_COORDINATES: Coordinates = { lat: 20, lng: 0 };
 
-const LEGACY_REGION_COORDINATES: Record<string, Coordinates> = {
-    "na-canada": { lat: 56.1304, lng: -106.3468 },
-    "sa-brazil": { lat: -14.235, lng: -51.9253 },
-    "eu-general": { lat: 54.526, lng: 15.2551 },
-    "ap-hongkong": { lat: 22.3193, lng: 114.1694 },
-    "oc-syd": { lat: -33.8688, lng: 151.2093 },
-    global: DEFAULT_COORDINATES,
-};
-
 const CONTINENT_COORDINATES: Record<string, Coordinates> = {
     Africa: { lat: 1.6508, lng: 17.6791 },
     Asia: { lat: 34.0479, lng: 100.6197 },
@@ -58,10 +49,6 @@ const COUNTRY_COORDINATES = new Map<string, Coordinates>(
 
 function getCoordinatesForRegion(regionCode: string): Coordinates {
     const normalizedRegionCode = regionCode.toLowerCase();
-    const legacyCoordinates = LEGACY_REGION_COORDINATES[normalizedRegionCode];
-    if (legacyCoordinates) {
-        return legacyCoordinates;
-    }
 
     const countryCoordinates = COUNTRY_COORDINATES.get(normalizedRegionCode);
     if (countryCoordinates) {
@@ -140,6 +127,7 @@ export default function WorkersMap() {
                 center={[10, 20]}
                 zoom={1.2}
                 loading={isLoading}
+                className="bg-card"
                 theme="dark"
             >
                 {markers.map((marker) => {

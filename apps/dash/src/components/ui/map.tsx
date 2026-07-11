@@ -25,11 +25,11 @@ import {
     useRef,
     useState,
 } from "react";
-
+import darkStyle from "@/lib/map-dark.json";
 import { cn } from "@/lib/utils";
 
 const defaultStyles = {
-    dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+    dark: darkStyle,
     light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 };
 
@@ -197,7 +197,7 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
     const [mapInstance, setMapInstance] = useState<MapLibreGL.Map | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [loadedStyle, setLoadedStyle] = useState<MapStyleOption | null>(null);
-    const currentStyleRef = useRef<MapStyleOption | null>(null);
+    const currentStyleRef = useRef<MapStyleOption | any>(null);
     const styleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const internalUpdateRef = useRef(false);
     const resolvedTheme = useResolvedTheme(themeProp);
@@ -234,7 +234,7 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
 
         const map = new MapLibreGL.Map({
             container: containerRef.current,
-            style: initialStyle,
+            style: initialStyle as any,
             renderWorldCopies: false,
             attributionControl: {
                 compact: true,
@@ -309,7 +309,7 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
         internalUpdateRef.current = false;
     }, [mapInstance, isControlled, viewport]);
 
-    // Handle style change
+    // Handle style chan ge
     useEffect(() => {
         if (!mapInstance) return;
 
@@ -319,7 +319,7 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
 
         clearStyleTimeout();
         currentStyleRef.current = newStyle;
-        mapInstance.setStyle(newStyle, { diff: true });
+        mapInstance.setStyle(newStyle as any, { diff: true });
     }, [mapInstance, selectedStyle]);
 
     const contextValue = {

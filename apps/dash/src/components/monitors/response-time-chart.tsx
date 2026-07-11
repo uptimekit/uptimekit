@@ -12,7 +12,6 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import dynamic from "next/dynamic";
 import {
     parseAsArrayOf,
     parseAsInteger,
@@ -21,6 +20,7 @@ import {
     useQueryStates,
 } from "nuqs";
 import { useEffect, useRef } from "react";
+import { RechartsBoundary } from "@/components/monitors/recharts-boundary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,47 +55,6 @@ import {
 import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
-
-const Area = dynamic<any>(
-    () => import("recharts").then((module) => module.Area as any),
-    { ssr: false },
-);
-const AreaChart = dynamic(
-    () => import("recharts").then((module) => module.AreaChart),
-    { ssr: false },
-);
-const CartesianGrid = dynamic(
-    () => import("recharts").then((module) => module.CartesianGrid),
-    { ssr: false },
-);
-const Line = dynamic<any>(
-    () => import("recharts").then((module) => module.Line as any),
-    { ssr: false },
-);
-const LineChart = dynamic(
-    () => import("recharts").then((module) => module.LineChart),
-    { ssr: false },
-);
-const ReferenceArea = dynamic<any>(
-    () => import("recharts").then((module) => module.ReferenceArea as any),
-    { ssr: false },
-);
-const ResponsiveContainer = dynamic(
-    () => import("recharts").then((module) => module.ResponsiveContainer),
-    { ssr: false },
-);
-const Tooltip = dynamic<any>(
-    () => import("recharts").then((module) => module.Tooltip as any),
-    { ssr: false },
-);
-const XAxis = dynamic<any>(
-    () => import("recharts").then((module) => module.XAxis as any),
-    { ssr: false },
-);
-const YAxis = dynamic<any>(
-    () => import("recharts").then((module) => module.YAxis as any),
-    { ssr: false },
-);
 
 interface ResponseTimeChartProps {
     monitorId: string;
@@ -656,21 +615,25 @@ function RegionTrendSparkline({
 
     return (
         <div className="h-12 w-full min-w-[170px]">
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                    data={data}
-                    margin={{ top: 3, right: 0, bottom: 3, left: 0 }}
-                >
-                    <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#1dd67d"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                    />
-                </LineChart>
-            </ResponsiveContainer>
+            <RechartsBoundary>
+                {({ ResponsiveContainer, LineChart, Line }) => (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                            data={data}
+                            margin={{ top: 3, right: 0, bottom: 3, left: 0 }}
+                        >
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#1dd67d"
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </RechartsBoundary>
         </div>
     );
 }
@@ -1557,108 +1520,137 @@ function ResponseTimeChartCardSection1({
                             No latency data available for this range
                         </div>
                     ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart
-                                data={chartData}
-                                margin={{
-                                    top: 8,
-                                    right: 6,
-                                    bottom: 0,
-                                    left: 0,
-                                }}
-                            >
-                                <CartesianGrid
-                                    vertical={false}
-                                    stroke="rgba(255,255,255,0.08)"
-                                    strokeDasharray="0"
-                                />
-                                <XAxis
-                                    dataKey="timestampMs"
-                                    type="number"
-                                    scale="time"
-                                    domain={["dataMin", "dataMax"]}
-                                    axisLine={false}
-                                    tickLine={false}
-                                    minTickGap={28}
-                                    stroke="#8a8a8a"
-                                    fontSize={11}
-                                    tickFormatter={(value: number) =>
-                                        formatAxisTimestamp(
-                                            Number(value),
-                                            latencyRange,
-                                        )
-                                    }
-                                />
-                                <YAxis
-                                    orientation="right"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    width={54}
-                                    stroke="#8a8a8a"
-                                    fontSize={11}
-                                    tickFormatter={(value: number) =>
-                                        `${Math.round(value)}ms`
-                                    }
-                                />
-                                <Tooltip content={ResponseTimeTooltip} />
-                                {latencyBands.map((band) => (
-                                    <ReferenceArea
-                                        key={`${band.severity}-${band.startMs}-${band.endMs}`}
-                                        x1={band.startMs}
-                                        x2={band.endMs}
-                                        fill={STATUS_BAND_COLORS[band.severity]}
-                                        fillOpacity={
-                                            band.severity === "down"
-                                                ? 0.34
-                                                : 0.28
-                                        }
-                                        stroke={
-                                            STATUS_BAND_COLORS[band.severity]
-                                        }
-                                        strokeOpacity={0.2}
-                                        ifOverflow="extendDomain"
-                                    />
-                                ))}
-
-                                {hasDetailedTimings ? (
-                                    TIMING_KEYS.map((key) => (
-                                        <Area
-                                            key={key}
-                                            type="monotone"
-                                            dataKey={key}
-                                            name={TIMING_LABELS[key]}
-                                            stackId="latency"
-                                            stroke={TIMING_COLORS[key]}
-                                            fill={TIMING_COLORS[key]}
-                                            fillOpacity={
-                                                key === "transfer" ? 0.25 : 0.18
-                                            }
-                                            strokeWidth={1.6}
-                                            dot={false}
-                                            isAnimationActive={false}
+                        <RechartsBoundary
+                            fallback={
+                                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                                    Loading chart...
+                                </div>
+                            }
+                        >
+                            {({
+                                ResponsiveContainer,
+                                AreaChart,
+                                CartesianGrid,
+                                XAxis,
+                                YAxis,
+                                Tooltip,
+                                ReferenceArea,
+                                Area,
+                            }) => (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart
+                                        data={chartData}
+                                        margin={{
+                                            top: 8,
+                                            right: 6,
+                                            bottom: 0,
+                                            left: 0,
+                                        }}
+                                    >
+                                        <CartesianGrid
+                                            vertical={false}
+                                            stroke="rgba(255,255,255,0.08)"
+                                            strokeDasharray="0"
                                         />
-                                    ))
-                                ) : (
-                                    <Area
-                                        type="monotone"
-                                        dataKey="latency"
-                                        name={
-                                            QUANTILE_OPTIONS.find(
-                                                (option) =>
-                                                    option.value ===
-                                                    latencyQuantile,
-                                            )?.label
-                                        }
-                                        stroke="#ff2f92"
-                                        fill="#ff2f92"
-                                        fillOpacity={0.22}
-                                        strokeWidth={1.8}
-                                        dot={false}
-                                        isAnimationActive={false}
-                                    />
-                                )}
-                            </AreaChart>
-                        </ResponsiveContainer>
+                                        <XAxis
+                                            dataKey="timestampMs"
+                                            type="number"
+                                            scale="time"
+                                            domain={["dataMin", "dataMax"]}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            minTickGap={28}
+                                            stroke="#8a8a8a"
+                                            fontSize={11}
+                                            tickFormatter={(value: number) =>
+                                                formatAxisTimestamp(
+                                                    Number(value),
+                                                    latencyRange,
+                                                )
+                                            }
+                                        />
+                                        <YAxis
+                                            orientation="right"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            width={54}
+                                            stroke="#8a8a8a"
+                                            fontSize={11}
+                                            tickFormatter={(value: number) =>
+                                                `${Math.round(value)}ms`
+                                            }
+                                        />
+                                        <Tooltip
+                                            content={ResponseTimeTooltip}
+                                        />
+                                        {latencyBands.map((band) => (
+                                            <ReferenceArea
+                                                key={`${band.severity}-${band.startMs}-${band.endMs}`}
+                                                x1={band.startMs}
+                                                x2={band.endMs}
+                                                fill={
+                                                    STATUS_BAND_COLORS[
+                                                        band.severity
+                                                    ]
+                                                }
+                                                fillOpacity={
+                                                    band.severity === "down"
+                                                        ? 0.34
+                                                        : 0.28
+                                                }
+                                                stroke={
+                                                    STATUS_BAND_COLORS[
+                                                        band.severity
+                                                    ]
+                                                }
+                                                strokeOpacity={0.2}
+                                                ifOverflow="extendDomain"
+                                            />
+                                        ))}
+
+                                        {hasDetailedTimings ? (
+                                            TIMING_KEYS.map((key) => (
+                                                <Area
+                                                    key={key}
+                                                    type="monotone"
+                                                    dataKey={key}
+                                                    name={TIMING_LABELS[key]}
+                                                    stackId="latency"
+                                                    stroke={TIMING_COLORS[key]}
+                                                    fill={TIMING_COLORS[key]}
+                                                    fillOpacity={
+                                                        key === "transfer"
+                                                            ? 0.25
+                                                            : 0.18
+                                                    }
+                                                    strokeWidth={1.6}
+                                                    dot={false}
+                                                    isAnimationActive={false}
+                                                />
+                                            ))
+                                        ) : (
+                                            <Area
+                                                type="monotone"
+                                                dataKey="latency"
+                                                name={
+                                                    QUANTILE_OPTIONS.find(
+                                                        (option) =>
+                                                            option.value ===
+                                                            latencyQuantile,
+                                                    )?.label
+                                                }
+                                                stroke="#ff2f92"
+                                                fill="#ff2f92"
+                                                fillOpacity={0.22}
+                                                strokeWidth={1.8}
+                                                dot={false}
+                                                isAnimationActive={false}
+                                            />
+                                        )}
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            )}
+                        </RechartsBoundary>
                     )}
                 </div>
 
@@ -2226,91 +2218,125 @@ function ResponseTimeChartDataTable6DataTable1({
                                 range
                             </div>
                         ) : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart
-                                    data={regionChartData}
-                                    margin={{
-                                        top: 8,
-                                        right: 8,
-                                        bottom: 0,
-                                        left: 0,
-                                    }}
-                                >
-                                    <CartesianGrid
-                                        vertical={false}
-                                        stroke="rgba(255,255,255,0.08)"
-                                        strokeDasharray="0"
-                                    />
-                                    <XAxis
-                                        dataKey="timestampMs"
-                                        type="number"
-                                        scale="time"
-                                        domain={["dataMin", "dataMax"]}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        minTickGap={28}
-                                        stroke="#8a8a8a"
-                                        fontSize={11}
-                                        tickFormatter={(value: number) =>
-                                            formatAxisTimestamp(
-                                                Number(value),
-                                                regionRange,
-                                            )
-                                        }
-                                    />
-                                    <YAxis
-                                        axisLine={false}
-                                        tickLine={false}
-                                        width={54}
-                                        stroke="#8a8a8a"
-                                        fontSize={11}
-                                        tickFormatter={(value: number) =>
-                                            `${Math.round(value)}ms`
-                                        }
-                                    />
-                                    <Tooltip content={ResponseTimeTooltip} />
-                                    {regionBands.map((band) => (
-                                        <ReferenceArea
-                                            key={`${band.severity}-${band.startMs}-${band.endMs}`}
-                                            x1={band.startMs}
-                                            x2={band.endMs}
-                                            fill={
-                                                STATUS_BAND_COLORS[
-                                                    band.severity
-                                                ]
-                                            }
-                                            fillOpacity={
-                                                band.severity === "down"
-                                                    ? 0.34
-                                                    : 0.28
-                                            }
-                                            stroke={
-                                                STATUS_BAND_COLORS[
-                                                    band.severity
-                                                ]
-                                            }
-                                            strokeOpacity={0.2}
-                                            ifOverflow="extendDomain"
-                                        />
-                                    ))}
-                                    {activeWorkerIds.map((workerId) => {
-                                        const { primaryLabel } =
-                                            getLocationDisplay(workerId);
-                                        return (
-                                            <Line
-                                                key={workerId}
-                                                type="monotone"
-                                                dataKey={workerId}
-                                                name={primaryLabel}
-                                                stroke={regionColors[workerId]}
-                                                strokeWidth={2}
-                                                dot={false}
-                                                isAnimationActive={false}
+                            <RechartsBoundary
+                                fallback={
+                                    <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                                        Loading chart...
+                                    </div>
+                                }
+                            >
+                                {({
+                                    ResponsiveContainer,
+                                    LineChart,
+                                    CartesianGrid,
+                                    XAxis,
+                                    YAxis,
+                                    Tooltip,
+                                    ReferenceArea,
+                                    Line,
+                                }) => (
+                                    <ResponsiveContainer
+                                        width="100%"
+                                        height="100%"
+                                    >
+                                        <LineChart
+                                            data={regionChartData}
+                                            margin={{
+                                                top: 8,
+                                                right: 8,
+                                                bottom: 0,
+                                                left: 0,
+                                            }}
+                                        >
+                                            <CartesianGrid
+                                                vertical={false}
+                                                stroke="rgba(255,255,255,0.08)"
+                                                strokeDasharray="0"
                                             />
-                                        );
-                                    })}
-                                </LineChart>
-                            </ResponsiveContainer>
+                                            <XAxis
+                                                dataKey="timestampMs"
+                                                type="number"
+                                                scale="time"
+                                                domain={["dataMin", "dataMax"]}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                minTickGap={28}
+                                                stroke="#8a8a8a"
+                                                fontSize={11}
+                                                tickFormatter={(
+                                                    value: number,
+                                                ) =>
+                                                    formatAxisTimestamp(
+                                                        Number(value),
+                                                        regionRange,
+                                                    )
+                                                }
+                                            />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                width={54}
+                                                stroke="#8a8a8a"
+                                                fontSize={11}
+                                                tickFormatter={(
+                                                    value: number,
+                                                ) => `${Math.round(value)}ms`}
+                                            />
+                                            <Tooltip
+                                                content={ResponseTimeTooltip}
+                                            />
+                                            {regionBands.map((band) => (
+                                                <ReferenceArea
+                                                    key={`${band.severity}-${band.startMs}-${band.endMs}`}
+                                                    x1={band.startMs}
+                                                    x2={band.endMs}
+                                                    fill={
+                                                        STATUS_BAND_COLORS[
+                                                            band.severity
+                                                        ]
+                                                    }
+                                                    fillOpacity={
+                                                        band.severity === "down"
+                                                            ? 0.34
+                                                            : 0.28
+                                                    }
+                                                    stroke={
+                                                        STATUS_BAND_COLORS[
+                                                            band.severity
+                                                        ]
+                                                    }
+                                                    strokeOpacity={0.2}
+                                                    ifOverflow="extendDomain"
+                                                />
+                                            ))}
+                                            {activeWorkerIds.map((workerId) => {
+                                                const { primaryLabel } =
+                                                    getLocationDisplay(
+                                                        workerId,
+                                                    );
+                                                return (
+                                                    <Line
+                                                        key={workerId}
+                                                        type="monotone"
+                                                        dataKey={workerId}
+                                                        name={primaryLabel}
+                                                        stroke={
+                                                            regionColors[
+                                                                workerId
+                                                            ]
+                                                        }
+                                                        strokeWidth={2}
+                                                        dot={false}
+                                                        isAnimationActive={
+                                                            false
+                                                        }
+                                                    />
+                                                );
+                                            })}
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                )}
+                            </RechartsBoundary>
                         )}
                     </div>
                     <div className="flex flex-wrap items-center gap-4 text-xs">
