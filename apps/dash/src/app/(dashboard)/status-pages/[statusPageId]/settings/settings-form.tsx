@@ -593,7 +593,6 @@ function ThemeSelectionFields({
                                 onValueChange={field.onChange}
                                 value={field.value}
                                 aria-label="Select theme"
-                                defaultValue="default"
                                 items={themes}
                             >
                                 <SelectTrigger>

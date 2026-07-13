@@ -1,9 +1,14 @@
+"use client";
+
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import type { Incident, StatusType } from "../../types";
 import { StatusDot } from "./status-indicator";
+
+const subscribe = () => () => {};
 
 interface IncidentCardProps {
     incident: Incident;
@@ -38,6 +43,13 @@ export function IncidentCard({
     detailsLink,
     className,
 }: IncidentCardProps) {
+    const isHydrated = useSyncExternalStore(
+        subscribe,
+        () => true,
+        () => false,
+    );
+    const timeZone = isHydrated ? undefined : "UTC";
+
     return (
         <div
             className={cn(
@@ -64,11 +76,10 @@ export function IncidentCard({
                                     month: "short",
                                     day: "numeric",
                                     year: "numeric",
-                                    timeZone: "UTC",
+                                    timeZone,
                                     hour12: false,
                                 },
-                            )}{" "}
-                            UTC
+                            )}
                             {incident.endedAt && " — Resolved"}
                         </p>
                     </div>
@@ -183,10 +194,9 @@ export function IncidentCard({
                                                         day: "numeric",
                                                         hour: "numeric",
                                                         minute: "2-digit",
-                                                        timeZone: "UTC",
+                                                        timeZone,
                                                         hour12: false,
-                                                    })}{" "}
-                                                    UTC
+                                                    })}
                                                 </span>
                                             </div>
                                             <p className="text-card-foreground text-sm">
