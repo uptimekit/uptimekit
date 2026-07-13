@@ -7,6 +7,7 @@ import {
     faPencil,
     faShieldHalved,
     faTrash,
+    faWrench,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -170,12 +171,19 @@ function IncidentHeader({
                     <div
                         className={cn(
                             "flex h-12 w-12 items-center justify-center rounded-xl border",
-                            isResolved
-                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                                : "border-red-500/20 bg-red-500/10 text-red-500",
+                            isMaintenance
+                                ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                                : isResolved
+                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                                  : "border-red-500/20 bg-red-500/10 text-red-500",
                         )}
                     >
-                        {isResolved ? (
+                        {isMaintenance ? (
+                            <FontAwesomeIcon
+                                icon={faWrench}
+                                className="h-6 w-6"
+                            />
+                        ) : isResolved ? (
                             <FontAwesomeIcon
                                 icon={faCircleCheck}
                                 className="h-6 w-6"
