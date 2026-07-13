@@ -68,7 +68,6 @@ export function IncidentCard({
                                     year: "numeric",
                                 },
                             )}
-                            {incident.endedAt && " — Resolved"}
                         </p>
                     </div>
                 </div>
