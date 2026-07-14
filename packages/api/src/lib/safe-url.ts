@@ -119,6 +119,10 @@ function assertSafeHostname(normalizedHostname: string, label: string) {
         throw unsafeUrlError(`${label} must include a hostname`);
     }
 
+    if (process.env.NODE_ENV === "development") {
+        return;
+    }
+
     if (
         BLOCKED_HOSTNAMES.has(normalizedHostname) ||
         normalizedHostname.endsWith(".localhost") ||
@@ -151,6 +155,10 @@ async function resolvePublicHostname(
 
     if (resolved.length === 0) {
         throw unsafeUrlError(`${label} hostname could not be resolved`);
+    }
+
+    if (process.env.NODE_ENV === "development") {
+        return resolved;
     }
 
     if (resolved.some((entry) => isPrivateAddress(entry.address))) {

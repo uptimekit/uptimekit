@@ -737,6 +737,18 @@ export const incidentsRouter = {
                         })),
                     );
                 }
+
+                await publishAppEvent(
+                    "incident.updated",
+                    {
+                        incidentId: input.id,
+                        organizationId,
+                        title: input.title,
+                        description: input.description,
+                        severity: input.severity,
+                    },
+                    { tx },
+                );
             });
             await processPendingNotifications("incident-updated");
 

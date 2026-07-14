@@ -8,7 +8,10 @@ import { monitor } from "@uptimekit/db/schema/monitors";
 import { and, count, eq, getTableColumns } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
-import { assertSafeWebhookUrl } from "../lib/safe-url";
+import {
+    assertSafeWebhookUrl,
+    UnsafePublicHttpUrlError,
+} from "../lib/safe-url";
 import { integrationRegistry } from "../pkg/integrations/registry";
 
 export const integrationsRouter = {
@@ -78,6 +81,7 @@ export const integrationsRouter = {
                 config: z.record(z.any(), z.any()), // We accept any JSON, validation happens inside or before
                 active: z.boolean().default(true),
                 isDefault: z.boolean().default(false),
+                enabledEvents: z.array(z.string()).nullable().optional(),
                 applyToExistingMonitors: z.boolean().default(false),
             }),
         )
@@ -88,14 +92,46 @@ export const integrationsRouter = {
             // Server-side validation
             const integrationDef = integrationRegistry.get(input.type);
             if (!integrationDef) {
-                throw new Error("Invalid integration type");
+                throw new ORPCError("BAD_REQUEST", {
+                    message: "Invalid integration type",
+                });
             }
 
-            const parsedConfig = integrationDef.configSchema.parse(
+            if (
+                input.enabledEvents?.some(
+                    (event) =>
+                        event === "integration.test" ||
+                        !integrationDef.events.includes(event as any),
+                )
+            ) {
+                throw new ORPCError("BAD_REQUEST", {
+                    message: "Unsupported integration event",
+                });
+            }
+
+            const configResult = integrationDef.configSchema.safeParse(
                 input.config,
             );
+            if (!configResult.success) {
+                throw new ORPCError("BAD_REQUEST", {
+                    message:
+                        configResult.error.issues[0]?.message ??
+                        "Invalid integration configuration",
+                });
+            }
+
+            const parsedConfig = configResult.data;
             if (input.type === "webhook") {
-                await assertSafeWebhookUrl(parsedConfig.url);
+                try {
+                    await assertSafeWebhookUrl(parsedConfig.url);
+                } catch (error) {
+                    if (error instanceof UnsafePublicHttpUrlError) {
+                        throw new ORPCError("BAD_REQUEST", {
+                            message: error.message,
+                        });
+                    }
+                    throw error;
+                }
             }
 
             const notificationId = input.id ?? crypto.randomUUID();
@@ -127,6 +163,10 @@ export const integrationsRouter = {
                             config: parsedConfig,
                             active: input.active,
                             isDefault: input.isDefault,
+                            enabledEvents:
+                                input.enabledEvents === undefined
+                                    ? existing.enabledEvents
+                                    : input.enabledEvents,
                             updatedAt: new Date(),
                         })
                         .where(eq(integrationConfig.id, existing.id));
@@ -139,6 +179,7 @@ export const integrationsRouter = {
                         config: parsedConfig,
                         active: input.active,
                         isDefault: input.isDefault,
+                        enabledEvents: input.enabledEvents,
                     });
                 }
 

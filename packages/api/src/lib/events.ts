@@ -11,6 +11,13 @@ export interface AppEvents {
         description?: string | null;
         severity: "minor" | "major" | "critical" | "maintenance";
     };
+    "incident.updated": {
+        incidentId: string;
+        organizationId: string;
+        title: string;
+        description?: string | null;
+        severity: "minor" | "major" | "critical" | "maintenance";
+    };
     "incident.acknowledged": {
         incidentId: string;
         organizationId: string;

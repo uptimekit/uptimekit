@@ -220,15 +220,15 @@ async function buildIncidentMail(
         },
     });
 
-    if (!incidentData) {
+    if (!incidentData && event !== "incident.deleted") {
         return null;
     }
 
     const baseUrl = getBaseUrl();
     const incidentUrl = `${baseUrl}/incidents/${payload.incidentId}`;
-    const incidentTitle = payload.title || incidentData.title || "Incident";
+    const incidentTitle = payload.title || incidentData?.title || "Incident";
     const monitorNames =
-        incidentData.monitors.map((item) => item.monitor.name).join(", ") ||
+        incidentData?.monitors.map((item) => item.monitor.name).join(", ") ||
         "No monitors";
     const copy = getIncidentCopy(event, payload);
 

@@ -192,6 +192,7 @@ export default function SignInForm({
                 {
                     email: normalizedEmail,
                     password: value.password,
+                    callbackURL: onSuccess ? undefined : "/",
                 },
                 {
                     onSuccess: (ctx) => {

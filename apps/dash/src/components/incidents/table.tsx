@@ -8,14 +8,19 @@ import {
     faChevronRight,
     faCircleCheck,
     faCircleQuestion,
+    faClock,
     faEllipsis,
+    faExclamation,
+    faEye,
     faFilter,
+    faHandshake,
     faMagnifyingGlass,
     faNetworkWired,
     faPlus,
     faShieldHalved,
     faSpinner,
     faTrash,
+    faWrench,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -173,6 +178,13 @@ function getBulkActionErrorTitle(action: BulkIncidentAction, message: string) {
 
 function getStatusIcon(status: string) {
     switch (status) {
+        case "scheduled":
+            return (
+                <FontAwesomeIcon
+                    icon={faClock}
+                    className="h-5 w-5 text-blue-500"
+                />
+            );
         case "resolved":
         case "completed":
             return (
@@ -966,7 +978,7 @@ function IncidentsTableFiltersSection6({
         >
             Maintenance
             {severityFilter === "maintenance" && (
-                <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                <FontAwesomeIcon icon={faWrench} className="h-4 w-4" />
             )}
         </DropdownMenuItem>
     );
@@ -1063,7 +1075,7 @@ function IncidentsTableFiltersSection7({
         >
             Critical
             {severityFilter === "critical" && (
-                <FontAwesomeIcon icon={faCheck} className="h-4 w-4" />
+                <FontAwesomeIcon icon={faExclamation} className="h-4 w-4" />
             )}
         </DropdownMenuItem>
     );
@@ -2687,6 +2699,7 @@ function IncidentTableRow({
                         <DropdownMenuItem
                             render={<Link href={`/incidents/${incident.id}`} />}
                         >
+                            <FontAwesomeIcon icon={faEye} className="h-4 w-4" />
                             View details
                         </DropdownMenuItem>
                         {!incident.endedAt && !incident.acknowledgedAt && (
@@ -2699,7 +2712,7 @@ function IncidentTableRow({
                                 }}
                             >
                                 <FontAwesomeIcon
-                                    icon={faCheck}
+                                    icon={faHandshake}
                                     className="h-4 w-4"
                                 />
                                 Acknowledge
@@ -2733,6 +2746,10 @@ function IncidentTableRow({
                                 });
                             }}
                         >
+                            <FontAwesomeIcon
+                                icon={faTrash}
+                                className="h-4 w-4"
+                            />
                             Delete
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -3252,7 +3269,7 @@ function IncidentsTableContentSection12({
                             }
                         >
                             <FontAwesomeIcon
-                                icon={faCheck}
+                                icon={faHandshake}
                                 className="h-4 w-4"
                             />
                             <span className="hidden sm:inline">

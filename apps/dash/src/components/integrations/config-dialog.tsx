@@ -41,15 +41,57 @@ interface ConfigDialogProps {
     initialName?: string;
     initialActive?: boolean;
     initialIsDefault?: boolean;
+    initialEnabledEvents?: string[] | null;
     onSave: (values: {
         name: string;
         config: any;
         active: boolean;
         isDefault: boolean;
+        enabledEvents: string[];
         applyToExistingMonitors: boolean;
     }) => Promise<void>;
     onDelete?: () => Promise<void>;
     onTest?: () => Promise<void>;
+}
+
+function EventSelection({
+    events,
+    enabledEvents,
+    onToggle,
+}: {
+    events: string[];
+    enabledEvents: string[];
+    onToggle: (event: string, enabled: boolean) => void;
+}) {
+    const enabledEventSet = new Set(enabledEvents);
+
+    return (
+        <div className="grid gap-2 rounded-lg bg-muted/50 p-4">
+            <div>
+                <p className="font-medium text-sm">Events</p>
+                <p className="text-muted-foreground text-sm">
+                    Choose which events this channel receives.
+                </p>
+            </div>
+            {events.map((event) => (
+                <div key={event} className="flex items-center gap-3 text-sm">
+                    <Checkbox
+                        id={`notification-event-${event}`}
+                        checked={enabledEventSet.has(event)}
+                        onCheckedChange={(checked) =>
+                            onToggle(event, checked === true)
+                        }
+                    />
+                    <Label
+                        htmlFor={`notification-event-${event}`}
+                        className="capitalize"
+                    >
+                        {event.replaceAll(".", " ").replaceAll("_", " ")}
+                    </Label>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export function ConfigDialog({
@@ -61,6 +103,7 @@ export function ConfigDialog({
     initialName,
     initialActive = true,
     initialIsDefault = false,
+    initialEnabledEvents,
     onSave,
     onDelete,
     onTest,
@@ -71,6 +114,12 @@ export function ConfigDialog({
     );
     const [active, setActive] = useState(initialActive);
     const [isDefault, setIsDefault] = useState(initialIsDefault);
+    const configurableEvents = integration.events.filter(
+        (event) => event !== "integration.test",
+    );
+    const [enabledEvents, setEnabledEvents] = useState(
+        initialEnabledEvents ?? configurableEvents,
+    );
     const [applyToExistingMonitors, setApplyToExistingMonitors] =
         useState(false);
     const [saving, setSaving] = useState(false);
@@ -111,6 +160,7 @@ export function ConfigDialog({
                 config,
                 active,
                 isDefault,
+                enabledEvents,
                 applyToExistingMonitors,
             });
             onOpenChange(false);
@@ -217,6 +267,23 @@ export function ConfigDialog({
                                 );
                             })
                         )}
+
+                        {!isImportIntegration &&
+                            configurableEvents.length > 0 && (
+                                <EventSelection
+                                    events={configurableEvents}
+                                    enabledEvents={enabledEvents}
+                                    onToggle={(event, enabled) =>
+                                        setEnabledEvents((current) =>
+                                            enabled
+                                                ? [...current, event]
+                                                : current.filter(
+                                                      (item) => item !== event,
+                                                  ),
+                                        )
+                                    }
+                                />
+                            )}
 
                         <div className="grid w-full items-center gap-1.5">
                             <Label htmlFor="notification-name">Name</Label>

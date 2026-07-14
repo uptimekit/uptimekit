@@ -52,9 +52,12 @@ export const smtpIntegrationMeta: Omit<
     configSchema: SmtpConfigSchema,
     events: [
         "incident.created",
+        "incident.updated",
         "incident.resolved",
         "incident.acknowledged",
         "incident.comment_added",
+        "incident.merged",
+        "incident.deleted",
         "monitor.ssl.expiring",
         "integration.test",
     ],

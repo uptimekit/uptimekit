@@ -18,9 +18,12 @@ export const telegramIntegrationMeta: Omit<
     configSchema: TelegramConfigSchema,
     events: [
         "incident.created",
+        "incident.updated",
         "incident.resolved",
         "incident.acknowledged",
         "incident.comment_added",
+        "incident.merged",
+        "incident.deleted",
         "monitor.ssl.expiring",
         "integration.test",
     ],

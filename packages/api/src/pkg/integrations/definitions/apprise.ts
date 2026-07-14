@@ -107,16 +107,12 @@ export const appriseIntegration: IntegrationDefinition<
                 },
             });
 
-            if (!incidentData) {
-                return;
-            }
-
             const baseUrl =
                 process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
 
             // Format Monitors Field
             const monitorNames =
-                incidentData.monitors.map((m) => m.monitor.name).join(", ") ||
+                incidentData?.monitors.map((m) => m.monitor.name).join(", ") ||
                 "No monitors";
 
             const incidentUrl = `${baseUrl}/incidents/${payload.incidentId}`;

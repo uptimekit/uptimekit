@@ -107,6 +107,7 @@ interface ConfiguredNotification {
     config: any;
     active: boolean;
     isDefault: boolean;
+    enabledEvents: string[] | null;
     assignedMonitorCount: number;
 }
 
@@ -289,6 +290,7 @@ function useNotificationsTableModel() {
             config: any;
             active: boolean;
             isDefault: boolean;
+            enabledEvents: string[];
             applyToExistingMonitors: boolean;
         }) => {
             await client.integrations.configure(data);
@@ -1693,6 +1695,7 @@ function NotificationsTableView({ model }: { model: NotificationsTableModel }) {
                     initialName={selectedConfig?.name}
                     initialActive={selectedConfig?.active ?? true}
                     initialIsDefault={selectedConfig?.isDefault ?? false}
+                    initialEnabledEvents={selectedConfig?.enabledEvents}
                     onSave={async (values) => {
                         await configureMutation.mutateAsync({
                             id: selectedConfig?.id,

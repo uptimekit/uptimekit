@@ -12,6 +12,7 @@ import { usersRouter } from "./users";
 import { getVersion } from "./version";
 import { workersRouter } from "./workers";
 import "../pkg/imports"; // Register import sources
+import "../pkg/integrations/service"; // Register integrations
 
 export const appRouter = {
     getVersion,

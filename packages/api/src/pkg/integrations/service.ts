@@ -1,10 +1,9 @@
 import { db } from "@uptimekit/db";
-import { incidentMonitor } from "@uptimekit/db/schema/incidents";
 import {
     integrationConfig,
     monitorNotification,
 } from "@uptimekit/db/schema/integrations";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type {
     AppEventName,
     AppEventPayload,
@@ -29,10 +28,6 @@ integrationRegistry.register(appriseIntegration);
 
 const logger = createLogger("INTEGRATIONS");
 const INTEGRATION_TIMEOUT_MS = 15_000;
-const integrationServiceKey = Symbol.for("uptimekit.integrationService");
-type GlobalServiceRegistry = typeof globalThis &
-    Record<symbol, IntegrationService | undefined>;
-
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -85,15 +80,28 @@ export class IntegrationService {
             return;
         }
 
-        const configs = await this.getNotificationConfigs({
-            organizationId,
-            incidentId,
-            monitorId: "monitorId" in payload ? payload.monitorId : undefined,
-        });
+        const configs = event.startsWith("incident.")
+            ? await db.query.integrationConfig.findMany({
+                  where: (t, { eq, and }) =>
+                      and(
+                          eq(t.organizationId, organizationId),
+                          eq(t.active, true),
+                      ),
+              })
+            : await this.getNotificationConfigs({
+                  organizationId,
+                  monitorId:
+                      "monitorId" in payload ? payload.monitorId : undefined,
+              });
+        const failures: unknown[] = [];
 
         for (const config of configs) {
             const integration = integrationRegistry.get(config.type);
-            if (integration?.events.includes(event)) {
+            if (
+                integration?.type === "export" &&
+                integration.events.includes(event) &&
+                (config.enabledEvents ?? integration.events).includes(event)
+            ) {
                 try {
                     await withTimeout(
                         integration.handler(config.config, event, payload),
@@ -105,8 +113,17 @@ export class IntegrationService {
                         `Error executing ${integration.name} integration ${config.id} for ${event}`,
                         error,
                     );
+                    failures.push(error);
                 }
             }
+        }
+
+        if (failures.length > 0) {
+            // ponytail: retries are event-wide until delivery state is tracked per channel.
+            throw new AggregateError(
+                failures,
+                `Failed to deliver ${event} to ${failures.length} integration${failures.length === 1 ? "" : "s"}`,
+            );
         }
     }
 
@@ -122,7 +139,6 @@ export class IntegrationService {
 
     private async getNotificationConfigs(input: {
         organizationId: string;
-        incidentId?: string;
         monitorId?: string;
     }) {
         if (input.monitorId) {
@@ -165,67 +181,18 @@ export class IntegrationService {
             });
         }
 
-        if (!input.incidentId) {
-            return db.query.integrationConfig.findMany({
-                where: (t, { eq, and }) =>
-                    and(
-                        eq(t.organizationId, input.organizationId),
-                        eq(t.active, true),
-                        eq(t.isDefault, true),
-                    ),
-            });
-        }
-
-        const incidentMonitors = await db
-            .select({ monitorId: incidentMonitor.monitorId })
-            .from(incidentMonitor)
-            .where(eq(incidentMonitor.incidentId, input.incidentId));
-
-        if (incidentMonitors.length === 0) {
-            return db.query.integrationConfig.findMany({
-                where: (t, { eq, and }) =>
-                    and(
-                        eq(t.organizationId, input.organizationId),
-                        eq(t.active, true),
-                        eq(t.isDefault, true),
-                    ),
-            });
-        }
-
-        const monitorIds = incidentMonitors.map((item) => item.monitorId);
-        const assignedConfigs = await db
-            .select({ config: integrationConfig })
-            .from(integrationConfig)
-            .innerJoin(
-                monitorNotification,
-                eq(
-                    monitorNotification.integrationConfigId,
-                    integrationConfig.id,
-                ),
-            )
-            .where(
+        return db.query.integrationConfig.findMany({
+            where: (t, { eq, and }) =>
                 and(
-                    eq(integrationConfig.organizationId, input.organizationId),
-                    eq(integrationConfig.active, true),
-                    inArray(monitorNotification.monitorId, monitorIds),
+                    eq(t.organizationId, input.organizationId),
+                    eq(t.active, true),
+                    eq(t.isDefault, true),
                 ),
-            );
-
-        return dedupeNotificationConfigs(
-            assignedConfigs.map(({ config }) => config),
-        );
+        });
     }
 }
 
-export const integrationService = (() => {
-    const globalForService = globalThis as GlobalServiceRegistry;
-
-    if (!globalForService[integrationServiceKey]) {
-        globalForService[integrationServiceKey] = new IntegrationService();
-    }
-
-    return globalForService[integrationServiceKey];
-})();
+export const integrationService = new IntegrationService();
 
 export async function handleIntegrationEvent(event: PersistedAppEvent) {
     await integrationService.handleAppEvent(event);

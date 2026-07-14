@@ -2,7 +2,7 @@
 
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { faTableColumns } from "@fortawesome/free-solid-svg-icons";
+import { faBars, faTableColumns } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -284,6 +284,7 @@ export function SidebarTrigger({
     ...props
 }: React.ComponentProps<typeof Button>): React.ReactElement {
     const { toggleSidebar } = useSidebar();
+    const { state } = useSidebar();
 
     return (
         <Button
@@ -298,7 +299,7 @@ export function SidebarTrigger({
             variant="ghost"
             {...props}
         >
-            <FontAwesomeIcon icon={faTableColumns} />
+            <FontAwesomeIcon icon={faBars} />
             <span className="sr-only">Toggle Sidebar</span>
         </Button>
     );

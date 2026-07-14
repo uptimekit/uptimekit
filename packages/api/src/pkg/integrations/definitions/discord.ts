@@ -153,15 +153,11 @@ export const discordIntegration: IntegrationDefinition<
             },
         });
 
-        if (!incidentData) {
-            return;
-        }
-
         const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
 
         // Format Monitors Field
         const monitorLinks =
-            incidentData.monitors
+            incidentData?.monitors
                 .map((m) => {
                     const url = `${baseUrl}/monitors/${m.monitor.id}`;
                     return `[\`${m.monitor.name}\`](${url})`;

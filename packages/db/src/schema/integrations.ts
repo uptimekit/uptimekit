@@ -23,6 +23,7 @@ export const integrationConfig = pgTable(
         config: json("config").$type<Record<string, any>>().notNull(), // Stores the specific config (url, secret, etc.)
         active: boolean("active").default(true).notNull(),
         isDefault: boolean("is_default").default(false).notNull(),
+        enabledEvents: json("enabled_events").$type<string[]>(),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
