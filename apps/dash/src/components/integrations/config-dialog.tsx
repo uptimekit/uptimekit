@@ -6,6 +6,7 @@ import { useState } from "react";
 import { sileo } from "sileo";
 import { z } from "zod";
 import { AlertManagerConfig } from "@/components/integrations/alertmanager-config";
+import { NtfyConfig } from "@/components/integrations/ntfy-config";
 import { SmtpConfig } from "@/components/integrations/smtp-config";
 import {
     AlertDialog,
@@ -230,6 +231,8 @@ export function ConfigDialog({
                             />
                         ) : integration.id === "smtp" ? (
                             <SmtpConfig config={config} onChange={setConfig} />
+                        ) : integration.id === "ntfy" ? (
+                            <NtfyConfig config={config} onChange={setConfig} />
                         ) : (
                             fields.map((field) => {
                                 // Detect type if possible, default to text

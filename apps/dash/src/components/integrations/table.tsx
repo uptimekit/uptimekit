@@ -23,6 +23,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { alertManagerIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { appriseIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/apprise-meta";
 import { discordIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/discord-meta";
+import { ntfyIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/ntfy-meta";
 import { smtpIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/smtp-meta";
 import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/telegram-meta";
 import { webhookIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/webhook-meta";
@@ -124,6 +125,10 @@ const frontendRegistry = {
         ...telegramIntegrationMeta,
         handler: async () => {},
     } as IntegrationDefinition,
+    ntfy: {
+        ...ntfyIntegrationMeta,
+        handler: async () => {},
+    } as IntegrationDefinition,
     smtp: {
         ...smtpIntegrationMeta,
         handler: async () => {},
@@ -186,9 +191,11 @@ function IntegrationIcon({
     const Icon =
         integration.id === "webhook"
             ? faCodeBranch
-            : integration.id === "smtp"
-              ? faEnvelope
-              : faGear;
+            : integration.id === "ntfy"
+              ? faPaperPlane
+              : integration.id === "smtp"
+                ? faEnvelope
+                : faGear;
 
     return (
         <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted">

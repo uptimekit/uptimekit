@@ -47,6 +47,7 @@
                             "integrations/index",
                             "integrations/discord",
                             "integrations/telegram",
+                            "integrations/ntfy",
                             "integrations/webhook",
                             "integrations/prometheus"
                         ]

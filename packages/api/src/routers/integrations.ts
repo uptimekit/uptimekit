@@ -9,6 +9,7 @@ import { and, count, eq, getTableColumns } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import {
+    assertSafePublicHttpUrl,
     assertSafeWebhookUrl,
     UnsafePublicHttpUrlError,
 } from "../lib/safe-url";
@@ -124,6 +125,21 @@ export const integrationsRouter = {
             if (input.type === "webhook") {
                 try {
                     await assertSafeWebhookUrl(parsedConfig.url);
+                } catch (error) {
+                    if (error instanceof UnsafePublicHttpUrlError) {
+                        throw new ORPCError("BAD_REQUEST", {
+                            message: error.message,
+                        });
+                    }
+                    throw error;
+                }
+            }
+
+            if (input.type === "ntfy") {
+                try {
+                    await assertSafePublicHttpUrl(parsedConfig.serverUrl, {
+                        label: "ntfy server URL",
+                    });
                 } catch (error) {
                     if (error instanceof UnsafePublicHttpUrlError) {
                         throw new ORPCError("BAD_REQUEST", {
@@ -318,11 +334,12 @@ export const integrationsRouter = {
                     message: "Test event sent successfully",
                 };
             } catch (error: any) {
-                const isWebhookValidationError =
-                    config.type === "webhook" && error instanceof Error;
+                const isUrlValidationError =
+                    (config.type === "webhook" || config.type === "ntfy") &&
+                    error instanceof UnsafePublicHttpUrlError;
 
                 throw new ORPCError(
-                    isWebhookValidationError
+                    isUrlValidationError
                         ? "BAD_REQUEST"
                         : "INTERNAL_SERVER_ERROR",
                     {

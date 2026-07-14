@@ -37,6 +37,9 @@
         },
         "./pkg/integrations/definitions/apprise-meta": {
             "default": "./src/pkg/integrations/definitions/apprise-meta.ts"
+        },
+        "./pkg/integrations/definitions/ntfy-meta": {
+            "default": "./src/pkg/integrations/definitions/ntfy-meta.ts"
         }
     },
     "type": "module",

@@ -1,0 +1,43 @@
+---
+title: 'ntfy Integration'
+description: 'Receive incident and SSL certificate notifications through ntfy'
+icon: 'bell'
+---
+
+The ntfy integration publishes UptimeKit notifications to an [ntfy](https://ntfy.sh) topic. It works with ntfy.sh and publicly reachable self-hosted ntfy servers.
+
+## Configuration
+
+| Field | Description | Required |
+| --- | --- | --- |
+| Server URL | The root URL of ntfy.sh or your self-hosted ntfy server. | Yes |
+| Topic | The topic subscribed to by your ntfy clients. | Yes |
+| Access token | A Bearer token with permission to publish to a protected topic. | No |
+| Priority | The notification priority sent to ntfy. | Yes |
+| Tags | Comma-separated ntfy tags or emoji shortcodes. | No |
+
+<Steps>
+  <Step title="Choose and subscribe to a topic">
+    Choose a difficult-to-guess topic containing letters, numbers, underscores, or dashes, then subscribe to it from your ntfy app. Topic names can contain up to 64 characters.
+  </Step>
+
+  <Step title="Protect the topic (recommended)">
+    If your ntfy server has access control enabled, create an access token that can publish to the topic. UptimeKit sends it as a Bearer token.
+  </Step>
+
+  <Step title="Configure UptimeKit">
+    1. Open **Integrations** in the UptimeKit dashboard.
+    2. Add **ntfy**.
+    3. Enter the server URL, topic, and optional access token, priority, and tags.
+    4. Choose the events and monitors that should use this notification.
+    5. Save the integration, then use **Test** to send a test notification.
+  </Step>
+</Steps>
+
+## Supported events
+
+The integration can send notifications for incident creation, updates, acknowledgement, comments, merges, resolution, deletion, and expiring SSL certificates. Incident and monitor notifications include a link back to UptimeKit where applicable.
+
+<Note>
+  In production, the ntfy server URL must resolve to a public address. This prevents notification configuration from making requests to private infrastructure.
+</Note>
