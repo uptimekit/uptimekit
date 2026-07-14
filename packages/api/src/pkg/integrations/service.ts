@@ -94,6 +94,7 @@ export class IntegrationService {
                       "monitorId" in payload ? payload.monitorId : undefined,
               });
         const failures: unknown[] = [];
+        let delivered = false;
 
         for (const config of configs) {
             const integration = integrationRegistry.get(config.type);
@@ -108,6 +109,7 @@ export class IntegrationService {
                         INTEGRATION_TIMEOUT_MS,
                         `${integration.name} integration ${config.id}`,
                     );
+                    delivered = true;
                 } catch (error) {
                     logger.error(
                         `Error executing ${integration.name} integration ${config.id} for ${event}`,
@@ -118,8 +120,8 @@ export class IntegrationService {
             }
         }
 
-        if (failures.length > 0) {
-            // ponytail: retries are event-wide until delivery state is tracked per channel.
+        if (failures.length > 0 && !delivered) {
+            // ponytail: without per-channel state, retry only when nothing was delivered.
             throw new AggregateError(
                 failures,
                 `Failed to deliver ${event} to ${failures.length} integration${failures.length === 1 ? "" : "s"}`,

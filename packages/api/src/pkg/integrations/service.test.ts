@@ -116,5 +116,25 @@ describe("notification config selection", () => {
         await expect(service.handleAppEvent(event)).rejects.toThrow(
             "Failed to deliver incident.created",
         );
+
+        const healthyHandler = vi.fn(async () => undefined);
+        mocks.defaultConfigs.push({
+            ...channel,
+            id: "config-2",
+            type: "healthy-channel",
+        });
+        integrationRegistry.register({
+            id: "healthy-channel",
+            name: "Healthy Channel",
+            type: "export",
+            description: "Healthy test integration",
+            configSchema: { parse: (value: unknown) => value } as any,
+            events: ["incident.created"],
+            handler: healthyHandler,
+        });
+        mocks.handler.mockRejectedValueOnce(new Error("still offline"));
+
+        await expect(service.handleAppEvent(event)).resolves.toBeUndefined();
+        expect(healthyHandler).toHaveBeenCalledOnce();
     });
 });
