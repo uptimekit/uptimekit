@@ -18,6 +18,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useStatusPageDomain } from "@/components/providers/status-page-domain-provider";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -63,7 +64,8 @@ function StatusPageRow({
     onOpen: () => void;
     onDelete: () => void;
 }) {
-    const statusPageUrl = getStatusPageUrl(page);
+    const statusPageDomain = useStatusPageDomain();
+    const statusPageUrl = getStatusPageUrl(page, statusPageDomain);
     return (
         <TableRow
             className="group h-[72px] cursor-pointer hover:bg-muted/40"

@@ -1,4 +1,4 @@
-const DEFAULT_STATUS_PAGE_DOMAIN = "status.uptimekit.dev";
+export const DEFAULT_STATUS_PAGE_DOMAIN = "status.uptimekit.dev";
 
 function stripProtocol(value: string) {
     return value.replace(/^https?:\/\//i, "");
@@ -18,19 +18,21 @@ function getUrlForHost(value: string) {
     return `https://${stripProtocol(normalizedValue)}`;
 }
 
-export function getStatusPageBaseDomain() {
+export function getStatusPageBaseDomain(
+    statusPageDomain = DEFAULT_STATUS_PAGE_DOMAIN,
+) {
     return stripTrailingSlash(
-        stripProtocol(
-            process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
-                DEFAULT_STATUS_PAGE_DOMAIN,
-        ),
+        stripProtocol(statusPageDomain.trim() || DEFAULT_STATUS_PAGE_DOMAIN),
     );
 }
 
-export function getStatusPageUrl(page: {
-    slug: string;
-    domain?: string | null;
-}) {
+export function getStatusPageUrl(
+    page: {
+        slug: string;
+        domain?: string | null;
+    },
+    statusPageDomain = DEFAULT_STATUS_PAGE_DOMAIN,
+) {
     const domain = page.domain?.trim();
 
     if (domain) {
@@ -38,7 +40,6 @@ export function getStatusPageUrl(page: {
     }
 
     return `${getUrlForHost(
-        process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN ||
-            DEFAULT_STATUS_PAGE_DOMAIN,
+        statusPageDomain.trim() || DEFAULT_STATUS_PAGE_DOMAIN,
     )}/${page.slug}`;
 }

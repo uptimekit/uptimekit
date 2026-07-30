@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { sileo as toast } from "sileo";
 import * as z from "zod";
+import { useStatusPageDomain } from "@/components/providers/status-page-domain-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -116,6 +117,7 @@ interface SettingsFormProps {
 
 export function SettingsForm({ statusPageId }: SettingsFormProps) {
     const queryClient = useQueryClient();
+    const statusPageDomain = useStatusPageDomain();
     const { data: statusPage, isLoading } = useQuery(
         orpc.statusPages.get.queryOptions({
             input: { id: statusPageId },
@@ -277,7 +279,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
     const optionCardClassName =
         "flex h-full min-h-24 w-full cursor-pointer items-center rounded-lg border-2 border-muted bg-popover p-4 transition-all hover:bg-accent hover:text-accent-foreground";
-    const statusPageBaseDomain = getStatusPageBaseDomain();
+    const statusPageBaseDomain = getStatusPageBaseDomain(statusPageDomain);
     return (
         <Form {...form}>
             <form

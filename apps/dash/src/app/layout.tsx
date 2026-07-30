@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "../index.css";
 import Providers from "@/components/providers";
 import { getConfig } from "@/lib/config";
+import { getRuntimeStatusPageDomain } from "@/lib/status-page-runtime-config.server";
 
 export const dynamic = "force-dynamic";
 
@@ -60,10 +61,14 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const statusPageDomain = getRuntimeStatusPageDomain();
+
     return (
         <html lang="en" suppressHydrationWarning>
             <body className="text-foreground antialiased">
-                <Providers>{children}</Providers>
+                <Providers statusPageDomain={statusPageDomain}>
+                    {children}
+                </Providers>
             </body>
         </html>
     );

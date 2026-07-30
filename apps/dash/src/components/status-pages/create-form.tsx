@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
 import { z } from "zod";
+import { useStatusPageDomain } from "@/components/providers/status-page-domain-provider";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -54,7 +55,8 @@ export function CreateStatusPageForm({
     onSuccess?: () => void;
 }) {
     const queryClient = useQueryClient();
-    const statusPageBaseDomain = getStatusPageBaseDomain();
+    const statusPageDomain = useStatusPageDomain();
+    const statusPageBaseDomain = getStatusPageBaseDomain(statusPageDomain);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
