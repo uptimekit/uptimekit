@@ -193,7 +193,7 @@ export function IncidentCard({
                                                     })}
                                                 </span>
                                             </div>
-                                            <p className="text-card-foreground text-sm">
+                                            <p className="whitespace-pre-wrap text-card-foreground text-sm">
                                                 {activity.message}
                                             </p>
                                         </div>

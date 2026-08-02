@@ -65,7 +65,7 @@ export async function loadIncidentDetailComponent(
     return module.default;
 }
 
-async function loadMaintenanceDetailComponent(
+export async function loadMaintenanceDetailComponent(
     themeId: string,
 ): Promise<ComponentType<ThemeMaintenanceDetailProps>> {
     const loader =

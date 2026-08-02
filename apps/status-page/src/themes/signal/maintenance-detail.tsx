@@ -22,7 +22,6 @@ export default function SignalMaintenanceDetail({
         endedAt: maintenance.endAt,
         monitors: maintenance.monitors,
         activities: [],
-        detailsLink: maintenance.detailsLink,
     };
 
     return (

@@ -87,7 +87,7 @@ export interface Incident {
     endedAt: Date | null;
     monitors: IncidentMonitor[];
     activities: IncidentActivity[];
-    detailsLink: string;
+    detailsLink?: string;
 }
 
 export interface MaintenanceMonitor {

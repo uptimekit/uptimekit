@@ -17,7 +17,6 @@ export function MaintenanceDetailCard({
         endedAt: maintenance.endAt,
         monitors: maintenance.monitors,
         activities: [],
-        detailsLink: maintenance.detailsLink,
     };
 
     return (
@@ -35,7 +34,7 @@ export function MaintenanceDetailCard({
                     <h3 className="mb-2 font-semibold text-foreground">
                         Description
                     </h3>
-                    <p className="text-muted-foreground">
+                    <p className="whitespace-pre-wrap text-muted-foreground">
                         {maintenance.description}
                     </p>
                 </div>

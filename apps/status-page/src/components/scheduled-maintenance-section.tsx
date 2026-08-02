@@ -26,8 +26,8 @@ export function ScheduledMaintenanceSection({
             monitors: m.monitors,
             activities: [],
             detailsLink: slug
-                ? buildPath(`/incidents/${m.id}`, slug)
-                : `/incidents/${m.id}`,
+                ? buildPath(`/maintenance/${m.id}`, slug)
+                : `/maintenance/${m.id}`,
         }),
     );
 

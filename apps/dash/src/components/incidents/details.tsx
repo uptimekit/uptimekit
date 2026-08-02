@@ -326,7 +326,7 @@ function IncidentTimeline({
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
+                    <div className="prose prose-sm prose-invert max-w-none whitespace-pre-wrap text-muted-foreground">
                         {incident.description || "No description provided."}
                     </div>
 
@@ -432,7 +432,7 @@ function IncidentTimeline({
                                                     </AvatarFallback>
                                                 </Avatar>
                                             )}
-                                            <span className="break-words leading-5">
+                                            <span className="whitespace-pre-wrap break-words leading-5">
                                                 {activity.message}
                                             </span>
                                         </div>

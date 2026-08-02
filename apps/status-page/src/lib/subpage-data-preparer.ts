@@ -62,7 +62,7 @@ function mapMaintenanceIncident(maintenance: any, routeSlug?: string) {
             createdAt: u.createdAt,
             type: u.type,
         })),
-        detailsLink: buildPath(`/incidents/${maintenance.id}`, routeSlug),
+        detailsLink: buildPath(`/maintenance/${maintenance.id}`, routeSlug),
     };
 }
 
@@ -136,7 +136,7 @@ export async function prepareIncidentDetailData(
     };
 }
 
-async function prepareMaintenanceDetailData(
+export async function prepareMaintenanceDetailData(
     pageConfig: any,
     maintenanceId: string,
     routeSlug?: string,
@@ -174,7 +174,7 @@ async function prepareMaintenanceDetailData(
         endAt: maintenanceItem.endAt,
         createdAt: maintenanceItem.createdAt,
         monitors: maintenanceItem.monitors,
-        detailsLink: buildPath(`/incidents/${maintenanceItem.id}`, routeSlug),
+        detailsLink: buildPath(`/maintenance/${maintenanceItem.id}`, routeSlug),
     };
 
     const activeIssues = [

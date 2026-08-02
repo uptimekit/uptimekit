@@ -268,7 +268,7 @@ export async function prepareStatusPageData(
                 createdAt: u.createdAt,
                 type: u.type,
             })),
-            detailsLink: buildPath(`/incidents/${m.id}`, routeSlug),
+            detailsLink: buildPath(`/maintenance/${m.id}`, routeSlug),
         })),
     ].sort(
         (a, b) =>
@@ -308,7 +308,7 @@ export async function prepareStatusPageData(
                 createdAt: u.createdAt,
                 type: u.type,
             })),
-            detailsLink: buildPath(`/incidents/${m.id}`, routeSlug),
+            detailsLink: buildPath(`/maintenance/${m.id}`, routeSlug),
         })),
     ].sort(
         (a, b) =>
@@ -599,7 +599,7 @@ export async function prepareStatusPageData(
         activeIssues: combinedActive,
         scheduledMaintenances: scheduledMaintenances.map((m: any) => ({
             ...m,
-            detailsLink: buildPath(`/incidents/${m.id}`, routeSlug),
+            detailsLink: buildPath(`/maintenance/${m.id}`, routeSlug),
         })),
         pastIncidents: incidentsByDate,
         lastUpdated: new Date().toISOString(),

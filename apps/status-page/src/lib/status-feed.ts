@@ -84,7 +84,7 @@ ${items.map((item) => buildRssItem(item, pageUrl)).join("\n")}
 }
 
 function buildRssItem(item: Incident, pageUrl: string) {
-    const link = absoluteUrl(item.detailsLink, pageUrl);
+    const link = absoluteUrl(item.detailsLink ?? pageUrl, pageUrl);
 
     return `    <item>
       <guid isPermaLink="true">${escapeXml(link)}</guid>
@@ -121,7 +121,7 @@ ${items.map((item) => buildAtomEntry(item, pageUrl)).join("\n")}
 }
 
 function buildAtomEntry(item: Incident, pageUrl: string) {
-    const link = absoluteUrl(item.detailsLink, pageUrl);
+    const link = absoluteUrl(item.detailsLink ?? pageUrl, pageUrl);
     const updated = getItemDate(item);
 
     return `  <entry>

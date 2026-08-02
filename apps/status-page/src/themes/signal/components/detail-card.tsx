@@ -30,7 +30,7 @@ export function DetailCard({
                     <div className="mb-2 font-medium text-[11px] text-muted-foreground">
                         Description
                     </div>
-                    <p className="text-[14px] text-foreground leading-6">
+                    <p className="whitespace-pre-wrap text-[14px] text-foreground leading-6">
                         {description}
                     </p>
                 </div>
