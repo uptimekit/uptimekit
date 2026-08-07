@@ -4,6 +4,29 @@ description: "Product updates and announcements"
 icon: "list"
 rss: true
 ---
+<Update label="August 2026" description="Unreleased">
+  - **Status page architecture:** Added a shared, typed theme catalog with normalized theme IDs, capability metadata, and capability-aware dashboard settings.
+  - **Theme consistency:** Unified status semantics, uptime calculations, event formatting, status indicators, back links, incident cards, and active issue sections across the Default, Flat, Signal, and Spark themes.
+  - **Theme feature parity:** All themes now consistently support header navigation, subscriptions, active incidents, scheduled maintenance, incident history, configurable layouts, uptime-bar styles, precision settings, and collapsible groups where supported.
+  - **Status page routing:** Consolidated slug and custom-domain configuration handling, preserved website links across every route, included global incidents in overall status, and removed duplicate maintenance-detail implementations.
+  - **Spark theme:** Added native incident details, update history, footer composition, and theme-specific layouts instead of reusing Default theme implementations.
+  - **Theme tests:** Added registry, configuration normalization, rendering contract, uptime calculation, and status-event behavior coverage for every theme and page type.
+  - **Monitor dashboard:** Improved hierarchical monitor and group presentation, status indicators, paused-state labels, tag visibility, status-page usage counts, and degraded-state explanations.
+  - **Monitor loading:** Added explicit loading and retry states and graceful fallbacks when the configured time-series backend is temporarily unavailable.
+  - **Response-time analytics:** Added P50, P90, and P99 percentile views, an average-latency view, per-region percentile trends, and detailed DNS, TCP, TLS, TTFB, and transfer timing visualization for HTTPS monitors.
+  - **Time-series backends:** Added average bucket aggregation to both TimescaleDB and ClickHouse, aligned their driver contracts, and expanded shared backend conformance tests.
+  - **Monitor filtering:** Corrected status-filtered pagination so page contents and total counts match, and constrained pagination inputs to safe integer ranges.
+  - **Worker scalability:** Added configurable `WORKER_MAX_CONCURRENCY` limits, scheduler backpressure, and tests preventing unbounded simultaneous monitor checks.
+  - **Multi-replica safety:** Added PostgreSQL advisory locking around monitor event processing so multiple dashboard replicas serialize updates for the same monitor.
+  - **Health checks:** Replaced the static health response with timed readiness checks for PostgreSQL, Redis, and the selected time-series backend, returning HTTP 503 when a dependency is unavailable.
+  - **Subscriber notifications:** Status-page subscribers now receive incident-created and incident-updated messages in addition to acknowledgement and resolution notifications.
+  - **Frontend correctness:** Fixed Alertmanager and OIDC hydration mismatches, improved accessible interaction targets and SVG titles, and removed remaining error-level Biome diagnostics.
+  - **Demo environment:** Expanded seeded demo data with multi-region workers, nested groups, tags, monitors, incidents, maintenance windows, integrations, subscribers, SSL data, and 30 days of time-series history.
+  - **Deployment configuration:** Made TimescaleDB the default time-series backend while retaining the optional ClickHouse deployment, improved demo startup configuration, and documented new worker settings.
+  - **Tooling:** Centralized Vitest configuration, refreshed workspace dependency catalogs and overrides, upgraded development tooling, and expanded TypeScript and Go regression coverage.
+  - **Continuous integration:** Pull requests to `main` and `release` now enforce Biome, type checks, TypeScript tests, Go tests, and production builds, with complete results included in the PR summary.
+</Update>
+
 <Update label="January 2026" description="v2.1.0">
   - Password-protected status pages with Argon2id security
   - Slug-based status page routing on custom domains
