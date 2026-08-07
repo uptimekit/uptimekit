@@ -1526,7 +1526,7 @@ async function seedRelationalData(
             design: {
                 themeId: "spark",
                 theme: "dark",
-                headerLayout: "horizontal",
+                headerLayout: "vertical",
                 barStyle: "length",
                 barDays: 90,
                 percentDigits: 2,
