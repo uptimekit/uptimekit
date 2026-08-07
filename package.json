@@ -3,6 +3,9 @@
     "private": true,
     "type": "module",
     "version": "4.3.0",
+    "engines": {
+        "node": ">=22.22.0"
+    },
     "workspaces": [
         "apps/*",
         "packages/*"
