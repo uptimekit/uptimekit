@@ -21,7 +21,6 @@
         "start": "turbo start",
         "dev": "turbo dev",
         "dev:dash": "turbo -F @uptimekit/dash dev",
-        "dev:status-page": "turbo -F @uptimekit/status-page dev",
         "db:push": "turbo -F @uptimekit/db db:push",
         "db:studio": "turbo -F @uptimekit/db db:studio",
         "db:generate": "turbo -F @uptimekit/db db:generate",

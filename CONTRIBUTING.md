@@ -60,9 +60,7 @@ Before diving in, it helps to be familiar with the core technologies we use:
     pnpm run dev
     ```
 
-    This will start all applications in the monorepo.
-    - Dashboard: `http://localhost:3000`
-    - Status Page: `http://localhost:3001`
+    This starts the dashboard and public status pages at `http://localhost:3000`.
 
 ## 📂 Project Structure
 
@@ -70,7 +68,6 @@ Before diving in, it helps to be familiar with the core technologies we use:
 uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application (Next.js)
-│   ├── status-page/   # Public Status Page application (Next.js)
 │   ├── worker/        # Worker application (Node.js)
 ├── packages/
 │   ├── api/           # Shared API definition & logic (oRPC)

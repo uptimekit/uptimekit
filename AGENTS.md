@@ -11,8 +11,7 @@ This is a monorepo with the following structure:
 
 ### Apps
 
-- **`apps/dash/`** - Main dashboard application (Next.js)
-- **`apps/status-page/`** - Public status page application (Next.js)
+- **`apps/dash/`** - Dashboard and public status page application (Next.js)
 - **`apps/docs/`** - Documentation site (Next.js)
 
 ### Packages

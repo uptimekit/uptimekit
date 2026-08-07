@@ -3,7 +3,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 export default defineConfig({
     test: {
         projects: [
-            "apps/status-page/vitest.config.mts",
+            "apps/dash/vitest.config.mts",
             "packages/db/vitest.config.ts",
             {
                 test: {
@@ -14,7 +14,7 @@ export default defineConfig({
                     ],
                     exclude: [
                         ...configDefaults.exclude,
-                        "apps/status-page/**",
+                        "apps/dash/**",
                         "packages/db/**",
                     ],
                 },

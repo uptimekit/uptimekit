@@ -29,25 +29,6 @@ services:
       start_period: 20s
     restart: always
 
-  status-page:
-    image: ghcr.io/uptimekit/status-page:latest
-    ports:
-      - "${STATUS_PAGE_PORT:-3001}:3001"
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
-      - TIMESERIES_BACKEND=${TIMESERIES_BACKEND:-timescale}
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      dash:
-        condition: service_healthy
-    restart: always
-
   db:
     image: timescale/timescaledb:2.27.1-pg18
     environment:

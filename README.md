@@ -65,6 +65,9 @@ APP_URL=http://localhost:3000
 APP_STATUS_PAGE_DOMAIN=status.example.com
 ```
 
+Point both `APP_URL` and `APP_STATUS_PAGE_DOMAIN` at the same UptimeKit service.
+The dashboard and public status pages are served from the same container.
+
 3. **Start the docker compose**
 
     ```bash
@@ -90,7 +93,6 @@ uptimekit/
 ├── apps/
 │   ├── dash/          # Main Dashboard application
 │   ├── worker/        # Probe who actually pings the monitors
-│   └── status-page/   # Public Status Page application
 ├── packages/
 │   ├── api/           # Shared API definition & logic
 │   ├── auth/          # Authentication configuration

@@ -27,8 +27,8 @@ describe("status page URLs", () => {
 
     it("preserves an explicitly configured protocol", () => {
         expect(
-            getStatusPageUrl({ slug: "demo" }, "http://localhost:3001/status"),
-        ).toBe("http://localhost:3001/status/demo");
+            getStatusPageUrl({ slug: "demo" }, "http://localhost:3000/status"),
+        ).toBe("http://localhost:3000/status/demo");
     });
 
     it("prefers a status page custom domain", () => {
