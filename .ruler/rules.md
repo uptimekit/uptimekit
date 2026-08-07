@@ -15,7 +15,6 @@ This is a monorepo with the following structure:
 - **`packages/auth/`** - Authentication logic and utilities (Better Auth)
 - **`packages/db/`** - Database schema and utilities (Drizzle ORM)
 - **`packages/config/`** - Shared configuration
-- **`packages/scheduler/`** - Job scheduling utilities
 
 ## Available Scripts
 
