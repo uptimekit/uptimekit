@@ -42,6 +42,7 @@ The worker is configured via environment variables or a `.env` file.
 | `WORKER_API_KEY` | API key generated in your UptimeKit Dashboard. | (required) |
 | `DASHBOARD_URL` | The URL of your UptimeKit instance. | `http://localhost:3000` |
 | `CHECK_INTERVAL` | Frequency (in seconds) to pull new monitor updates. | `60` |
+| `WORKER_MAX_CONCURRENCY` | Maximum number of monitor checks that may run simultaneously. | `20` |
 
 ### 3. Run with Docker
 

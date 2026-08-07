@@ -24,7 +24,8 @@
             "!**/.alchemy",
             "!**/.svelte-kit",
             "!**/wrangler.jsonc",
-            "!**/.source"
+            "!**/.source",
+            "!.github/sponsors"
         ]
     },
     "formatter": {
@@ -35,7 +36,7 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": true,
+            "preset": "recommended",
             "correctness": {
                 "useExhaustiveDependencies": "info"
             },

@@ -3,6 +3,7 @@ name: Build Test
 on:
   pull_request:
     branches:
+      - main
       - release
 
 jobs:
@@ -12,6 +13,8 @@ jobs:
     outputs:
       biome-summary: ${{ steps.biome-check.outputs.summary }}
       typecheck-status: ${{ steps.typecheck.outcome }}
+      test-status: ${{ steps.test.outcome }}
+      go-test-status: ${{ steps.go-test.outcome }}
       build-status: ${{ steps.build.outcome }}
     steps:
       - name: Checkout Repo
@@ -83,9 +86,10 @@ jobs:
           # Save error count for later
           echo "errors=$ERRORS" >> $GITHUB_OUTPUT
           
-          # Mark as failed if there are errors (but don't exit)
+          # Mark the step as failed after preserving the summary output.
           if [ "$ERRORS" != "0" ]; then
             echo "::error::Biome check found ${ERRORS} errors"
+            exit 1
           fi
 
       - name: Run Type Check
@@ -93,13 +97,30 @@ jobs:
         continue-on-error: true
         run: pnpm run check-types
 
+      - name: Run TypeScript Tests
+        id: test
+        continue-on-error: true
+        run: pnpm run test
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/worker/go.mod
+          cache-dependency-path: apps/worker/go.sum
+
+      - name: Run Go Tests
+        id: go-test
+        continue-on-error: true
+        working-directory: apps/worker
+        run: go test ./...
+
       - name: Build All Packages
         id: build
         continue-on-error: true
         run: pnpm run build
       
       - name: Fail if any step failed
-        if: steps.biome-check.outcome == 'failure' || steps.typecheck.outcome == 'failure' || steps.build.outcome == 'failure'
+        if: steps.biome-check.outcome == 'failure' || steps.typecheck.outcome == 'failure' || steps.test.outcome == 'failure' || steps.go-test.outcome == 'failure' || steps.build.outcome == 'failure'
         run: exit 1
 
   comment-pr:
@@ -117,6 +138,8 @@ jobs:
             const biomeSummary = `${{ needs.build-test.outputs.biome-summary }}`;
             const buildStatus = '${{ needs.build-test.result }}';
             const typecheckStatus = '${{ needs.build-test.outputs.typecheck-status }}';
+            const testStatus = '${{ needs.build-test.outputs.test-status }}';
+            const goTestStatus = '${{ needs.build-test.outputs.go-test-status }}';
             const buildStepStatus = '${{ needs.build-test.outputs.build-status }}';
             
             let statusEmoji = '✅';
@@ -138,6 +161,18 @@ jobs:
               detailedStatus += '✅ **Type Check**: Passed\n';
             } else if (typecheckStatus === 'failure') {
               detailedStatus += '❌ **Type Check**: Failed\n';
+            }
+
+            if (testStatus === 'success') {
+              detailedStatus += '✅ **TypeScript Tests**: Passed\n';
+            } else if (testStatus === 'failure') {
+              detailedStatus += '❌ **TypeScript Tests**: Failed\n';
+            }
+
+            if (goTestStatus === 'success') {
+              detailedStatus += '✅ **Go Tests**: Passed\n';
+            } else if (goTestStatus === 'failure') {
+              detailedStatus += '❌ **Go Tests**: Failed\n';
             }
             
             // Build Status

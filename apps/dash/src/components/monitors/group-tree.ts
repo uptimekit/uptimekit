@@ -23,7 +23,10 @@ export function groupMonitorOptions(
                     (groupPaths?.get(monitor.group.id) ??
                         monitor.group.name)) ||
                 "Ungrouped";
-            (result[groupName] ??= []).push(monitor);
+            if (!result[groupName]) {
+                result[groupName] = [];
+            }
+            result[groupName].push(monitor);
             return result;
         },
         {} as Record<string, GroupedMonitorOption[]>,

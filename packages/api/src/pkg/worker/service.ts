@@ -1,4 +1,4 @@
-import { db, timeseries } from "@uptimekit/db";
+import { db, postgresClient, timeseries } from "@uptimekit/db";
 import {
     incident,
     incidentActivity,
@@ -164,7 +164,10 @@ async function withMonitorEventLock<T>(
     await previous.catch(() => undefined);
 
     try {
-        return await fn();
+        return await postgresClient.begin(async (sql) => {
+            await sql`select pg_advisory_xact_lock(hashtextextended(${monitorId}, 0))`;
+            return fn();
+        });
     } finally {
         releaseCurrentLock();
         if (monitorEventLocks.get(monitorId) === tail) {

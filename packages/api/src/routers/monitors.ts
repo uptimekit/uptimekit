@@ -585,8 +585,8 @@ export const monitorsRouter = {
                         .optional(),
                     groupId: z.string().optional(),
                     tagId: z.string().optional(),
-                    limit: z.number().default(50),
-                    offset: z.number().default(0),
+                    limit: z.number().int().min(1).max(100).default(50),
+                    offset: z.number().int().min(0).default(0),
                 })
                 .optional(),
         )
@@ -640,18 +640,21 @@ export const monitorsRouter = {
                 );
             }
 
+            const monitorQuery = db
+                .select()
+                .from(monitor)
+                .leftJoin(monitorGroup, eq(monitor.groupId, monitorGroup.id))
+                .where(and(...filters))
+                .orderBy(desc(monitor.createdAt), desc(monitor.id))
+                .$dynamic();
+            const paginatedMonitorQuery = input?.status
+                ? monitorQuery
+                : monitorQuery
+                      .limit(input?.limit ?? 50)
+                      .offset(input?.offset ?? 0);
+
             const [monitors, total] = await Promise.all([
-                db
-                    .select()
-                    .from(monitor)
-                    .leftJoin(
-                        monitorGroup,
-                        eq(monitor.groupId, monitorGroup.id),
-                    )
-                    .where(and(...filters))
-                    .orderBy(desc(monitor.createdAt), desc(monitor.id))
-                    .limit(input?.limit || 50)
-                    .offset(input?.offset || 0),
+                paginatedMonitorQuery,
                 db.$count(monitor, and(...filters)),
             ]);
 
@@ -831,26 +834,21 @@ export const monitorsRouter = {
                 };
             });
 
-            // Post-filter by status if needed (since status is dynamic/computed)
-            // NOTE: This means pagination might be slightly off if filtering by status,
-            // because status is computed after fetching. To fix this properly,
-            // status would need to be stored/indexed on the monitor table.
-            // For now, we return all matches from DB and filter in memory, which is suboptimal for pagination
-            // but consistent with previous implementation.
-            // However, since we return 'total' from DB, the total count will be mismatched with status filter.
-            // Ideally, we move status filtering to DB layer if possible, or accept this limitation.
-            // Given the user asked for pagination, let's keep it simple for now and acknowledge the status filter limitation if it arises.
-
-            let result = monitorsWithStatus;
-            if (input?.status) {
-                result = monitorsWithStatus.filter(
-                    (m) => m.status === input.status,
-                );
-            }
+            const statusFilteredMonitors = input?.status
+                ? monitorsWithStatus.filter(
+                      (item) => item.status === input.status,
+                  )
+                : monitorsWithStatus;
+            const result = input?.status
+                ? statusFilteredMonitors.slice(
+                      input.offset,
+                      input.offset + input.limit,
+                  )
+                : statusFilteredMonitors;
 
             return {
                 items: result,
-                total,
+                total: input?.status ? statusFilteredMonitors.length : total,
             };
         }),
 

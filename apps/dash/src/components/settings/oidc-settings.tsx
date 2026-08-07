@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useBrowserOrigin } from "@/hooks/use-browser-origin";
 import { client, orpc } from "@/utils/orpc";
 
 const emptyForm = {
@@ -81,6 +82,7 @@ function OidcSettingsContent({
     isLoading: boolean;
 }) {
     const queryClient = useQueryClient();
+    const origin = useBrowserOrigin();
     const [form, setForm] = useState(() =>
         provider
             ? {
@@ -96,13 +98,10 @@ function OidcSettingsContent({
             : emptyForm,
     );
 
-    const callbackUrl = (() => {
-        if (!provider?.callbackPath || typeof window === "undefined") {
-            return "";
-        }
-
-        return `${window.location.origin}${provider.callbackPath}`;
-    })();
+    const callbackUrl =
+        origin && provider?.callbackPath
+            ? `${origin}${provider.callbackPath}`
+            : "";
 
     const invalidateProvider = async () => {
         await queryClient.invalidateQueries({

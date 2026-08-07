@@ -132,11 +132,11 @@ describe("safe public URL validation", () => {
         ).resolves.toBeUndefined();
     });
 
-    it.each([
-        "http://93.184.216.34",
-        "https://[2606:4700:4700::1111]",
-    ])("allows the public IP literal %s without DNS", async (url) => {
-        await expect(assertSafePublicHttpUrl(url)).resolves.toBeUndefined();
-        expect(dnsLookupMock).not.toHaveBeenCalled();
-    });
+    it.each(["http://93.184.216.34", "https://[2606:4700:4700::1111]"])(
+        "allows the public IP literal %s without DNS",
+        async (url) => {
+            await expect(assertSafePublicHttpUrl(url)).resolves.toBeUndefined();
+            expect(dnsLookupMock).not.toHaveBeenCalled();
+        },
+    );
 });

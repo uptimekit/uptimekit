@@ -8,9 +8,10 @@ import (
 
 // Config holds the worker configuration from environment variables.
 type Config struct {
-	APIKey        string
-	DashboardURL  string
-	CheckInterval int // seconds
+	APIKey         string
+	DashboardURL   string
+	CheckInterval  int // seconds
+	MaxConcurrency int
 }
 
 // Load reads configuration from environment variables.
@@ -21,6 +22,12 @@ func Load() *Config {
 			interval = parsed
 		}
 	}
+	maxConcurrency := 20
+	if v := os.Getenv("WORKER_MAX_CONCURRENCY"); v != "" {
+		if parsed, err := strconv.Atoi(v); err == nil && parsed > 0 {
+			maxConcurrency = parsed
+		}
+	}
 
 	dashboardURL := os.Getenv("DASHBOARD_URL")
 	if dashboardURL == "" {
@@ -28,9 +35,10 @@ func Load() *Config {
 	}
 
 	return &Config{
-		APIKey:        os.Getenv("WORKER_API_KEY"),
-		DashboardURL:  dashboardURL,
-		CheckInterval: interval,
+		APIKey:         os.Getenv("WORKER_API_KEY"),
+		DashboardURL:   dashboardURL,
+		CheckInterval:  interval,
+		MaxConcurrency: maxConcurrency,
 	}
 }
 

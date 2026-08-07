@@ -2,7 +2,7 @@ import { db, statusPageEmailSubscribers } from "@uptimekit/db";
 import { incidentStatusPage } from "@uptimekit/db/schema/incidents";
 import { statusPage } from "@uptimekit/db/schema/status-pages";
 import { and, eq, inArray } from "drizzle-orm";
-import type { PersistedAppEvent } from "../../lib/events";
+import type { AppEventName, PersistedAppEvent } from "../../lib/events";
 import { createLogger } from "../../lib/logger";
 import { assertSafeWebhookUrl } from "../../lib/safe-url";
 import { sendSubscriberEmail } from "./email";
@@ -18,7 +18,11 @@ const subscriberNotificationServiceKey = Symbol.for(
 type GlobalSubscriberServiceRegistry = typeof globalThis &
     Record<symbol, SubscriberNotificationService | undefined>;
 
-type SubscriberEventName = "incident.acknowledged" | "incident.resolved";
+type SubscriberEventName =
+    | "incident.created"
+    | "incident.updated"
+    | "incident.acknowledged"
+    | "incident.resolved";
 
 interface SubscriberEventPayload {
     incidentId: string;
@@ -37,9 +41,17 @@ interface SubscriberStatusPage {
 }
 
 const eventLabels: Record<SubscriberEventName, string> = {
+    "incident.created": "New incident",
+    "incident.updated": "Incident updated",
     "incident.acknowledged": "Incident acknowledged",
     "incident.resolved": "Incident resolved",
 };
+
+export function isSubscriberEvent(
+    eventName: AppEventName,
+): eventName is SubscriberEventName {
+    return eventName in eventLabels;
+}
 
 function getDashboardBaseUrl() {
     return (process.env.NEXT_PUBLIC_URL || "http://localhost:3000").replace(
@@ -79,9 +91,12 @@ function buildMessageContent(
     const severity = payload.severity.toUpperCase();
     const description =
         payload.description?.trim() ||
-        (event === "incident.resolved"
-            ? "The incident has been resolved."
-            : "The incident has been acknowledged.");
+        {
+            "incident.created": "A new incident has been reported.",
+            "incident.updated": "The incident has been updated.",
+            "incident.acknowledged": "The incident has been acknowledged.",
+            "incident.resolved": "The incident has been resolved.",
+        }[event];
 
     const subject = `[${page.name}] ${eventLabel}: ${payload.title}`;
 
@@ -168,10 +183,7 @@ async function postWebhook(url: string, body: unknown, destination: string) {
 
 export class SubscriberNotificationService {
     async handleAppEvent(event: PersistedAppEvent) {
-        if (
-            event.eventName !== "incident.acknowledged" &&
-            event.eventName !== "incident.resolved"
-        ) {
+        if (!isSubscriberEvent(event.eventName)) {
             return;
         }
 

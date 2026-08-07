@@ -1462,11 +1462,7 @@ function IncidentsTableFiltersSection11({
         activeFilterCount,
     } = model;
     return (
-        <div
-            className="px-2"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-        >
+        <div className="px-2">
             <Select
                 value={pageSizeParam}
                 onValueChange={(value) => {
@@ -1478,6 +1474,7 @@ function IncidentsTableFiltersSection11({
             >
                 <SelectTrigger
                     className="h-8 w-full"
+                    onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                 >
                     <SelectValue placeholder="Page size">

@@ -93,40 +93,40 @@ describe("createContext", () => {
         expect(context.session).toBeNull();
     });
 
-    it.each([
-        undefined,
-        " org-1 ",
-    ])("binds a valid API key to its organization with header %s", async (organizationHeader) => {
-        authMocks.getApiKeyFromHeaders.mockReturnValue("valid-key");
-        authMocks.verifyApiKey.mockResolvedValue({
-            valid: true,
-            key: { id: "key-1", referenceId: "org-1" },
-        });
-        const headers = new Headers();
-        if (organizationHeader) {
-            headers.set("x-organization-id", organizationHeader);
-        }
+    it.each([undefined, " org-1 "])(
+        "binds a valid API key to its organization with header %s",
+        async (organizationHeader) => {
+            authMocks.getApiKeyFromHeaders.mockReturnValue("valid-key");
+            authMocks.verifyApiKey.mockResolvedValue({
+                valid: true,
+                key: { id: "key-1", referenceId: "org-1" },
+            });
+            const headers = new Headers();
+            if (organizationHeader) {
+                headers.set("x-organization-id", organizationHeader);
+            }
 
-        const context = await createContext({ headers });
+            const context = await createContext({ headers });
 
-        expect(context.apiKey).toEqual({
-            error: null,
-            keyId: "key-1",
-            organizationId: "org-1",
-        });
-        expect(context.session).toEqual(
-            expect.objectContaining({
-                session: expect.objectContaining({
-                    id: "key-1",
-                    activeOrganizationId: "org-1",
+            expect(context.apiKey).toEqual({
+                error: null,
+                keyId: "key-1",
+                organizationId: "org-1",
+            });
+            expect(context.session).toEqual(
+                expect.objectContaining({
+                    session: expect.objectContaining({
+                        id: "key-1",
+                        activeOrganizationId: "org-1",
+                    }),
+                    user: expect.objectContaining({
+                        id: "api-key:key-1",
+                        name: "API key",
+                    }),
                 }),
-                user: expect.objectContaining({
-                    id: "api-key:key-1",
-                    name: "API key",
-                }),
-            }),
-        );
-    });
+            );
+        },
+    );
 
     it("rejects an organization header that does not match the API key", async () => {
         authMocks.getApiKeyFromHeaders.mockReturnValue("valid-key");

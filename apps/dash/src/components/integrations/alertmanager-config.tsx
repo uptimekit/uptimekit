@@ -26,6 +26,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useBrowserOrigin } from "@/hooks/use-browser-origin";
 import { cn } from "@/lib/utils";
 
 interface AlertManagerConfigProps {
@@ -121,10 +122,9 @@ export function AlertManagerConfig({
     );
     const [configRevealed, setConfigRevealed] = useState(false);
     const [tokenRevealed, setTokenRevealed] = useState(false);
+    const baseUrl = useBrowserOrigin();
 
-    const isSecure =
-        typeof window !== "undefined" && window.location.protocol === "https:";
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const isSecure = baseUrl.startsWith("https://");
     const webhookUrl = configId
         ? `${baseUrl}/api/webhooks/integrations/${configId}`
         : "Save to generate webhook URL";

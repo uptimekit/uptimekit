@@ -64,10 +64,16 @@ func (s *monitorScheduler) sync(monitors []monitor.Config, now time.Time) {
 	}
 }
 
-func (s *monitorScheduler) claimDue(now time.Time) []monitor.Config {
+func (s *monitorScheduler) claimDue(now time.Time, limit int) []monitor.Config {
 	due := make([]monitor.Config, 0)
+	if limit <= 0 {
+		return due
+	}
 
 	for _, state := range s.states {
+		if len(due) >= limit {
+			break
+		}
 		if !state.present {
 			continue
 		}
@@ -88,6 +94,16 @@ func (s *monitorScheduler) claimDue(now time.Time) []monitor.Config {
 	}
 
 	return due
+}
+
+func (s *monitorScheduler) runningCount() int {
+	count := 0
+	for _, state := range s.states {
+		if state.running {
+			count++
+		}
+	}
+	return count
 }
 
 func (s *monitorScheduler) complete(id string) {
@@ -128,18 +144,24 @@ func retryInterval(cfg monitor.Config) time.Duration {
 }
 
 type runner struct {
-	client    *api.Client
-	registry  *monitor.Registry
-	scheduler *monitorScheduler
-	mu        sync.Mutex
-	wg        sync.WaitGroup
+	client         *api.Client
+	registry       *monitor.Registry
+	scheduler      *monitorScheduler
+	maxConcurrency int
+	mu             sync.Mutex
+	wg             sync.WaitGroup
 }
 
-func newRunner(client *api.Client, registry *monitor.Registry) *runner {
+func newRunner(
+	client *api.Client,
+	registry *monitor.Registry,
+	maxConcurrency int,
+) *runner {
 	return &runner{
-		client:    client,
-		registry:  registry,
-		scheduler: newMonitorScheduler(),
+		client:         client,
+		registry:       registry,
+		scheduler:      newMonitorScheduler(),
+		maxConcurrency: maxConcurrency,
 	}
 }
 
@@ -159,7 +181,8 @@ func (r *runner) syncMonitors() {
 
 func (r *runner) startDueChecks() {
 	r.mu.Lock()
-	due := r.scheduler.claimDue(time.Now())
+	available := r.maxConcurrency - r.scheduler.runningCount()
+	due := r.scheduler.claimDue(time.Now(), available)
 	r.mu.Unlock()
 
 	if len(due) == 0 {
@@ -249,9 +272,9 @@ func main() {
 
 	// Create monitor registry
 	registry := monitor.DefaultRegistry()
-	runner := newRunner(client, registry)
+	runner := newRunner(client, registry, cfg.MaxConcurrency)
 
-	log.Printf("Worker started. Dashboard: %s, Heartbeat sync interval: %ds", cfg.DashboardURL, cfg.CheckInterval)
+	log.Printf("Worker started. Dashboard: %s, Heartbeat sync interval: %ds, Max concurrency: %d", cfg.DashboardURL, cfg.CheckInterval, cfg.MaxConcurrency)
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())

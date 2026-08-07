@@ -93,14 +93,14 @@ func TestMonitorSchedulerClaimsOnlyDueMonitors(t *testing.T) {
 		{ID: "slow", Interval: 120},
 	}, start)
 
-	initial := scheduler.claimDue(start)
+	initial := scheduler.claimDue(start, 10)
 	if len(initial) != 2 {
 		t.Fatalf("initial due count = %d, want 2", len(initial))
 	}
 	scheduler.complete("fast")
 	scheduler.complete("slow")
 
-	afterThirtySeconds := scheduler.claimDue(start.Add(30 * time.Second))
+	afterThirtySeconds := scheduler.claimDue(start.Add(30*time.Second), 10)
 	if len(afterThirtySeconds) != 1 || afterThirtySeconds[0].ID != "fast" {
 		t.Fatalf("due after 30s = %#v, want only fast", afterThirtySeconds)
 	}
@@ -111,12 +111,12 @@ func TestMonitorSchedulerSkipsOverlappingStrictCadenceSlot(t *testing.T) {
 	scheduler := newMonitorScheduler()
 	scheduler.sync([]monitor.Config{{ID: "monitor-1", Interval: 60}}, start)
 
-	initial := scheduler.claimDue(start)
+	initial := scheduler.claimDue(start, 10)
 	if len(initial) != 1 {
 		t.Fatalf("initial due count = %d, want 1", len(initial))
 	}
 
-	overlap := scheduler.claimDue(start.Add(60 * time.Second))
+	overlap := scheduler.claimDue(start.Add(60*time.Second), 10)
 	if len(overlap) != 0 {
 		t.Fatalf("overlap due count = %d, want 0", len(overlap))
 	}
@@ -129,13 +129,36 @@ func TestMonitorSchedulerSkipsOverlappingStrictCadenceSlot(t *testing.T) {
 
 	scheduler.complete("monitor-1")
 
-	beforeNextSlot := scheduler.claimDue(start.Add(61 * time.Second))
+	beforeNextSlot := scheduler.claimDue(start.Add(61*time.Second), 10)
 	if len(beforeNextSlot) != 0 {
 		t.Fatalf("before next slot due count = %d, want 0", len(beforeNextSlot))
 	}
 
-	nextSlot := scheduler.claimDue(wantNextDue)
+	nextSlot := scheduler.claimDue(wantNextDue, 10)
 	if len(nextSlot) != 1 {
 		t.Fatalf("next slot due count = %d, want 1", len(nextSlot))
+	}
+}
+
+func TestMonitorSchedulerRespectsConcurrencyLimit(t *testing.T) {
+	start := time.Date(2026, 5, 26, 10, 0, 0, 0, time.UTC)
+	scheduler := newMonitorScheduler()
+	scheduler.sync([]monitor.Config{
+		{ID: "monitor-1", Interval: 60},
+		{ID: "monitor-2", Interval: 60},
+		{ID: "monitor-3", Interval: 60},
+	}, start)
+
+	claimed := scheduler.claimDue(start, 2)
+	if len(claimed) != 2 {
+		t.Fatalf("claimed %d monitors, want 2", len(claimed))
+	}
+	if scheduler.runningCount() != 2 {
+		t.Fatalf("running count = %d, want 2", scheduler.runningCount())
+	}
+
+	remaining := scheduler.claimDue(start, 1)
+	if len(remaining) != 1 {
+		t.Fatalf("remaining count = %d, want 1", len(remaining))
 	}
 }
