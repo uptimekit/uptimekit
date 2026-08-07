@@ -1,3 +1,4 @@
+import { loadEnv } from "@uptimekit/config/env";
 import { ClickHouseDriver } from "./clickhouse";
 import type { TimeSeriesBackend, TimeSeriesDriver } from "./driver";
 import { TimescaleDriver } from "./timescale";
@@ -8,9 +9,7 @@ export { TimescaleDriver } from "./timescale";
 export type * from "./types";
 
 export function resolveTimeSeriesBackend(): TimeSeriesBackend {
-    const raw = (process.env.TIMESERIES_BACKEND ?? "clickhouse")
-        .trim()
-        .toLowerCase();
+    const raw = loadEnv().TIMESERIES_BACKEND;
     if (raw === "clickhouse" || raw === "timescale") {
         return raw;
     }

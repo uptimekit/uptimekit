@@ -13,7 +13,7 @@ export function IncidentDetailCard({ incident }: IncidentDetailCardProps) {
             </div>
             <IncidentCard
                 incident={incident}
-                isExpanded={true}
+                mode="expanded"
                 className="border-border bg-card"
             />
         </div>

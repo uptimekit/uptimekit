@@ -21,12 +21,12 @@
     --input: #d7dbe0;
     --ring: #626976;
 
-    --color-status-operational: #087a55;
-    --color-status-degraded: #9a5b00;
-    --color-status-partial-outage: #b54708;
-    --color-status-major-outage: #c4323f;
-    --color-status-maintenance: #6941c6;
-    --color-status-unknown: #667085;
+    --status-operational: #087a55;
+    --status-degraded: #9a5b00;
+    --status-partial-outage: #b54708;
+    --status-major-outage: #c4323f;
+    --status-maintenance: #6941c6;
+    --status-unknown: #667085;
 
     --spacing-section: 3rem;
     --spacing-card: 1rem;
@@ -64,52 +64,13 @@
     --secondary: var(--color-neutral-700);
     --secondary-foreground: var(--color-neutral-200);
 
-    --color-status-operational: #10b981;
-    --color-status-degraded: #f59e0b;
-    --color-status-partial-outage: #fb923c;
-    --color-status-major-outage: #ef4444;
-    --color-status-maintenance: #8b5cf6;
-    --color-status-unknown: var(--color-neutral-700);
+    --status-operational: #10b981;
+    --status-degraded: #f59e0b;
+    --status-partial-outage: #fb923c;
+    --status-major-outage: #ef4444;
+    --status-maintenance: #8b5cf6;
+    --status-unknown: var(--color-neutral-700);
     color-scheme: dark;
-}
-
-/* Explicitly define status utilities to overwrite Tailwind generated utilities */
-[data-theme="flat"] .bg-status-operational {
-    background-color: var(--color-status-operational);
-}
-[data-theme="flat"] .bg-status-degraded {
-    background-color: var(--color-status-degraded);
-}
-[data-theme="flat"] .bg-status-partial-outage {
-    background-color: var(--color-status-partial-outage);
-}
-[data-theme="flat"] .bg-status-major-outage {
-    background-color: var(--color-status-major-outage);
-}
-[data-theme="flat"] .bg-status-maintenance {
-    background-color: var(--color-status-maintenance);
-}
-[data-theme="flat"] .bg-status-unknown {
-    background-color: var(--color-status-unknown);
-}
-
-[data-theme="flat"] .text-status-operational {
-    color: var(--color-status-operational);
-}
-[data-theme="flat"] .text-status-degraded {
-    color: var(--color-status-degraded);
-}
-[data-theme="flat"] .text-status-partial-outage {
-    color: var(--color-status-partial-outage);
-}
-[data-theme="flat"] .text-status-major-outage {
-    color: var(--color-status-major-outage);
-}
-[data-theme="flat"] .text-status-maintenance {
-    color: var(--color-status-maintenance);
-}
-[data-theme="flat"] .text-status-unknown {
-    color: var(--color-status-unknown);
 }
 
 [data-theme="flat"].dark .bg-white {

@@ -1,12 +1,11 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { canAccessStatusPage, checkStatusPageAccess } from "@/lib/access-check";
-import { prepareStatusPageData } from "@/lib/data-preparer";
 import { getStatusPageBySlug } from "@/lib/db-queries";
 import { getFeedAlternates } from "@/lib/feed-links";
 import { getHostFromHeaders, getProtocolFromHeaders } from "@/lib/route-utils";
-import { loadThemeComponent } from "@/lib/theme-loader";
-import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
+import { normalizeStatusPageDesign } from "@/lib/status-page-config";
+import { renderStatusPage } from "@/lib/status-page-renderer";
 
 export async function generateMetadata({
     params,
@@ -41,7 +40,7 @@ export async function generateMetadata({
         ? `Real-time status and incident history for ${pageConfig.name}. Check system availability and past incidents.`
         : "Real-time system status and incident history.";
 
-    const design = (pageConfig?.design as any) || {};
+    const design = normalizeStatusPageDesign(pageConfig?.design);
     const logoUrl = design.logoUrl;
 
     return {
@@ -98,20 +97,5 @@ export default async function SlugStatusPage({
 
     await checkStatusPageAccess(pageConfig, `/${slug}`);
 
-    const design = (pageConfig.design as any) || {};
-    const themeId = design.themeId || "default";
-
-    const [ThemePage, data] = await Promise.all([
-        loadThemeComponent(themeId),
-        prepareStatusPageData(pageConfig, slug),
-    ]);
-
-    return (
-        <ThemePageWrapper
-            themeId={themeId}
-            theme={design.theme}
-            ThemeComponent={ThemePage}
-            componentProps={{ data }}
-        />
-    );
+    return renderStatusPage(pageConfig, slug);
 }

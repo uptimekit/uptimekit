@@ -1,6 +1,6 @@
 import { parseError } from "evlog";
 import { createEvlog } from "evlog/next";
-import { createInstrumentation } from "evlog/next/instrumentation";
+import { createInstrumentation } from "evlog/next/instrumentation/create";
 
 const evlogOptions = {
     env: {

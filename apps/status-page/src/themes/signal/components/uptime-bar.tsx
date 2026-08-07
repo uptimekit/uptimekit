@@ -7,6 +7,14 @@ import {
     getViewportTooltipPosition,
     type ViewportTooltipPosition,
 } from "@/components/viewport-tooltip-position";
+import {
+    type BarSegments,
+    buildUptimeSegments,
+    calculateBarSegments,
+    formatDowntime,
+    formatMaintenanceDuration,
+    isMaintenanceStatus,
+} from "@/lib/uptime";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
 import type { StatusType, UptimeDay } from "../../types";
@@ -16,21 +24,6 @@ interface UptimeBarProps {
     className?: string;
     style?: "normal" | "length" | "signal";
     toFixed?: number;
-}
-
-interface UptimeSegment {
-    start: number;
-    length: number;
-    status: StatusType;
-}
-
-interface BarSegments {
-    uptime: number;
-    minor: number;
-    major: number;
-    critical: number;
-    maintenance: number;
-    unknown: number;
 }
 
 const statusColors: Record<StatusType, string> = {
@@ -53,103 +46,9 @@ const segmentColors = {
     unknown: "bg-neutral-800",
 };
 
-function parseDuration(durationStr: string | undefined): number {
-    if (!durationStr) return 0;
-
-    const clean = durationStr.replace(/down/gi, "").trim();
-    if (!clean) return 0;
-
-    let totalMs = 0;
-
-    const hoursMatch = clean.match(/(\d+)\s*h/i);
-    if (hoursMatch) {
-        totalMs += Number.parseInt(hoursMatch[1], 10) * 60 * 60 * 1000;
-    }
-
-    const minutesMatch = clean.match(/(\d+)\s*m/i);
-    if (minutesMatch) {
-        totalMs += Number.parseInt(minutesMatch[1], 10) * 60 * 1000;
-    }
-
-    const secondsMatch = clean.match(/(\d+)\s*s/i);
-    if (secondsMatch) {
-        totalMs += Number.parseInt(secondsMatch[1], 10) * 1000;
-    }
-
-    return totalMs;
-}
-
-function formatDowntime(ms: number): string {
-    if (ms <= 0) return "No downtime";
-
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-
-    if (hours > 0) {
-        const remainingMinutes = minutes % 60;
-        return remainingMinutes > 0
-            ? `${hours}h ${remainingMinutes}m down`
-            : `${hours}h down`;
-    }
-
-    if (minutes > 0) {
-        const remainingSeconds = seconds % 60;
-        return remainingSeconds > 0
-            ? `${minutes}m ${remainingSeconds}s down`
-            : `${minutes}m down`;
-    }
-
-    return `${seconds}s down`;
-}
-
-function isMaintenanceStatus(status: StatusType): boolean {
-    return status === "maintenance" || status === "maintenance_scheduled";
-}
-
-function formatMaintenanceDuration(day: UptimeDay): string {
-    const maintenanceMs = day.maintenanceMs ?? parseDuration(day.duration);
-
-    if (maintenanceMs <= 0) {
-        return "Maintenance excluded from uptime";
-    }
-
-    return `${formatDowntime(maintenanceMs).replace(/ down$/, "")} maintenance`;
-}
-
-function buildSegments(days: UptimeDay[]): UptimeSegment[] {
-    if (days.length === 0) {
-        return [];
-    }
-
-    const segments: UptimeSegment[] = [];
-    let currentStatus = days[0].status;
-    let start = 0;
-
-    for (let index = 1; index < days.length; index++) {
-        if (days[index].status !== currentStatus) {
-            segments.push({
-                start,
-                length: index - start,
-                status: currentStatus,
-            });
-            currentStatus = days[index].status;
-            start = index;
-        }
-    }
-
-    segments.push({
-        start,
-        length: days.length - start,
-        status: currentStatus,
-    });
-
-    return segments;
-}
-
 export function UptimePreview({ days }: { days: UptimeDay[] }) {
     const previewDays = days.slice(-14);
-    const segments = buildSegments(previewDays);
+    const segments = buildUptimeSegments(previewDays);
 
     return (
         <div
@@ -170,50 +69,6 @@ export function UptimePreview({ days }: { days: UptimeDay[] }) {
             ))}
         </div>
     );
-}
-
-function calculateSegments(day: UptimeDay): BarSegments {
-    const DAY_MS = 24 * 60 * 60 * 1000;
-    const segments: BarSegments = {
-        uptime: 100,
-        minor: 0,
-        major: 0,
-        critical: 0,
-        maintenance: 0,
-        unknown: 0,
-    };
-
-    if (
-        day.status === "operational" ||
-        day.status === "maintenance_completed"
-    ) {
-        segments.uptime = 100;
-    } else if (day.status === "unknown") {
-        segments.unknown = 100;
-        segments.uptime = 0;
-    } else {
-        const downtimeMs = isMaintenanceStatus(day.status)
-            ? (day.maintenanceMs ?? parseDuration(day.duration))
-            : (day.downtimeMs ?? parseDuration(day.duration));
-        const downtimePercent = Math.min(100, (downtimeMs / DAY_MS) * 100);
-
-        segments.uptime = Math.max(0, 100 - downtimePercent);
-
-        if (
-            day.status === "maintenance" ||
-            day.status === "maintenance_scheduled"
-        ) {
-            segments.maintenance = downtimePercent;
-        } else if (day.status === "degraded") {
-            segments.minor = downtimePercent;
-        } else if (day.status === "partial_outage") {
-            segments.major = downtimePercent;
-        } else if (day.status === "major_outage") {
-            segments.critical = downtimePercent;
-        }
-    }
-
-    return segments;
 }
 
 function StackedBar({ segments }: { segments: BarSegments }) {
@@ -288,10 +143,12 @@ export function UptimeBar({
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [tooltipPosition, setTooltipPosition] =
         useState<ViewportTooltipPosition | null>(null);
-    const segments = buildSegments(days);
+    const segments = buildUptimeSegments(days);
     const hoveredDay = hoveredIndex !== null ? days[hoveredIndex] : null;
     const hoveredSegments =
-        style === "length" && hoveredDay ? calculateSegments(hoveredDay) : null;
+        style === "length" && hoveredDay
+            ? calculateBarSegments(hoveredDay)
+            : null;
     const showHoveredUptimeSegment =
         hoveredDay &&
         hoveredSegments &&
@@ -393,7 +250,7 @@ export function UptimeBar({
                                 {style === "length" ? (
                                     <div className="h-full w-full rounded-[2px] transition-opacity hover:opacity-80">
                                         <StackedBar
-                                            segments={calculateSegments(day)}
+                                            segments={calculateBarSegments(day)}
                                         />
                                     </div>
                                 ) : (

@@ -23,7 +23,7 @@ export function DetailCard({
                 </h1>
             </div>
 
-            <IssueCard incident={incident} isExpanded={true} />
+            <IssueCard incident={incident} mode="expanded" />
 
             {description ? (
                 <div className="signal-panel rounded-2xl border border-border px-4 py-4 sm:px-5">

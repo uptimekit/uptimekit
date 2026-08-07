@@ -1,6 +1,12 @@
 "use client";
 
-import { faWrench } from "@fortawesome/free-solid-svg-icons";
+import {
+    faCheck,
+    faExclamation,
+    faQuestion,
+    faWrench,
+    faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef, useState } from "react";
 import { ViewportTooltip } from "@/components/viewport-tooltip";
@@ -25,6 +31,17 @@ const statusBgClass: Record<StatusType, string> = {
     unknown: "bg-status-unknown",
 };
 
+const statusIcon = {
+    operational: faCheck,
+    degraded: faExclamation,
+    partial_outage: faExclamation,
+    major_outage: faXmark,
+    maintenance: faWrench,
+    maintenance_scheduled: faWrench,
+    maintenance_completed: faCheck,
+    unknown: faQuestion,
+} as const;
+
 interface MonitorGroupsProps {
     monitorGroups: GroupedMonitors[];
     toFixed?: number;
@@ -43,6 +60,17 @@ function formatUptime(uptime: number, toFixed: number): string {
 
 function formatComponentCount(count: number): string {
     return `${count} ${count === 1 ? "component" : "components"}`;
+}
+
+function getGroupKey(group: GroupedMonitors): string {
+    if (group.group?.id) return group.group.id;
+
+    const monitorIds = group.monitors
+        .map((monitor) => monitor.id)
+        .sort()
+        .join("-");
+
+    return `ungrouped-${monitorIds || "empty"}`;
 }
 
 function getAverageUptime(monitors: Monitor[]): number {
@@ -160,7 +188,13 @@ function StatusIcon({
                 className,
             )}
             data-status={status}
-        />
+        >
+            <FontAwesomeIcon
+                aria-hidden="true"
+                icon={statusIcon[status]}
+                className="h-2.5 max-h-2.5 w-2.5 max-w-2.5 text-background"
+            />
+        </span>
     );
 }
 
@@ -329,7 +363,10 @@ function MonitorGroupRow({
     index: number;
     toFixed: number;
 }) {
-    const [isOpen, setIsOpen] = useState(false);
+    const isCollapsible = group.group?.collapsible !== false;
+    const [isOpen, setIsOpen] = useState(
+        !isCollapsible || !group.group?.defaultCollapsed,
+    );
     const history = getGroupHistory(group.monitors);
     const status = calculateAggregateStatus(
         group.monitors.map((monitor) => monitor.currentStatus),
@@ -353,6 +390,7 @@ function MonitorGroupRow({
                         className="spark-component-toggle flex cursor-pointer items-center gap-1.5 whitespace-nowrap border-0 bg-transparent p-0 font-inherit text-muted-foreground text-sm hover:text-foreground"
                         data-open={isOpen}
                         aria-expanded={isOpen}
+                        disabled={!isCollapsible}
                         onClick={() => setIsOpen((current) => !current)}
                     >
                         {formatComponentCount(group.monitors.length)}
@@ -419,7 +457,7 @@ export function MonitorGroups({
 
             {monitorGroups.map((group, index) => (
                 <MonitorGroupRow
-                    key={group.group?.id ?? `ungrouped-${index}`}
+                    key={getGroupKey(group)}
                     group={group}
                     index={index}
                     toFixed={toFixed}

@@ -2,9 +2,7 @@ import { notFound } from "next/navigation";
 import { checkStatusPageAccess } from "@/lib/access-check";
 import { getStatusPageBySlug } from "@/lib/db-queries";
 import { parseIncidentHistoryPeriod } from "@/lib/incident-history";
-import { prepareUpdatesPageData } from "@/lib/subpage-data-preparer";
-import { loadUpdatesComponent } from "@/lib/theme-loader";
-import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
+import { renderUpdatesPage } from "@/lib/status-page-renderer";
 
 export default async function SlugUpdatesPage({
     params,
@@ -29,22 +27,5 @@ export default async function SlugUpdatesPage({
 
     await checkStatusPageAccess(pageConfig, currentPath);
 
-    const design = (pageConfig.design as any) || {};
-    const themeId = design.themeId || "default";
-
-    const [UpdatesPage, data] = await Promise.all([
-        loadUpdatesComponent(themeId),
-        prepareUpdatesPageData(pageConfig, period, slug).catch(() =>
-            notFound(),
-        ),
-    ]);
-
-    return (
-        <ThemePageWrapper
-            themeId={themeId}
-            theme={design.theme}
-            ThemeComponent={UpdatesPage}
-            componentProps={{ data }}
-        />
-    );
+    return renderUpdatesPage(pageConfig, period, slug).catch(() => notFound());
 }

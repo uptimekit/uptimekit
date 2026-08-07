@@ -23,8 +23,8 @@ export function CurrentIssuesBanner({
                     <IssueCard
                         key={issue.id}
                         incident={issue}
-                        isExpanded={true}
-                        detailsLink={issue.detailsLink}
+                        mode="expanded"
+                        href={issue.detailsLink}
                     />
                 ))}
             </div>

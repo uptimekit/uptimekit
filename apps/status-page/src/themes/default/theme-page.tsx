@@ -25,6 +25,7 @@ export default function DefaultTheme({ data }: ThemePageProps) {
                 title={config.name}
                 logoUrl={design.logoUrl}
                 contactUrl={design.contactUrl}
+                websiteUrl={design.websiteUrl}
                 statusPageId={config.id}
                 slug={config.routeSlug}
                 allowSubscriptions={design.allowSubscriptions}
@@ -50,7 +51,6 @@ export default function DefaultTheme({ data }: ThemePageProps) {
 
                     <ScheduledMaintenanceSection
                         scheduledMaintenances={scheduledMaintenances}
-                        slug={config.routeSlug}
                     />
 
                     <PreviousIncidents

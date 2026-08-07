@@ -6,22 +6,24 @@ import type { Incident } from "../../types";
 import { StatusBadge, StatusDot } from "./status-indicator";
 import { formatDateTime, formatShortDate, getIssueStatus } from "./utils";
 
-interface IssueCardProps {
+interface IssueCardBaseProps {
     incident: Incident;
-    isExpanded?: boolean;
-    onToggle?: () => void;
-    detailsLink?: string;
     className?: string;
 }
 
-export function IssueCard({
-    incident,
-    isExpanded = false,
-    onToggle,
-    detailsLink,
-    className,
-}: IssueCardProps) {
+type IssueCardProps = IssueCardBaseProps &
+    (
+        | { mode: "link"; href: string }
+        | { mode: "expanded"; href?: string }
+        | { mode: "accordion"; expanded: boolean; onToggle: () => void }
+    );
+
+export function IssueCard({ incident, className, ...display }: IssueCardProps) {
     const status = getIssueStatus(incident);
+    const isExpanded =
+        display.mode === "expanded" ||
+        (display.mode === "accordion" && display.expanded);
+    const href = display.mode === "accordion" ? undefined : display.href;
 
     return (
         <div
@@ -51,9 +53,9 @@ export function IssueCard({
                         status={status}
                         className="hidden sm:inline-flex"
                     />
-                    {detailsLink ? (
+                    {href ? (
                         <Link
-                            href={detailsLink as any}
+                            href={href as any}
                             aria-label={`View details for ${incident.title}`}
                             className="signal-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform duration-150 hover:-translate-y-px hover:text-foreground"
                         >
@@ -62,18 +64,18 @@ export function IssueCard({
                                 className="h-4 w-4 -rotate-90"
                             />
                         </Link>
-                    ) : (
+                    ) : display.mode === "accordion" ? (
                         <button
                             type="button"
                             aria-label={
-                                isExpanded
+                                display.expanded
                                     ? "Collapse incident"
                                     : "Expand incident"
                             }
-                            onClick={onToggle}
+                            onClick={display.onToggle}
                             className="signal-button inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-transform duration-150 hover:-translate-y-px hover:text-foreground"
                         >
-                            {isExpanded ? (
+                            {display.expanded ? (
                                 <FontAwesomeIcon
                                     icon={faChevronUp}
                                     className="h-4 w-4"
@@ -85,11 +87,11 @@ export function IssueCard({
                                 />
                             )}
                         </button>
-                    )}
+                    ) : null}
                 </div>
             </div>
 
-            {isExpanded && !detailsLink ? (
+            {isExpanded ? (
                 <div className="border-border/80 border-t px-4 py-4 sm:px-5 sm:py-5">
                     {incident.monitors.length > 0 ? (
                         <div className="mb-5 space-y-3">

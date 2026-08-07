@@ -19,21 +19,21 @@
         "test": "vitest run"
     },
     "devDependencies": {
-        "drizzle-kit": "^0.31.8",
-        "testcontainers": "^12.0.1",
-        "tsx": "^4.21.0",
-        "typescript": "^5.9.3",
-        "vitest": "^4.1.8"
+        "drizzle-kit": "^0.31.10",
+        "testcontainers": "^12.1.0",
+        "tsx": "^4.23.9",
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.10"
     },
     "peerDependencies": {
-        "typescript": "^5"
+        "typescript": "^7"
     },
     "dependencies": {
-        "@clickhouse/client": "^1.15.0",
+        "@clickhouse/client": "^1.23.1",
         "@uptimekit/config": "workspace:*",
         "dotenv": "catalog:",
-        "drizzle-orm": "^0.45.0",
-        "postgres": "^3.4.7",
+        "drizzle-orm": "^0.45.2",
+        "postgres": "^3.4.9",
         "zod": "catalog:"
     }
 }

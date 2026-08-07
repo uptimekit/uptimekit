@@ -74,6 +74,7 @@ ENV PGPASSWORD=uptimekit
 ENV DEMO_MODE=true
 ENV DEMO_EMAIL=demo@uptimekit.local
 ENV DEMO_PASSWORD=DemoPassword123!
+ENV DEMO_STATUS_PAGE_SLUG=northstar-status
 
 EXPOSE 3000
 ENTRYPOINT ["/entrypoint.sh"]

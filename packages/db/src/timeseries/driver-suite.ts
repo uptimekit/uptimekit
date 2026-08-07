@@ -712,6 +712,54 @@ export function defineDriverTests(
                 ]);
             });
 
+            it("averages response time and request phases within a bucket", async () => {
+                const driver = getDriver();
+                const monitorId = uid("response-average-bucket");
+
+                await driver.insertMonitorEvents([
+                    {
+                        id: crypto.randomUUID(),
+                        monitorId,
+                        status: "up",
+                        latency: 100,
+                        dnsLookup: 20,
+                        tcpConnect: 30,
+                        tlsHandshake: 40,
+                        ttfb: 50,
+                        transfer: 60,
+                        timestamp: new Date("2026-06-03T12:05:00.000Z"),
+                    },
+                    {
+                        id: crypto.randomUUID(),
+                        monitorId,
+                        status: "up",
+                        latency: 300,
+                        dnsLookup: 40,
+                        tcpConnect: 50,
+                        tlsHandshake: 60,
+                        ttfb: 70,
+                        transfer: 80,
+                        timestamp: new Date("2026-06-03T12:35:00.000Z"),
+                    },
+                ]);
+
+                const [bucket] = await driver.getResponseTimes({
+                    monitorId,
+                    since: new Date("2026-06-03T12:00:00.000Z"),
+                    bucketSeconds: 60 * 60,
+                    bucketAggregation: "average",
+                });
+
+                expect(bucket).toMatchObject({
+                    latency: 200,
+                    dnsLookup: 30,
+                    tcpConnect: 40,
+                    tlsHandshake: 50,
+                    ttfb: 60,
+                    transfer: 70,
+                });
+            });
+
             it("keeps separate bucketed series when grouped by location", async () => {
                 const driver = getDriver();
                 const monitorId = uid("response-location-buckets");

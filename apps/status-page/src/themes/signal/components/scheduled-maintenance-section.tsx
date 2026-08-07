@@ -1,3 +1,4 @@
+import { maintenanceToIncident } from "@/lib/status-event";
 import type { Maintenance } from "../../types";
 import { IssueCard } from "./issue-card";
 
@@ -5,23 +6,12 @@ export function ScheduledMaintenanceSection({
     scheduledMaintenances,
 }: {
     scheduledMaintenances: Maintenance[];
-    slug?: string;
 }) {
     if (scheduledMaintenances.length === 0) {
         return null;
     }
 
-    const items = scheduledMaintenances.map((maintenance) => ({
-        id: maintenance.id,
-        title: maintenance.title,
-        status: maintenance.status,
-        severity: "maintenance",
-        startedAt: maintenance.startAt,
-        endedAt: maintenance.endAt,
-        monitors: maintenance.monitors,
-        activities: [],
-        detailsLink: maintenance.detailsLink,
-    }));
+    const items = scheduledMaintenances.map(maintenanceToIncident);
 
     return (
         <section className="space-y-4">
@@ -36,8 +26,9 @@ export function ScheduledMaintenanceSection({
                 {items.map((item) => (
                     <IssueCard
                         key={item.id}
-                        incident={item as any}
-                        detailsLink={item.detailsLink}
+                        incident={item}
+                        mode="link"
+                        href={item.detailsLink}
                     />
                 ))}
             </div>

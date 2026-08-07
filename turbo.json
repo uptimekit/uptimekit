@@ -35,6 +35,27 @@
         "db:migrate": {
             "cache": false
         },
+        "db:seed": {
+            "cache": false,
+            "passThroughEnv": [
+                "DATABASE_URL",
+                "DEMO_EMAIL",
+                "DEMO_PASSWORD",
+                "DEMO_ORG_SLUG",
+                "DEMO_STATUS_PAGE_SLUG"
+            ]
+        },
+        "db:seed:timescale": {
+            "cache": false,
+            "passThroughEnv": [
+                "DATABASE_URL",
+                "DEMO_EMAIL",
+                "DEMO_PASSWORD",
+                "DEMO_ORG_SLUG",
+                "DEMO_STATUS_PAGE_SLUG",
+                "TIMESERIES_BACKEND"
+            ]
+        },
         "db:generate": {
             "cache": false
         }

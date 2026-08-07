@@ -19,6 +19,7 @@ export default function DefaultUpdates({ data }: ThemeUpdatesProps) {
                 title={config.name}
                 logoUrl={design.logoUrl}
                 contactUrl={design.contactUrl}
+                websiteUrl={design.websiteUrl}
                 statusPageId={config.id}
                 slug={config.routeSlug}
                 allowSubscriptions={design.allowSubscriptions}

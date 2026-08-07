@@ -18,7 +18,7 @@ export default function DashboardLayout({
             <SidebarInset className="overflow-visible">
                 <main className="flex flex-1 flex-col gap-6 rounded-lg border px-4">
                     <header className="sticky top-0 z-50 -mx-4 flex h-16 shrink-0 items-center gap-2 overflow-hidden border-b bg-popover/80 backdrop-blur-lg transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-                        <div className="flex items-center gap-2 px-4">
+                        <div className="flex min-w-0 items-center gap-2 px-4">
                             <SidebarTrigger className="-ml-1" />
                             <Separator
                                 orientation="vertical"
@@ -26,6 +26,10 @@ export default function DashboardLayout({
                             />
                             <DashboardBreadcrumbs />
                         </div>
+                        <div
+                            id="dashboard-header-actions"
+                            className="ml-auto flex shrink-0 items-center gap-3 px-4"
+                        />
                     </header>
                     {children}
                 </main>

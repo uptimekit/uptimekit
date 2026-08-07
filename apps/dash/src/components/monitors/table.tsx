@@ -129,6 +129,33 @@ function getPauseLabel(pauseReason?: string | null) {
     }
 }
 
+interface MonitorTreeIndentProps {
+    depth: number;
+}
+
+function MonitorTreeIndent({ depth }: MonitorTreeIndentProps) {
+    if (depth <= 0) return null;
+
+    return (
+        <span
+            aria-hidden="true"
+            className="pointer-events-none flex shrink-0 items-center"
+        >
+            {Array.from({ length: depth }, (_, level) => (
+                <span
+                    // biome-ignore lint/suspicious/noArrayIndexKey: tree indent slots have no stable data identity
+                    key={level}
+                    className="relative block h-5 w-4 shrink-0"
+                >
+                    {level === depth - 1 && (
+                        <span className="absolute top-1/2 left-1/2 h-3 w-2 -translate-y-1/2 rounded-bl-md border-border/40 border-b border-l" />
+                    )}
+                </span>
+            ))}
+        </span>
+    );
+}
+
 /**
  * Render the monitors list view with search, filters, grouping, and pagination.
  *
@@ -367,103 +394,105 @@ function useMonitorsTableModel() {
                 />
             </TableCell>
 
-            <TableCell
-                className="relative"
-                style={{ paddingLeft: 8 + (depth - 0.2) * 16 }}
-            >
+            <TableCell className="relative py-0" style={{ paddingLeft: 8 }}>
                 <Link
                     href={`/monitors/${monitor.id}`}
                     className="absolute inset-0 z-0"
                     aria-label={`Open ${monitor.name}`}
                 />
 
-                <div className="pointer-events-none relative z-10 flex items-center gap-3">
-                    <div
-                        className={cn(
-                            "h-2.5 w-2.5 shrink-0 rounded-full shadow-sm",
-                            monitor.status === "up" &&
-                                "bg-emerald-500 shadow-emerald-500/20",
-                            monitor.status === "down" &&
-                                "bg-red-500 shadow-red-500/20",
-                            monitor.status === "degraded" &&
-                                "bg-amber-500 shadow-amber-500/20",
-                            monitor.status === "maintenance" &&
-                                "bg-blue-500 shadow-blue-500/20",
-                            monitor.status === "pending" &&
-                                "bg-zinc-500 shadow-zinc-500/20",
-                            monitor.type === "instatus" &&
-                                "bg-purple-500 shadow-purple-500/20",
-                        )}
-                    />
+                <div className="pointer-events-none relative z-10 flex min-h-[72px] items-center">
+                    <MonitorTreeIndent depth={depth} />
 
-                    <div className="grid gap-1">
-                        <span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
-                            {monitor.name}
-
-                            {!monitor.active && (
-                                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
-                                    {getPauseLabel(monitor.pauseReason)}
-                                </span>
+                    <div className="flex items-center gap-3">
+                        <div
+                            className={cn(
+                                "h-2.5 w-2.5 shrink-0 rounded-full shadow-sm",
+                                monitor.status === "up" &&
+                                    "bg-emerald-500 shadow-emerald-500/20",
+                                monitor.status === "down" &&
+                                    "bg-red-500 shadow-red-500/20",
+                                monitor.status === "degraded" &&
+                                    "bg-amber-500 shadow-amber-500/20",
+                                monitor.status === "maintenance" &&
+                                    "bg-blue-500 shadow-blue-500/20",
+                                monitor.status === "pending" &&
+                                    "bg-zinc-500 shadow-zinc-500/20",
+                                monitor.type === "instatus" &&
+                                    "bg-purple-500 shadow-purple-500/20",
                             )}
+                        />
 
-                            {monitor.tags && monitor.tags.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                    {monitor.tags.map((tag) => (
-                                        <span
-                                            key={tag.id}
-                                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-[10px]"
-                                            style={{
-                                                backgroundColor: `${tag.color}20`,
-                                                color: tag.color,
-                                            }}
-                                        >
-                                            {tag.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                        </span>
+                        <div className="grid gap-1">
+                            <span className="flex items-center gap-2 font-semibold leading-none transition-colors group-hover:text-primary">
+                                {monitor.name}
 
-                        <div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
-                            <span
-                                className={cn(
-                                    monitor.status === "up" &&
-                                        "text-emerald-500",
-                                    monitor.status === "down" && "text-red-500",
-                                    monitor.status === "degraded" &&
-                                        "text-amber-500",
-                                    monitor.status === "maintenance" &&
-                                        "text-blue-500",
-                                    monitor.status === "pending" &&
-                                        "text-zinc-500",
-                                    monitor.type === "instatus" &&
-                                        "text-purple-500",
+                                {!monitor.active && (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+                                        {getPauseLabel(monitor.pauseReason)}
+                                    </span>
                                 )}
-                            >
-                                {monitor.type === "instatus"
-                                    ? "External"
-                                    : monitor.statusText}
+
+                                {monitor.tags && monitor.tags.length > 0 && (
+                                    <div className="flex items-center gap-1">
+                                        {monitor.tags.map((tag) => (
+                                            <span
+                                                key={tag.id}
+                                                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-[10px]"
+                                                style={{
+                                                    backgroundColor: `${tag.color}20`,
+                                                    color: tag.color,
+                                                }}
+                                            >
+                                                {tag.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </span>
-                            {!(monitor.type === "instatus") && (
-                                <>
-                                    <span>·</span>
-                                    <span>{monitor.duration}</span>
-                                </>
-                            )}
-                            <span>·</span>
-                            <span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
-                                Used on {monitor.usedOn} status page
-                                {monitor.usedOn !== 1 ? "s" : ""}
-                            </span>
-                            {monitor.status === "degraded" &&
-                                monitor.statusReason && (
+
+                            <div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs">
+                                <span
+                                    className={cn(
+                                        monitor.status === "up" &&
+                                            "text-emerald-500",
+                                        monitor.status === "down" &&
+                                            "text-red-500",
+                                        monitor.status === "degraded" &&
+                                            "text-amber-500",
+                                        monitor.status === "maintenance" &&
+                                            "text-blue-500",
+                                        monitor.status === "pending" &&
+                                            "text-zinc-500",
+                                        monitor.type === "instatus" &&
+                                            "text-purple-500",
+                                    )}
+                                >
+                                    {monitor.type === "instatus"
+                                        ? "External"
+                                        : monitor.statusText}
+                                </span>
+                                {!(monitor.type === "instatus") && (
                                     <>
                                         <span>·</span>
-                                        <span className="max-w-[320px] truncate text-amber-500">
-                                            {monitor.statusReason}
-                                        </span>
+                                        <span>{monitor.duration}</span>
                                     </>
                                 )}
+                                <span>·</span>
+                                <span className="underline decoration-muted-foreground/50 decoration-dashed underline-offset-2 transition-colors hover:text-foreground">
+                                    Used on {monitor.usedOn} status page
+                                    {monitor.usedOn !== 1 ? "s" : ""}
+                                </span>
+                                {monitor.status === "degraded" &&
+                                    monitor.statusReason && (
+                                        <>
+                                            <span>·</span>
+                                            <span className="max-w-[320px] truncate text-amber-500">
+                                                {monitor.statusReason}
+                                            </span>
+                                        </>
+                                    )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -541,6 +570,9 @@ function useMonitorsTableModel() {
 
         const isExpanded = expandedGroups[node.group.id] ?? true;
         const directMonitors = monitorsByGroup[node.group.id] ?? [];
+        const visibleChildren = node.children.filter(
+            (child) => countSubtreeMonitors(child) > 0,
+        );
         const rows: ReactNode[] = [];
 
         rows.push(
@@ -549,33 +581,33 @@ function useMonitorsTableModel() {
                 className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
                 onClick={() => toggleGroup(node.group.id)}
             >
-                <TableCell colSpan={6} className="py-3">
-                    <div
-                        className="flex select-none items-center gap-2 font-medium text-sm"
-                        style={{ marginLeft: node.depth * 16 }}
-                    >
-                        <FontAwesomeIcon
-                            icon={faChevronRight}
-                            className={cn(
-                                "h-4 w-4 transition-transform",
-                                isExpanded && "rotate-90",
-                            )}
-                        />
-                        <FontAwesomeIcon
-                            icon={faFolder}
-                            className="h-4 w-4 text-muted-foreground"
-                        />
-                        <span>{node.group.name}</span>
-                        <span className="text-muted-foreground text-xs">
-                            ({subtreeCount})
-                        </span>
+                <TableCell colSpan={6} className="py-0">
+                    <div className="flex min-h-12 select-none items-center font-medium text-sm">
+                        <MonitorTreeIndent depth={node.depth} />
+                        <div className="flex items-center gap-2 rounded-lg bg-muted/20 px-2 py-1.5 transition-colors hover:bg-muted/40">
+                            <FontAwesomeIcon
+                                icon={faChevronRight}
+                                className={cn(
+                                    "h-4 w-4 transition-transform",
+                                    isExpanded && "rotate-90",
+                                )}
+                            />
+                            <FontAwesomeIcon
+                                icon={faFolder}
+                                className="h-4 w-4 text-muted-foreground"
+                            />
+                            <span>{node.group.name}</span>
+                            <span className="text-muted-foreground text-xs">
+                                ({subtreeCount})
+                            </span>
+                        </div>
                     </div>
                 </TableCell>
             </TableRow>,
         );
 
         if (isExpanded) {
-            for (const child of node.children) {
+            for (const child of visibleChildren) {
                 rows.push(...renderGroupNode(child));
             }
             for (const monitor of directMonitors) {
@@ -2047,25 +2079,31 @@ function MonitorsTableContentSection13({
                                         className="cursor-pointer border-b bg-muted/10 hover:bg-muted/20"
                                         onClick={() => toggleGroup("ungrouped")}
                                     >
-                                        <TableCell colSpan={6} className="py-3">
-                                            <div className="flex select-none items-center gap-2 font-medium text-sm">
-                                                <FontAwesomeIcon
-                                                    icon={faChevronRight}
-                                                    className={cn(
-                                                        "h-4 w-4 transition-transform",
-                                                        (expandedGroups.ungrouped ??
-                                                            true) &&
-                                                            "rotate-90",
-                                                    )}
-                                                />
-                                                <FontAwesomeIcon
-                                                    icon={faFolder}
-                                                    className="h-4 w-4 text-muted-foreground"
-                                                />
-                                                <span>Ungrouped</span>
-                                                <span className="text-muted-foreground text-xs">
-                                                    ({ungroupedMonitors.length})
-                                                </span>
+                                        <TableCell colSpan={6} className="py-0">
+                                            <div className="flex min-h-12 select-none items-center font-medium text-sm">
+                                                <div className="flex items-center gap-2 rounded-lg bg-muted/20 px-2 py-1.5 transition-colors hover:bg-muted/40">
+                                                    <FontAwesomeIcon
+                                                        icon={faChevronRight}
+                                                        className={cn(
+                                                            "h-4 w-4 transition-transform",
+                                                            (expandedGroups.ungrouped ??
+                                                                true) &&
+                                                                "rotate-90",
+                                                        )}
+                                                    />
+                                                    <FontAwesomeIcon
+                                                        icon={faFolder}
+                                                        className="h-4 w-4 text-muted-foreground"
+                                                    />
+                                                    <span>Ungrouped</span>
+                                                    <span className="text-muted-foreground text-xs">
+                                                        (
+                                                        {
+                                                            ungroupedMonitors.length
+                                                        }
+                                                        )
+                                                    </span>
+                                                </div>
                                             </div>
                                         </TableCell>
                                     </TableRow>

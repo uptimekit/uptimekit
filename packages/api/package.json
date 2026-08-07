@@ -48,16 +48,16 @@
         "test": "vitest run"
     },
     "devDependencies": {
-        "@types/nodemailer": "^8.0.0",
+        "@types/nodemailer": "^8.0.1",
         "@uptimekit/config": "workspace:*",
-        "typescript": "^5.9.3",
-        "vitest": "^4.1.8"
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.10"
     },
     "peerDependencies": {
-        "typescript": "^5"
+        "typescript": "^7"
     },
     "dependencies": {
-        "@clickhouse/client": "^1.15.0",
+        "@clickhouse/client": "^1.23.1",
         "@node-rs/argon2": "^2.0.2",
         "@orpc/client": "catalog:",
         "@orpc/openapi": "catalog:",
@@ -67,12 +67,12 @@
         "@uptimekit/db": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
-        "effect": "^3.21.2",
-        "evlog": "^2.18.1",
-        "ioredis": "^5.8.2",
-        "nodemailer": "^8.0.5",
-        "semver": "^7.8.1",
-        "socket.io-client": "^4.8.1",
+        "effect": "^3.22.1",
+        "evlog": "^2.24.0",
+        "ioredis": "^6.0.0",
+        "nodemailer": "^9.0.4",
+        "semver": "^7.8.5",
+        "socket.io-client": "^4.8.3",
         "zod": "catalog:"
     }
 }

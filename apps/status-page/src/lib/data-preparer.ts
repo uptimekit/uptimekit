@@ -17,6 +17,10 @@ import {
 } from "./db-queries";
 import { getExternalMonitorStatus, isExternalMonitor } from "./external-status";
 import { buildPath } from "./route-utils";
+import {
+    normalizeStatusPageDesign,
+    prepareStatusPageConfig,
+} from "./status-page-config";
 import { calculateAggregateStatus } from "./status-utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -44,7 +48,7 @@ function buildOperationalHistory(days = 90, endDate?: string): UptimeDay[] {
 
     for (let i = days - 1; i >= 0; i--) {
         const d = new Date(now);
-        d.setDate(d.getDate() - i);
+        d.setUTCDate(d.getUTCDate() - i);
         const dateStr = d.toISOString().split("T")[0];
 
         result.push({
@@ -195,29 +199,12 @@ function getWorstIncidentStatus(reports: any[]): StatusType {
     }, "operational");
 }
 
-function getBarDays(design: any): 30 | 60 | 90 {
-    if (
-        design?.barDays === 30 ||
-        design?.barDays === 60 ||
-        design?.barDays === 90
-    ) {
-        return design.barDays;
-    }
-    return 90;
-}
-
-function getPercentDigits(design: any): number {
-    const digits = Number(design?.percentDigits);
-    return Number.isInteger(digits) && digits >= 2 && digits <= 6 ? digits : 2;
-}
-
 export async function prepareStatusPageData(
     pageConfig: any,
     routeSlug?: string,
 ): Promise<StatusPageData> {
-    const design = (pageConfig.design as any) || {};
-    const barDays = getBarDays(design);
-    const percentDigits = getPercentDigits(design);
+    const design = normalizeStatusPageDesign(pageConfig.design);
+    const { barDays } = design;
 
     const [
         activeReports,
@@ -371,9 +358,9 @@ export async function prepareStatusPageData(
 
             history = history.map((day) => {
                 const dayStart = new Date(day.date);
-                dayStart.setHours(0, 0, 0, 0);
+                dayStart.setUTCHours(0, 0, 0, 0);
                 const dayEnd = new Date(day.date);
-                dayEnd.setHours(23, 59, 59, 999);
+                dayEnd.setUTCHours(23, 59, 59, 999);
 
                 const maintenanceItems = events.maintenances.flatMap(
                     (m: any) => {
@@ -544,9 +531,13 @@ export async function prepareStatusPageData(
         return (a.group.order ?? 0) - (b.group.order ?? 0);
     });
 
-    const worstStatus = calculateAggregateStatus(
-        monitorsData.map((m) => m.currentStatus),
-    );
+    const worstStatus = calculateAggregateStatus([
+        ...monitorsData.map((monitor) => monitor.currentStatus),
+        ...activeReports.map((report: any) =>
+            getIncidentStatus(report.severity),
+        ),
+        ...activeMaintenances.map(() => "maintenance" as const),
+    ]);
 
     const incidentsByDate = pastIncidents.reduce(
         (acc, incident) => {
@@ -556,6 +547,7 @@ export async function prepareStatusPageData(
                     month: "short",
                     day: "numeric",
                     year: "numeric",
+                    timeZone: "UTC",
                 },
             );
 
@@ -569,31 +561,7 @@ export async function prepareStatusPageData(
     );
 
     return {
-        config: {
-            id: pageConfig.id,
-            name: pageConfig.name,
-            slug: pageConfig.slug,
-            routeSlug,
-            design: {
-                themeId: design.themeId || "default",
-                theme: design.theme,
-                logoUrl: design.logoUrl,
-                faviconUrl: design.faviconUrl,
-                contactUrl: design.contactUrl,
-                customCss: design.customCss,
-                headerLayout: design.headerLayout || "vertical",
-                barStyle: design.barStyle || "normal",
-                barDays,
-                percentDigits,
-                defaultSectionCollapsible:
-                    design.defaultSectionCollapsible !== false,
-                defaultSectionCollapsed: Boolean(
-                    design.defaultSectionCollapsible !== false &&
-                        design.defaultSectionCollapsed,
-                ),
-                allowSubscriptions: design.allowSubscriptions !== false,
-            },
-        },
+        config: prepareStatusPageConfig(pageConfig, routeSlug),
         overallStatus: worstStatus,
         monitorGroups: sortedGroups,
         activeIssues: combinedActive,

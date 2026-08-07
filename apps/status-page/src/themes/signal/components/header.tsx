@@ -131,16 +131,14 @@ function Brand({ title, logoUrl }: { title: string; logoUrl?: string }) {
     return (
         <>
             {logoUrl ? (
-                <>
-                    <Image
-                        src={logoUrl}
-                        alt={title}
-                        width={120}
-                        height={24}
-                        unoptimized
-                        className="h-6 w-auto rounded"
-                    />
-                </>
+                <Image
+                    src={logoUrl}
+                    alt={title}
+                    width={120}
+                    height={24}
+                    unoptimized
+                    className="h-6 w-auto rounded"
+                />
             ) : (
                 <div className="signal-mark flex h-[22px] w-[22px] items-center justify-center rounded-full font-bold text-[11px]">
                     {title.slice(0, 1).toUpperCase()}

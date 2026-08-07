@@ -1,3 +1,7 @@
+import type {
+    StatusPageBarStyle,
+    StatusPageThemeId,
+} from "@uptimekit/config/status-page-themes";
 import type { IncidentHistoryPeriod } from "@/lib/incident-history";
 
 // Status Type Definition
@@ -24,7 +28,7 @@ export interface UptimeDay {
 }
 
 export interface StatusPageDesign {
-    themeId?: string;
+    themeId?: StatusPageThemeId;
     theme?: "light" | "dark";
     logoUrl?: string;
     faviconUrl?: string;
@@ -32,12 +36,29 @@ export interface StatusPageDesign {
     contactUrl?: string;
     customCss?: string;
     headerLayout?: "vertical" | "horizontal";
-    barStyle?: "normal" | "length" | "signal";
+    barStyle?: StatusPageBarStyle;
     barDays?: 30 | 60 | 90;
     percentDigits?: number;
     defaultSectionCollapsible?: boolean;
     defaultSectionCollapsed?: boolean;
     allowSubscriptions?: boolean;
+}
+
+export interface NormalizedStatusPageDesign {
+    themeId: StatusPageThemeId;
+    theme: "light" | "dark";
+    logoUrl?: string;
+    faviconUrl?: string;
+    websiteUrl?: string;
+    contactUrl?: string;
+    customCss: string;
+    headerLayout: "vertical" | "horizontal";
+    barStyle: StatusPageBarStyle;
+    barDays: 30 | 60 | 90;
+    percentDigits: number;
+    defaultSectionCollapsible: boolean;
+    defaultSectionCollapsed: boolean;
+    allowSubscriptions: boolean;
 }
 
 export interface MonitorGroup {
@@ -115,7 +136,7 @@ export interface StatusPageConfig {
     name: string;
     slug: string;
     routeSlug?: string;
-    design: StatusPageDesign;
+    design: NormalizedStatusPageDesign;
 }
 
 export interface StatusPageData {
@@ -138,12 +159,6 @@ export interface IncidentDetailData {
     activeIssues: Incident[];
 }
 
-export interface MaintenanceDetailData {
-    config: StatusPageConfig;
-    maintenance: Maintenance;
-    activeIssues: Incident[];
-}
-
 export interface UpdatesPageData {
     config: StatusPageConfig;
     allUpdates: Incident[];
@@ -156,20 +171,6 @@ export interface ThemeIncidentDetailProps {
     data: IncidentDetailData;
 }
 
-export interface ThemeMaintenanceDetailProps {
-    data: MaintenanceDetailData;
-}
-
 export interface ThemeUpdatesProps {
     data: UpdatesPageData;
-}
-
-export interface ThemeManifest {
-    id: string;
-    name: string;
-    description: string;
-    version: string;
-    supportsDarkMode: boolean;
-    previewImage?: string;
-    configSchema?: Record<string, unknown>;
 }

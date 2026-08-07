@@ -104,7 +104,7 @@ function MonitorGroupSection({
             ) : null}
             <div
                 className={cn(
-                    "grid transition-all duration-300 ease-in-out",
+                    "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out",
                     isExpanded
                         ? "grid-rows-[1fr] opacity-100"
                         : "pointer-events-none grid-rows-[0fr] opacity-0",

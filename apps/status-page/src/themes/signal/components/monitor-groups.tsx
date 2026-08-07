@@ -28,93 +28,90 @@ function MonitorCard({
     const [isExpanded, setIsExpanded] = useState(true);
 
     return (
-        <>
-            <div className="signal-monitor-card overflow-hidden rounded-t-xl rounded-b-[20px]">
-                <button
-                    type="button"
-                    onClick={() =>
-                        monitor.displayStyle !== "status" &&
-                        setIsExpanded((current) => !current)
-                    }
-                    className="signal-section-header relative z-20 flex w-full items-start gap-2 overflow-hidden rounded-xl p-3 text-left min-[600px]:gap-3 min-[600px]:px-4"
-                >
-                    <div className="shrink-0">
-                        <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className={cn(
-                                "h-3 w-3 text-foreground transition-transform duration-200",
-                                !isExpanded && "-rotate-90",
-                                monitor.displayStyle === "status" &&
-                                    "text-transparent",
-                            )}
-                        />
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <span className="truncate font-[550] text-foreground text-sm leading-[1.2] min-[600px]:text-base">
-                                {monitor.name}
-                            </span>
-                            {monitor.description ? (
-                                <Tooltip>
-                                    <TooltipTrigger
-                                        render={
-                                            <button
-                                                type="button"
-                                                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                aria-label="More information"
-                                            />
-                                        }
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faCircleInfo}
-                                            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+        <div className="signal-monitor-card overflow-hidden rounded-t-xl rounded-b-[20px]">
+            <button
+                type="button"
+                onClick={() =>
+                    monitor.displayStyle !== "status" &&
+                    setIsExpanded((current) => !current)
+                }
+                className="signal-section-header relative z-20 flex w-full items-start gap-2 overflow-hidden rounded-xl p-3 text-left min-[600px]:gap-3 min-[600px]:px-4"
+            >
+                <div className="shrink-0">
+                    <FontAwesomeIcon
+                        icon={faChevronDown}
+                        className={cn(
+                            "h-3 w-3 text-foreground transition-transform duration-200",
+                            !isExpanded && "-rotate-90",
+                            monitor.displayStyle === "status" &&
+                                "text-transparent",
+                        )}
+                    />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate font-[550] text-foreground text-sm leading-[1.2] min-[600px]:text-base">
+                            {monitor.name}
+                        </span>
+                        {monitor.description ? (
+                            <Tooltip>
+                                <TooltipTrigger
+                                    render={
+                                        <button
+                                            type="button"
+                                            className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            aria-label="More information"
                                         />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p className="max-w-xs text-sm">
-                                            {monitor.description}
-                                        </p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ) : null}
-                        </div>
-                        <div className="signal-section-secondary flex shrink-0 items-center gap-2 font-[450] text-sm leading-[1.2] min-[600px]:text-base">
-                            {!isExpanded ||
-                            monitor.displayStyle === "status" ? (
-                                <UptimePreview days={monitor.history} />
-                            ) : null}
-                            {monitor.avgUptime.toFixed(toFixed)}% uptime
-                        </div>
+                                    }
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faCircleInfo}
+                                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                                    />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p className="max-w-xs text-sm">
+                                        {monitor.description}
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : null}
                     </div>
-                </button>
+                    <div className="signal-section-secondary flex shrink-0 items-center gap-2 font-[450] text-sm leading-[1.2] min-[600px]:text-base">
+                        {!isExpanded || monitor.displayStyle === "status" ? (
+                            <UptimePreview days={monitor.history} />
+                        ) : null}
+                        {monitor.avgUptime.toFixed(toFixed)}% uptime
+                    </div>
+                </div>
+            </button>
 
+            <div
+                className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+                    isExpanded
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "pointer-events-none grid-rows-[0fr] opacity-0",
+                )}
+            >
                 <div
                     className={cn(
-                        "grid transition-all duration-200 ease-out",
-                        isExpanded
-                            ? "grid-rows-[1fr] opacity-100"
-                            : "pointer-events-none grid-rows-[0fr] opacity-0",
+                        "min-h-0",
+                        isExpanded ? "overflow-visible" : "overflow-hidden",
                     )}
                 >
-                    <div
-                        className={cn(
-                            "min-h-0",
-                            isExpanded ? "overflow-visible" : "overflow-hidden",
+                    <div className="px-6 pt-5 pb-6">
+                        {monitor.displayStyle !== "status" && (
+                            <UptimeBar
+                                days={monitor.history}
+                                style="signal"
+                                toFixed={toFixed}
+                            />
                         )}
-                    >
-                        <div className="pr- px-6 pt-5 pb-6">
-                            {monitor.displayStyle !== "status" && (
-                                <UptimeBar
-                                    days={monitor.history}
-                                    style="signal"
-                                    toFixed={toFixed}
-                                />
-                            )}
-                        </div>
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 
@@ -124,9 +121,12 @@ export function MonitorGroups({
 }: MonitorGroupsProps) {
     return (
         <section className="space-y-12">
-            {monitorGroups.map((group, groupIndex) => (
+            {monitorGroups.map((group) => (
                 <MonitorGroupSection
-                    key={group.group?.id || `ungrouped-${groupIndex}`}
+                    key={
+                        group.group?.id ||
+                        `ungrouped-${group.monitors.map((monitor) => monitor.id).join("-") || "empty"}`
+                    }
                     group={group}
                     toFixed={toFixed}
                 />
@@ -145,7 +145,9 @@ function MonitorGroupSection({
     const isCollapsible = group.group
         ? group.group.collapsible !== false
         : false;
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(
+        !isCollapsible || !group.group?.defaultCollapsed,
+    );
     const groupUptime =
         group.monitors.reduce((sum, monitor) => sum + monitor.avgUptime, 0) /
         Math.max(group.monitors.length, 1);
@@ -198,7 +200,7 @@ function MonitorGroupSection({
                 aria-hidden={!isExpanded}
                 inert={!isExpanded}
                 className={cn(
-                    "grid transition-all duration-300 ease-in-out",
+                    "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out",
                     isExpanded
                         ? "grid-rows-[1fr] opacity-100"
                         : "pointer-events-none grid-rows-[0fr] opacity-0",

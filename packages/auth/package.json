@@ -15,17 +15,17 @@
     },
     "devDependencies": {
         "@uptimekit/config": "workspace:*",
-        "typescript": "^5.9.3"
+        "typescript": "^7.0.2"
     },
     "peerDependencies": {
-        "typescript": "^5"
+        "typescript": "^7"
     },
     "dependencies": {
-        "@better-auth/api-key": "^1.6.9",
+        "@better-auth/api-key": "^1.6.26",
         "@uptimekit/db": "workspace:*",
         "better-auth": "catalog:",
-        "drizzle-orm": "catalog:",
         "dotenv": "catalog:",
+        "drizzle-orm": "catalog:",
         "zod": "catalog:"
     }
 }

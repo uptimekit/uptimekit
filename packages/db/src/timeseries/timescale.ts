@@ -386,6 +386,30 @@ export class TimescaleDriver implements TimeSeriesDriver {
             const bucketSeconds = query.bucketSeconds;
             const quantile = query.bucketQuantile ?? 0.99;
             const hasLocations = query.locations && query.locations.length > 0;
+            const latencyAggregate =
+                query.bucketAggregation === "average"
+                    ? sql`AVG(latency)`
+                    : sql`percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency)`;
+            const dnsLookupAggregate =
+                query.bucketAggregation === "average"
+                    ? sql`AVG(dns_lookup)`
+                    : sql`percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup)`;
+            const tcpConnectAggregate =
+                query.bucketAggregation === "average"
+                    ? sql`AVG(tcp_connect)`
+                    : sql`percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect)`;
+            const tlsHandshakeAggregate =
+                query.bucketAggregation === "average"
+                    ? sql`AVG(tls_handshake)`
+                    : sql`percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake)`;
+            const ttfbAggregate =
+                query.bucketAggregation === "average"
+                    ? sql`AVG(ttfb)`
+                    : sql`percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb)`;
+            const transferAggregate =
+                query.bucketAggregation === "average"
+                    ? sql`AVG(transfer)`
+                    : sql`percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer)`;
 
             if (query.groupByLocation) {
                 const rows = hasLocations
@@ -411,12 +435,12 @@ export class TimescaleDriver implements TimeSeriesDriver {
 									WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
 									ELSE 'up'
 								END AS status,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+									${latencyAggregate} AS latency,
+									${dnsLookupAggregate} AS dns_lookup,
+									${tcpConnectAggregate} AS tcp_connect,
+									${tlsHandshakeAggregate} AS tls_handshake,
+									${ttfbAggregate} AS ttfb,
+									${transferAggregate} AS transfer
 							FROM monitor_events
 							WHERE monitor_id = ${query.monitorId}
 								AND timestamp >= ${query.since}
@@ -446,12 +470,12 @@ export class TimescaleDriver implements TimeSeriesDriver {
 									WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
 									ELSE 'up'
 								END AS status,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
-								percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+									${latencyAggregate} AS latency,
+									${dnsLookupAggregate} AS dns_lookup,
+									${tcpConnectAggregate} AS tcp_connect,
+									${tlsHandshakeAggregate} AS tls_handshake,
+									${ttfbAggregate} AS ttfb,
+									${transferAggregate} AS transfer
 							FROM monitor_events
 							WHERE monitor_id = ${query.monitorId}
 								AND timestamp >= ${query.since}
@@ -500,12 +524,12 @@ export class TimescaleDriver implements TimeSeriesDriver {
 								WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
 								ELSE 'up'
 							END AS status,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+								${latencyAggregate} AS latency,
+								${dnsLookupAggregate} AS dns_lookup,
+								${tcpConnectAggregate} AS tcp_connect,
+								${tlsHandshakeAggregate} AS tls_handshake,
+								${ttfbAggregate} AS ttfb,
+								${transferAggregate} AS transfer
 						FROM monitor_events
 						WHERE monitor_id = ${query.monitorId}
 							AND timestamp >= ${query.since}
@@ -535,12 +559,12 @@ export class TimescaleDriver implements TimeSeriesDriver {
 								WHEN BOOL_OR(status = 'maintenance') THEN 'maintenance'
 								ELSE 'up'
 							END AS status,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY latency) AS latency,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY dns_lookup) AS dns_lookup,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tcp_connect) AS tcp_connect,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY tls_handshake) AS tls_handshake,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY ttfb) AS ttfb,
-							percentile_cont(${quantile}) WITHIN GROUP (ORDER BY transfer) AS transfer
+								${latencyAggregate} AS latency,
+								${dnsLookupAggregate} AS dns_lookup,
+								${tcpConnectAggregate} AS tcp_connect,
+								${tlsHandshakeAggregate} AS tls_handshake,
+								${ttfbAggregate} AS ttfb,
+								${transferAggregate} AS transfer
 						FROM monitor_events
 						WHERE monitor_id = ${query.monitorId}
 							AND timestamp >= ${query.since}

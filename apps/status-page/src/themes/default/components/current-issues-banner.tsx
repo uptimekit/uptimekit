@@ -25,9 +25,9 @@ export function CurrentIssuesBanner({
                 {activeIssues.map((item) => (
                     <IncidentCard
                         key={item.id}
-                        incident={item as any}
-                        isExpanded={true}
-                        detailsLink={item.detailsLink}
+                        incident={item}
+                        mode="expanded"
+                        href={item.detailsLink}
                     />
                 ))}
             </div>

@@ -1,8 +1,4 @@
-import type {
-    IncidentDetailData,
-    MaintenanceDetailData,
-    UpdatesPageData,
-} from "@/themes/types";
+import type { IncidentDetailData, UpdatesPageData } from "@/themes/types";
 import {
     getActiveMaintenances,
     getActiveStatusPageReports,
@@ -14,17 +10,7 @@ import {
 } from "./db-queries";
 import type { IncidentHistoryPeriod } from "./incident-history";
 import { buildPath } from "./route-utils";
-
-function getBarDays(design: any): 30 | 60 | 90 {
-    if (
-        design?.barDays === 30 ||
-        design?.barDays === 60 ||
-        design?.barDays === 90
-    ) {
-        return design.barDays;
-    }
-    return 90;
-}
+import { prepareStatusPageConfig } from "./status-page-config";
 
 function mapIncident(report: any, routeSlug?: string) {
     return {
@@ -107,111 +93,11 @@ export async function prepareIncidentDetailData(
             new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
 
-    const design = (pageConfig.design as any) || {};
-    const barDays = getBarDays(design);
-
     return {
-        config: {
-            id: pageConfig.id,
-            name: pageConfig.name,
-            slug: pageConfig.slug,
-            routeSlug,
-            design: {
-                themeId: design.themeId || "default",
-                theme: design.theme,
-                logoUrl: design.logoUrl,
-                faviconUrl: design.faviconUrl,
-                contactUrl: design.contactUrl,
-                customCss: design.customCss,
-                headerLayout: design.headerLayout || "vertical",
-                barStyle: design.barStyle || "normal",
-                barDays,
-                allowSubscriptions: design.allowSubscriptions !== false,
-            },
-        },
+        config: prepareStatusPageConfig(pageConfig, routeSlug),
         incident: reportItem
             ? mapIncident(reportItem, routeSlug)
             : mapMaintenanceIncident(maintenanceItem, routeSlug),
-        activeIssues,
-    };
-}
-
-async function prepareMaintenanceDetailData(
-    pageConfig: any,
-    maintenanceId: string,
-    routeSlug?: string,
-): Promise<MaintenanceDetailData> {
-    const [history, activeReports, activeMaintenances, scheduledMaintenances] =
-        await Promise.all([
-            getMaintenanceHistory(pageConfig.id, 1000),
-            getActiveStatusPageReports(pageConfig.id),
-            getActiveMaintenances(pageConfig.id),
-            getScheduledMaintenances(pageConfig.id),
-        ]);
-
-    const maintenanceItem =
-        activeMaintenances.find((m: any) => m.id === maintenanceId) ||
-        scheduledMaintenances.find((m: any) => m.id === maintenanceId) ||
-        history.find((m: any) => m.id === maintenanceId);
-
-    if (!maintenanceItem) {
-        throw new Error("Maintenance not found");
-    }
-
-    const maintenance = {
-        id: maintenanceItem.id,
-        title: maintenanceItem.title,
-        description:
-            ("description" in maintenanceItem &&
-            typeof maintenanceItem.description === "string"
-                ? maintenanceItem.description
-                : null) || null,
-        status: maintenanceItem.status,
-        startAt:
-            maintenanceItem.status === "scheduled"
-                ? maintenanceItem.startAt
-                : maintenanceItem.createdAt,
-        endAt: maintenanceItem.endAt,
-        createdAt: maintenanceItem.createdAt,
-        monitors: maintenanceItem.monitors,
-        detailsLink: buildPath(`/incidents/${maintenanceItem.id}`, routeSlug),
-    };
-
-    const activeIssues = [
-        ...activeReports.map((report: any) => mapIncident(report, routeSlug)),
-        ...activeMaintenances.flatMap((item: any) =>
-            item.id !== maintenanceId
-                ? [mapMaintenanceIncident(item, routeSlug)]
-                : [],
-        ),
-    ].sort(
-        (a, b) =>
-            new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-    );
-
-    const design = (pageConfig.design as any) || {};
-    const barDays = getBarDays(design);
-
-    return {
-        config: {
-            id: pageConfig.id,
-            name: pageConfig.name,
-            slug: pageConfig.slug,
-            routeSlug,
-            design: {
-                themeId: design.themeId || "default",
-                theme: design.theme,
-                logoUrl: design.logoUrl,
-                faviconUrl: design.faviconUrl,
-                contactUrl: design.contactUrl,
-                customCss: design.customCss,
-                headerLayout: design.headerLayout || "vertical",
-                barStyle: design.barStyle || "normal",
-                barDays,
-                allowSubscriptions: design.allowSubscriptions !== false,
-            },
-        },
-        maintenance,
         activeIssues,
     };
 }
@@ -252,6 +138,7 @@ export async function prepareUpdatesPageData(
                 month: "long",
                 day: "numeric",
                 year: "numeric",
+                timeZone: "UTC",
             });
             if (!acc[date]) {
                 acc[date] = [];
@@ -272,28 +159,8 @@ export async function prepareUpdatesPageData(
             new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     );
 
-    const design = (pageConfig.design as any) || {};
-    const barDays = getBarDays(design);
-
     return {
-        config: {
-            id: pageConfig.id,
-            name: pageConfig.name,
-            slug: pageConfig.slug,
-            routeSlug,
-            design: {
-                themeId: design.themeId || "default",
-                theme: design.theme,
-                logoUrl: design.logoUrl,
-                faviconUrl: design.faviconUrl,
-                contactUrl: design.contactUrl,
-                customCss: design.customCss,
-                headerLayout: design.headerLayout || "vertical",
-                barStyle: design.barStyle || "normal",
-                barDays,
-                allowSubscriptions: design.allowSubscriptions !== false,
-            },
-        },
+        config: prepareStatusPageConfig(pageConfig, routeSlug),
         allUpdates,
         incidentsByDate,
         activeIssues,

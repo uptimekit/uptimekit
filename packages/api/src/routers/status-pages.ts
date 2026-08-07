@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server";
+import { statusPageThemeIds } from "@uptimekit/config/status-page-themes";
 import { db } from "@uptimekit/db";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import {
@@ -208,7 +209,7 @@ export const statusPagesRouter = {
                 websiteUrl: z.string().optional().nullable(),
                 design: z
                     .object({
-                        themeId: z.string().optional(),
+                        themeId: z.enum(statusPageThemeIds).optional(),
                         logoUrl: z.string().optional(),
                         websiteUrl: z.string().optional(),
                         contactUrl: z.string().optional(),

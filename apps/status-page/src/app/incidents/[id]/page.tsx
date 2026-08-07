@@ -7,9 +7,8 @@ import {
     getHostFromHeaders,
     getProtocolFromHeaders,
 } from "@/lib/route-utils";
+import { renderIncidentDetailPage } from "@/lib/status-page-renderer";
 import { prepareIncidentDetailData } from "@/lib/subpage-data-preparer";
-import { loadIncidentDetailComponent } from "@/lib/theme-loader";
-import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 export async function generateMetadata({
     params,
@@ -91,20 +90,5 @@ export default async function IncidentDetailsPage({
 
     await checkStatusPageAccess(pageConfig, `/incidents/${id}`);
 
-    const design = (pageConfig.design as any) || {};
-    const themeId = design.themeId || "default";
-
-    const [IncidentDetailPage, data] = await Promise.all([
-        loadIncidentDetailComponent(themeId),
-        prepareIncidentDetailData(pageConfig, id).catch(() => notFound()),
-    ]);
-
-    return (
-        <ThemePageWrapper
-            themeId={themeId}
-            theme={design.theme}
-            ThemeComponent={IncidentDetailPage}
-            componentProps={{ data }}
-        />
-    );
+    return renderIncidentDetailPage(pageConfig, id).catch(() => notFound());
 }

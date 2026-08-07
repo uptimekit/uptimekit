@@ -49,18 +49,6 @@
     color-scheme: dark;
 }
 
-/* checkmark drawn inside the status icon */
-[data-theme="spark"] .spark-status-icon[data-status="operational"]::after,
-[data-theme="spark"]
-    .spark-status-icon[data-status="maintenance_completed"]::after {
-    width: 4px;
-    height: 7px;
-    border: solid var(--background);
-    border-width: 0 2px 2px 0;
-    content: "";
-    transform: translateY(-1px) rotate(45deg);
-}
-
 /* chevron border-shape + rotations (border-width trick is awkward in Tailwind) */
 [data-theme="spark"] .spark-chevron {
     display: inline-block;

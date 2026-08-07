@@ -21,10 +21,9 @@ export function ActiveIssuesSection({
                 {activeIssues.map((incident) => (
                     <IncidentCard
                         key={incident.id}
-                        incident={incident as any}
-                        isExpanded={true}
-                        detailsLink={incident.detailsLink}
-                        onToggle={undefined}
+                        incident={incident}
+                        mode="expanded"
+                        href={incident.detailsLink}
                     />
                 ))}
             </div>

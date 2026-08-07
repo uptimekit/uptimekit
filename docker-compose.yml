@@ -37,7 +37,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/uptimekit
-      - TIMESERIES_BACKEND=${TIMESERIES_BACKEND:-timescaledb}
+      - TIMESERIES_BACKEND=${TIMESERIES_BACKEND:-timescale}
       - REDIS_URL=redis://redis:6379
     depends_on:
       db:

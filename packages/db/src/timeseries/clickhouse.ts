@@ -426,6 +426,24 @@ export class ClickHouseDriver implements TimeSeriesDriver {
         if (query.bucketSeconds !== undefined) {
             params.bucketSeconds = query.bucketSeconds;
             const quantile = getQuantileLevel(query.bucketQuantile);
+            const aggregate =
+                query.bucketAggregation === "average"
+                    ? {
+                          latency: "avg(latency)",
+                          dnsLookup: "avg(dnsLookup)",
+                          tcpConnect: "avg(tcpConnect)",
+                          tlsHandshake: "avg(tlsHandshake)",
+                          ttfb: "avg(ttfb)",
+                          transfer: "avg(transfer)",
+                      }
+                    : {
+                          latency: `quantileExact(${quantile})(latency)`,
+                          dnsLookup: `quantileExactOrNull(${quantile})(dnsLookup)`,
+                          tcpConnect: `quantileExactOrNull(${quantile})(tcpConnect)`,
+                          tlsHandshake: `quantileExactOrNull(${quantile})(tlsHandshake)`,
+                          ttfb: `quantileExactOrNull(${quantile})(ttfb)`,
+                          transfer: `quantileExactOrNull(${quantile})(transfer)`,
+                      };
             const locationSelect = query.groupByLocation
                 ? "location"
                 : "CAST(NULL, 'Nullable(String)') AS location";
@@ -457,12 +475,12 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 							countIf(status = 'maintenance') > 0, 'maintenance',
 							'up'
 						) AS status,
-						quantileExact(${quantile})(latency) AS latency,
-						quantileExactOrNull(${quantile})(dnsLookup) AS dnsLookup,
-						quantileExactOrNull(${quantile})(tcpConnect) AS tcpConnect,
-						quantileExactOrNull(${quantile})(tlsHandshake) AS tlsHandshake,
-						quantileExactOrNull(${quantile})(ttfb) AS ttfb,
-						quantileExactOrNull(${quantile})(transfer) AS transfer
+							${aggregate.latency} AS latency,
+							${aggregate.dnsLookup} AS dnsLookup,
+							${aggregate.tcpConnect} AS tcpConnect,
+							${aggregate.tlsHandshake} AS tlsHandshake,
+							${aggregate.ttfb} AS ttfb,
+							${aggregate.transfer} AS transfer
 					FROM (
 						SELECT
 							toStartOfInterval(timestamp, toIntervalSecond({bucketSeconds:UInt32})) AS bucket,

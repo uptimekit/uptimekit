@@ -28,10 +28,11 @@ export function PasswordForm({ statusPageId, redirectUrl }: PasswordFormProps) {
                 body: JSON.stringify({ statusPageId, password }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                setError(data.error || "Invalid password");
+                const result = (await response.json().catch(() => ({}))) as {
+                    error?: string;
+                };
+                setError(result.error || "Invalid password");
             } else {
                 router.push(redirectUrl as never);
                 router.refresh();

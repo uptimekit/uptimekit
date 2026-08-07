@@ -16,8 +16,13 @@ const optionalString = z.preprocess(
     z.string().trim().min(1).optional(),
 );
 
-function applyAppEnvFallbacks(): void {
-    const env = createEnv({
+const timeSeriesBackend = z.preprocess(
+    (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
+    z.enum(["clickhouse", "timescale"]).default("timescale"),
+);
+
+function createRuntimeEnv() {
+    return createEnv({
         server: {
             APP_SECRET: optionalString,
             APP_STATUS_PAGE_DOMAIN: optionalString,
@@ -26,11 +31,14 @@ function applyAppEnvFallbacks(): void {
             BETTER_AUTH_URL: optionalUrl,
             NEXT_PUBLIC_STATUS_PAGE_DOMAIN: optionalString,
             NEXT_PUBLIC_URL: optionalUrl,
+            TIMESERIES_BACKEND: timeSeriesBackend,
         },
         runtimeEnv: process.env,
         emptyStringAsUndefined: true,
     });
+}
 
+function applyAppEnvFallbacks(env: ReturnType<typeof createRuntimeEnv>): void {
     if (env.APP_SECRET && !env.BETTER_AUTH_SECRET) {
         process.env.BETTER_AUTH_SECRET = env.APP_SECRET;
     }
@@ -69,22 +77,22 @@ function findMonorepoRoot(startDir: string): string | null {
  * Should be called at the top of entry files before any other imports
  * that depend on environment variables.
  */
-export function loadEnv(): void {
+export function loadEnv() {
     const root = findMonorepoRoot(process.cwd());
 
     if (!root) {
         console.warn(
             "[env] Could not find monorepo root (turbo.json not found)",
         );
-        applyAppEnvFallbacks();
-        return;
+    } else {
+        const envPath = path.join(root, ".env");
+
+        if (fs.existsSync(envPath)) {
+            config({ path: envPath });
+        }
     }
 
-    const envPath = path.join(root, ".env");
-
-    if (fs.existsSync(envPath)) {
-        config({ path: envPath });
-    }
-
-    applyAppEnvFallbacks();
+    const env = createRuntimeEnv();
+    applyAppEnvFallbacks(env);
+    return env;
 }

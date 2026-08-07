@@ -84,7 +84,7 @@ const MonitorGroupItem = ({
             ) : null}
             <div
                 className={cn(
-                    "grid transition-all duration-300 ease-in-out",
+                    "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out",
                     isExpanded
                         ? "grid-rows-[1fr] opacity-100"
                         : "pointer-events-none grid-rows-[0fr] opacity-0",
@@ -134,9 +134,12 @@ export function MonitorGroups({
 
     return (
         <section className="mb-12 space-y-3">
-            {monitorGroups.map((group, index) => (
+            {monitorGroups.map((group) => (
                 <MonitorGroupItem
-                    key={group.group?.id || `ungrouped-${index}`}
+                    key={
+                        group.group?.id ||
+                        `ungrouped-${group.monitors.map((monitor) => monitor.id).join("-") || "empty"}`
+                    }
                     group={group}
                     isGrid={isGrid}
                     barStyle={barStyle}

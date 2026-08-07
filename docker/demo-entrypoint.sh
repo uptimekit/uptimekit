@@ -51,7 +51,7 @@ echo ">>> Running database migrations..."
 
 # ---- Seed ----
 echo ">>> Seeding demo data..."
-./node_modules/.bin/tsx scripts/seed-db.ts || echo "Seed may have already run, continuing..."
+./node_modules/.bin/tsx scripts/seed-db.ts
 
 reset_demo() {
     echo ">>> [$(date -u +%H:%M:%S)] Resetting demo database (15-min cycle)..."
@@ -72,8 +72,8 @@ reset_demo() {
 ) &
 
 echo ">>> Starting UptimeKit..."
-echo ">>> Login: demo@uptimekit.local / DemoPassword123!"
-echo ">>> Status page: http://localhost:3000/status/acme-cloud-status-demo"
+echo ">>> Login: ${DEMO_EMAIL} / ${DEMO_PASSWORD}"
+echo ">>> Status page: http://localhost:${PORT}/status/${DEMO_STATUS_PAGE_SLUG}"
 echo ">>> Demo auto-resets every 15 minutes."
 echo ""
 

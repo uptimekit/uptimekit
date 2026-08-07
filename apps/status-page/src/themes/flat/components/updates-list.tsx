@@ -36,8 +36,8 @@ export function UpdatesList({
                                 <IncidentCard
                                     key={incident.id}
                                     incident={incident}
-                                    isExpanded={false}
-                                    detailsLink={incident.detailsLink}
+                                    mode="link"
+                                    href={incident.detailsLink}
                                     className="border-border bg-card"
                                 />
                             ))}

@@ -1,11 +1,16 @@
+import { ScheduledMaintenanceSection } from "@/components/scheduled-maintenance-section";
+import {
+    ActiveStatusEvents,
+    StatusEventHistory,
+} from "@/components/status-event-sections";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../status-config";
 import type { Incident, StatusType, ThemePageProps } from "../types";
 import { Calendar } from "./components/calendar";
+import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { MonitorGroups } from "./components/monitor-groups";
 import "./style.css";
-import { Logo } from "./components/uk-logo";
 
 function StatusBanner({
     status,
@@ -82,39 +87,22 @@ function StatusBanner({
     );
 }
 
-function Footer() {
-    return (
-        <footer className="mx-auto w-full max-w-2xl px-4 pb-8 text-center text-muted-foreground text-sm">
-            <div className="flex items-center justify-center gap-2">
-                <div>Powered by </div>
-                <a
-                    className="flex items-center gap-1"
-                    href="https://github.com/uptimekit/uptimekit"
-                    target="_blank"
-                    rel="noreferrer"
-                >
-                    <Logo className="size-6" />
-                    <p className="font-semibold text-md text-muted-foreground">
-                        UptimeKit
-                    </p>
-                </a>
-            </div>
-            {/* <div className="mt-4 text-xs">
-                Privacy policy · Terms of service
-            </div> */}
-        </footer>
-    );
-}
-
 export default function SparkTheme({ data }: ThemePageProps) {
-    const { config, overallStatus, monitorGroups, activeIssues, lastUpdated } =
-        data;
+    const {
+        config,
+        overallStatus,
+        monitorGroups,
+        activeIssues,
+        scheduledMaintenances,
+        pastIncidents,
+        lastUpdated,
+    } = data;
     const { design } = config;
 
     return (
         <div className="spark-theme flex min-h-screen flex-col bg-background font-sans text-foreground">
-            <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 pt-7 pb-12 sm:pt-9">
-                <Header data={data} />
+            <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 pt-7 pb-12 sm:pt-9">
+                <Header config={config} />
                 <StatusBanner
                     status={overallStatus}
                     activeIssues={activeIssues}
@@ -126,6 +114,14 @@ export default function SparkTheme({ data }: ThemePageProps) {
                 <Calendar
                     lastUpdated={lastUpdated}
                     monitorGroups={monitorGroups}
+                />
+                <ActiveStatusEvents incidents={activeIssues} />
+                <ScheduledMaintenanceSection
+                    scheduledMaintenances={scheduledMaintenances}
+                />
+                <StatusEventHistory
+                    incidentsByDate={pastIncidents}
+                    slug={config.routeSlug}
                 />
             </main>
             <Footer />

@@ -1,87 +1,65 @@
+import {
+    normalizeStatusPageThemeId,
+    type StatusPageThemeId,
+} from "@uptimekit/config/status-page-themes";
 import type { ComponentType } from "react";
-import { themeRegistry } from "@/themes";
 import type {
     ThemeIncidentDetailProps,
-    ThemeMaintenanceDetailProps,
-    ThemeManifest,
     ThemePageProps,
     ThemeUpdatesProps,
 } from "@/themes/types";
 
-const themeLoaders: Record<
-    string,
-    () => Promise<{ default: ComponentType<ThemePageProps> }>
-> = {
-    default: () => import("@/themes/default/theme-page"),
-    flat: () => import("@/themes/flat/theme-page"),
-    signal: () => import("@/themes/signal/theme-page"),
-    spark: () => import("@/themes/spark/theme-page"),
-};
+interface ThemeRuntime {
+    page: () => Promise<{ default: ComponentType<ThemePageProps> }>;
+    incident: () => Promise<{
+        default: ComponentType<ThemeIncidentDetailProps>;
+    }>;
+    updates: () => Promise<{ default: ComponentType<ThemeUpdatesProps> }>;
+}
 
-const incidentDetailLoaders: Record<
-    string,
-    () => Promise<{ default: ComponentType<ThemeIncidentDetailProps> }>
-> = {
-    default: () => import("@/themes/default/incident-detail"),
-    flat: () => import("@/themes/flat/incident-detail"),
-    signal: () => import("@/themes/signal/incident-detail"),
-    spark: () => import("@/themes/spark/incident-detail"),
-};
-
-const maintenanceDetailLoaders: Record<
-    string,
-    () => Promise<{ default: ComponentType<ThemeMaintenanceDetailProps> }>
-> = {
-    default: () => import("@/themes/default/maintenance-detail"),
-    flat: () => import("@/themes/flat/maintenance-detail"),
-    signal: () => import("@/themes/signal/maintenance-detail"),
-    spark: () => import("@/themes/spark/maintenance-detail"),
-};
-
-const updatesLoaders: Record<
-    string,
-    () => Promise<{ default: ComponentType<ThemeUpdatesProps> }>
-> = {
-    default: () => import("@/themes/default/updates"),
-    flat: () => import("@/themes/flat/updates"),
-    signal: () => import("@/themes/signal/updates"),
-    spark: () => import("@/themes/spark/updates"),
+const themeRuntimes: Record<StatusPageThemeId, ThemeRuntime> = {
+    default: {
+        page: () => import("@/themes/default/theme-page"),
+        incident: () => import("@/themes/default/incident-detail"),
+        updates: () => import("@/themes/default/updates"),
+    },
+    flat: {
+        page: () => import("@/themes/flat/theme-page"),
+        incident: () => import("@/themes/flat/incident-detail"),
+        updates: () => import("@/themes/flat/updates"),
+    },
+    signal: {
+        page: () => import("@/themes/signal/theme-page"),
+        incident: () => import("@/themes/signal/incident-detail"),
+        updates: () => import("@/themes/signal/updates"),
+    },
+    spark: {
+        page: () => import("@/themes/spark/theme-page"),
+        incident: () => import("@/themes/spark/incident-detail"),
+        updates: () => import("@/themes/spark/updates"),
+    },
 };
 
 export async function loadThemeComponent(
     themeId: string,
 ): Promise<ComponentType<ThemePageProps>> {
-    const loader = themeLoaders[themeId] ?? themeLoaders.default;
-    const module = await loader();
+    const module =
+        await themeRuntimes[normalizeStatusPageThemeId(themeId)].page();
     return module.default;
 }
 
 export async function loadIncidentDetailComponent(
     themeId: string,
 ): Promise<ComponentType<ThemeIncidentDetailProps>> {
-    const loader =
-        incidentDetailLoaders[themeId] ?? incidentDetailLoaders.default;
-    const module = await loader();
-    return module.default;
-}
-
-async function loadMaintenanceDetailComponent(
-    themeId: string,
-): Promise<ComponentType<ThemeMaintenanceDetailProps>> {
-    const loader =
-        maintenanceDetailLoaders[themeId] ?? maintenanceDetailLoaders.default;
-    const module = await loader();
+    const module =
+        await themeRuntimes[normalizeStatusPageThemeId(themeId)].incident();
     return module.default;
 }
 
 export async function loadUpdatesComponent(
     themeId: string,
 ): Promise<ComponentType<ThemeUpdatesProps>> {
-    const loader = updatesLoaders[themeId] ?? updatesLoaders.default;
-    const module = await loader();
+    const module =
+        await themeRuntimes[normalizeStatusPageThemeId(themeId)].updates();
     return module.default;
-}
-
-function getThemeManifest(themeId: string): ThemeManifest | undefined {
-    return themeRegistry[themeId];
 }

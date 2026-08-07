@@ -1,6 +1,8 @@
 "use client";
 
-import MapLibreGL, { type MarkerOptions, type PopupOptions } from "maplibre-gl";
+import type * as GeoJSON from "geojson";
+import type { MarkerOptions, PopupOptions } from "maplibre-gl";
+import * as MapLibreGL from "maplibre-gl";
 import { createPortal } from "react-dom";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -25,11 +27,10 @@ import {
     useRef,
     useState,
 } from "react";
-import darkStyle from "@/lib/map-dark.json";
 import { cn } from "@/lib/utils";
 
 const defaultStyles = {
-    dark: darkStyle,
+    dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
     light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 };
 
@@ -198,7 +199,6 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
     const [isLoaded, setIsLoaded] = useState(false);
     const [loadedStyle, setLoadedStyle] = useState<MapStyleOption | null>(null);
     const currentStyleRef = useRef<MapStyleOption | any>(null);
-    const styleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const internalUpdateRef = useRef(false);
     const resolvedTheme = useResolvedTheme(themeProp);
 
@@ -218,13 +218,6 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
         mapInstance,
     ]);
 
-    const clearStyleTimeout = useEffectEvent(() => {
-        if (styleTimeoutRef.current) {
-            clearTimeout(styleTimeoutRef.current);
-            styleTimeoutRef.current = null;
-        }
-    });
-
     // Initialize the map
     useEffect(() => {
         if (!containerRef.current) return;
@@ -243,17 +236,15 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
             ...viewport,
         });
 
+        const styleIdleHandler = () => {
+            setLoadedStyle(currentStyleRef.current);
+            if (projection) {
+                map.setProjection(projection);
+            }
+        };
         const styleDataHandler = () => {
-            clearStyleTimeout();
-            // Delay to ensure style is fully processed before allowing layer operations
-            // This is a workaround to avoid race conditions with the style loading
-            // else we have to force update every layer on setStyle change
-            styleTimeoutRef.current = setTimeout(() => {
-                setLoadedStyle(currentStyleRef.current);
-                if (projection) {
-                    map.setProjection(projection);
-                }
-            }, 100);
+            map.off("idle", styleIdleHandler);
+            map.once("idle", styleIdleHandler);
         };
         const loadHandler = () => setIsLoaded(true);
 
@@ -269,9 +260,9 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
         setMapInstance(map);
 
         return () => {
-            clearStyleTimeout();
             map.off("load", loadHandler);
             map.off("styledata", styleDataHandler);
+            map.off("idle", styleIdleHandler);
             map.off("move", handleMove);
             map.remove();
             setIsLoaded(false);
@@ -309,7 +300,7 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
         internalUpdateRef.current = false;
     }, [mapInstance, isControlled, viewport]);
 
-    // Handle style chan ge
+    // Handle style change
     useEffect(() => {
         if (!mapInstance) return;
 
@@ -317,7 +308,6 @@ const MapRoot = forwardRef<MapRef, MapProps>(function MapRoot(
 
         if (currentStyleRef.current === newStyle) return;
 
-        clearStyleTimeout();
         currentStyleRef.current = newStyle;
         mapInstance.setStyle(newStyle as any, { diff: true });
     }, [mapInstance, selectedStyle]);
@@ -645,21 +635,19 @@ function MarkerTooltip({
 
         tooltip.setDOMContent(container);
 
+        const markerElement = marker.getElement();
+
         const handleMouseEnter = () => {
             tooltip.setLngLat(marker.getLngLat()).addTo(map);
         };
         const handleMouseLeave = () => tooltip.remove();
 
-        marker.getElement()?.addEventListener("mouseenter", handleMouseEnter);
-        marker.getElement()?.addEventListener("mouseleave", handleMouseLeave);
+        markerElement.addEventListener("mouseenter", handleMouseEnter);
+        markerElement.addEventListener("mouseleave", handleMouseLeave);
 
         return () => {
-            marker
-                .getElement()
-                ?.removeEventListener("mouseenter", handleMouseEnter);
-            marker
-                .getElement()
-                ?.removeEventListener("mouseleave", handleMouseLeave);
+            markerElement.removeEventListener("mouseenter", handleMouseEnter);
+            markerElement.removeEventListener("mouseleave", handleMouseLeave);
             tooltip.remove();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps

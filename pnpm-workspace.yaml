@@ -3,13 +3,26 @@ packages:
   - packages/*
 
 catalog:
-  "@orpc/client": 1.14.6
-  "@orpc/openapi": 1.14.6
-  "@orpc/server": 1.14.6
-  "@orpc/tanstack-query": 1.14.6
-  "@orpc/zod": 1.14.6
-  better-auth: 1.6.20
-  dotenv: latest
-  drizzle-orm: latest
+  "@orpc/client": 1.14.14
+  "@orpc/openapi": 1.14.14
+  "@orpc/server": 1.14.14
+  "@orpc/tanstack-query": 1.14.14
+  "@orpc/zod": 1.14.14
+  better-auth: 1.6.26
+  dotenv: ^17.4.2
+  drizzle-orm: ^0.45.2
   postgres: latest
-  zod: latest
+  zod: ^4.4.3
+
+onlyBuiltDependencies:
+  - cpu-features
+  - esbuild
+  - msgpackr-extract
+  - protobufjs
+  - sharp
+  - ssh2
+
+overrides:
+  esbuild: ^0.28.0
+  postcss: ^8.5.14
+  vite: ^8.0.16

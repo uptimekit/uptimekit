@@ -142,9 +142,11 @@ export default function MonitorDetailsPage() {
     const params = useParams();
     const id = params.id as string;
 
-    const { data: monitor, isLoading: loadingMonitor } = useQuery(
-        orpc.monitors.get.queryOptions({ input: { id } }),
-    );
+    const {
+        data: monitor,
+        isError: monitorQueryFailed,
+        isLoading: loadingMonitor,
+    } = useQuery(orpc.monitors.get.queryOptions({ input: { id } }));
 
     const { data: availability, isLoading: loadingAvailability } = useQuery(
         orpc.monitors.getAvailability.queryOptions({
@@ -169,6 +171,26 @@ export default function MonitorDetailsPage() {
 
     if (loadingMonitor) {
         return <MonitorSkeleton />;
+    }
+
+    if (monitorQueryFailed) {
+        return (
+            <div className="flex flex-col items-center justify-center py-10">
+                <h2 className="font-bold text-xl">Unable to load monitor</h2>
+                <Button
+                    className="mt-4"
+                    onClick={() =>
+                        queryClient.invalidateQueries({
+                            queryKey: orpc.monitors.get.key({
+                                input: { id },
+                            }),
+                        })
+                    }
+                >
+                    Retry
+                </Button>
+            </div>
+        );
     }
 
     if (!monitor) {
@@ -230,6 +252,10 @@ export default function MonitorDetailsPage() {
         monitor.type === "http" ? getSafeHttpHref(monitorTarget) : null;
     const statusReason = (monitor as any).statusReason as string | null;
     const showStatusCodeChart = STATUS_CODE_MONITOR_TYPES.has(monitor.type);
+    const isHttpsMonitor =
+        showStatusCodeChart &&
+        typeof monitorTarget === "string" &&
+        monitorTarget.toLowerCase().startsWith("https://");
 
     return (
         <div className="flex flex-col gap-6 p-6">
@@ -361,6 +387,7 @@ export default function MonitorDetailsPage() {
                         monitorId={id}
                         workerIds={(monitor.workerIds as string[]) || []}
                         monitorType={monitor.type}
+                        isHttps={isHttpsMonitor}
                         workers={monitor.workers || []}
                     />
 

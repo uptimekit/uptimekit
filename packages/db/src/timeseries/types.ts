@@ -96,6 +96,7 @@ export interface ResponseTimesQuery {
     limit?: number | null;
     bucketSeconds?: number;
     bucketQuantile?: number;
+    bucketAggregation?: "quantile" | "average";
     groupByLocation?: boolean;
 }
 

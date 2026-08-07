@@ -10,7 +10,7 @@ import {
     faUpDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
     parseAsArrayOf,
@@ -19,7 +19,8 @@ import {
     parseAsStringEnum,
     useQueryStates,
 } from "nuqs";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { RechartsBoundary } from "@/components/monitors/recharts-boundary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getRegionInfo, isFontAwesomeRegionFlag } from "@/lib/regions";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
@@ -60,6 +62,7 @@ interface ResponseTimeChartProps {
     monitorId: string;
     workerIds: string[];
     monitorType?: string;
+    isHttps?: boolean;
     workers?: Array<{
         id: string;
         name: string;
@@ -87,26 +90,37 @@ const RANGE_VALUES = [
     "all",
 ] as const;
 const LATENCY_RESOLUTION_VALUES = ["1", "5", "15", "30", "60", "all"] as const;
+const LATENCY_VIEW_VALUES = ["percentiles", "average"] as const;
 const REGION_VIEW_VALUES = ["table", "chart"] as const;
 const ROWS_PER_PAGE_VALUES = ["10", "20", "50"] as const;
 type TimingKey = (typeof TIMING_KEYS)[number];
 type QuantileKey = (typeof QUANTILE_VALUES)[number];
 type RangeKey = (typeof RANGE_VALUES)[number];
 type LatencyResolutionKey = (typeof LATENCY_RESOLUTION_VALUES)[number];
+type LatencyView = (typeof LATENCY_VIEW_VALUES)[number];
 type RegionView = (typeof REGION_VIEW_VALUES)[number];
 type RowsPerPageKey = (typeof ROWS_PER_PAGE_VALUES)[number];
 type ChartStateUpdate = Partial<{
     latencyRange: RangeKey;
     latencyQuantile: QuantileKey;
     latencyResolutionMinutes: LatencyResolutionKey;
-    regionRange: RangeKey;
-    regionQuantile: QuantileKey;
+    latencyView: LatencyView;
     regionView: RegionView;
     rowsPerPage: RowsPerPageKey;
     page: number;
     sortBy: QuantileKey;
     selectedWorkerIds: string[];
 }>;
+
+function DashboardHeaderActions({ children }: { children: ReactNode }) {
+    const container = useSyncExternalStore(
+        () => () => undefined,
+        () => document.getElementById("dashboard-header-actions"),
+        () => null,
+    );
+
+    return container ? createPortal(children, container) : null;
+}
 
 const TIMING_COLORS: Record<TimingKey, string> = {
     dnsLookup: "#2563eb",
@@ -122,6 +136,26 @@ const TIMING_LABELS: Record<TimingKey, string> = {
     tlsHandshake: "TLS",
     ttfb: "TTFB",
     transfer: "Transfer",
+};
+
+const QUANTILE_COLORS: Record<QuantileKey, string> = {
+    p50: "#5b8fe6",
+    p90: "#d98a43",
+    p99: "#e76855",
+};
+
+const REGION_HUES = [8, 215, 28, 180, 270, 145, 330, 42] as const;
+
+const REGION_QUANTILE_LIGHTNESS: Record<QuantileKey, number> = {
+    p50: 70,
+    p90: 58,
+    p99: 46,
+};
+
+const QUANTILE_DASHES: Record<QuantileKey, string | undefined> = {
+    p50: "6 4",
+    p90: "3 3",
+    p99: undefined,
 };
 
 const QUANTILE_OPTIONS = [
@@ -156,9 +190,10 @@ const ROWS_PER_PAGE_OPTIONS = [
     { label: "50", value: "50" },
 ] as const;
 
-const generateRegionColor = (index: number, total: number) => {
-    const hue = (index * 360) / Math.max(total, 1);
-    return `hsl(${hue}, 75%, 58%)`;
+const generateRegionQuantileColor = (index: number, quantile: QuantileKey) => {
+    const hue =
+        REGION_HUES[index % REGION_HUES.length] ?? (index * 137.5) % 360;
+    return `hsl(${hue}, 76%, ${REGION_QUANTILE_LIGHTNESS[quantile]}%)`;
 };
 
 const normalizeWorkerSelectionForUrl = (
@@ -213,11 +248,15 @@ interface LatencyBucketPoint {
     tlsHandshake: number | null;
     ttfb: number | null;
     transfer: number | null;
+    [key: string]: string | number | null;
 }
 
 interface RegionTrendPoint {
     label: string;
     value: number;
+    p50: number | null;
+    p90: number | null;
+    p99: number | null;
 }
 
 interface ChartGapBand {
@@ -250,13 +289,19 @@ const STATUS_BAND_COLORS = {
     degraded: "#f59e0b",
 } as const;
 const LATENCY_RESOLUTION_ORDER = ["1", "5", "15", "30", "60"] as const;
-const LATENCY_CHART_VALUE_KEYS = [
+const LATENCY_METRIC_KEYS = [
     "latency",
     "dnsLookup",
     "tcpConnect",
     "tlsHandshake",
     "ttfb",
     "transfer",
+] as const;
+const LATENCY_CHART_VALUE_KEYS = [
+    ...LATENCY_METRIC_KEYS,
+    ...QUANTILE_VALUES.flatMap((quantile) =>
+        LATENCY_METRIC_KEYS.map((metric) => `${quantile}_${metric}`),
+    ),
 ] as const;
 const MIN_LATENCY_RESOLUTION_BY_RANGE: Record<
     RangeKey,
@@ -271,6 +316,14 @@ const MIN_LATENCY_RESOLUTION_BY_RANGE: Record<
     "1y": "60",
     all: "60",
 };
+
+const getLatencySeriesKey = (
+    quantile: QuantileKey,
+    metric: (typeof LATENCY_METRIC_KEYS)[number],
+) => `${quantile}_${metric}`;
+
+const getRegionSeriesKey = (workerId: string, quantile: QuantileKey) =>
+    `${workerId}_${quantile}`;
 
 const quantileToRatio = (quantile: QuantileKey) => {
     switch (quantile) {
@@ -601,6 +654,83 @@ const calculateQuantile = (
     );
 };
 
+const calculateQuantileOrNull = (
+    values: Array<number | undefined>,
+    quantile: QuantileKey,
+) => (values.length > 0 ? calculateQuantile(values, quantile) : null);
+
+const getLatencyMetricValue = (
+    points: RawDataPoint[],
+    metric: (typeof LATENCY_METRIC_KEYS)[number],
+    quantile: QuantileKey,
+) =>
+    calculateQuantileOrNull(
+        points.map((point) => point[metric]),
+        quantile,
+    );
+
+const getAverageLatencyMetricValue = (
+    points: RawDataPoint[],
+    metric: (typeof LATENCY_METRIC_KEYS)[number],
+) => {
+    const values = points.flatMap((point) => {
+        const value = point[metric];
+        return typeof value === "number" ? [value] : [];
+    });
+
+    if (values.length === 0) return null;
+
+    return values.reduce((total, value) => total + value, 0) / values.length;
+};
+
+const createLatencyChartPoint = ({
+    timestamp,
+    label,
+    pointsByQuantile,
+    averagePoints,
+    selectedQuantile,
+}: {
+    timestamp: string;
+    label: string;
+    pointsByQuantile: Record<QuantileKey, RawDataPoint[]>;
+    averagePoints: RawDataPoint[];
+    selectedQuantile: QuantileKey;
+}): LatencyBucketPoint => {
+    const point: LatencyBucketPoint = {
+        timestamp,
+        timestampMs: new Date(timestamp).getTime(),
+        label,
+        latency: null,
+        dnsLookup: null,
+        tcpConnect: null,
+        tlsHandshake: null,
+        ttfb: null,
+        transfer: null,
+    };
+
+    for (const quantile of QUANTILE_VALUES) {
+        for (const metric of LATENCY_METRIC_KEYS) {
+            point[getLatencySeriesKey(quantile, metric)] =
+                getLatencyMetricValue(
+                    pointsByQuantile[quantile],
+                    metric,
+                    quantile,
+                );
+        }
+    }
+
+    for (const metric of LATENCY_METRIC_KEYS) {
+        point[metric] =
+            getAverageLatencyMetricValue(averagePoints, metric) ??
+            (point[getLatencySeriesKey(selectedQuantile, metric)] as
+                | number
+                | null) ??
+            null;
+    }
+
+    return point;
+};
+
 const formatMetric = (value: number | null) =>
     value == null ? "--" : `${Math.round(value)} ms`;
 
@@ -619,17 +749,22 @@ function RegionTrendSparkline({
                 {({ ResponsiveContainer, LineChart, Line }) => (
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart
+                            accessibilityLayer={false}
                             data={data}
                             margin={{ top: 3, right: 0, bottom: 3, left: 0 }}
                         >
-                            <Line
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#1dd67d"
-                                strokeWidth={2}
-                                dot={false}
-                                isAnimationActive={false}
-                            />
+                            {QUANTILE_VALUES.map((quantile) => (
+                                <Line
+                                    key={quantile}
+                                    type="monotone"
+                                    dataKey={quantile}
+                                    stroke={QUANTILE_COLORS[quantile]}
+                                    strokeWidth={1.6}
+                                    strokeDasharray={QUANTILE_DASHES[quantile]}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                />
+                            ))}
                         </LineChart>
                     </ResponsiveContainer>
                 )}
@@ -674,6 +809,7 @@ function useResponseTimeChartModel({
     monitorId,
     workerIds,
     monitorType = "http",
+    isHttps = false,
     workers = [],
 }: ResponseTimeChartProps) {
     const [chartState, setChartState] = useQueryStates(
@@ -687,12 +823,9 @@ function useResponseTimeChartModel({
             latencyResolutionMinutes: parseAsStringEnum([
                 ...LATENCY_RESOLUTION_VALUES,
             ]).withDefault("1"),
-            regionRange: parseAsStringEnum([...RANGE_VALUES]).withDefault(
-                "24h",
-            ),
-            regionQuantile: parseAsStringEnum([...QUANTILE_VALUES]).withDefault(
-                "p99",
-            ),
+            latencyView: parseAsStringEnum([
+                ...LATENCY_VIEW_VALUES,
+            ]).withDefault("percentiles"),
             regionView: parseAsStringEnum([...REGION_VIEW_VALUES]).withDefault(
                 "chart",
             ),
@@ -717,19 +850,21 @@ function useResponseTimeChartModel({
         latencyRange,
         latencyQuantile,
         latencyResolutionMinutes,
-        regionRange,
-        regionQuantile,
+        latencyView,
         regionView,
         rowsPerPage,
         sortBy,
         selectedWorkerIds,
     } = chartState;
+    const regionRange = latencyRange;
+    const regionQuantile = latencyQuantile;
     const page = Math.max(chartState.page, 1);
     const updateChartState = (nextState: ChartStateUpdate) => {
         void setChartState(nextState);
     };
 
     const hasDetailedTimings = HTTP_MONITOR_TYPES.includes(monitorType);
+    const showLatencyTabs = isHttps && hasDetailedTimings;
     const activeWorkerIds = resolveSelectedWorkerIds(
         selectedWorkerIds,
         workerIds,
@@ -757,8 +892,8 @@ function useResponseTimeChartModel({
         setChartState,
     ]);
 
-    const { data: latencyRawData = [], isLoading: isLatencyLoading } = useQuery(
-        {
+    const latencyQueries = useQueries({
+        queries: QUANTILE_VALUES.map((quantile) => ({
             ...orpc.monitors.getResponseTimes.queryOptions({
                 input: {
                     monitorId,
@@ -766,27 +901,62 @@ function useResponseTimeChartModel({
                     workerIds: activeWorkerIds,
                     allChecks: isAllChecksResolution,
                     bucketSeconds: latencyBucketSeconds,
-                    bucketQuantile: latencyQuantile,
+                    bucketQuantile: quantile,
                     groupByLocation: !isAllChecksResolution,
                 },
             }),
             enabled: activeWorkerIds.length > 0,
-        },
-    );
-
-    const { data: regionRawData = [], isLoading: isRegionLoading } = useQuery({
+        })),
+    });
+    const latencyRawDataByQuantile = Object.fromEntries(
+        QUANTILE_VALUES.map((quantile, index) => [
+            quantile,
+            latencyQueries[index]?.data ?? [],
+        ]),
+    ) as Record<QuantileKey, RawDataPoint[]>;
+    const latencyRawData = latencyRawDataByQuantile[latencyQuantile] ?? [];
+    const isLatencyLoading = latencyQueries.some((query) => query.isLoading);
+    const {
+        data: averageLatencyRawData = [],
+        isLoading: isAverageLatencyLoading,
+    } = useQuery({
         ...orpc.monitors.getResponseTimes.queryOptions({
             input: {
                 monitorId,
-                range: regionRange,
+                range: latencyRange,
                 workerIds: activeWorkerIds,
-                bucketSeconds: getRegionBucketSeconds(regionRange),
-                bucketQuantile: regionQuantile,
-                groupByLocation: true,
+                allChecks: isAllChecksResolution,
+                bucketSeconds: latencyBucketSeconds,
+                bucketAggregation: "average",
+                groupByLocation: false,
             },
         }),
-        enabled: activeWorkerIds.length > 0,
+        enabled: showLatencyTabs && activeWorkerIds.length > 0,
     });
+
+    const regionQueries = useQueries({
+        queries: QUANTILE_VALUES.map((quantile) => ({
+            ...orpc.monitors.getResponseTimes.queryOptions({
+                input: {
+                    monitorId,
+                    range: regionRange,
+                    workerIds: activeWorkerIds,
+                    bucketSeconds: getRegionBucketSeconds(regionRange),
+                    bucketQuantile: quantile,
+                    groupByLocation: true,
+                },
+            }),
+            enabled: activeWorkerIds.length > 0,
+        })),
+    });
+    const regionRawDataByQuantile = Object.fromEntries(
+        QUANTILE_VALUES.map((quantile, index) => [
+            quantile,
+            regionQueries[index]?.data ?? [],
+        ]),
+    ) as Record<QuantileKey, RawDataPoint[]>;
+    const regionRawData = regionRawDataByQuantile[regionQuantile] ?? [];
+    const isRegionLoading = regionQueries.some((query) => query.isLoading);
 
     const workersById = new Map(workers.map((worker) => [worker.id, worker]));
     const locationTitle = workers.length > 0 ? "Workers" : "Regions";
@@ -802,70 +972,59 @@ function useResponseTimeChartModel({
     };
 
     const baseLatencyChartData: LatencyBucketPoint[] = (() => {
-        if (latencyRawData.length === 0) {
+        const getChartTimestamp = (timestamp: string) =>
+            isAllChecksResolution
+                ? timestamp
+                : getBucketStart(
+                      timestamp,
+                      Number(effectiveLatencyResolutionMinutes),
+                  );
+        const groupByTimestamp = (points: RawDataPoint[]) =>
+            points.reduce(
+                (acc, point) => {
+                    const timestamp = getChartTimestamp(point.timestamp);
+                    if (!acc[timestamp]) {
+                        acc[timestamp] = [];
+                    }
+                    acc[timestamp].push(point);
+                    return acc;
+                },
+                {} as Record<string, RawDataPoint[]>,
+            );
+        const groupedByQuantile = Object.fromEntries(
+            QUANTILE_VALUES.map((quantile) => [
+                quantile,
+                groupByTimestamp(latencyRawDataByQuantile[quantile]),
+            ]),
+        ) as Record<QuantileKey, Record<string, RawDataPoint[]>>;
+        const averageByTimestamp = groupByTimestamp(averageLatencyRawData);
+        const timestamps = new Set([
+            ...QUANTILE_VALUES.flatMap((quantile) =>
+                Object.keys(groupedByQuantile[quantile]),
+            ),
+            ...Object.keys(averageByTimestamp),
+        ]);
+
+        if (timestamps.size === 0) {
             return [];
         }
 
-        if (isAllChecksResolution) {
-            return latencyRawData.map((point) => ({
-                timestamp: point.timestamp,
-                timestampMs: new Date(point.timestamp).getTime(),
-                label: formatDetailedTimestamp(point.timestamp),
-                latency: point.latency,
-                dnsLookup: point.dnsLookup ?? 0,
-                tcpConnect: point.tcpConnect ?? 0,
-                tlsHandshake: point.tlsHandshake ?? 0,
-                ttfb: point.ttfb ?? 0,
-                transfer: point.transfer ?? 0,
-            }));
-        }
-
-        const grouped = latencyRawData.reduce(
-            (acc, point) => {
-                const bucketStart = getBucketStart(
-                    point.timestamp,
-                    Number(effectiveLatencyResolutionMinutes),
-                );
-                if (!acc[bucketStart]) {
-                    acc[bucketStart] = [];
-                }
-                acc[bucketStart].push(point);
-                return acc;
-            },
-            {} as Record<string, RawDataPoint[]>,
-        );
-
-        return Object.entries(grouped)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([timestamp, points]) => ({
-                timestamp,
-                timestampMs: new Date(timestamp).getTime(),
-                label: formatDetailedTimestamp(timestamp),
-                latency: calculateQuantile(
-                    points.map((point) => point.latency),
-                    latencyQuantile,
-                ),
-                dnsLookup: calculateQuantile(
-                    points.map((point) => point.dnsLookup),
-                    latencyQuantile,
-                ),
-                tcpConnect: calculateQuantile(
-                    points.map((point) => point.tcpConnect),
-                    latencyQuantile,
-                ),
-                tlsHandshake: calculateQuantile(
-                    points.map((point) => point.tlsHandshake),
-                    latencyQuantile,
-                ),
-                ttfb: calculateQuantile(
-                    points.map((point) => point.ttfb),
-                    latencyQuantile,
-                ),
-                transfer: calculateQuantile(
-                    points.map((point) => point.transfer),
-                    latencyQuantile,
-                ),
-            }));
+        return Array.from(timestamps)
+            .sort()
+            .map((timestamp) =>
+                createLatencyChartPoint({
+                    timestamp,
+                    label: formatDetailedTimestamp(timestamp),
+                    pointsByQuantile: Object.fromEntries(
+                        QUANTILE_VALUES.map((quantile) => [
+                            quantile,
+                            groupedByQuantile[quantile][timestamp] ?? [],
+                        ]),
+                    ) as Record<QuantileKey, RawDataPoint[]>,
+                    averagePoints: averageByTimestamp[timestamp] ?? [],
+                    selectedQuantile: latencyQuantile,
+                }),
+            );
     })();
     const latencyGapThresholdMs = getGapThresholdMs(
         baseLatencyChartData,
@@ -899,34 +1058,70 @@ function useResponseTimeChartModel({
 
         return activeWorkerIds
             .map((workerId) => {
-                const regionPoints = regionRawData.filter(
-                    (point) => point.location === workerId,
+                const regionPointsByQuantile = Object.fromEntries(
+                    QUANTILE_VALUES.map((quantile) => [
+                        quantile,
+                        regionRawDataByQuantile[quantile].filter(
+                            (point) => point.location === workerId,
+                        ),
+                    ]),
+                ) as Record<QuantileKey, RawDataPoint[]>;
+                const groupedTrendByQuantile = Object.fromEntries(
+                    QUANTILE_VALUES.map((quantile) => [
+                        quantile,
+                        regionPointsByQuantile[quantile].reduce(
+                            (acc, point) => {
+                                const bucketStart = getBucketStart(
+                                    point.timestamp,
+                                    getRegionBucketMinutes(regionRange),
+                                );
+                                if (!acc[bucketStart]) {
+                                    acc[bucketStart] = [];
+                                }
+                                acc[bucketStart].push(point.latency);
+                                return acc;
+                            },
+                            {} as Record<string, number[]>,
+                        ),
+                    ]),
                 );
-                const groupedTrend = regionPoints.reduce(
-                    (acc, point) => {
-                        const bucketStart = getBucketStart(
-                            point.timestamp,
-                            getRegionBucketMinutes(regionRange),
-                        );
-                        if (!acc[bucketStart]) {
-                            acc[bucketStart] = [];
-                        }
-                        acc[bucketStart].push(point.latency);
-                        return acc;
-                    },
-                    {} as Record<string, number[]>,
+                const trendTimestamps = new Set(
+                    QUANTILE_VALUES.flatMap((quantile) =>
+                        Object.keys(groupedTrendByQuantile[quantile]),
+                    ),
                 );
 
-                const trend = Object.entries(groupedTrend)
-                    .sort(([left], [right]) => left.localeCompare(right))
-                    .map(([timestamp, latencies]) => ({
-                        label: formatChartTimestamp(timestamp, regionRange),
-                        value: calculateQuantile(latencies, regionQuantile),
-                    }));
+                const trend = Array.from(trendTimestamps)
+                    .sort()
+                    .map((timestamp) => {
+                        const values = Object.fromEntries(
+                            QUANTILE_VALUES.map((quantile) => [
+                                quantile,
+                                calculateQuantileOrNull(
+                                    groupedTrendByQuantile[quantile][
+                                        timestamp
+                                    ] ?? [],
+                                    quantile,
+                                ),
+                            ]),
+                        ) as Record<QuantileKey, number | null>;
+                        return {
+                            label: formatChartTimestamp(timestamp, regionRange),
+                            value: values[regionQuantile] ?? 0,
+                            p50: values.p50,
+                            p90: values.p90,
+                            p99: values.p99,
+                        };
+                    });
 
-                const latencyValues = regionPoints.map(
-                    (point) => point.latency,
-                );
+                const latencyValuesByQuantile = Object.fromEntries(
+                    QUANTILE_VALUES.map((quantile) => [
+                        quantile,
+                        regionPointsByQuantile[quantile].map(
+                            (point) => point.latency,
+                        ),
+                    ]),
+                ) as Record<QuantileKey, number[]>;
                 return {
                     workerId,
                     trend,
@@ -939,21 +1134,32 @@ function useResponseTimeChartModel({
                         trend.length > 0
                             ? Math.max(...trend.map((point) => point.value))
                             : null,
-                    p50: calculateQuantile(latencyValues, "p50"),
-                    p90: calculateQuantile(latencyValues, "p90"),
-                    p99: calculateQuantile(latencyValues, "p99"),
+                    p50: calculateQuantileOrNull(
+                        latencyValuesByQuantile.p50,
+                        "p50",
+                    ),
+                    p90: calculateQuantileOrNull(
+                        latencyValuesByQuantile.p90,
+                        "p90",
+                    ),
+                    p99: calculateQuantileOrNull(
+                        latencyValuesByQuantile.p99,
+                        "p99",
+                    ),
                 };
             })
             .sort((left, right) => (right[sortBy] ?? 0) - (left[sortBy] ?? 0));
     })();
 
     const regionColors = (() => {
-        const colors: Record<string, string> = {};
+        const colors: Record<string, Record<QuantileKey, string>> = {};
         activeWorkerIds.forEach((workerId, index) => {
-            colors[workerId] = generateRegionColor(
-                index,
-                activeWorkerIds.length,
-            );
+            colors[workerId] = Object.fromEntries(
+                QUANTILE_VALUES.map((quantile) => [
+                    quantile,
+                    generateRegionQuantileColor(index, quantile),
+                ]),
+            ) as Record<QuantileKey, string>;
         });
         return colors;
     })();
@@ -963,36 +1169,51 @@ function useResponseTimeChartModel({
             return [];
         }
 
-        const grouped = regionRawData.reduce(
-            (acc, point) => {
-                const bucketStart = getBucketStart(
-                    point.timestamp,
-                    getRegionBucketMinutes(regionRange),
-                );
-                if (!acc[bucketStart]) {
-                    acc[bucketStart] = [];
-                }
-                acc[bucketStart].push(point);
-                return acc;
-            },
-            {} as Record<string, RawDataPoint[]>,
+        const groupedByQuantile = Object.fromEntries(
+            QUANTILE_VALUES.map((quantile) => [
+                quantile,
+                regionRawDataByQuantile[quantile].reduce(
+                    (acc, point) => {
+                        const bucketStart = getBucketStart(
+                            point.timestamp,
+                            getRegionBucketMinutes(regionRange),
+                        );
+                        if (!acc[bucketStart]) {
+                            acc[bucketStart] = [];
+                        }
+                        acc[bucketStart].push(point);
+                        return acc;
+                    },
+                    {} as Record<string, RawDataPoint[]>,
+                ),
+            ]),
+        );
+        const timestamps = new Set(
+            QUANTILE_VALUES.flatMap((quantile) =>
+                Object.keys(groupedByQuantile[quantile]),
+            ),
         );
 
-        return Object.entries(grouped)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([timestamp, points]) => {
+        return Array.from(timestamps)
+            .sort()
+            .map((timestamp) => {
                 const byLocation = activeWorkerIds.reduce(
                     (acc, workerId) => {
-                        const locationLatencies = points.flatMap((point) =>
-                            point.location === workerId ? [point.latency] : [],
-                        );
-                        acc[workerId] =
-                            locationLatencies.length > 0
-                                ? calculateQuantile(
-                                      locationLatencies,
-                                      regionQuantile,
-                                  )
-                                : null;
+                        for (const quantile of QUANTILE_VALUES) {
+                            const locationLatencies = (
+                                groupedByQuantile[quantile][timestamp] ?? []
+                            ).reduce((latencies, point) => {
+                                if (point.location === workerId) {
+                                    latencies.push(point.latency);
+                                }
+                                return latencies;
+                            }, [] as number[]);
+                            acc[getRegionSeriesKey(workerId, quantile)] =
+                                calculateQuantileOrNull(
+                                    locationLatencies,
+                                    quantile,
+                                );
+                        }
                         return acc;
                     },
                     {} as Record<string, number | null>,
@@ -1021,7 +1242,11 @@ function useResponseTimeChartModel({
     const regionChartData = insertGapBreaks(
         baseRegionChartData,
         regionGapThresholdMs,
-        activeWorkerIds,
+        activeWorkerIds.flatMap((workerId) =>
+            QUANTILE_VALUES.map((quantile) =>
+                getRegionSeriesKey(workerId, quantile),
+            ),
+        ),
     );
 
     const totalPages = Math.max(
@@ -1056,12 +1281,14 @@ function useResponseTimeChartModel({
         monitorId,
         workerIds,
         monitorType,
+        isHttps,
         workers,
         chartState,
         setChartState,
         latencyRange,
         latencyQuantile,
         latencyResolutionMinutes,
+        latencyView,
         regionRange,
         regionQuantile,
         regionView,
@@ -1071,12 +1298,15 @@ function useResponseTimeChartModel({
         page,
         updateChartState,
         hasDetailedTimings,
+        showLatencyTabs,
         activeWorkerIds,
         effectiveLatencyResolutionMinutes,
         isAllChecksResolution,
         latencyBucketSeconds,
         latencyRawData,
         isLatencyLoading,
+        averageLatencyRawData,
+        isAverageLatencyLoading,
         regionRawData,
         isRegionLoading,
         workersById,
@@ -1292,6 +1522,7 @@ function ResponseTimeChartCardSection2({
         latencyRange,
         latencyQuantile,
         latencyResolutionMinutes,
+        latencyView,
         regionRange,
         regionQuantile,
         regionView,
@@ -1301,6 +1532,7 @@ function ResponseTimeChartCardSection2({
         page,
         updateChartState,
         hasDetailedTimings,
+        showLatencyTabs,
         activeWorkerIds,
         effectiveLatencyResolutionMinutes,
         isAllChecksResolution,
@@ -1334,120 +1566,82 @@ function ResponseTimeChartCardSection2({
         <CardHeader className="space-y-5">
             <ResponseTimeChartCardSection3 model={model} />
 
-            <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-                {isAllChecksResolution ? (
-                    <span>Latency over the</span>
-                ) : (
-                    <>
-                        <span>The</span>
-                        <Select
-                            value={latencyQuantile}
-                            onValueChange={(value) =>
-                                updateChartState({
-                                    latencyQuantile: value as QuantileKey,
-                                })
-                            }
-                        >
-                            <SelectTrigger className="h-8 w-[86px] bg-background/60 text-foreground">
-                                <SelectValue>
-                                    {
-                                        QUANTILE_OPTIONS.find(
-                                            (option) =>
-                                                option.value ===
-                                                latencyQuantile,
-                                        )?.label
-                                    }
-                                </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {QUANTILE_OPTIONS.map(({ label, value }) => (
-                                    <SelectItem key={value} value={value}>
-                                        {label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <span>quantile over the</span>
-                    </>
-                )}
-                <Select
-                    value={latencyRange}
-                    onValueChange={(value) => {
-                        const nextRange = value as RangeKey;
-                        updateChartState({
-                            latencyRange: nextRange,
-                            latencyResolutionMinutes:
-                                normalizeLatencyResolution(
-                                    nextRange,
-                                    effectiveLatencyResolutionMinutes,
-                                ),
-                        });
-                    }}
-                >
-                    <SelectTrigger className="h-8 w-[150px] bg-background/60 text-foreground">
-                        <SelectValue>
-                            {
-                                RANGE_OPTIONS.find(
-                                    (option) => option.value === latencyRange,
-                                )?.label
-                            }
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {RANGE_OPTIONS.map(({ label, value }) => (
-                            <SelectItem key={value} value={value}>
-                                {label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <span>{isAllChecksResolution ? "shown as" : "within a"}</span>
-                <Select
-                    value={effectiveLatencyResolutionMinutes}
-                    onValueChange={(value) => {
-                        if (value) {
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                {showLatencyTabs ? (
+                    <Tabs
+                        value={latencyView}
+                        onValueChange={(value) =>
                             updateChartState({
-                                latencyResolutionMinutes:
-                                    normalizeLatencyResolution(
-                                        latencyRange,
-                                        value as LatencyResolutionKey,
-                                    ),
-                            });
+                                latencyView: value as LatencyView,
+                            })
                         }
-                    }}
-                >
-                    <SelectTrigger className="h-8 w-[140px] bg-background/60 text-foreground">
-                        <SelectValue>
-                            {
-                                RESOLUTION_OPTIONS.find(
-                                    (option) =>
-                                        option.value ===
-                                        effectiveLatencyResolutionMinutes,
-                                )?.label
+                    >
+                        <TabsList
+                            aria-label="Latency chart mode"
+                            className="[&_[data-slot=tab-indicator]]:h-8"
+                        >
+                            <TabsTrigger className="h-8" value="percentiles">
+                                Percentiles
+                            </TabsTrigger>
+                            <TabsTrigger className="h-8" value="average">
+                                AVG
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                ) : (
+                    <span />
+                )}
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <span>Chart resolution</span>
+                    <Select
+                        value={effectiveLatencyResolutionMinutes}
+                        onValueChange={(value) => {
+                            if (value) {
+                                updateChartState({
+                                    latencyResolutionMinutes:
+                                        normalizeLatencyResolution(
+                                            latencyRange,
+                                            value as LatencyResolutionKey,
+                                        ),
+                                });
                             }
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {RESOLUTION_OPTIONS.map(({ label, value }) => (
-                            <SelectItem
-                                key={value}
-                                value={value}
-                                disabled={
-                                    value !== "all" &&
-                                    compareLatencyResolution(
-                                        value,
-                                        MIN_LATENCY_RESOLUTION_BY_RANGE[
-                                            latencyRange
-                                        ],
-                                    ) < 0
+                        }}
+                    >
+                        <SelectTrigger
+                            aria-label="Chart resolution"
+                            className="h-8 w-[140px] bg-background/60 text-foreground"
+                        >
+                            <SelectValue>
+                                {
+                                    RESOLUTION_OPTIONS.find(
+                                        (option) =>
+                                            option.value ===
+                                            effectiveLatencyResolutionMinutes,
+                                    )?.label
                                 }
-                            >
-                                {label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                {!isAllChecksResolution && <span>resolution</span>}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {RESOLUTION_OPTIONS.map(({ label, value }) => (
+                                <SelectItem
+                                    key={value}
+                                    value={value}
+                                    disabled={
+                                        value !== "all" &&
+                                        compareLatencyResolution(
+                                            value,
+                                            MIN_LATENCY_RESOLUTION_BY_RANGE[
+                                                latencyRange
+                                            ],
+                                        ) < 0
+                                    }
+                                >
+                                    {label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
         </CardHeader>
     );
@@ -1468,6 +1662,7 @@ function ResponseTimeChartCardSection1({
         latencyRange,
         latencyQuantile,
         latencyResolutionMinutes,
+        latencyView,
         regionRange,
         regionQuantile,
         regionView,
@@ -1477,12 +1672,14 @@ function ResponseTimeChartCardSection1({
         page,
         updateChartState,
         hasDetailedTimings,
+        showLatencyTabs,
         activeWorkerIds,
         effectiveLatencyResolutionMinutes,
         isAllChecksResolution,
         latencyBucketSeconds,
         latencyRawData,
         isLatencyLoading,
+        isAverageLatencyLoading,
         regionRawData,
         isRegionLoading,
         workersById,
@@ -1506,12 +1703,20 @@ function ResponseTimeChartCardSection1({
         summaryText,
         activeWorkerIdSet,
     } = model;
+    const showAverageTimings =
+        hasDetailedTimings && (!showLatencyTabs || latencyView === "average");
+    const showPercentiles = !showLatencyTabs || latencyView === "percentiles";
+    const isCurrentViewLoading =
+        showLatencyTabs && latencyView === "average"
+            ? isAverageLatencyLoading
+            : isLatencyLoading;
+
     return (
         <Card>
             <ResponseTimeChartCardSection2 model={model} />
             <CardContent className="space-y-5">
                 <div className="h-[260px] w-full rounded-2xl border bg-muted/20 p-3">
-                    {isLatencyLoading ? (
+                    {isCurrentViewLoading ? (
                         <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
                             Loading latency data...
                         </div>
@@ -1536,9 +1741,11 @@ function ResponseTimeChartCardSection1({
                                 Tooltip,
                                 ReferenceArea,
                                 Area,
+                                Line,
                             }) => (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart
+                                        accessibilityLayer={false}
                                         data={chartData}
                                         margin={{
                                             top: 8,
@@ -1608,7 +1815,7 @@ function ResponseTimeChartCardSection1({
                                             />
                                         ))}
 
-                                        {hasDetailedTimings ? (
+                                        {showAverageTimings &&
                                             TIMING_KEYS.map((key) => (
                                                 <Area
                                                     key={key}
@@ -1627,26 +1834,38 @@ function ResponseTimeChartCardSection1({
                                                     dot={false}
                                                     isAnimationActive={false}
                                                 />
-                                            ))
-                                        ) : (
-                                            <Area
-                                                type="monotone"
-                                                dataKey="latency"
-                                                name={
-                                                    QUANTILE_OPTIONS.find(
-                                                        (option) =>
-                                                            option.value ===
-                                                            latencyQuantile,
-                                                    )?.label
-                                                }
-                                                stroke="#ff2f92"
-                                                fill="#ff2f92"
-                                                fillOpacity={0.22}
-                                                strokeWidth={1.8}
-                                                dot={false}
-                                                isAnimationActive={false}
-                                            />
-                                        )}
+                                            ))}
+                                        {showPercentiles &&
+                                            QUANTILE_VALUES.map((quantile) => (
+                                                <Line
+                                                    key={quantile}
+                                                    type="monotone"
+                                                    dataKey={getLatencySeriesKey(
+                                                        quantile,
+                                                        "latency",
+                                                    )}
+                                                    name={`Latency ${quantile.toUpperCase()}`}
+                                                    stroke={
+                                                        QUANTILE_COLORS[
+                                                            quantile
+                                                        ]
+                                                    }
+                                                    strokeWidth={
+                                                        quantile ===
+                                                        latencyQuantile
+                                                            ? 2.8
+                                                            : 1.6
+                                                    }
+                                                    strokeOpacity={
+                                                        quantile ===
+                                                        latencyQuantile
+                                                            ? 1
+                                                            : 0.72
+                                                    }
+                                                    dot={false}
+                                                    isAnimationActive={false}
+                                                />
+                                            ))}
                                     </AreaChart>
                                 </ResponsiveContainer>
                             )}
@@ -1654,9 +1873,24 @@ function ResponseTimeChartCardSection1({
                     )}
                 </div>
 
-                {hasDetailedTimings && (
-                    <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
-                        {TIMING_KEYS.map((key) => (
+                <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+                    {showPercentiles &&
+                        QUANTILE_OPTIONS.map(({ label, value }) => (
+                            <div
+                                key={value}
+                                className="flex items-center gap-2 text-muted-foreground"
+                            >
+                                <span
+                                    className="h-0.5 w-4"
+                                    style={{
+                                        backgroundColor: QUANTILE_COLORS[value],
+                                    }}
+                                />
+                                <span>Latency {label}</span>
+                            </div>
+                        ))}
+                    {showAverageTimings &&
+                        TIMING_KEYS.map((key) => (
                             <div
                                 key={key}
                                 className="flex items-center gap-2 text-muted-foreground"
@@ -1670,8 +1904,7 @@ function ResponseTimeChartCardSection1({
                                 <span>{TIMING_LABELS[key]}</span>
                             </div>
                         ))}
-                    </div>
-                )}
+                </div>
             </CardContent>
         </Card>
     );
@@ -2206,7 +2439,7 @@ function ResponseTimeChartDataTable6DataTable1({
             {regionView === "table" ? (
                 <ResponseTimeChartDataTable6DataTable2 model={model} />
             ) : (
-                <div className="space-y-4 rounded-2xl border bg-muted/20 p-4">
+                <div className="rounded-2xl border bg-muted/20 p-4">
                     <div className="h-[320px] w-full">
                         {isRegionLoading ? (
                             <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
@@ -2240,6 +2473,7 @@ function ResponseTimeChartDataTable6DataTable1({
                                         height="100%"
                                     >
                                         <LineChart
+                                            accessibilityLayer={false}
                                             data={regionChartData}
                                             margin={{
                                                 top: 8,
@@ -2309,56 +2543,53 @@ function ResponseTimeChartDataTable6DataTable1({
                                                     ifOverflow="extendDomain"
                                                 />
                                             ))}
-                                            {activeWorkerIds.map((workerId) => {
-                                                const { primaryLabel } =
-                                                    getLocationDisplay(
-                                                        workerId,
+                                            {activeWorkerIds.flatMap(
+                                                (workerId) => {
+                                                    const { primaryLabel } =
+                                                        getLocationDisplay(
+                                                            workerId,
+                                                        );
+                                                    return QUANTILE_VALUES.map(
+                                                        (quantile) => (
+                                                            <Line
+                                                                key={getRegionSeriesKey(
+                                                                    workerId,
+                                                                    quantile,
+                                                                )}
+                                                                type="monotone"
+                                                                dataKey={getRegionSeriesKey(
+                                                                    workerId,
+                                                                    quantile,
+                                                                )}
+                                                                name={`${primaryLabel} ${quantile.toUpperCase()}`}
+                                                                stroke={
+                                                                    regionColors[
+                                                                        workerId
+                                                                    ][quantile]
+                                                                }
+                                                                strokeOpacity={
+                                                                    1
+                                                                }
+                                                                strokeWidth={
+                                                                    quantile ===
+                                                                    regionQuantile
+                                                                        ? 2.4
+                                                                        : 1.8
+                                                                }
+                                                                dot={false}
+                                                                isAnimationActive={
+                                                                    false
+                                                                }
+                                                            />
+                                                        ),
                                                     );
-                                                return (
-                                                    <Line
-                                                        key={workerId}
-                                                        type="monotone"
-                                                        dataKey={workerId}
-                                                        name={primaryLabel}
-                                                        stroke={
-                                                            regionColors[
-                                                                workerId
-                                                            ]
-                                                        }
-                                                        strokeWidth={2}
-                                                        dot={false}
-                                                        isAnimationActive={
-                                                            false
-                                                        }
-                                                    />
-                                                );
-                                            })}
+                                                },
+                                            )}
                                         </LineChart>
                                     </ResponsiveContainer>
                                 )}
                             </RechartsBoundary>
                         )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-xs">
-                        {activeWorkerIds.map((workerId) => {
-                            const { primaryLabel } =
-                                getLocationDisplay(workerId);
-                            return (
-                                <div
-                                    key={workerId}
-                                    className="flex items-center gap-2 text-muted-foreground"
-                                >
-                                    <span
-                                        className="h-2.5 w-2.5 rounded-[2px]"
-                                        style={{
-                                            backgroundColor:
-                                                regionColors[workerId],
-                                        }}
-                                    />
-                                    <span>{primaryLabel}</span>
-                                </div>
-                            );
-                        })}
                     </div>
                 </div>
             )}
@@ -2549,103 +2780,93 @@ function ResponseTimeChartCardSection4({
     } = model;
     return (
         <Card>
-            <CardHeader className="space-y-5">
-                <div className="space-y-1.5">
-                    <CardTitle className="font-semibold text-xl tracking-tight">
-                        Regions
-                    </CardTitle>
-                    <p className="text-muted-foreground text-sm">
-                        Every selected region&apos;s latency trend
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-                        <span>The</span>
-                        <Select
-                            value={regionQuantile}
-                            onValueChange={(value) =>
-                                updateChartState({
-                                    regionQuantile: value as QuantileKey,
-                                })
-                            }
-                        >
-                            <SelectTrigger className="h-8 w-[86px] bg-background/60 text-foreground">
-                                <SelectValue>
-                                    {
-                                        QUANTILE_OPTIONS.find(
-                                            (option) =>
-                                                option.value === regionQuantile,
-                                        )?.label
-                                    }
-                                </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {QUANTILE_OPTIONS.map(({ label, value }) => (
-                                    <SelectItem key={value} value={value}>
-                                        {label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <span>quantile trend over the</span>
-                        <Select
-                            value={regionRange}
-                            onValueChange={(value) =>
-                                updateChartState({
-                                    regionRange: value as RangeKey,
-                                })
-                            }
-                        >
-                            <SelectTrigger className="h-8 w-[126px] bg-background/60 text-foreground">
-                                <SelectValue>
-                                    {
-                                        RANGE_OPTIONS.find(
-                                            (option) =>
-                                                option.value === regionRange,
-                                        )?.label
-                                    }
-                                </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                                {RANGE_OPTIONS.map(({ label, value }) => (
-                                    <SelectItem key={value} value={value}>
-                                        {label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            <CardHeader>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="space-y-1.5">
+                        <CardTitle className="font-semibold text-xl tracking-tight">
+                            Regions
+                        </CardTitle>
+                        <p className="text-muted-foreground text-sm">
+                            Every selected region&apos;s latency trend
+                        </p>
                     </div>
-
-                    <div className="flex items-center gap-2 rounded-lg border bg-background/60 p-1">
-                        <button
-                            type="button"
-                            onClick={() =>
-                                updateChartState({ regionView: "chart" })
-                            }
-                            className={cn(
-                                "rounded-md px-3 py-1.5 text-xs transition-colors",
-                                regionView === "chart"
-                                    ? "bg-muted text-foreground"
-                                    : "text-muted-foreground hover:text-foreground",
-                            )}
-                        >
-                            Chart
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                updateChartState({ regionView: "table" })
-                            }
-                            className={cn(
-                                "rounded-md px-3 py-1.5 text-xs transition-colors",
-                                regionView === "table"
-                                    ? "bg-muted text-foreground"
-                                    : "text-muted-foreground hover:text-foreground",
-                            )}
-                        >
-                            Table
-                        </button>
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-4">
+                        {regionView === "chart" && (
+                            <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
+                                {activeWorkerIds.map((workerId) => {
+                                    const { primaryLabel } =
+                                        getLocationDisplay(workerId);
+                                    return (
+                                        <div
+                                            key={workerId}
+                                            className="flex items-center gap-2 text-muted-foreground"
+                                        >
+                                            <span className="flex items-center gap-0.5">
+                                                {QUANTILE_VALUES.map(
+                                                    (quantile) => (
+                                                        <span
+                                                            key={quantile}
+                                                            className="h-2.5 w-2 rounded-[2px]"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    regionColors[
+                                                                        workerId
+                                                                    ][quantile],
+                                                            }}
+                                                        />
+                                                    ),
+                                                )}
+                                            </span>
+                                            <span>{primaryLabel}</span>
+                                        </div>
+                                    );
+                                })}
+                                {QUANTILE_OPTIONS.map(({ label, value }) => (
+                                    <div
+                                        key={value}
+                                        className="flex items-center gap-2 text-muted-foreground"
+                                    >
+                                        <span
+                                            className="w-4 border-t-2"
+                                            style={{
+                                                borderColor: `hsl(0, 0%, ${REGION_QUANTILE_LIGHTNESS[value]}%)`,
+                                            }}
+                                        />
+                                        <span>{label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 rounded-lg border bg-background/60 p-1">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    updateChartState({ regionView: "chart" })
+                                }
+                                className={cn(
+                                    "rounded-md px-3 py-1.5 text-xs transition-colors",
+                                    regionView === "chart"
+                                        ? "bg-muted text-foreground"
+                                        : "text-muted-foreground hover:text-foreground",
+                                )}
+                            >
+                                Chart
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    updateChartState({ regionView: "table" })
+                                }
+                                className={cn(
+                                    "rounded-md px-3 py-1.5 text-xs transition-colors",
+                                    regionView === "table"
+                                        ? "bg-muted text-foreground"
+                                        : "text-muted-foreground hover:text-foreground",
+                                )}
+                            >
+                                Table
+                            </button>
+                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -2704,6 +2925,87 @@ function ResponseTimeChartView({ model }: { model: ResponseTimeChartModel }) {
     } = model;
     return (
         <div className="space-y-6">
+            <DashboardHeaderActions>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <span className="hidden lg:inline">Quantile</span>
+                        <Select
+                            aria-label="Global quantile"
+                            value={latencyQuantile}
+                            onValueChange={(value) =>
+                                updateChartState({
+                                    latencyQuantile: value as QuantileKey,
+                                })
+                            }
+                        >
+                            <SelectTrigger className="h-8 w-[86px] bg-background/60 text-foreground">
+                                <SelectValue>
+                                    {
+                                        QUANTILE_OPTIONS.find(
+                                            (option) =>
+                                                option.value ===
+                                                latencyQuantile,
+                                        )?.label
+                                    }
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {QUANTILE_OPTIONS.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <span className="hidden lg:inline">Period</span>
+                        <Select
+                            aria-label="Global period"
+                            value={latencyRange}
+                            onValueChange={(value) => {
+                                const nextRange = value as RangeKey;
+                                updateChartState({
+                                    latencyRange: nextRange,
+                                    latencyResolutionMinutes:
+                                        normalizeLatencyResolution(
+                                            nextRange,
+                                            effectiveLatencyResolutionMinutes,
+                                        ),
+                                });
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-[150px] bg-background/60 text-foreground">
+                                <SelectValue>
+                                    {
+                                        RANGE_OPTIONS.find(
+                                            (option) =>
+                                                option.value === latencyRange,
+                                        )?.label
+                                    }
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {RANGE_OPTIONS.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </DashboardHeaderActions>
+
+            <div className="space-y-1">
+                <h2 className="font-semibold text-lg tracking-tight">
+                    Response time metrics
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                    Compare every latency quantile across the selected period.
+                </p>
+            </div>
+
             <ResponseTimeChartCardSection1 model={model} />
 
             <ResponseTimeChartCardSection4 model={model} />
@@ -2715,12 +3017,14 @@ export function ResponseTimeChart({
     monitorId,
     workerIds,
     monitorType = "http",
+    isHttps = false,
     workers = [],
 }: ResponseTimeChartProps) {
     const model = useResponseTimeChartModel({
         monitorId,
         workerIds,
         monitorType,
+        isHttps,
         workers,
     });
     return <ResponseTimeChartView model={model} />;

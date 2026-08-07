@@ -11,6 +11,13 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+    getStatusPageThemeDefinition,
+    normalizeStatusPageThemeId,
+    type StatusPageThemeCapabilities,
+    statusPageThemeIds,
+    statusPageThemes,
+} from "@uptimekit/config/status-page-themes";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -60,7 +67,7 @@ const settingsSchema = z.object({
         .or(z.url("Must be a valid URL"))
         .optional()
         .or(z.literal("")),
-    themeId: z.string().optional(),
+    themeId: z.enum(statusPageThemeIds).optional(),
     theme: z.enum(["light", "dark"]),
     headerLayout: z.enum(["vertical", "horizontal"]),
     barStyle: z.enum(["normal", "length", "signal"]),
@@ -90,7 +97,7 @@ function getSettingsFormValues(statusPage: any): SettingsFormValues {
         faviconUrl: design.faviconUrl || "",
         websiteUrl: design.websiteUrl || "",
         contactUrl: design.contactUrl || "",
-        themeId: design.themeId || "default",
+        themeId: normalizeStatusPageThemeId(design.themeId),
         theme: design.theme || "light",
         headerLayout: design.headerLayout || "vertical",
         barStyle:
@@ -167,6 +174,13 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
         control: form.control,
         name: "defaultSectionCollapsible",
     });
+    const selectedThemeId = useWatch({
+        control: form.control,
+        name: "themeId",
+    });
+    const themeCapabilities = getStatusPageThemeDefinition(
+        normalizeStatusPageThemeId(selectedThemeId),
+    ).capabilities;
     const isPrivate = useWatch({ control: form.control, name: "isPrivate" });
 
     const [faviconOpen, setFaviconOpen] = useState(false);
@@ -178,6 +192,18 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
             });
         }
     }, [statusPage, form]);
+
+    useEffect(() => {
+        const currentBarStyle = form.getValues("barStyle");
+        if (!themeCapabilities.barStyles.includes(currentBarStyle)) {
+            form.setValue("barStyle", themeCapabilities.barStyles[0], {
+                shouldDirty: true,
+            });
+        }
+        if (!themeCapabilities.headerLayout) {
+            form.setValue("headerLayout", "vertical");
+        }
+    }, [form, themeCapabilities]);
 
     const submitSettings = async (data: SettingsFormValues) => {
         if (data.isPrivate && !statusPage?.hasPassword && !data.password) {
@@ -234,24 +260,10 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
         );
     }
 
-    const themes = [
-        {
-            value: "default",
-            label: "Default - Classic design with uptime history",
-        },
-        {
-            value: "flat",
-            label: "Flat - Simple and modern design",
-        },
-        {
-            value: "signal",
-            label: "Signal - Compact operational status layout",
-        },
-        {
-            value: "spark",
-            label: "Spark - Theme inspired by incident.io",
-        },
-    ];
+    const themes = statusPageThemes.map((theme) => ({
+        value: theme.id,
+        label: `${theme.name} - ${theme.description}`,
+    }));
 
     const colorThemes = [
         { value: "dark", label: "Dark version" },
@@ -302,6 +314,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
                     statusPage={statusPage}
                     isPrivate={isPrivate}
                     defaultSectionCollapsible={defaultSectionCollapsible}
+                    themeCapabilities={themeCapabilities}
                     faviconOpen={faviconOpen}
                     setFaviconOpen={setFaviconOpen}
                     themes={themes}
@@ -503,6 +516,7 @@ function PersonalizationSection({
     statusPage,
     isPrivate,
     defaultSectionCollapsible,
+    themeCapabilities,
     faviconOpen,
     setFaviconOpen,
     themes,
@@ -516,6 +530,7 @@ function PersonalizationSection({
     statusPage: any;
     isPrivate: boolean;
     defaultSectionCollapsible: boolean;
+    themeCapabilities: StatusPageThemeCapabilities;
     faviconOpen: boolean;
     setFaviconOpen: (open: boolean) => void;
     themes: SettingsOption[];
@@ -559,6 +574,7 @@ function PersonalizationSection({
                     <LayoutAndUptimeFields
                         form={form}
                         optionCardClassName={optionCardClassName}
+                        capabilities={themeCapabilities}
                     />
                     <BrandingFields
                         form={form}
@@ -581,87 +597,83 @@ function ThemeSelectionFields({
     colorThemes: SettingsOption[];
 }) {
     return (
-        <>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
-                    control={form.control}
-                    name="themeId"
-                    render={({ field }) => (
-                        <FormItem className="flex h-full flex-col">
-                            <FormLabel className="flex h-6 items-end pb-1">
-                                Page theme
-                            </FormLabel>
-                            <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                aria-label="Select theme"
-                                items={themes}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue>
-                                        {
-                                            themes.find(
-                                                (option) =>
-                                                    option.value ===
-                                                    field.value,
-                                            )?.label
-                                        }
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectPopup>
-                                    {themes.map(({ label, value }) => (
-                                        <SelectItem key={value} value={value}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectPopup>
-                            </Select>
-                            <FormDescription className="pt-2">
-                                Choose the layout and style for your status page
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <FormField
+                control={form.control}
+                name="themeId"
+                render={({ field }) => (
+                    <FormItem className="flex h-full flex-col">
+                        <FormLabel className="flex h-6 items-end pb-1">
+                            Page theme
+                        </FormLabel>
+                        <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            aria-label="Select theme"
+                            items={themes}
+                        >
+                            <SelectTrigger>
+                                <SelectValue>
+                                    {
+                                        themes.find(
+                                            (option) =>
+                                                option.value === field.value,
+                                        )?.label
+                                    }
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectPopup>
+                                {themes.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectPopup>
+                        </Select>
+                        <FormDescription className="pt-2">
+                            Choose the layout and style for your status page
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
 
-                <FormField
-                    control={form.control}
-                    name="theme"
-                    render={({ field }) => (
-                        <FormItem className="flex h-full flex-col">
-                            <FormLabel className="flex h-6 items-end pb-1">
-                                Color theme
-                            </FormLabel>
-                            <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                items={colorThemes}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue>
-                                        {
-                                            colorThemes.find(
-                                                (option) =>
-                                                    option.value ===
-                                                    field.value,
-                                            )?.label
-                                        }
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectPopup>
-                                    {colorThemes.map(({ label, value }) => (
-                                        <SelectItem key={value} value={value}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectPopup>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
-        </>
+            <FormField
+                control={form.control}
+                name="theme"
+                render={({ field }) => (
+                    <FormItem className="flex h-full flex-col">
+                        <FormLabel className="flex h-6 items-end pb-1">
+                            Color theme
+                        </FormLabel>
+                        <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            items={colorThemes}
+                        >
+                            <SelectTrigger>
+                                <SelectValue>
+                                    {
+                                        colorThemes.find(
+                                            (option) =>
+                                                option.value === field.value,
+                                        )?.label
+                                    }
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectPopup>
+                                {colorThemes.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectPopup>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
     );
 }
 
@@ -921,104 +933,114 @@ function StatusBehaviorFields({
 function LayoutAndUptimeFields({
     form,
     optionCardClassName,
+    capabilities,
 }: {
     form: SettingsFormApi;
     optionCardClassName: string;
+    capabilities: StatusPageThemeCapabilities;
 }) {
     return (
         <>
-            <FormField
-                control={form.control}
-                name="headerLayout"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormLabel>Page design</FormLabel>
-                        <FormControl>
-                            <RadioGroup
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2"
-                            >
-                                <FormItem className="h-full">
-                                    <FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
-                                        <FormControl>
-                                            <RadioGroupItem
-                                                value="vertical"
-                                                className="sr-only"
-                                            />
-                                        </FormControl>
-                                        <div className={optionCardClassName}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
-                                                    <FontAwesomeIcon
-                                                        icon={faList}
-                                                        className="h-5 w-5 text-muted-foreground/50"
+            {capabilities.headerLayout ? (
+                <FormField
+                    control={form.control}
+                    name="headerLayout"
+                    render={({ field }) => (
+                        <FormItem className="space-y-3">
+                            <FormLabel>Page design</FormLabel>
+                            <FormControl>
+                                <RadioGroup
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                    className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2"
+                                >
+                                    <FormItem className="h-full">
+                                        <FormLabel className="pb-2 [&:has([data-state=checked])>div]:border-primary">
+                                            <FormControl>
+                                                <RadioGroupItem
+                                                    value="vertical"
+                                                    className="sr-only"
+                                                />
+                                            </FormControl>
+                                            <div
+                                                className={optionCardClassName}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
+                                                        <FontAwesomeIcon
+                                                            icon={faList}
+                                                            className="h-5 w-5 text-muted-foreground/50"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="font-medium leading-none">
+                                                            List layout
+                                                        </div>
+                                                        <div className="text-muted-foreground text-xs">
+                                                            Standard vertical
+                                                            list view of your
+                                                            services
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+                                                            field.value ===
+                                                            "vertical"
+                                                                ? "bg-primary"
+                                                                : "opacity-0"
+                                                        }`}
                                                     />
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <div className="font-medium leading-none">
-                                                        List layout
-                                                    </div>
-                                                    <div className="text-muted-foreground text-xs">
-                                                        Standard vertical list
-                                                        view of your services
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={`ml-auto h-4 w-4 rounded-full border border-primary ${
-                                                        field.value ===
-                                                        "vertical"
-                                                            ? "bg-primary"
-                                                            : "opacity-0"
-                                                    }`}
-                                                />
                                             </div>
-                                        </div>
-                                    </FormLabel>
-                                </FormItem>
-                                <FormItem className="h-full">
-                                    <FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
-                                        <FormControl>
-                                            <RadioGroupItem
-                                                value="horizontal"
-                                                className="sr-only"
-                                            />
-                                        </FormControl>
-                                        <div className={optionCardClassName}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
-                                                    <FontAwesomeIcon
-                                                        icon={faGrip}
-                                                        className="h-5 w-5 text-muted-foreground/50"
+                                        </FormLabel>
+                                    </FormItem>
+                                    <FormItem className="h-full">
+                                        <FormLabel className="group [&:has([data-state=checked])>div]:border-primary">
+                                            <FormControl>
+                                                <RadioGroupItem
+                                                    value="horizontal"
+                                                    className="sr-only"
+                                                />
+                                            </FormControl>
+                                            <div
+                                                className={optionCardClassName}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex h-10 w-16 items-center justify-center rounded bg-muted/20">
+                                                        <FontAwesomeIcon
+                                                            icon={faGrip}
+                                                            className="h-5 w-5 text-muted-foreground/50"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="font-medium leading-none">
+                                                            Grid layout
+                                                        </div>
+                                                        <div className="text-muted-foreground text-xs">
+                                                            Grid view to show
+                                                            more services at
+                                                            once
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+                                                            field.value ===
+                                                            "horizontal"
+                                                                ? "bg-primary"
+                                                                : "opacity-0"
+                                                        }`}
                                                     />
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <div className="font-medium leading-none">
-                                                        Grid layout
-                                                    </div>
-                                                    <div className="text-muted-foreground text-xs">
-                                                        Grid view to show more
-                                                        services at once
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={`ml-auto h-4 w-4 rounded-full border border-primary ${
-                                                        field.value ===
-                                                        "horizontal"
-                                                            ? "bg-primary"
-                                                            : "opacity-0"
-                                                    }`}
-                                                />
                                             </div>
-                                        </div>
-                                    </FormLabel>
-                                </FormItem>
-                            </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
+                                        </FormLabel>
+                                    </FormItem>
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            ) : null}
 
             <FormField
                 control={form.control}
@@ -1032,113 +1054,123 @@ function LayoutAndUptimeFields({
                                 value={field.value}
                                 className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2"
                             >
-                                <FormItem className="h-full w-full">
-                                    <FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
-                                        <FormControl>
-                                            <RadioGroupItem
-                                                value="normal"
-                                                className="sr-only"
-                                            />
-                                        </FormControl>
-                                        <div
-                                            className={`${optionCardClassName} flex h-full w-full items-center`}
-                                        >
-                                            <div className="flex w-full items-center gap-4">
-                                                <div className="flex h-10 w-16 flex-col justify-center gap-0.5 rounded bg-muted/20 px-2">
-                                                    <div className="h-1.5 w-full rounded-sm bg-green-500/70" />
-                                                    <div className="h-1.5 w-full rounded-sm bg-green-500/70" />
-                                                    <div className="h-1.5 w-full rounded-sm bg-green-500/70" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="font-medium leading-none">
-                                                        Normal
-                                                    </div>
-                                                    <div className="text-muted-foreground text-xs">
-                                                        Single color per day
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={`ml-auto h-4 w-4 rounded-full border border-primary ${
-                                                        field.value === "normal"
-                                                            ? "bg-primary"
-                                                            : "opacity-0"
-                                                    }`}
+                                {capabilities.barStyles.includes("normal") ? (
+                                    <FormItem className="h-full w-full">
+                                        <FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
+                                            <FormControl>
+                                                <RadioGroupItem
+                                                    value="normal"
+                                                    className="sr-only"
                                                 />
+                                            </FormControl>
+                                            <div
+                                                className={`${optionCardClassName} flex h-full w-full items-center`}
+                                            >
+                                                <div className="flex w-full items-center gap-4">
+                                                    <div className="flex h-10 w-16 flex-col justify-center gap-0.5 rounded bg-muted/20 px-2">
+                                                        <div className="h-1.5 w-full rounded-sm bg-green-500/70" />
+                                                        <div className="h-1.5 w-full rounded-sm bg-green-500/70" />
+                                                        <div className="h-1.5 w-full rounded-sm bg-green-500/70" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="font-medium leading-none">
+                                                            Normal
+                                                        </div>
+                                                        <div className="text-muted-foreground text-xs">
+                                                            Single color per day
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+                                                            field.value ===
+                                                            "normal"
+                                                                ? "bg-primary"
+                                                                : "opacity-0"
+                                                        }`}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </FormLabel>
-                                </FormItem>
+                                        </FormLabel>
+                                    </FormItem>
+                                ) : null}
 
-                                <FormItem className="h-full w-full">
-                                    <FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
-                                        <FormControl>
-                                            <RadioGroupItem
-                                                value="length"
-                                                className="sr-only"
-                                            />
-                                        </FormControl>
-                                        <div
-                                            className={`${optionCardClassName} flex h-full w-full items-center`}
-                                        >
-                                            <div className="flex w-full items-center gap-4">
-                                                <div className="flex h-10 w-16 flex-col justify-center rounded bg-muted/20 px-2">
-                                                    <div className="h-2 w-full rounded-t-sm bg-green-500/70" />
-                                                    <div className="h-1 w-full bg-yellow-500/70" />
-                                                    <div className="h-1 w-full rounded-b-sm bg-red-500/70" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="font-medium leading-none">
-                                                        Length
-                                                    </div>
-                                                    <div className="text-muted-foreground text-xs">
-                                                        Shows downtime breakdown
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={`ml-auto h-4 w-4 rounded-full border border-primary ${
-                                                        field.value === "length"
-                                                            ? "bg-primary"
-                                                            : "opacity-0"
-                                                    }`}
+                                {capabilities.barStyles.includes("length") ? (
+                                    <FormItem className="h-full w-full">
+                                        <FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
+                                            <FormControl>
+                                                <RadioGroupItem
+                                                    value="length"
+                                                    className="sr-only"
                                                 />
+                                            </FormControl>
+                                            <div
+                                                className={`${optionCardClassName} flex h-full w-full items-center`}
+                                            >
+                                                <div className="flex w-full items-center gap-4">
+                                                    <div className="flex h-10 w-16 flex-col justify-center rounded bg-muted/20 px-2">
+                                                        <div className="h-2 w-full rounded-t-sm bg-green-500/70" />
+                                                        <div className="h-1 w-full bg-yellow-500/70" />
+                                                        <div className="h-1 w-full rounded-b-sm bg-red-500/70" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="font-medium leading-none">
+                                                            Length
+                                                        </div>
+                                                        <div className="text-muted-foreground text-xs">
+                                                            Shows downtime
+                                                            breakdown
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+                                                            field.value ===
+                                                            "length"
+                                                                ? "bg-primary"
+                                                                : "opacity-0"
+                                                        }`}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </FormLabel>
-                                </FormItem>
+                                        </FormLabel>
+                                    </FormItem>
+                                ) : null}
 
-                                <FormItem className="h-full w-full">
-                                    <FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
-                                        <FormControl>
-                                            <RadioGroupItem
-                                                value="signal"
-                                                className="sr-only"
-                                            />
-                                        </FormControl>
-                                        <div
-                                            className={`${optionCardClassName} flex h-full w-full items-center`}
-                                        >
-                                            <div className="flex w-full items-center gap-4">
-                                                <SignalUptimePreview />
-                                                <div className="space-y-1">
-                                                    <div className="font-medium leading-none">
-                                                        Signal
-                                                    </div>
-                                                    <div className="text-muted-foreground text-xs">
-                                                        Connected segments for
-                                                        matching runs
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    className={`ml-auto h-4 w-4 rounded-full border border-primary ${
-                                                        field.value === "signal"
-                                                            ? "bg-primary"
-                                                            : "opacity-0"
-                                                    }`}
+                                {capabilities.barStyles.includes("signal") ? (
+                                    <FormItem className="h-full w-full">
+                                        <FormLabel className="flex h-full w-full cursor-pointer [&:has([data-state=checked])>div]:border-primary">
+                                            <FormControl>
+                                                <RadioGroupItem
+                                                    value="signal"
+                                                    className="sr-only"
                                                 />
+                                            </FormControl>
+                                            <div
+                                                className={`${optionCardClassName} flex h-full w-full items-center`}
+                                            >
+                                                <div className="flex w-full items-center gap-4">
+                                                    <SignalUptimePreview />
+                                                    <div className="space-y-1">
+                                                        <div className="font-medium leading-none">
+                                                            Signal
+                                                        </div>
+                                                        <div className="text-muted-foreground text-xs">
+                                                            Connected segments
+                                                            for matching runs
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        className={`ml-auto h-4 w-4 rounded-full border border-primary ${
+                                                            field.value ===
+                                                            "signal"
+                                                                ? "bg-primary"
+                                                                : "opacity-0"
+                                                        }`}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </FormLabel>
-                                </FormItem>
+                                        </FormLabel>
+                                    </FormItem>
+                                ) : null}
                             </RadioGroup>
                         </FormControl>
                         <FormMessage />

@@ -7,6 +7,10 @@
             "types": "./src/env.ts",
             "default": "./src/env.ts"
         },
+        "./status-page-themes": {
+            "types": "./src/status-page-themes.ts",
+            "default": "./src/status-page-themes.ts"
+        },
         "./tsconfig.base.json": "./tsconfig.base.json"
     },
     "dependencies": {

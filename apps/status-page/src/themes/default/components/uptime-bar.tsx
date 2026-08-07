@@ -6,118 +6,24 @@ import {
     getViewportTooltipPosition,
     type ViewportTooltipPosition,
 } from "@/components/viewport-tooltip-position";
+import {
+    type BarSegments,
+    buildUptimeSegments,
+    calculateBarSegments,
+    formatDowntime,
+    formatMaintenanceDuration,
+    formatTooltipDate,
+    isMaintenanceStatus,
+} from "@/lib/uptime";
 import { cn } from "@/lib/utils";
 import { statusConfig } from "../../status-config";
 import type { StatusType, UptimeDay } from "../../types";
-
-/**
- * Convert a duration in milliseconds into a concise human-readable downtime string.
- */
-function formatDowntime(ms: number): string {
-    if (ms <= 0) return "No downtime";
-
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-
-    if (hours > 0) {
-        const remainingMinutes = minutes % 60;
-        return remainingMinutes > 0
-            ? `${hours}h ${remainingMinutes}m down`
-            : `${hours}h down`;
-    }
-    if (minutes > 0) {
-        const remainingSeconds = seconds % 60;
-        return remainingSeconds > 0
-            ? `${minutes}m ${remainingSeconds}s down`
-            : `${minutes}m down`;
-    }
-    return `${seconds}s down`;
-}
-
-/**
- * Format a date string for tooltip display.
- * Handles YYYY-MM-DD format without timezone shift.
- */
-function formatTooltipDate(dateString: string): string {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        const [year, month, day] = dateString.split("-").map(Number);
-        const date = new Date(year, month - 1, day);
-        return date.toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        });
-    }
-
-    return new Date(dateString).toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    });
-}
-
-/**
- * Parse a duration string into milliseconds.
- * Handles formats like: "5h 15m", "6m", "30s down", "5h down", etc.
- */
-function parseDuration(durationStr: string | undefined): number {
-    if (!durationStr) return 0;
-
-    // Remove "down" suffix and trim
-    const clean = durationStr.replace(/down/gi, "").trim();
-    if (!clean) return 0;
-
-    let totalMs = 0;
-
-    // Parse hours (e.g., "5h" or "5 h")
-    const hoursMatch = clean.match(/(\d+)\s*h/i);
-    if (hoursMatch) {
-        totalMs += Number.parseInt(hoursMatch[1], 10) * 60 * 60 * 1000;
-    }
-
-    // Parse minutes (e.g., "15m" or "15 m")
-    const minutesMatch = clean.match(/(\d+)\s*m/i);
-    if (minutesMatch) {
-        totalMs += Number.parseInt(minutesMatch[1], 10) * 60 * 1000;
-    }
-
-    // Parse seconds (e.g., "30s" or "30 s")
-    const secondsMatch = clean.match(/(\d+)\s*s/i);
-    if (secondsMatch) {
-        totalMs += Number.parseInt(secondsMatch[1], 10) * 1000;
-    }
-
-    return totalMs;
-}
-
-function isMaintenanceStatus(status: StatusType): boolean {
-    return status === "maintenance" || status === "maintenance_scheduled";
-}
-
-function formatMaintenanceDuration(day: UptimeDay): string {
-    const maintenanceMs = day.maintenanceMs ?? parseDuration(day.duration);
-
-    if (maintenanceMs <= 0) {
-        return "Maintenance excluded from uptime";
-    }
-
-    return `${formatDowntime(maintenanceMs).replace(/ down$/, "")} maintenance`;
-}
 
 interface UptimeBarProps {
     days: UptimeDay[];
     className?: string;
     style?: "normal" | "length" | "signal";
     toFixed?: number;
-}
-
-interface UptimeSegment {
-    start: number;
-    length: number;
-    status: StatusType;
 }
 
 const statusColors: Record<StatusType, string> = {
@@ -131,36 +37,6 @@ const statusColors: Record<StatusType, string> = {
     unknown: "bg-status-unknown/20",
 };
 
-function buildSegments(days: UptimeDay[]): UptimeSegment[] {
-    if (days.length === 0) {
-        return [];
-    }
-
-    const segments: UptimeSegment[] = [];
-    let currentStatus = days[0].status;
-    let start = 0;
-
-    for (let index = 1; index < days.length; index++) {
-        if (days[index].status !== currentStatus) {
-            segments.push({
-                start,
-                length: index - start,
-                status: currentStatus,
-            });
-            currentStatus = days[index].status;
-            start = index;
-        }
-    }
-
-    segments.push({
-        start,
-        length: days.length - start,
-        status: currentStatus,
-    });
-
-    return segments;
-}
-
 // Get color for stacked bar segments
 const segmentColors = {
     uptime: "bg-green-500",
@@ -171,64 +47,8 @@ const segmentColors = {
     unknown: "bg-neutral-800",
 };
 
-interface BarSegments {
-    uptime: number; // percentage (0-100)
-    minor: number; // percentage
-    major: number; // percentage
-    critical: number; // percentage
-    maintenance: number; // percentage
-    unknown: number; // percentage
-}
-
-function calculateSegments(day: UptimeDay): BarSegments {
-    const DAY_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    const segments: BarSegments = {
-        uptime: 100,
-        minor: 0,
-        major: 0,
-        critical: 0,
-        maintenance: 0,
-        unknown: 0,
-    };
-
-    if (
-        day.status === "operational" ||
-        day.status === "maintenance_completed"
-    ) {
-        segments.uptime = 100;
-    } else if (day.status === "unknown") {
-        segments.unknown = 100;
-        segments.uptime = 0;
-    } else {
-        // Calculate actual downtime proportion - use downtimeMs or parse duration string
-        const downtimeMs = isMaintenanceStatus(day.status)
-            ? (day.maintenanceMs ?? parseDuration(day.duration))
-            : (day.downtimeMs ?? parseDuration(day.duration));
-        const downtimePercent = Math.min(100, (downtimeMs / DAY_MS) * 100);
-
-        // Uptime is what's left after downtime
-        segments.uptime = Math.max(0, 100 - downtimePercent);
-
-        // Assign downtime to appropriate severity category
-        if (
-            day.status === "maintenance" ||
-            day.status === "maintenance_scheduled"
-        ) {
-            segments.maintenance = downtimePercent;
-        } else if (day.status === "degraded") {
-            segments.minor = downtimePercent;
-        } else if (day.status === "partial_outage") {
-            segments.major = downtimePercent;
-        } else if (day.status === "major_outage") {
-            segments.critical = downtimePercent;
-        }
-    }
-
-    return segments;
-}
-
 function SegmentTooltip({ day, toFixed }: { day: UptimeDay; toFixed: number }) {
-    const segs = calculateSegments(day);
+    const segs = calculateBarSegments(day);
     const showUptimeSegment =
         !isMaintenanceStatus(day.status) &&
         segs.uptime > 0 &&
@@ -362,7 +182,7 @@ export function UptimeBar({
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [tooltipPosition, setTooltipPosition] =
         useState<ViewportTooltipPosition | null>(null);
-    const segments = buildSegments(days);
+    const segments = buildUptimeSegments(days);
 
     const handleDayMouseEnter = (
         index: number,
@@ -432,7 +252,7 @@ export function UptimeBar({
                                         <ViewportTooltip
                                             position={tooltipPosition}
                                         >
-                                            <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+                                            <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl transition-[opacity,transform] duration-200">
                                                 <div className="font-semibold text-popover-foreground text-sm">
                                                     {day.annotation ||
                                                         statusConfig[day.status]
@@ -497,7 +317,7 @@ export function UptimeBar({
                                     {style === "length" ? (
                                         <div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
                                             <StackedBar
-                                                segments={calculateSegments(
+                                                segments={calculateBarSegments(
                                                     day,
                                                 )}
                                             />
@@ -517,7 +337,7 @@ export function UptimeBar({
                                             <ViewportTooltip
                                                 position={tooltipPosition}
                                             >
-                                                <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl duration-200">
+                                                <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl transition-[opacity,transform] duration-200">
                                                     <div className="font-semibold text-popover-foreground text-sm">
                                                         {day.annotation ||
                                                             statusConfig[

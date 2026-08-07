@@ -9,6 +9,7 @@ interface HeaderProps {
     title?: string;
     logoUrl?: string;
     contactUrl?: string;
+    websiteUrl?: string;
     statusPageId?: string;
     slug?: string;
     allowSubscriptions?: boolean;
@@ -19,6 +20,7 @@ export function Header({
     title = "System Status",
     logoUrl,
     contactUrl,
+    websiteUrl,
     statusPageId,
     slug,
     allowSubscriptions = true,
@@ -32,16 +34,14 @@ export function Header({
                 <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-6">
                     <div className="min-w-0 flex-1">
                         {logoUrl ? (
-                            <>
-                                <Image
-                                    src={logoUrl}
-                                    alt={title}
-                                    width={160}
-                                    height={32}
-                                    unoptimized
-                                    className="h-8 w-auto"
-                                />
-                            </>
+                            <Image
+                                src={logoUrl}
+                                alt={title}
+                                width={160}
+                                height={32}
+                                unoptimized
+                                className="h-8 w-auto"
+                            />
                         ) : (
                             <h1 className="truncate font-bold text-foreground text-xl">
                                 {title}
@@ -62,6 +62,16 @@ export function Header({
                         >
                             Updates
                         </Link>
+                        {websiteUrl ? (
+                            <a
+                                href={websiteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg px-3 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-neutral-100 hover:text-foreground dark:hover:bg-neutral-700!"
+                            >
+                                Website
+                            </a>
+                        ) : null}
                     </nav>
 
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">

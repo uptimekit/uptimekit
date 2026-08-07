@@ -13,13 +13,13 @@
         "@uptimekit/api": "workspace:*",
         "@uptimekit/config": "workspace:*",
         "@uptimekit/db": "workspace:*",
+        "bullmq": "^6.0.8",
         "drizzle-orm": "^0.45.2",
-        "bullmq": "^5.73.0",
-        "ioredis": "5.10.1"
+        "ioredis": "6.0.0"
     },
     "devDependencies": {
-        "@types/node": "^22.19.17",
-        "tsx": "^4.21.0",
-        "typescript": "^5.9.3"
+        "@types/node": "^26.1.2",
+        "tsx": "^4.23.9",
+        "typescript": "^7.0.2"
     }
 }

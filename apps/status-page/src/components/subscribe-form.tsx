@@ -85,11 +85,10 @@ export function SubscribeForm({
                     slackWebhookUrl: formData.get("slackWebhookUrl"),
                 }),
             });
-            const result = (await response.json().catch(() => ({}))) as {
-                error?: string;
-            };
-
             if (!response.ok) {
+                const result = (await response.json().catch(() => ({}))) as {
+                    error?: string;
+                };
                 setState({
                     error: result.error || "Unable to subscribe right now.",
                     success: "",

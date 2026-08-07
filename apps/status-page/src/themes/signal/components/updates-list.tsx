@@ -42,7 +42,8 @@ export function UpdatesList({
                             <IssueCard
                                 key={incident.id}
                                 incident={incident}
-                                detailsLink={incident.detailsLink}
+                                mode="link"
+                                href={incident.detailsLink}
                             />
                         ))}
                     </div>

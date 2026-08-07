@@ -1,80 +1,57 @@
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
+import { StatusDot } from "@/components/status-indicator";
+import { formatEventDate, getIncidentStatus } from "@/lib/status-event";
 import { cn } from "@/lib/utils";
-import { StatusDot } from "@/themes/default/components/status-indicator";
-import type { Incident, StatusType } from "@/themes/types";
+import type { Incident } from "@/themes/types";
 
-interface IncidentCardProps {
+interface IncidentCardBaseProps {
     incident: Incident;
-    isExpanded?: boolean;
-    onToggle?: () => void;
-    detailsLink?: string;
     className?: string;
 }
 
-// Map severity to StatusDot type
-function getSeverityStatus(severity: string, status?: string): StatusType {
-    switch (severity) {
-        case "critical":
-            return "major_outage";
-        case "major":
-            return "partial_outage";
-        case "minor":
-        case "degraded":
-            return "degraded";
-        case "maintenance":
-            if (status === "scheduled") return "maintenance_scheduled";
-            if (status === "completed") return "maintenance_completed";
-            return "maintenance";
-        default:
-            return "major_outage"; // Default to outage if unknown but incident exists
-    }
-}
+type IncidentCardProps = IncidentCardBaseProps &
+    (
+        | { mode: "link"; href: string }
+        | { mode: "expanded"; href?: string }
+        | { mode: "accordion"; expanded: boolean; onToggle: () => void }
+    );
 
 export function IncidentCard({
     incident,
-    isExpanded = false,
-    onToggle,
-    detailsLink,
     className,
+    ...display
 }: IncidentCardProps) {
+    const isExpanded =
+        display.mode === "expanded" ||
+        (display.mode === "accordion" && display.expanded);
+    const href = display.mode === "accordion" ? undefined : display.href;
+
     return (
         <div
             className={cn(
-                "overflow-hidden rounded-xl border border-border bg-card transition-all duration-300",
+                "overflow-hidden rounded-xl border border-border bg-card transition-[border-color,background-color] duration-300",
                 "hover:border-primary/20",
                 className,
             )}
         >
             <div className="flex w-full items-center justify-between p-5 text-left transition-colors hover:bg-muted/50">
                 <div className="flex items-center gap-3">
-                    <StatusDot
-                        status={getSeverityStatus(
-                            incident.severity,
-                            incident.status,
-                        )}
-                    />
+                    <StatusDot status={getIncidentStatus(incident)} />
                     <div>
                         <h3 className="font-semibold text-card-foreground">
                             {incident.title}
                         </h3>
                         <p className="mt-0.5 text-muted-foreground text-xs">
-                            {new Date(incident.startedAt).toLocaleDateString(
-                                "en-US",
-                                {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                },
-                            )}
+                            {formatEventDate(incident.startedAt)}
                         </p>
                     </div>
                 </div>
 
-                {detailsLink ? (
+                {href ? (
                     <Link
-                        href={detailsLink as any}
+                        href={href as any}
                         aria-label={`View details for ${incident.title}`}
                         className="rounded-full p-2 transition-colors hover:bg-muted"
                     >
@@ -83,16 +60,18 @@ export function IncidentCard({
                             className="h-5 w-5 -rotate-90 text-muted-foreground"
                         />
                     </Link>
-                ) : (
+                ) : display.mode === "accordion" ? (
                     <button
                         type="button"
                         aria-label={
-                            isExpanded ? "Collapse incident" : "Expand incident"
+                            display.expanded
+                                ? "Collapse incident"
+                                : "Expand incident"
                         }
-                        onClick={onToggle}
+                        onClick={display.onToggle}
                         className="rounded-full p-2 transition-colors hover:bg-muted"
                     >
-                        {isExpanded ? (
+                        {display.expanded ? (
                             <FontAwesomeIcon
                                 icon={faChevronUp}
                                 className="h-5 w-5 text-muted-foreground"
@@ -104,10 +83,10 @@ export function IncidentCard({
                             />
                         )}
                     </button>
-                )}
+                ) : null}
             </div>
 
-            {isExpanded && !detailsLink && (
+            {isExpanded && (
                 <div className="animate-slide-up border-border border-t px-5 pt-4 pb-5">
                     {/* Affected services */}
                     {incident.monitors && incident.monitors.length > 0 && (

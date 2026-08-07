@@ -3,9 +3,8 @@ import { notFound } from "next/navigation";
 import { canAccessStatusPage, checkStatusPageAccess } from "@/lib/access-check";
 import { getStatusPageBySlug } from "@/lib/db-queries";
 import { getHostFromHeaders, getProtocolFromHeaders } from "@/lib/route-utils";
+import { renderIncidentDetailPage } from "@/lib/status-page-renderer";
 import { prepareIncidentDetailData } from "@/lib/subpage-data-preparer";
-import { loadIncidentDetailComponent } from "@/lib/theme-loader";
-import { ThemePageWrapper } from "@/themes/theme-page-wrapper";
 
 export async function generateMetadata({
     params,
@@ -73,20 +72,7 @@ export default async function SlugIncidentDetailsPage({
 
     await checkStatusPageAccess(pageConfig, `/${slug}/incidents/${id}`);
 
-    const design = (pageConfig.design as any) || {};
-    const themeId = design.themeId || "default";
-
-    const [IncidentDetailPage, data] = await Promise.all([
-        loadIncidentDetailComponent(themeId),
-        prepareIncidentDetailData(pageConfig, id, slug).catch(() => notFound()),
-    ]);
-
-    return (
-        <ThemePageWrapper
-            themeId={themeId}
-            theme={design.theme}
-            ThemeComponent={IncidentDetailPage}
-            componentProps={{ data }}
-        />
+    return renderIncidentDetailPage(pageConfig, id, slug).catch(() =>
+        notFound(),
     );
 }

@@ -37,7 +37,8 @@ export function PreviousIncidents({
                                     <IssueCard
                                         key={incident.id}
                                         incident={incident}
-                                        detailsLink={incident.detailsLink}
+                                        mode="link"
+                                        href={incident.detailsLink}
                                     />
                                 ))}
                             </div>

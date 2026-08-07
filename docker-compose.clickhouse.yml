@@ -82,7 +82,7 @@ services:
       - APPRISE_WORKER_COUNT=1
     restart: always
 
-  # Only needed when TIMESERIES_BACKEND=clickhouse (the default).
+  # Only needed when TIMESERIES_BACKEND=clickhouse (the default for this file).
   # Comment out this whole block if you switch to TimescaleDB.
   clickhouse:
     image: clickhouse/clickhouse-server:latest

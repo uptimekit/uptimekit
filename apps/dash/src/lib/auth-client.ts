@@ -1,5 +1,4 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
-import type { BetterAuthClientPlugin } from "better-auth/client";
 import {
     adminClient,
     genericOAuthClient,
@@ -8,10 +7,8 @@ import {
 } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
-const apiKeyPlugin = apiKeyClient() as unknown as BetterAuthClientPlugin;
-
 const authClientPlugins = [
-    apiKeyPlugin,
+    apiKeyClient(),
     adminClient(),
     genericOAuthClient(),
     organizationClient(),

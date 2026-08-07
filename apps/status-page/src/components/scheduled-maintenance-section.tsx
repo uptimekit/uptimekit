@@ -1,34 +1,20 @@
 import { IncidentCard } from "@/components/incident-card";
-import { buildPath } from "@/lib/route-utils";
-import type { Incident, Maintenance } from "@/themes/types";
+import { maintenanceToIncident } from "@/lib/status-event";
+import type { Maintenance } from "@/themes/types";
 
 interface ScheduledMaintenanceSectionProps {
     scheduledMaintenances: Maintenance[];
-    slug?: string;
 }
 
 export function ScheduledMaintenanceSection({
     scheduledMaintenances,
-    slug,
 }: ScheduledMaintenanceSectionProps) {
     if (scheduledMaintenances.length === 0) {
         return null;
     }
 
-    const mappedScheduledMaintenances: Incident[] = scheduledMaintenances.map(
-        (m) => ({
-            id: m.id,
-            title: m.title,
-            status: m.status,
-            severity: "maintenance",
-            startedAt: m.startAt,
-            endedAt: m.endAt,
-            monitors: m.monitors,
-            activities: [],
-            detailsLink: slug
-                ? buildPath(`/incidents/${m.id}`, slug)
-                : `/incidents/${m.id}`,
-        }),
+    const mappedScheduledMaintenances = scheduledMaintenances.map(
+        maintenanceToIncident,
     );
 
     return (
@@ -41,8 +27,8 @@ export function ScheduledMaintenanceSection({
                     <IncidentCard
                         key={maintenance.id}
                         incident={maintenance}
-                        isExpanded={false}
-                        detailsLink={maintenance.detailsLink}
+                        mode="link"
+                        href={maintenance.detailsLink}
                         className="border-none bg-card/50 shadow-none hover:bg-card/80"
                     />
                 ))}
