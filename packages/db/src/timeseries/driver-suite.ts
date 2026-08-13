@@ -290,6 +290,46 @@ export function defineDriverTests(
                 expect(events).toHaveLength(1);
                 expect(changes).toHaveLength(1);
             });
+
+            it("does not duplicate an event in concurrent differently batched retries", async () => {
+                const driver = getDriver();
+                const monitorId = uid("concurrent-retry");
+                const baseTimestamp = new Date();
+                const sharedEvent = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "up",
+                    latency: 100,
+                    timestamp: baseTimestamp,
+                };
+                const firstCompanion = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "down",
+                    latency: 0,
+                    timestamp: new Date(baseTimestamp.getTime() + 1000),
+                };
+                const secondCompanion = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "up",
+                    latency: 120,
+                    timestamp: new Date(baseTimestamp.getTime() + 2000),
+                };
+
+                await Promise.all([
+                    driver.insertMonitorEvents([sharedEvent, firstCompanion]),
+                    driver.insertMonitorEvents([sharedEvent, secondCompanion]),
+                ]);
+
+                const events = await driver.getResponseTimes({
+                    monitorId,
+                    since: new Date(baseTimestamp.getTime() - 1000),
+                    limit: null,
+                });
+
+                expect(events).toHaveLength(3);
+            });
         });
 
         describe("aggregations", () => {
