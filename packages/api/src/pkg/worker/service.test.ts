@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     getConfiguredWorkerStates,
+    getStableMonitorEventId,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     type MonitorEvent,
@@ -308,5 +309,41 @@ describe("worker automatic incident gating", () => {
         });
 
         expect(result.eligible).toBe(false);
+    });
+});
+
+describe("worker event retry identity", () => {
+    it("derives the same UUID for a replayed legacy event", () => {
+        const event = {
+            monitorId: "monitor-1",
+            status: "down" as const,
+            latency: 0,
+            timestamp: "2026-04-26T10:00:00Z",
+            error: "connection refused",
+            location: "worker-a",
+        };
+
+        const firstId = getStableMonitorEventId(event, "worker-a");
+        const replayId = getStableMonitorEventId({ ...event }, "worker-a");
+
+        expect(firstId).toBe(replayId);
+        expect(firstId).toMatch(
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+        );
+    });
+
+    it("normalizes a supplied source id without generating a new id", () => {
+        const id = "550E8400-E29B-41D4-A716-446655440000";
+        const event = {
+            id,
+            monitorId: "monitor-1",
+            status: "up" as const,
+            latency: 25,
+            timestamp: "2026-04-26T10:00:00Z",
+        };
+
+        expect(getStableMonitorEventId(event, "worker-a")).toBe(
+            id.toLowerCase(),
+        );
     });
 });

@@ -119,6 +119,10 @@ export class TimescaleDriver implements TimeSeriesDriver {
                     "CREATE INDEX IF NOT EXISTS monitor_events_monitor_location_time_idx ON monitor_events (monitor_id, location, timestamp DESC)",
                 );
 
+                await sql.unsafe(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS monitor_events_id_timestamp_uidx ON monitor_events (id, timestamp)",
+                );
+
                 await sql.unsafe(`
 					CREATE TABLE IF NOT EXISTS monitor_changes (
 						id UUID NOT NULL,
@@ -135,6 +139,10 @@ export class TimescaleDriver implements TimeSeriesDriver {
 
                 await sql.unsafe(
                     "CREATE INDEX IF NOT EXISTS monitor_changes_monitor_time_idx ON monitor_changes (monitor_id, timestamp DESC)",
+                );
+
+                await sql.unsafe(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS monitor_changes_id_timestamp_uidx ON monitor_changes (id, timestamp)",
                 );
 
                 await this.enableCompression(sql, {
@@ -212,7 +220,10 @@ export class TimescaleDriver implements TimeSeriesDriver {
             transfer: e.transfer ?? null,
         }));
 
-        await sql`INSERT INTO monitor_events ${sql(rows)}`;
+        await sql`
+            INSERT INTO monitor_events ${sql(rows)}
+            ON CONFLICT (id, timestamp) DO NOTHING
+        `;
     }
 
     async insertMonitorChanges(changes: MonitorChangeInsert[]) {
@@ -229,7 +240,10 @@ export class TimescaleDriver implements TimeSeriesDriver {
             location: c.location ?? null,
         }));
 
-        await sql`INSERT INTO monitor_changes ${sql(rows)}`;
+        await sql`
+            INSERT INTO monitor_changes ${sql(rows)}
+            ON CONFLICT (id, timestamp) DO NOTHING
+        `;
     }
 
     async getLatestEventForMonitor(

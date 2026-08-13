@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { db, timeseries } from "@uptimekit/db";
 import {
     incident,
@@ -33,6 +34,8 @@ export interface HTTPTimings {
 }
 
 export interface MonitorEvent {
+    /** Optional source id. When absent, the API derives a retry-stable id. */
+    id?: string;
     monitorId: string;
     status: "up" | "down" | "degraded" | "maintenance" | "pending";
     latency: number;
@@ -79,6 +82,70 @@ type WorkerIncidentEventDispatch =
 const monitorEventLocks = new Map<string, Promise<void>>();
 type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AutomaticIncidentTriggerStatus = "down" | "degraded";
+
+const UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function createDeterministicUuid(value: string) {
+    const bytes = createHash("sha256").update(value).digest();
+    bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+    bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+
+    const hex = bytes.toString("hex");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(
+        12,
+        16,
+    )}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * Return the time-series identity for a worker event.
+ *
+ * Worker retries resend the same payload, so this must not depend on a
+ * request attempt or on the relational transaction result. Source ids are
+ * preferred; older workers do not send one, so their event fields form a
+ * deterministic fallback identity.
+ */
+function getStableMonitorEventId(event: MonitorEvent, workerId: string) {
+    const sourceId = event.id?.trim();
+    if (sourceId) {
+        return UUID_PATTERN.test(sourceId)
+            ? sourceId.toLowerCase()
+            : createDeterministicUuid(
+                  [
+                      "uptimekit-monitor-event",
+                      workerId,
+                      event.monitorId,
+                      sourceId,
+                  ].join("\u001f"),
+              );
+    }
+
+    const parsedTimestamp = new Date(event.timestamp);
+    const timestamp = Number.isNaN(parsedTimestamp.getTime())
+        ? String(event.timestamp)
+        : parsedTimestamp.toISOString();
+    const eventLocation = event.location || workerId;
+
+    return createDeterministicUuid(
+        [
+            "uptimekit-monitor-event",
+            workerId,
+            event.monitorId,
+            eventLocation,
+            timestamp,
+            event.status,
+            event.latency,
+            event.statusCode ?? "",
+            event.error ?? "",
+            event.timings?.dnsLookup ?? "",
+            event.timings?.tcpConnect ?? "",
+            event.timings?.tlsHandshake ?? "",
+            event.timings?.ttfb ?? "",
+            event.timings?.transfer ?? "",
+        ].join("\u001f"),
+    );
+}
 
 function getAutomaticIncidentTitle(
     monitorName: string,
@@ -247,7 +314,7 @@ async function persistProcessedMonitorEventTimeSeries(input: {
     if (monitorEvents.length > 0) {
         await timeseries.insertMonitorEvents(
             monitorEvents.map((event) => ({
-                id: crypto.randomUUID(),
+                id: getStableMonitorEventId(event, workerId),
                 monitorId: event.monitorId,
                 status: event.status,
                 latency: event.latency,
@@ -269,6 +336,7 @@ export {
     type AutomaticIncidentOpenEvaluation,
     type ConfiguredWorkerStateResult,
     getConfiguredWorkerStates,
+    getStableMonitorEventId,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     type WorkerStatusSnapshot,
@@ -368,9 +436,14 @@ export async function processMonitorEvents(
     events: MonitorEvent[],
     workerId: string,
 ) {
+    const eventsWithStableIds = events.map((event) => ({
+        ...event,
+        id: getStableMonitorEventId(event, workerId),
+    }));
+
     // Group events by monitor
     const eventsByMonitor = new Map<string, MonitorEvent[]>();
-    for (const event of events) {
+    for (const event of eventsWithStableIds) {
         const list = eventsByMonitor.get(event.monitorId) || [];
         list.push(event);
         eventsByMonitor.set(event.monitorId, list);
@@ -568,7 +641,7 @@ async function processMonitorEventGroup(input: {
 
         if (isChange || isFirstEvent) {
             result.changesToInsert.push({
-                id: crypto.randomUUID(),
+                id: getStableMonitorEventId(event, workerId),
                 monitorId: event.monitorId,
                 status: aggregateRuntimeStatus,
                 timestamp: eventTime,

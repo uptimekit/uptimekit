@@ -253,6 +253,45 @@ export function defineDriverTests(
             });
         });
 
+        describe("retry safety", () => {
+            it("does not duplicate events or changes when an insert is replayed", async () => {
+                const driver = getDriver();
+                const monitorId = uid("retry-safe");
+                const timestamp = new Date();
+                const event = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "down",
+                    latency: 0,
+                    timestamp,
+                };
+                const change = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "down",
+                    timestamp,
+                };
+
+                await driver.insertMonitorEvents([event]);
+                await driver.insertMonitorEvents([event]);
+                await driver.insertMonitorChanges([change]);
+                await driver.insertMonitorChanges([change]);
+
+                const events = await driver.getResponseTimes({
+                    monitorId,
+                    since: new Date(timestamp.getTime() - 1000),
+                    limit: null,
+                });
+                const changes = await driver.getChangeTimeline({
+                    monitorId,
+                    limit: 10,
+                });
+
+                expect(events).toHaveLength(1);
+                expect(changes).toHaveLength(1);
+            });
+        });
+
         describe("aggregations", () => {
             it("computes the average latency over a time window", async () => {
                 const driver = getDriver();
