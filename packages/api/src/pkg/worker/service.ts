@@ -1,4 +1,4 @@
-import { db, postgresClient, timeseries } from "@uptimekit/db";
+import { db, timeseries } from "@uptimekit/db";
 import {
     incident,
     incidentActivity,
@@ -8,7 +8,7 @@ import {
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { worker } from "@uptimekit/db/schema/workers";
-import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
     type AutomaticIncidentOpenEvaluation,
@@ -77,6 +77,7 @@ type WorkerIncidentEventDispatch =
       };
 
 const monitorEventLocks = new Map<string, Promise<void>>();
+type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AutomaticIncidentTriggerStatus = "down" | "degraded";
 
 function getAutomaticIncidentTitle(
@@ -151,7 +152,8 @@ function getAutomaticIncidentEscalatedMessage(input: {
 
 async function withMonitorEventLock<T>(
     monitorId: string,
-    fn: () => Promise<T>,
+    fn: (tx: TransactionLike) => Promise<T>,
+    afterCommit?: (result: T) => Promise<void>,
 ) {
     const previous = monitorEventLocks.get(monitorId) ?? Promise.resolve();
     let releaseCurrentLock: () => void = () => {};
@@ -164,10 +166,18 @@ async function withMonitorEventLock<T>(
     await previous.catch(() => undefined);
 
     try {
-        return await postgresClient.begin(async (sql) => {
-            await sql`select pg_advisory_xact_lock(hashtextextended(${monitorId}, 0))`;
-            return fn();
+        const result = await db.transaction(async (tx) => {
+            await tx.execute(
+                sql`select pg_advisory_xact_lock(hashtextextended(${monitorId}, 0))`,
+            );
+            return fn(tx);
         });
+
+        if (afterCommit) {
+            await afterCommit(result);
+        }
+
+        return result;
     } finally {
         releaseCurrentLock();
         if (monitorEventLocks.get(monitorId) === tail) {
@@ -178,6 +188,53 @@ async function withMonitorEventLock<T>(
 
 async function persistProcessedMonitorEventGroup(input: {
     processed: ProcessedMonitorEventGroup;
+    tx: TransactionLike;
+}) {
+    const { processed, tx } = input;
+
+    if (processed.incidentsToInsert.length > 0) {
+        await tx.insert(incident).values(processed.incidentsToInsert);
+    }
+
+    for (const update of processed.incidentUpdatesToApply) {
+        await tx
+            .update(incident)
+            .set(update.values)
+            .where(eq(incident.id, update.id));
+    }
+
+    if (processed.incidentMonitorsToInsert.length > 0) {
+        await tx
+            .insert(incidentMonitor)
+            .values(processed.incidentMonitorsToInsert);
+    }
+
+    if (processed.incidentStatusPagesToInsert.length > 0) {
+        await tx
+            .insert(incidentStatusPage)
+            .values(processed.incidentStatusPagesToInsert);
+    }
+
+    if (processed.activitiesToInsert.length > 0) {
+        await tx.insert(incidentActivity).values(processed.activitiesToInsert);
+    }
+
+    for (const eventToDispatch of processed.eventsToDispatch) {
+        if (eventToDispatch.event === "incident.created") {
+            await publishAppEvent("incident.created", eventToDispatch.payload, {
+                tx,
+            });
+            continue;
+        }
+
+        await publishAppEvent("incident.resolved", eventToDispatch.payload, {
+            tx,
+        });
+    }
+}
+
+async function persistProcessedMonitorEventTimeSeries(input: {
+    processed: ProcessedMonitorEventGroup;
     monitorEvents: MonitorEvent[];
     workerId: string;
 }) {
@@ -185,62 +242,6 @@ async function persistProcessedMonitorEventGroup(input: {
 
     if (processed.changesToInsert.length > 0) {
         await timeseries.insertMonitorChanges(processed.changesToInsert);
-    }
-
-    await db.transaction(async (tx) => {
-        if (processed.incidentsToInsert.length > 0) {
-            await tx.insert(incident).values(processed.incidentsToInsert);
-        }
-
-        for (const update of processed.incidentUpdatesToApply) {
-            await tx
-                .update(incident)
-                .set(update.values)
-                .where(eq(incident.id, update.id));
-        }
-
-        if (processed.incidentMonitorsToInsert.length > 0) {
-            await tx
-                .insert(incidentMonitor)
-                .values(processed.incidentMonitorsToInsert);
-        }
-
-        if (processed.incidentStatusPagesToInsert.length > 0) {
-            await tx
-                .insert(incidentStatusPage)
-                .values(processed.incidentStatusPagesToInsert);
-        }
-
-        if (processed.activitiesToInsert.length > 0) {
-            await tx
-                .insert(incidentActivity)
-                .values(processed.activitiesToInsert);
-        }
-
-        for (const eventToDispatch of processed.eventsToDispatch) {
-            if (eventToDispatch.event === "incident.created") {
-                await publishAppEvent(
-                    "incident.created",
-                    eventToDispatch.payload,
-                    {
-                        tx,
-                    },
-                );
-                continue;
-            }
-
-            await publishAppEvent(
-                "incident.resolved",
-                eventToDispatch.payload,
-                {
-                    tx,
-                },
-            );
-        }
-    });
-
-    if (processed.eventsToDispatch.length > 0) {
-        await processPendingNotifications("worker-events");
     }
 
     if (monitorEvents.length > 0) {
@@ -282,66 +283,78 @@ export {
 export async function getMonitorsForWorker(workerId: string) {
     const workerRecord = await db.query.worker.findFirst({
         where: eq(worker.id, workerId),
+        columns: {
+            location: true,
+        },
     });
 
     if (!workerRecord) {
         return [];
     }
 
-    const allActiveMonitors = await db.query.monitor.findMany({
-        where: (t, { eq }) => eq(t.active, true),
+    const assignedActiveMonitors = await db.query.monitor.findMany({
+        where: and(
+            eq(monitor.active, true),
+            or(
+                sql`${monitor.workerIds}::jsonb @> ${JSON.stringify([workerId])}::jsonb`,
+                and(
+                    sql`coalesce(${monitor.workerIds}::jsonb, '[]'::jsonb) = '[]'::jsonb`,
+                    sql`${monitor.locations}::jsonb @> ${JSON.stringify([workerRecord.location])}::jsonb`,
+                ),
+            ),
+        ),
+        columns: {
+            id: true,
+            type: true,
+            interval: true,
+            timeout: true,
+            retries: true,
+            retryInterval: true,
+            config: true,
+        },
     });
 
-    return allActiveMonitors
-        .filter((m) => {
-            const workerIds = (m.workerIds as string[] | null) ?? [];
-            if (workerIds.length > 0) {
-                return workerIds.includes(workerId);
-            }
-            const locations = (m.locations as string[] | null) ?? [];
-            return locations.includes(workerRecord.location);
-        })
-        .map((m) => {
-            const config = m.config as {
-                url?: string;
-                hostname?: string;
-                port?: number;
-                resolverServers?: string;
-                recordType?: string;
-                method?: string;
-                headers?: Record<string, string>;
-                body?: string;
-                acceptedStatusCodes?: string;
-                keyword?: string;
-                jsonPath?: string;
-                expectedValue?: string;
-                checkSsl?: boolean;
-                sslCertExpiryNotificationDays?: number;
-            };
-            return {
-                id: m.id,
-                type: m.type,
-                url: config.url || "",
-                hostname: config.hostname || "",
-                port: config.port || 0,
-                resolverServers: config.resolverServers || "",
-                recordType: config.recordType || "",
-                interval: m.interval,
-                timeout: m.timeout,
-                retries: m.retries,
-                retryInterval: m.retryInterval,
-                method: config.method || "GET",
-                headers: config.headers || {},
-                body: config.body,
-                acceptedStatusCodes: config.acceptedStatusCodes,
-                keyword: config.keyword,
-                jsonPath: config.jsonPath,
-                expectedValue: config.expectedValue,
-                checkSsl: config.checkSsl ?? true,
-                sslCertExpiryNotificationDays:
-                    config.sslCertExpiryNotificationDays ?? 30,
-            };
-        });
+    return assignedActiveMonitors.map((m) => {
+        const config = m.config as {
+            url?: string;
+            hostname?: string;
+            port?: number;
+            resolverServers?: string;
+            recordType?: string;
+            method?: string;
+            headers?: Record<string, string>;
+            body?: string;
+            acceptedStatusCodes?: string;
+            keyword?: string;
+            jsonPath?: string;
+            expectedValue?: string;
+            checkSsl?: boolean;
+            sslCertExpiryNotificationDays?: number;
+        };
+        return {
+            id: m.id,
+            type: m.type,
+            url: config.url || "",
+            hostname: config.hostname || "",
+            port: config.port || 0,
+            resolverServers: config.resolverServers || "",
+            recordType: config.recordType || "",
+            interval: m.interval,
+            timeout: m.timeout,
+            retries: m.retries,
+            retryInterval: m.retryInterval,
+            method: config.method || "GET",
+            headers: config.headers || {},
+            body: config.body,
+            acceptedStatusCodes: config.acceptedStatusCodes,
+            keyword: config.keyword,
+            jsonPath: config.jsonPath,
+            expectedValue: config.expectedValue,
+            checkSsl: config.checkSsl ?? true,
+            sslCertExpiryNotificationDays:
+                config.sslCertExpiryNotificationDays ?? 30,
+        };
+    });
 }
 
 /**
@@ -364,21 +377,35 @@ export async function processMonitorEvents(
     }
 
     for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-        await withMonitorEventLock(monitorId, async () => {
-            const processedGroup = await processMonitorEventGroup(
-                monitorId,
-                monitorEvents,
-                workerId,
-            );
+        await withMonitorEventLock(
+            monitorId,
+            async (tx) => {
+                const processedGroup = await processMonitorEventGroup({
+                    monitorId,
+                    monitorEvents,
+                    workerId,
+                    tx,
+                });
 
-            await persistProcessedMonitorEventGroup({
-                processed: processedGroup,
-                monitorEvents,
-                workerId,
-            });
+                await persistProcessedMonitorEventGroup({
+                    processed: processedGroup,
+                    tx,
+                });
 
-            return processedGroup;
-        });
+                await persistProcessedMonitorEventTimeSeries({
+                    processed: processedGroup,
+                    monitorEvents,
+                    workerId,
+                });
+
+                return processedGroup;
+            },
+            async (processedGroup) => {
+                if (processedGroup.eventsToDispatch.length > 0) {
+                    await processPendingNotifications("worker-events");
+                }
+            },
+        );
     }
 
     return { success: true, count: events.length };
@@ -389,19 +416,15 @@ export async function processMonitorEvents(
  * opening or resolving automatic incidents based on the monitor's pending duration,
  * and recording incident-monitor mappings and incident activities. May emit incident events and update incident rows in the database.
  *
- * @param monitorId - ID of the monitor whose events are being processed
- * @param monitorEvents - Chronologically ordered (will be sorted if not) events for the monitor
- * @param workerLocation - Location identifier of the worker processing the events; used as a fallback event location
- * @param changesToInsert - Array that will be appended with MonitorChangeInsert entries to persist monitor status changes
- * @param incidentsToInsert - Array that will be appended with incident insert objects for newly created automatic incidents
- * @param incidentMonitorsToInsert - Array that will be appended with incident-monitor mapping entries for new incidents
- * @param activitiesToInsert - Array that will be appended with incident activity entries describing automated actions
+ * @param input - Monitor event data and the transaction-scoped database client
  */
-async function processMonitorEventGroup(
-    monitorId: string,
-    monitorEvents: MonitorEvent[],
-    workerId: string,
-): Promise<ProcessedMonitorEventGroup> {
+async function processMonitorEventGroup(input: {
+    monitorId: string;
+    monitorEvents: MonitorEvent[];
+    workerId: string;
+    tx: TransactionLike;
+}): Promise<ProcessedMonitorEventGroup> {
+    const { monitorId, monitorEvents, workerId, tx } = input;
     const result: ProcessedMonitorEventGroup = {
         changesToInsert: [],
         incidentsToInsert: [],
@@ -412,7 +435,7 @@ async function processMonitorEventGroup(
         eventsToDispatch: [],
     };
 
-    const monitorConfig = await db.query.monitor.findFirst({
+    const monitorConfig = await tx.query.monitor.findFirst({
         where: eq(monitor.id, monitorId),
     });
 
@@ -422,7 +445,7 @@ async function processMonitorEventGroup(
     }
 
     const now = new Date();
-    const activeMaintenance = await db
+    const activeMaintenance = await tx
         .select({ id: incident.id })
         .from(incident)
         .innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
@@ -449,7 +472,7 @@ async function processMonitorEventGroup(
     }
 
     // Fetch active automatic incident
-    const activeIncidentList = await db
+    const activeIncidentList = await tx
         .select({
             id: incident.id,
             status: incident.status,
@@ -485,11 +508,14 @@ async function processMonitorEventGroup(
     const monitorLocations = Array.isArray(monitorConfig.locations)
         ? monitorConfig.locations
         : [];
-    const configuredWorkers = await getEffectiveMonitorWorkers({
-        id: monitorConfig.id,
-        workerIds: monitorWorkerIds,
-        locations: monitorLocations,
-    });
+    const configuredWorkers = await getEffectiveMonitorWorkers(
+        {
+            id: monitorConfig.id,
+            workerIds: monitorWorkerIds,
+            locations: monitorLocations,
+        },
+        { database: tx },
+    );
     const configuredWorkerIds = configuredWorkers.map(
         (configuredWorker) => configuredWorker.id,
     );
@@ -718,7 +744,7 @@ async function processMonitorEventGroup(
             });
 
             if (monitorConfig.publishIncidentToStatusPage) {
-                const statusPages = await db
+                const statusPages = await tx
                     .select({
                         statusPageId: statusPageMonitor.statusPageId,
                     })

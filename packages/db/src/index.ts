@@ -7,7 +7,7 @@ import { createTimeSeriesDriver } from "./timeseries";
 loadEnv();
 
 const client = postgres(process.env.DATABASE_URL || "", {
-    max: 20,
+    max: 10,
     idle_timeout: 30,
 });
 

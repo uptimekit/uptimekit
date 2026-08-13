@@ -3,6 +3,9 @@ import { incident, incidentMonitor } from "@uptimekit/db/schema/incidents";
 import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
 
+type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type QueryableDatabase = typeof db | TransactionLike;
+
 export type MonitorRuntimeStatus =
     | "up"
     | "down"
@@ -532,9 +535,13 @@ async function getActiveMaintenanceMonitorIds(monitorIds: string[]) {
 
 export async function getEffectiveWorkersForMonitors(
     monitors: MonitorWorkerAssignment[],
-    options: { activeOnly?: boolean } = {},
+    options: {
+        activeOnly?: boolean;
+        database?: QueryableDatabase;
+    } = {},
 ) {
     const activeOnly = options.activeOnly ?? true;
+    const database = options.database ?? db;
     const explicitWorkerIds = unique(
         monitors.flatMap((monitorRecord) => monitorRecord.workerIds ?? []),
     );
@@ -548,7 +555,7 @@ export async function getEffectiveWorkersForMonitors(
 
     const [explicitWorkers, fallbackWorkers] = await Promise.all([
         explicitWorkerIds.length > 0
-            ? db
+            ? database
                   .select({
                       id: worker.id,
                       name: worker.name,
@@ -565,7 +572,7 @@ export async function getEffectiveWorkersForMonitors(
                   )
             : Promise.resolve([]),
         fallbackLocations.length > 0
-            ? db
+            ? database
                   .select({
                       id: worker.id,
                       name: worker.name,
@@ -635,7 +642,10 @@ export async function getEffectiveWorkersForMonitors(
 
 export async function getEffectiveMonitorWorkers(
     monitorRecord: MonitorWorkerAssignment,
-    options: { activeOnly?: boolean } = {},
+    options: {
+        activeOnly?: boolean;
+        database?: QueryableDatabase;
+    } = {},
 ) {
     const workersByMonitor = await getEffectiveWorkersForMonitors(
         [monitorRecord],

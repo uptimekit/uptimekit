@@ -74,6 +74,7 @@ const MONITOR_TYPES = [
 ] as const;
 const URL_MONITOR_TYPES = new Set(["http", "http-json", "keyword", "instatus"]);
 const EXTERNAL_COMPONENTS_CACHE_TTL_MS = 60_000;
+const EXTERNAL_COMPONENTS_CACHE_MAX_ENTRIES = 64;
 const EXTERNAL_COMPONENTS_MAX_BODY_BYTES = 1024 * 1024;
 
 interface InstatusComponentResponse {
@@ -233,6 +234,15 @@ async function listInstatusComponents(statusPageUrl: string) {
 
     const componentsUrl = getInstatusComponentsUrl(statusPageUrl);
     const now = Date.now();
+
+    if (externalComponentsCache) {
+        for (const [url, entry] of externalComponentsCache) {
+            if (entry.expiresAt <= now) {
+                externalComponentsCache.delete(url);
+            }
+        }
+    }
+
     const cached = externalComponentsCache?.get(componentsUrl);
     if (cached && cached.expiresAt > now) {
         return cached.components;
@@ -292,10 +302,21 @@ async function listInstatusComponents(statusPageUrl: string) {
         });
 
     externalComponentsCache ??= new Map();
+    externalComponentsCache.delete(componentsUrl);
     externalComponentsCache.set(componentsUrl, {
         expiresAt: now + EXTERNAL_COMPONENTS_CACHE_TTL_MS,
         components,
     });
+
+    while (
+        externalComponentsCache.size > EXTERNAL_COMPONENTS_CACHE_MAX_ENTRIES
+    ) {
+        const oldestUrl = externalComponentsCache.keys().next().value;
+        if (oldestUrl === undefined) {
+            break;
+        }
+        externalComponentsCache.delete(oldestUrl);
+    }
 
     return components;
 }

@@ -1,3 +1,4 @@
+import { getAggregateMonitorStatusesForMonitors } from "@uptimekit/api/lib/monitor-status";
 import type {
     Monitor,
     MonitorGroup,
@@ -10,7 +11,6 @@ import {
     getActiveMaintenances,
     getActiveStatusPageReports,
     getMaintenanceHistory,
-    getMonitorStatus,
     getScheduledMaintenances,
     getStatusPageEvents,
     getStatusPageReports,
@@ -205,6 +205,22 @@ export async function prepareStatusPageData(
 ): Promise<StatusPageData> {
     const design = normalizeStatusPageDesign(pageConfig.design);
     const { barDays } = design;
+    const internalMonitorInputs = [];
+    for (const pm of pageConfig.monitors) {
+        if (isExternalMonitor(pm.monitor)) {
+            continue;
+        }
+
+        internalMonitorInputs.push({
+            id: pm.monitorId,
+            workerIds: (pm.monitor.workerIds as string[] | null) ?? [],
+            locations: (pm.monitor.locations as string[] | null) ?? [],
+        });
+    }
+    const aggregateMonitorStatusesPromise =
+        internalMonitorInputs.length > 0
+            ? getAggregateMonitorStatusesForMonitors(internalMonitorInputs)
+            : Promise.resolve(new Map());
 
     const [
         activeReports,
@@ -213,6 +229,7 @@ export async function prepareStatusPageData(
         reports,
         maintenances,
         events,
+        aggregateMonitorStatuses,
     ] = await Promise.all([
         getActiveStatusPageReports(pageConfig.id),
         getActiveMaintenances(pageConfig.id),
@@ -220,6 +237,7 @@ export async function prepareStatusPageData(
         getStatusPageReports(pageConfig.id),
         getMaintenanceHistory(pageConfig.id),
         getStatusPageEvents(pageConfig.id, barDays),
+        aggregateMonitorStatusesPromise,
     ]);
 
     const combinedActive = [
@@ -342,13 +360,15 @@ export async function prepareStatusPageData(
                         (await getExternalMonitorStatus(pm.monitor)) ??
                         "unknown";
                 } else {
-                    const lastCheck = await getMonitorStatus(pm.monitorId);
-                    if (lastCheck) {
-                        if (lastCheck.status === "down")
+                    const aggregateStatus = aggregateMonitorStatuses.get(
+                        pm.monitorId,
+                    );
+                    if (aggregateStatus) {
+                        if (aggregateStatus.status === "down")
                             currentStatus = "major_outage";
-                        if (lastCheck.status === "degraded")
+                        if (aggregateStatus.status === "degraded")
                             currentStatus = "degraded";
-                        if (lastCheck.status === "maintenance")
+                        if (aggregateStatus.status === "maintenance")
                             currentStatus = "maintenance" as any;
                     }
                 }
@@ -486,7 +506,8 @@ export async function prepareStatusPageData(
                     : 100;
 
             return {
-                ...pm.monitor,
+                id: pm.monitor.id,
+                name: pm.monitor.name,
                 history,
                 avgUptime,
                 currentStatus,
