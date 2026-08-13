@@ -62,7 +62,7 @@ export class TimescaleDriver implements TimeSeriesDriver {
                 );
             }
             this.ownedClient = postgres(url, {
-                max: 20,
+                max: 10,
                 idle_timeout: 30,
             });
         }

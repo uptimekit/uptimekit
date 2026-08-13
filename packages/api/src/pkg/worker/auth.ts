@@ -24,10 +24,31 @@ interface CacheEntry {
 // TTL: 60 seconds - balances security (key revocation) vs performance
 const apiKeyCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const MAX_API_KEY_CACHE_ENTRIES = 1024;
 
 // Negative cache for invalid keys (shorter TTL to limit attack window)
 const invalidKeyCache = new Map<string, number>();
 const INVALID_CACHE_TTL_MS = 10 * 1000; // 10 seconds
+const MAX_INVALID_KEY_CACHE_ENTRIES = 4096;
+
+function setBoundedCacheEntry<T>(
+    cache: Map<string, T>,
+    key: string,
+    value: T,
+    maxEntries: number,
+) {
+    // Re-inserting moves an existing entry to the newest end of the FIFO set.
+    cache.delete(key);
+    cache.set(key, value);
+
+    while (cache.size > maxEntries) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey === undefined) {
+            break;
+        }
+        cache.delete(oldestKey);
+    }
+}
 
 /**
  * Removes expired entries from both API key caches.
@@ -48,8 +69,9 @@ function cleanupCache() {
     }
 }
 
-// Run cleanup every 30 seconds
-setInterval(cleanupCache, 30 * 1000);
+// Run cleanup every 30 seconds without keeping an otherwise idle process alive.
+const cacheCleanupInterval = setInterval(cleanupCache, 30 * 1000);
+cacheCleanupInterval.unref?.();
 
 /**
  * Compute the SHA-256 hash of an API key and return it as a lowercase hex string.
@@ -118,7 +140,12 @@ export async function authenticateWorker(
 
     if (!keyRecord?.worker) {
         // Cache invalid key
-        invalidKeyCache.set(keyHash, now + INVALID_CACHE_TTL_MS);
+        setBoundedCacheEntry(
+            invalidKeyCache,
+            keyHash,
+            now + INVALID_CACHE_TTL_MS,
+            MAX_INVALID_KEY_CACHE_ENTRIES,
+        );
         return { error: "Invalid API Key", status: 401 };
     }
 
@@ -126,7 +153,12 @@ export async function authenticateWorker(
 
     if (!workerRecord.active) {
         // Cache as invalid (worker inactive)
-        invalidKeyCache.set(keyHash, now + INVALID_CACHE_TTL_MS);
+        setBoundedCacheEntry(
+            invalidKeyCache,
+            keyHash,
+            now + INVALID_CACHE_TTL_MS,
+            MAX_INVALID_KEY_CACHE_ENTRIES,
+        );
         return { error: "Worker not found or inactive", status: 401 };
     }
 
@@ -141,10 +173,15 @@ export async function authenticateWorker(
     };
 
     // Cache the result
-    apiKeyCache.set(keyHash, {
-        workerContext: result,
-        expiresAt: now + CACHE_TTL_MS,
-    });
+    setBoundedCacheEntry(
+        apiKeyCache,
+        keyHash,
+        {
+            workerContext: result,
+            expiresAt: now + CACHE_TTL_MS,
+        },
+        MAX_API_KEY_CACHE_ENTRIES,
+    );
 
     // Update heartbeat and last used timestamp
     await Promise.all([
