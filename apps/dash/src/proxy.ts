@@ -46,5 +46,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/:path*"],
+    matcher: ["/((?!api/(?:auth|health|rpc|webhooks|worker)).*)"],
 };
