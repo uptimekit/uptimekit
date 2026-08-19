@@ -253,6 +253,85 @@ export function defineDriverTests(
             });
         });
 
+        describe("retry safety", () => {
+            it("does not duplicate events or changes when an insert is replayed", async () => {
+                const driver = getDriver();
+                const monitorId = uid("retry-safe");
+                const timestamp = new Date();
+                const event = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "down",
+                    latency: 0,
+                    timestamp,
+                };
+                const change = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "down",
+                    timestamp,
+                };
+
+                await driver.insertMonitorEvents([event]);
+                await driver.insertMonitorEvents([event]);
+                await driver.insertMonitorChanges([change]);
+                await driver.insertMonitorChanges([change]);
+
+                const events = await driver.getResponseTimes({
+                    monitorId,
+                    since: new Date(timestamp.getTime() - 1000),
+                    limit: null,
+                });
+                const changes = await driver.getChangeTimeline({
+                    monitorId,
+                    limit: 10,
+                });
+
+                expect(events).toHaveLength(1);
+                expect(changes).toHaveLength(1);
+            });
+
+            it("does not duplicate an event in concurrent differently batched retries", async () => {
+                const driver = getDriver();
+                const monitorId = uid("concurrent-retry");
+                const baseTimestamp = new Date();
+                const sharedEvent = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "up",
+                    latency: 100,
+                    timestamp: baseTimestamp,
+                };
+                const firstCompanion = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "down",
+                    latency: 0,
+                    timestamp: new Date(baseTimestamp.getTime() + 1000),
+                };
+                const secondCompanion = {
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "up",
+                    latency: 120,
+                    timestamp: new Date(baseTimestamp.getTime() + 2000),
+                };
+
+                await Promise.all([
+                    driver.insertMonitorEvents([sharedEvent, firstCompanion]),
+                    driver.insertMonitorEvents([sharedEvent, secondCompanion]),
+                ]);
+
+                const events = await driver.getResponseTimes({
+                    monitorId,
+                    since: new Date(baseTimestamp.getTime() - 1000),
+                    limit: null,
+                });
+
+                expect(events).toHaveLength(3);
+            });
+        });
+
         describe("aggregations", () => {
             it("computes the average latency over a time window", async () => {
                 const driver = getDriver();

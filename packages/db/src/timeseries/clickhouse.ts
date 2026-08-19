@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { type ClickHouseClient, createClient } from "@clickhouse/client";
 import type { TimeSeriesBackend, TimeSeriesDriver } from "./driver";
 import type {
@@ -27,6 +28,13 @@ interface BootstrapQuery {
     };
 }
 
+type ClickHouseTimeSeriesTable =
+    | "uptimekit.monitor_events"
+    | "uptimekit.monitor_changes";
+
+const CLICKHOUSE_DEDUPLICATION_WINDOW = 10_000;
+const CLICKHOUSE_INSERT_CONCURRENCY = 8;
+
 const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
     { query: "CREATE DATABASE IF NOT EXISTS uptimekit" },
     {
@@ -45,9 +53,10 @@ const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
 				tlsHandshake Nullable(UInt32),
 				ttfb Nullable(UInt32),
 				transfer Nullable(UInt32)
-			) ENGINE = MergeTree()
-			ORDER BY (monitorId, timestamp)
-		`,
+				) ENGINE = MergeTree()
+				ORDER BY (monitorId, timestamp)
+				SETTINGS non_replicated_deduplication_window = ${CLICKHOUSE_DEDUPLICATION_WINDOW}
+			`,
     },
     {
         query: `
@@ -57,9 +66,22 @@ const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
 				status String,
 				timestamp DateTime64(3),
 				location Nullable(String)
-			) ENGINE = MergeTree()
-			ORDER BY (monitorId, timestamp)
-		`,
+				) ENGINE = MergeTree()
+				ORDER BY (monitorId, timestamp)
+				SETTINGS non_replicated_deduplication_window = ${CLICKHOUSE_DEDUPLICATION_WINDOW}
+			`,
+    },
+    {
+        query: `
+            ALTER TABLE uptimekit.monitor_events
+            MODIFY SETTING non_replicated_deduplication_window = ${CLICKHOUSE_DEDUPLICATION_WINDOW}
+        `,
+    },
+    {
+        query: `
+            ALTER TABLE uptimekit.monitor_changes
+            MODIFY SETTING non_replicated_deduplication_window = ${CLICKHOUSE_DEDUPLICATION_WINDOW}
+        `,
     },
     {
         query: "ALTER TABLE system.query_log MODIFY TTL event_date + INTERVAL 3 DAY",
@@ -108,6 +130,12 @@ function getQuantileLevel(value: number | undefined) {
         );
     }
     return quantile.toString();
+}
+
+function getInsertDeduplicationToken(id: string) {
+    return createHash("sha256")
+        .update(`uptimekit-timeseries-row\u001f${id.toLowerCase()}`)
+        .digest("hex");
 }
 
 export interface ClickHouseDriverOptions {
@@ -223,29 +251,101 @@ export class ClickHouseDriver implements TimeSeriesDriver {
         return json.data;
     }
 
+    private async filterExistingRows<T extends { id: string }>(
+        table: ClickHouseTimeSeriesTable,
+        rows: T[],
+    ) {
+        const uniqueRows = Array.from(
+            new Map(rows.map((row) => [row.id.toLowerCase(), row])).values(),
+        );
+        if (uniqueRows.length === 0) return uniqueRows;
+
+        const existingRows = await this.queryJson<{ id: string }>(
+            `
+                SELECT toString(id) AS id
+                FROM ${table}
+                WHERE toString(id) IN ({ids:Array(String)})
+            `,
+            { ids: uniqueRows.map((row) => row.id) },
+        );
+        const existingIds = new Set(
+            existingRows.map((row) => row.id.toLowerCase()),
+        );
+
+        return uniqueRows.filter(
+            (row) => !existingIds.has(row.id.toLowerCase()),
+        );
+    }
+
+    private async insertRowsIndividually<T extends { id: string }>(
+        rows: T[],
+        insert: (row: T) => Promise<void>,
+    ) {
+        let nextIndex = 0;
+        const insertNextRow = async () => {
+            while (true) {
+                const row = rows[nextIndex];
+                nextIndex += 1;
+                if (!row) return;
+                await insert(row);
+            }
+        };
+
+        await Promise.all(
+            Array.from(
+                {
+                    length: Math.min(
+                        CLICKHOUSE_INSERT_CONCURRENCY,
+                        rows.length,
+                    ),
+                },
+                () => insertNextRow(),
+            ),
+        );
+    }
+
     async insertMonitorEvents(events: MonitorEventInsert[]) {
         if (events.length === 0) return;
 
         await this.ensureSchema();
 
-        await this.getClient().insert({
-            table: "uptimekit.monitor_events",
-            values: events.map((e) => ({
-                id: e.id,
-                monitorId: e.monitorId,
-                status: e.status,
-                latency: e.latency,
-                timestamp: e.timestamp.getTime(),
-                statusCode: e.statusCode ?? null,
-                error: e.error ?? null,
-                location: e.location ?? null,
-                dnsLookup: e.dnsLookup ?? null,
-                tcpConnect: e.tcpConnect ?? null,
-                tlsHandshake: e.tlsHandshake ?? null,
-                ttfb: e.ttfb ?? null,
-                transfer: e.transfer ?? null,
-            })),
-            format: "JSONEachRow",
+        const newEvents = await this.filterExistingRows(
+            "uptimekit.monitor_events",
+            events,
+        );
+        if (newEvents.length === 0) return;
+
+        // The existence query is only a fast path for known replays. Each row
+        // still gets its own deduplication token because concurrent requests
+        // can observe the same missing id before either insert completes.
+        await this.insertRowsIndividually(newEvents, async (event) => {
+            await this.getClient().insert({
+                table: "uptimekit.monitor_events",
+                values: [
+                    {
+                        id: event.id,
+                        monitorId: event.monitorId,
+                        status: event.status,
+                        latency: event.latency,
+                        timestamp: event.timestamp.getTime(),
+                        statusCode: event.statusCode ?? null,
+                        error: event.error ?? null,
+                        location: event.location ?? null,
+                        dnsLookup: event.dnsLookup ?? null,
+                        tcpConnect: event.tcpConnect ?? null,
+                        tlsHandshake: event.tlsHandshake ?? null,
+                        ttfb: event.ttfb ?? null,
+                        transfer: event.transfer ?? null,
+                    },
+                ],
+                format: "JSONEachRow",
+                clickhouse_settings: {
+                    insert_deduplicate: 1,
+                    insert_deduplication_token: getInsertDeduplicationToken(
+                        event.id,
+                    ),
+                },
+            });
         });
     }
 
@@ -254,16 +354,32 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 
         await this.ensureSchema();
 
-        await this.getClient().insert({
-            table: "uptimekit.monitor_changes",
-            values: changes.map((c) => ({
-                id: c.id,
-                monitorId: c.monitorId,
-                status: c.status,
-                timestamp: c.timestamp.getTime(),
-                location: c.location ?? null,
-            })),
-            format: "JSONEachRow",
+        const newChanges = await this.filterExistingRows(
+            "uptimekit.monitor_changes",
+            changes,
+        );
+        if (newChanges.length === 0) return;
+
+        await this.insertRowsIndividually(newChanges, async (change) => {
+            await this.getClient().insert({
+                table: "uptimekit.monitor_changes",
+                values: [
+                    {
+                        id: change.id,
+                        monitorId: change.monitorId,
+                        status: change.status,
+                        timestamp: change.timestamp.getTime(),
+                        location: change.location ?? null,
+                    },
+                ],
+                format: "JSONEachRow",
+                clickhouse_settings: {
+                    insert_deduplicate: 1,
+                    insert_deduplication_token: getInsertDeduplicationToken(
+                        change.id,
+                    ),
+                },
+            });
         });
     }
 

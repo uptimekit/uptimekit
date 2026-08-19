@@ -29,6 +29,10 @@ const items: NavItem[] = [
         href: "subscribers",
     },
     {
+        title: "Badge",
+        href: "badge",
+    },
+    {
         title: "Translations",
         href: "translations",
         disabled: true,
