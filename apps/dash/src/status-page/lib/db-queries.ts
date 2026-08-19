@@ -296,21 +296,24 @@ async function getStatusPageMonitorRecords(statusPageId: string) {
         orderBy: [asc(statusPageMonitor.order)],
     });
 
-    const externalMonitorIds: string[] = [];
-    for (const record of records) {
-        if (record.monitor.type === "instatus") {
-            externalMonitorIds.push(record.monitor.id);
-        }
-    }
+    const monitorIds = records.map((record) => record.monitor.id);
 
-    if (externalMonitorIds.length === 0) {
+    if (monitorIds.length === 0) {
         return records;
     }
 
     const externalMonitorConfigs = await db
         .select({ id: monitor.id, config: monitor.config })
         .from(monitor)
-        .where(inArray(monitor.id, externalMonitorIds));
+        .where(
+            and(
+                inArray(monitor.id, monitorIds),
+                or(
+                    eq(monitor.type, "instatus"),
+                    sql`${monitor.config}->>'componentId' IS NOT NULL`,
+                ),
+            ),
+        );
     const configByMonitorId = new Map(
         externalMonitorConfigs.map((record) => [record.id, record.config]),
     );
