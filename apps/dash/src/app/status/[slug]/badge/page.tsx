@@ -3,6 +3,8 @@ import { checkStatusPageAccess } from "@/status-page/lib/access-check";
 import { getStatusPageBySlug } from "@/status-page/lib/db-queries";
 import { renderStatusBadge } from "@/status-page/lib/status-badge-renderer";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
     robots: {
         index: false,

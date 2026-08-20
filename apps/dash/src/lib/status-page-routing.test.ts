@@ -31,8 +31,12 @@ describe("status page request routing", () => {
 
     it("rewrites public paths into the internal namespace", () => {
         expect(getStatusPageRewritePath("/")).toBe("/status");
+        expect(getStatusPageRewritePath("/badge")).toBe("/status/badge");
         expect(getStatusPageRewritePath("/acme/updates")).toBe(
             "/status/acme/updates",
+        );
+        expect(getStatusPageRewritePath("/acme/badge")).toBe(
+            "/status/acme/badge",
         );
     });
 

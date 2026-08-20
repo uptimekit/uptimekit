@@ -8,6 +8,8 @@ import {
 } from "@/status-page/lib/route-utils";
 import { renderStatusBadge } from "@/status-page/lib/status-badge-renderer";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
     robots: {
         index: false,
@@ -16,7 +18,8 @@ export const metadata = {
 };
 
 export default async function CustomDomainStatusBadgePage() {
-    const host = getHostFromHeaders(await headers());
+    const headersList = await headers();
+    const host = getHostFromHeaders(headersList);
 
     if (!host) {
         notFound();

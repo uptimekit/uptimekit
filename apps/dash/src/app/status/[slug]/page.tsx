@@ -4,14 +4,21 @@ import {
     canAccessStatusPage,
     checkStatusPageAccess,
 } from "@/status-page/lib/access-check";
-import { getStatusPageBySlug } from "@/status-page/lib/db-queries";
+import {
+    getStatusPageByDomain,
+    getStatusPageBySlug,
+} from "@/status-page/lib/db-queries";
 import { getFeedAlternates } from "@/status-page/lib/feed-links";
 import {
+    getDomainFromHost,
     getHostFromHeaders,
     getProtocolFromHeaders,
 } from "@/status-page/lib/route-utils";
+import { renderStatusBadge } from "@/status-page/lib/status-badge-renderer";
 import { normalizeStatusPageDesign } from "@/status-page/lib/status-page-config";
 import { renderStatusPage } from "@/status-page/lib/status-page-renderer";
+
+const CUSTOM_DOMAIN_ONLY_SLUGS = new Set(["badge"]);
 
 export async function generateMetadata({
     params,
@@ -94,6 +101,25 @@ export default async function SlugStatusPage({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
+
+    if (CUSTOM_DOMAIN_ONLY_SLUGS.has(slug)) {
+        const headersList = await headers();
+        const host = getHostFromHeaders(headersList);
+
+        if (!host) {
+            notFound();
+        }
+
+        const pageConfig = await getStatusPageByDomain(getDomainFromHost(host));
+
+        if (!pageConfig) {
+            notFound();
+        }
+
+        await checkStatusPageAccess(pageConfig, `/${slug}`);
+
+        return renderStatusBadge(pageConfig);
+    }
 
     const pageConfig = await getStatusPageBySlug(slug);
 
