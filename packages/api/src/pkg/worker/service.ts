@@ -465,15 +465,15 @@ export async function processMonitorEvents(
                     tx,
                 });
 
+                return processedGroup;
+            },
+            async (processedGroup) => {
                 await persistProcessedMonitorEventTimeSeries({
                     processed: processedGroup,
                     monitorEvents,
                     workerId,
                 });
 
-                return processedGroup;
-            },
-            async (processedGroup) => {
                 if (processedGroup.eventsToDispatch.length > 0) {
                     await processPendingNotifications("worker-events");
                 }
