@@ -5,6 +5,7 @@ import {
     cleanupAppEventOutbox,
     ensureNotificationWorkerStarted,
     getNextRetryAt,
+    MAX_EVENT_ATTEMPTS,
     markEventFailed,
     processAppEventRow,
     stopManagedNotificationWorker,
@@ -130,6 +131,24 @@ describe("notification outbox processor", () => {
         expect(getNextRetryAt(10, now).toISOString()).toBe(
             "2026-06-01T10:15:00.000Z",
         );
+    });
+
+    it("keeps timeseries reconciliation pending after retry exhaustion", async () => {
+        const sql = vi.fn(async () => []) as any;
+
+        await markEventFailed(
+            {
+                id: "timeseries-event-1",
+                attempts: MAX_EVENT_ATTEMPTS,
+                error: new Error("timeseries unavailable"),
+                eventName: "monitor.timeseries.persist",
+            },
+            sql,
+        );
+
+        const queryText = sql.mock.calls[0]?.[0]?.join("") ?? "";
+        expect(queryText).toContain("status = 'pending'");
+        expect(queryText).not.toContain("status = 'failed'");
     });
 
     it("starts a single managed Postgres listener and drains on notifications", async () => {

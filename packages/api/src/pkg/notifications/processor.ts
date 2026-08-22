@@ -8,6 +8,8 @@ import {
 import { createLogger } from "../../lib/logger";
 import { handleIntegrationEvent } from "../integrations/service";
 import { handleSubscriberEvent } from "../subscribers/service";
+import { persistMonitorTimeseriesPayload } from "../worker/timeseries-outbox";
+import type { MonitorTimeseriesOutboxPayload } from "../worker/timeseries-payload";
 
 const logger = createLogger("NOTIFICATIONS");
 
@@ -38,6 +40,7 @@ interface ProcessAppEventRowDependencies {
         attempts: number;
         error: unknown;
         now?: Date;
+        eventName?: AppEventName;
     }) => Promise<void>;
     now?: Date;
 }
@@ -85,6 +88,13 @@ export function mapOutboxRowToEvent(row: AppEventOutboxRow): PersistedAppEvent {
 }
 
 export async function dispatchPersistedAppEvent(event: PersistedAppEvent) {
+    if (event.eventName === "monitor.timeseries.persist") {
+        await persistMonitorTimeseriesPayload(
+            event.payload as MonitorTimeseriesOutboxPayload,
+        );
+        return;
+    }
+
     const results = await Promise.allSettled([
         handleIntegrationEvent(event),
         handleSubscriberEvent(event),
@@ -169,6 +179,7 @@ export async function markEventFailed(
         attempts: number;
         error: unknown;
         now?: Date;
+        eventName?: AppEventName;
     },
     sql: NotificationSqlClient = postgresClient,
 ) {
@@ -177,7 +188,10 @@ export async function markEventFailed(
             ? input.error.message
             : String(input.error);
 
-    if (input.attempts >= MAX_EVENT_ATTEMPTS) {
+    if (
+        input.attempts >= MAX_EVENT_ATTEMPTS &&
+        input.eventName !== "monitor.timeseries.persist"
+    ) {
         await sql`
 			update app_event_outbox
 			set
@@ -216,6 +230,7 @@ export async function processAppEventRow(
         ((input) =>
             markEventFailed({
                 ...input,
+                eventName: row.event_name,
                 now: deps.now,
             }));
 
@@ -254,7 +269,11 @@ export async function drainPendingEvents(input: {
 
         for (const row of rows) {
             await processAppEventRow(row, {
-                markFailed: (failure) => markEventFailed(failure, sql),
+                markFailed: (failure) =>
+                    markEventFailed(
+                        { ...failure, eventName: row.event_name },
+                        sql,
+                    ),
                 markProcessed: (id) => markEventProcessed(id, sql),
             });
             processed++;
