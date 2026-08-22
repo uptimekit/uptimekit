@@ -21,6 +21,11 @@ type eventPusher interface {
 	PushEvents([]monitor.Result) error
 }
 
+type pendingEnqueue struct {
+	result monitor.Result
+	turn   chan struct{}
+}
+
 type eventBatcher struct {
 	pusher        eventPusher
 	results       chan monitor.Result
@@ -33,6 +38,7 @@ type eventBatcher struct {
 
 	closeMu      sync.RWMutex
 	enqueueMu    sync.Mutex
+	enqueueQueue []*pendingEnqueue
 	retryMu      sync.Mutex
 	retryBlocked bool
 	retryReady   chan struct{}
@@ -115,8 +121,6 @@ func newEventBatcherWithSpool(
 func (b *eventBatcher) Enqueue(result monitor.Result) error {
 	b.closeMu.RLock()
 	defer b.closeMu.RUnlock()
-	b.enqueueMu.Lock()
-	defer b.enqueueMu.Unlock()
 
 	select {
 	case <-b.ready:
@@ -130,31 +134,64 @@ func (b *eventBatcher) Enqueue(result monitor.Result) error {
 	if b.spool == nil {
 		return fmt.Errorf("event spool is not configured")
 	}
+
+	b.enqueueMu.Lock()
 	if err := b.spool.append(result); err != nil {
+		b.enqueueMu.Unlock()
 		return fmt.Errorf("durably queuing monitor event: %w", err)
 	}
+	pending := &pendingEnqueue{
+		result: result,
+		turn:   make(chan struct{}),
+	}
+	if len(b.enqueueQueue) == 0 {
+		close(pending.turn)
+	}
+	b.enqueueQueue = append(b.enqueueQueue, pending)
+	b.enqueueMu.Unlock()
 
 	for {
-		b.retryMu.Lock()
-		if b.retryBlocked {
-			retryReady := b.retryReady
-			b.retryMu.Unlock()
-
-			select {
-			case <-retryReady:
-				continue
-			case <-b.stop:
-				return nil
-			}
-		}
-		b.retryMu.Unlock()
-
 		select {
-		case b.results <- result:
-			return nil
+		case <-pending.turn:
 		case <-b.stop:
 			return nil
 		}
+
+		b.retryMu.Lock()
+		if !b.retryBlocked {
+			b.retryMu.Unlock()
+			break
+		}
+		retryReady := b.retryReady
+		b.retryMu.Unlock()
+
+		select {
+		case <-retryReady:
+			continue
+		case <-b.stop:
+			return nil
+		}
+	}
+
+	select {
+	case b.results <- pending.result:
+		b.completeEnqueue(pending)
+	case <-b.stop:
+	}
+	return nil
+}
+
+func (b *eventBatcher) completeEnqueue(pending *pendingEnqueue) {
+	b.enqueueMu.Lock()
+	defer b.enqueueMu.Unlock()
+
+	if len(b.enqueueQueue) == 0 || b.enqueueQueue[0] != pending {
+		return
+	}
+
+	b.enqueueQueue = b.enqueueQueue[1:]
+	if len(b.enqueueQueue) > 0 {
+		close(b.enqueueQueue[0].turn)
 	}
 }
 

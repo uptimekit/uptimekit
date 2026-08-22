@@ -412,6 +412,88 @@ func TestEventBatcherCloseUnblocksBackpressure(t *testing.T) {
 	}
 }
 
+func TestEventBatcherSpoolsConcurrentResultsDuringBackpressure(t *testing.T) {
+	spoolPath := filepath.Join(t.TempDir(), "events.json")
+	pusher := &recordingEventPusher{
+		attempted: make(chan struct{}, 1),
+		failures:  1000,
+	}
+	batcher := newEventBatcherWithSpool(
+		pusher,
+		1,
+		time.Hour,
+		1,
+		time.Hour,
+		spoolPath,
+	)
+	t.Cleanup(func() {
+		_ = batcher.Close()
+	})
+
+	if err := batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	select {
+	case <-pusher.attempted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for failed batch")
+	}
+
+	firstDone := make(chan error, 1)
+	go func() {
+		firstDone <- batcher.Enqueue(monitor.Result{MonitorID: "monitor-2"})
+	}()
+	waitForSpoolCount(t, spoolPath, 2)
+
+	secondDone := make(chan error, 1)
+	go func() {
+		secondDone <- batcher.Enqueue(monitor.Result{MonitorID: "monitor-3"})
+	}()
+	waitForSpoolCount(t, spoolPath, 3)
+
+	if err := batcher.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	if err := <-firstDone; err != nil {
+		t.Fatalf("first blocked Enqueue() error = %v", err)
+	}
+	if err := <-secondDone; err != nil {
+		t.Fatalf("second blocked Enqueue() error = %v", err)
+	}
+
+	persisted, err := newEventSpool(spoolPath).load()
+	if err != nil {
+		t.Fatalf("load() error = %v", err)
+	}
+	if len(persisted) != 3 ||
+		persisted[0].MonitorID != "monitor-1" ||
+		persisted[1].MonitorID != "monitor-2" ||
+		persisted[2].MonitorID != "monitor-3" {
+		t.Fatalf("persisted = %#v, want all concurrent results in order", persisted)
+	}
+}
+
+func waitForSpoolCount(t *testing.T, spoolPath string, want int) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		persisted, err := newEventSpool(spoolPath).load()
+		if err != nil {
+			t.Fatalf("load() error = %v", err)
+		}
+		if len(persisted) >= want {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	persisted, err := newEventSpool(spoolPath).load()
+	if err != nil {
+		t.Fatalf("load() after timeout error = %v", err)
+	}
+	t.Fatalf("persisted = %#v, want at least %d results", persisted, want)
+}
+
 func TestEventBatcherReportsSpoolFailure(t *testing.T) {
 	pusher := &recordingEventPusher{failures: 1000}
 	batcher := newEventBatcherWithSpool(
