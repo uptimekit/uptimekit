@@ -31,7 +31,7 @@ export async function enqueueMonitorTimeseriesPersistence(
     payload: MonitorTimeseriesOutboxPayload,
     options: { tx?: AppEventWriteClient } = {},
 ) {
-    await publishAppEvent("monitor.timeseries.persist", payload, {
+    return publishAppEvent("monitor.timeseries.persist", payload, {
         tx: options.tx,
     });
 }

@@ -21,7 +21,10 @@ import {
     isAutomaticIncidentResolveEligible,
     type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
-import { processPendingNotifications } from "../notifications";
+import {
+    markEventProcessed,
+    processPendingNotifications,
+} from "../notifications";
 import {
     getMonitorEventMetadata,
     invalidateMonitorEventMetadataCache,
@@ -82,6 +85,7 @@ interface ProcessedMonitorEventGroup {
 interface ProcessedMonitorEventBatch {
     processed: ProcessedMonitorEventGroup;
     monitorEvents: MonitorEvent[];
+    timeseriesOutboxId: string | null;
 }
 
 interface IncidentUpdate {
@@ -365,38 +369,28 @@ function toMonitorTimeseriesPersistencePayload(input: {
     };
 }
 
-async function enqueueProcessedMonitorEventBatch(input: {
-    groups: ProcessedMonitorEventBatch[];
+async function enqueueProcessedMonitorEventGroup(input: {
+    processed: ProcessedMonitorEventGroup;
+    monitorEvents: MonitorEvent[];
     workerId: string;
-}) {
-    const payloads = input.groups.flatMap((group) => {
-        if (!group.processed.organizationId) {
-            return [];
-        }
-
-        const payload = toMonitorTimeseriesPersistencePayload({
-            changesToInsert: group.processed.changesToInsert,
-            monitorEvents: group.monitorEvents,
-            workerId: input.workerId,
-        });
-
-        return [
-            {
-                organizationId: group.processed.organizationId,
-                ...payload,
-            } satisfies MonitorTimeseriesOutboxPayload,
-        ];
-    });
-
-    if (payloads.length === 0) {
-        return;
+    tx: TransactionLike;
+}): Promise<string | null> {
+    const { processed, monitorEvents, workerId, tx } = input;
+    if (!processed.organizationId) {
+        return null;
     }
 
-    await db.transaction(async (tx) => {
-        for (const payload of payloads) {
-            await enqueueMonitorTimeseriesPersistence(payload, { tx });
-        }
-    });
+    const payload = {
+        organizationId: processed.organizationId,
+        ...toMonitorTimeseriesPersistencePayload({
+            changesToInsert: processed.changesToInsert,
+            monitorEvents,
+            workerId,
+        }),
+    } satisfies MonitorTimeseriesOutboxPayload;
+
+    const { id } = await enqueueMonitorTimeseriesPersistence(payload, { tx });
+    return id;
 }
 
 async function persistProcessedMonitorEventBatch(input: {
@@ -412,6 +406,13 @@ async function persistProcessedMonitorEventBatch(input: {
         monitorEvents: groups.flatMap(({ monitorEvents }) => monitorEvents),
         workerId,
     });
+
+    await Promise.all(
+        groups
+            .map(({ timeseriesOutboxId }) => timeseriesOutboxId)
+            .filter((id): id is string => id !== null)
+            .map((id) => markEventProcessed(id)),
+    );
 
     if (groups.some(({ processed }) => processed.eventsToDispatch.length > 0)) {
         await processPendingNotifications("worker-events");
@@ -537,55 +538,48 @@ export async function processMonitorEvents(
 
     const processedGroups: ProcessedMonitorEventBatch[] = [];
 
-    try {
-        for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-            const processedGroup = await withMonitorEventLock(
-                monitorId,
-                async (tx) => {
-                    const processedGroup = await processMonitorEventGroup({
-                        monitorId,
+    for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
+        const groupResult = await withMonitorEventLock(
+            monitorId,
+            async (tx) => {
+                const processedGroup = await processMonitorEventGroup({
+                    monitorId,
+                    monitorEvents,
+                    workerId,
+                    tx,
+                });
+
+                await persistProcessedMonitorEventGroup({
+                    processed: processedGroup,
+                    tx,
+                });
+
+                // Keep the relational result and its time-series recovery
+                // record in the same transaction so a process crash cannot
+                // commit one without the other.
+                const timeseriesOutboxId =
+                    await enqueueProcessedMonitorEventGroup({
+                        processed: processedGroup,
                         monitorEvents,
                         workerId,
                         tx,
                     });
 
-                    await persistProcessedMonitorEventGroup({
-                        processed: processedGroup,
-                        tx,
-                    });
+                return { processedGroup, timeseriesOutboxId };
+            },
+        );
 
-                    return processedGroup;
-                },
-            );
-
-            processedGroups.push({ processed: processedGroup, monitorEvents });
-        }
-
-        await persistProcessedMonitorEventBatch({
-            groups: processedGroups,
-            workerId,
+        processedGroups.push({
+            processed: groupResult.processedGroup,
+            monitorEvents,
+            timeseriesOutboxId: groupResult.timeseriesOutboxId,
         });
-    } catch (error) {
-        if (processedGroups.length > 0) {
-            try {
-                // A later group may fail after earlier relational transactions
-                // committed. Persist reconciliation work in the shared
-                // Postgres outbox before returning so another API process can
-                // repair the time-series rows after a restart.
-                await enqueueProcessedMonitorEventBatch({
-                    groups: processedGroups,
-                    workerId,
-                });
-            } catch (recoveryError) {
-                throw new AggregateError(
-                    [error, recoveryError],
-                    "Failed to persist worker event reconciliation work",
-                );
-            }
-        }
-
-        throw error;
     }
+
+    await persistProcessedMonitorEventBatch({
+        groups: processedGroups,
+        workerId,
+    });
 
     return { success: true, count: events.length };
 }

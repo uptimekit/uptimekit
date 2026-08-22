@@ -16,7 +16,10 @@ import (
 	"github.com/uptimekit/worker/internal/monitor"
 )
 
-const schedulerTickInterval = time.Second
+const (
+	schedulerTickInterval = time.Second
+	workerShutdownTimeout = 30 * time.Second
+)
 
 type monitorState struct {
 	config   monitor.Config
@@ -271,12 +274,34 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 	}
 }
 
-func (r *runner) wait() error {
-	r.wg.Wait()
-	if r.events != nil {
-		return r.events.Close()
+func (r *runner) wait(ctx context.Context) error {
+	checksDone := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(checksDone)
+	}()
+
+	select {
+	case <-checksDone:
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-	return nil
+
+	if r.events == nil {
+		return nil
+	}
+
+	eventsDone := make(chan error, 1)
+	go func() {
+		eventsDone <- r.events.Close()
+	}()
+
+	select {
+	case err := <-eventsDone:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func checkWithRetries(m monitor.Monitor, cfg monitor.Config, sleep func(time.Duration)) monitor.Result {
@@ -344,9 +369,14 @@ func main() {
 		select {
 		case <-ctx.Done():
 			log.Println("Worker stopped.")
-			if err := runner.wait(); err != nil {
-				log.Printf("Failed to persist unsent worker events: %v", err)
+			shutdownCtx, shutdownCancel := context.WithTimeout(
+				context.Background(),
+				workerShutdownTimeout,
+			)
+			if err := runner.wait(shutdownCtx); err != nil {
+				log.Printf("Worker shutdown did not complete: %v", err)
 			}
+			shutdownCancel()
 			return
 		case <-syncTicker.C:
 			runner.syncMonitors()

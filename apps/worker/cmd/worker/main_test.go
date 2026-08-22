@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,6 +14,27 @@ import (
 type fakeMonitor struct {
 	results []monitor.Result
 	calls   int
+}
+
+type blockingEventPusher struct {
+	started     chan struct{}
+	release     chan struct{}
+	startOnce   sync.Once
+	releaseOnce sync.Once
+}
+
+func (p *blockingEventPusher) PushEvents([]monitor.Result) error {
+	p.startOnce.Do(func() {
+		close(p.started)
+	})
+	<-p.release
+	return nil
+}
+
+func (p *blockingEventPusher) unblock() {
+	p.releaseOnce.Do(func() {
+		close(p.release)
+	})
 }
 
 func (m *fakeMonitor) Check(cfg monitor.Config) monitor.Result {
@@ -82,6 +107,41 @@ func TestCheckWithRetriesExhaustsRetryBudget(t *testing.T) {
 	}
 	if len(sleeps) != 2 {
 		t.Fatalf("sleeps = %v, want 2 retry sleeps", sleeps)
+	}
+}
+
+func TestRunnerWaitHonorsShutdownDeadline(t *testing.T) {
+	pusher := &blockingEventPusher{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	events := newEventBatcherWithSpool(
+		pusher,
+		1,
+		time.Hour,
+		1,
+		time.Hour,
+		filepath.Join(t.TempDir(), "events.json"),
+	)
+	r := &runner{events: events}
+	t.Cleanup(func() {
+		pusher.unblock()
+		_ = events.Close()
+	})
+
+	if err := events.Enqueue(monitor.Result{MonitorID: "monitor-1"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	select {
+	case <-pusher.started:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for blocked event delivery")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	if err := r.wait(shutdownCtx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("wait() error = %v, want context deadline exceeded", err)
 	}
 }
 
