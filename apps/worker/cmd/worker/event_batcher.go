@@ -31,11 +31,14 @@ type eventBatcher struct {
 	spool         *eventSpool
 	stop          chan struct{}
 
-	closeMu     sync.RWMutex
-	stopOnce    sync.Once
-	closed      bool
-	shutdownErr error
-	wg          sync.WaitGroup
+	closeMu      sync.RWMutex
+	retryMu      sync.Mutex
+	retryBlocked bool
+	retryReady   chan struct{}
+	stopOnce     sync.Once
+	closed       bool
+	shutdownErr  error
+	wg           sync.WaitGroup
 }
 
 func newEventBatcher(pusher eventPusher) *eventBatcher {
@@ -98,6 +101,8 @@ func newEventBatcherWithSpool(
 		retryDelay:    retryDelay,
 		spool:         newEventSpool(spoolPath),
 		stop:          make(chan struct{}),
+		retryBlocked:  true,
+		retryReady:    make(chan struct{}),
 	}
 	batcher.wg.Add(1)
 	go batcher.run()
@@ -108,14 +113,56 @@ func (b *eventBatcher) Enqueue(result monitor.Result) {
 	b.closeMu.RLock()
 	defer b.closeMu.RUnlock()
 
-	if b.closed {
+	for {
+		b.retryMu.Lock()
+		if b.closed {
+			b.retryMu.Unlock()
+			return
+		}
+		if b.retryBlocked {
+			retryReady := b.retryReady
+			b.retryMu.Unlock()
+
+			select {
+			case <-retryReady:
+				continue
+			case <-b.stop:
+				return
+			}
+		}
+		b.retryMu.Unlock()
+
+		select {
+		case b.results <- result:
+			return
+		case <-b.stop:
+			return
+		}
+	}
+}
+
+func (b *eventBatcher) blockNewEvents() {
+	b.retryMu.Lock()
+	defer b.retryMu.Unlock()
+
+	if b.retryBlocked {
 		return
 	}
 
-	select {
-	case b.results <- result:
-	case <-b.stop:
+	b.retryBlocked = true
+	b.retryReady = make(chan struct{})
+}
+
+func (b *eventBatcher) allowNewEvents() {
+	b.retryMu.Lock()
+	defer b.retryMu.Unlock()
+
+	if !b.retryBlocked {
+		return
 	}
+
+	b.retryBlocked = false
+	close(b.retryReady)
 }
 
 func (b *eventBatcher) Close() error {
@@ -186,6 +233,20 @@ func (b *eventBatcher) persistUnsent(
 	return nil
 }
 
+func (b *eventBatcher) drainQueuedResults(batch *[]monitor.Result) {
+	for {
+		select {
+		case result, ok := <-b.results:
+			if !ok {
+				return
+			}
+			*batch = append(*batch, result)
+		default:
+			return
+		}
+	}
+}
+
 func (b *eventBatcher) run() {
 	defer b.wg.Done()
 
@@ -200,6 +261,7 @@ func (b *eventBatcher) run() {
 		persisted, err := b.spool.load()
 		if err != nil {
 			log.Printf("Could not load persisted monitor events: %v", err)
+			b.allowNewEvents()
 		} else if len(persisted) > 0 {
 			retryBatch = persisted
 			retryAt = time.Now()
@@ -207,7 +269,11 @@ func (b *eventBatcher) run() {
 				"Loaded %d persisted monitor events for retry",
 				len(retryBatch),
 			)
+		} else {
+			b.allowNewEvents()
 		}
+	} else {
+		b.allowNewEvents()
 	}
 
 	flush := func() {
@@ -216,11 +282,18 @@ func (b *eventBatcher) run() {
 		}
 
 		candidate := append([]monitor.Result(nil), batch...)
+		b.blockNewEvents()
 		if err := b.pushBatch(candidate); err != nil {
 			retryBatch = candidate
 			retryAt = time.Now().Add(b.retryDelay)
+			batch = batch[:0]
+			b.drainQueuedResults(&batch)
 			if b.spool != nil {
-				if spoolErr := b.spool.replace(retryBatch); spoolErr != nil {
+				pending := append(
+					append([]monitor.Result(nil), retryBatch...),
+					batch...,
+				)
+				if spoolErr := b.spool.replace(pending); spoolErr != nil {
 					log.Printf(
 						"Could not persist failed event batch for retry: %v",
 						spoolErr,
@@ -232,8 +305,26 @@ func (b *eventBatcher) run() {
 				len(candidate),
 				err,
 			)
+			return
 		}
 		batch = batch[:0]
+		b.drainQueuedResults(&batch)
+		if len(batch) > 0 {
+			if spoolErr := b.persistUnsent(nil, batch); spoolErr != nil {
+				log.Printf(
+					"Could not persist queued events after delivery: %v",
+					spoolErr,
+				)
+			}
+			return
+		}
+
+		if b.spool != nil {
+			if spoolErr := b.spool.clear(); spoolErr != nil {
+				log.Printf("Could not clear delivered event spool: %v", spoolErr)
+			}
+		}
+		b.allowNewEvents()
 	}
 
 	retryPending := func(force bool) {
@@ -253,11 +344,23 @@ func (b *eventBatcher) run() {
 
 		retryBatch = nil
 		retryAt = time.Time{}
+		b.drainQueuedResults(&batch)
+		if len(batch) > 0 {
+			if spoolErr := b.persistUnsent(nil, batch); spoolErr != nil {
+				log.Printf(
+					"Could not persist queued events after retry: %v",
+					spoolErr,
+				)
+			}
+			return
+		}
+
 		if b.spool != nil {
 			if err := b.spool.clear(); err != nil {
 				log.Printf("Could not clear delivered event spool: %v", err)
 			}
 		}
+		b.allowNewEvents()
 	}
 
 	finish := func() error {
@@ -277,7 +380,11 @@ func (b *eventBatcher) run() {
 			}
 
 			retryBatch = nil
-			if b.spool != nil {
+			if len(batch) > 0 {
+				if err := b.persistUnsent(nil, batch); err != nil {
+					return err
+				}
+			} else if b.spool != nil {
 				if err := b.spool.clear(); err != nil {
 					log.Printf("Could not clear delivered event spool: %v", err)
 				}
@@ -292,6 +399,11 @@ func (b *eventBatcher) run() {
 					err,
 				)
 				return b.persistUnsent(nil, batch)
+			}
+			if b.spool != nil {
+				if err := b.spool.clear(); err != nil {
+					log.Printf("Could not clear delivered event spool: %v", err)
+				}
 			}
 		}
 
@@ -310,8 +422,10 @@ func (b *eventBatcher) run() {
 		}
 
 		results := (<-chan monitor.Result)(b.results)
-		if len(batch) >= b.maxBatchSize && len(retryBatch) > 0 {
-			// Apply backpressure while an older failed batch is pending.
+		if len(retryBatch) > 0 {
+			// Enqueue applies the same gate to producers. Keep the receive
+			// disabled so an already-buffered suffix is drained and spooled
+			// before retry delivery can be acknowledged.
 			results = nil
 		}
 

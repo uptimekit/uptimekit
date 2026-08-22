@@ -248,13 +248,10 @@ func TestEventBatcherCloseUnblocksBackpressure(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for failed batch")
 	}
-	batcher.Enqueue(monitor.Result{MonitorID: "monitor-2"})
 
 	enqueueDone := make(chan struct{})
 	go func() {
-		for i := 0; i < eventBatchQueueCapacity+1; i++ {
-			batcher.Enqueue(monitor.Result{MonitorID: "queued"})
-		}
+		batcher.Enqueue(monitor.Result{MonitorID: "monitor-2"})
 		close(enqueueDone)
 	}()
 
@@ -262,6 +259,13 @@ func TestEventBatcherCloseUnblocksBackpressure(t *testing.T) {
 	case <-enqueueDone:
 		t.Fatal("producer unexpectedly completed while retry backpressure was active")
 	case <-time.After(25 * time.Millisecond):
+	}
+	persistedBeforeClose, err := newEventSpool(spoolPath).load()
+	if err != nil {
+		t.Fatalf("load() before close error = %v", err)
+	}
+	if len(persistedBeforeClose) != 1 || persistedBeforeClose[0].MonitorID != "monitor-1" {
+		t.Fatalf("persisted before close = %#v, want the failed retry batch", persistedBeforeClose)
 	}
 
 	closeDone := make(chan error, 1)
@@ -282,6 +286,14 @@ func TestEventBatcherCloseUnblocksBackpressure(t *testing.T) {
 	case <-enqueueDone:
 	case <-time.After(time.Second):
 		t.Fatal("blocked producer did not observe shutdown")
+	}
+
+	persisted, err := newEventSpool(spoolPath).load()
+	if err != nil {
+		t.Fatalf("load() error = %v", err)
+	}
+	if len(persisted) != 1 || persisted[0].MonitorID != "monitor-1" {
+		t.Fatalf("persisted = %#v, want only the failed retry batch", persisted)
 	}
 }
 

@@ -25,6 +25,9 @@ func defaultEventSpoolPath() string {
 	}
 
 	dashboardURL := os.Getenv("DASHBOARD_URL")
+	if dashboardURL == "" {
+		dashboardURL = "http://localhost:3000"
+	}
 	apiKey := os.Getenv("WORKER_API_KEY")
 	digest := sha256.Sum256([]byte(dashboardURL + "\x00" + apiKey))
 	identity := hex.EncodeToString(digest[:8])

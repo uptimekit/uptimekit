@@ -25,6 +25,7 @@ Before you begin, ensure you have the following installed on your server or loca
     ```ini
     WORKER_API_KEY=your_api_key
     DASHBOARD_URL=http://localhost:3000
+    WORKER_EVENT_SPOOL_PATH=/var/lib/uptimekit/events.json
     ```
 
   </Step>
@@ -36,7 +37,15 @@ Before you begin, ensure you have the following installed on your server or loca
       image: ghcr.io/uptimekit/worker:latest
       restart: always
       env_file: .env
+      volumes:
+        - worker-events:/var/lib/uptimekit
+
+    volumes:
+      worker-events:
     ```
+
+    The event spool volume preserves monitor results that are waiting for
+    delivery if the worker is replaced before graceful shutdown.
 
     <Info>
       If you are running the worker on a separate server, you will need to set up a full `docker-compose.yml` similar to the dashboard installation, but only running the worker service.
