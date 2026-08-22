@@ -8,8 +8,13 @@ import {
 
 function metadata(name: string): MonitorEventMetadata {
     return {
-        monitorConfig: { name } as MonitorEventMetadata["monitorConfig"],
-        configuredWorkers: [],
+        monitorConfig: {
+            id: "monitor-id",
+            name,
+            organizationId: "organization-id",
+            incidentPendingDuration: 0,
+            publishIncidentToStatusPage: false,
+        },
     };
 }
 

@@ -1,13 +1,16 @@
 import type { monitor } from "@uptimekit/db/schema/monitors";
-import type { getEffectiveMonitorWorkers } from "../../lib/monitor-status";
 
-export type EffectiveMonitorWorkers = Awaited<
-    ReturnType<typeof getEffectiveMonitorWorkers>
+export type MonitorEventConfig = Pick<
+    typeof monitor.$inferSelect,
+    | "id"
+    | "organizationId"
+    | "name"
+    | "incidentPendingDuration"
+    | "publishIncidentToStatusPage"
 >;
 
 export type MonitorEventMetadata = {
-    monitorConfig: typeof monitor.$inferSelect;
-    configuredWorkers: EffectiveMonitorWorkers;
+    monitorConfig: MonitorEventConfig;
 };
 
 const MONITOR_EVENT_METADATA_CACHE_TTL_MS = 30 * 1000;

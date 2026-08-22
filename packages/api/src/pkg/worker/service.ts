@@ -23,8 +23,9 @@ import {
 } from "../../lib/monitor-status";
 import { processPendingNotifications } from "../notifications";
 import {
-    type EffectiveMonitorWorkers,
     getMonitorEventMetadata,
+    invalidateMonitorEventMetadataCache,
+    type MonitorEventConfig,
     setMonitorEventMetadata,
 } from "./monitor-event-cache";
 
@@ -92,6 +93,9 @@ type WorkerIncidentEventDispatch =
 const monitorEventLocks = new Map<string, Promise<void>>();
 type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AutomaticIncidentTriggerStatus = "down" | "degraded";
+type EffectiveMonitorWorkers = Awaited<
+    ReturnType<typeof getEffectiveMonitorWorkers>
+>;
 
 const UUID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -557,11 +561,21 @@ async function processMonitorEventGroup(input: {
     };
 
     const cachedMetadata = getMonitorEventMetadata(monitorId);
-    let monitorConfig: typeof monitor.$inferSelect;
+    let monitorConfig: MonitorEventConfig;
     let configuredWorkers: EffectiveMonitorWorkers;
+    let currentAssignments:
+        | Pick<typeof monitor.$inferSelect, "workerIds" | "locations">
+        | undefined;
 
     if (cachedMetadata) {
-        ({ monitorConfig, configuredWorkers } = cachedMetadata);
+        monitorConfig = cachedMetadata.monitorConfig;
+        currentAssignments = await tx.query.monitor.findFirst({
+            where: eq(monitor.id, monitorId),
+            columns: {
+                workerIds: true,
+                locations: true,
+            },
+        });
     } else {
         const freshMonitorConfig = await tx.query.monitor.findFirst({
             where: eq(monitor.id, monitorId),
@@ -573,26 +587,30 @@ async function processMonitorEventGroup(input: {
         }
 
         monitorConfig = freshMonitorConfig;
-        const monitorWorkerIds = Array.isArray(monitorConfig.workerIds)
-            ? monitorConfig.workerIds
-            : [];
-        const monitorLocations = Array.isArray(monitorConfig.locations)
-            ? monitorConfig.locations
-            : [];
-        configuredWorkers = await getEffectiveMonitorWorkers(
-            {
-                id: monitorConfig.id,
-                workerIds: monitorWorkerIds,
-                locations: monitorLocations,
-            },
-            { database: tx },
-        );
-
-        setMonitorEventMetadata(monitorId, {
-            monitorConfig,
-            configuredWorkers,
-        });
+        currentAssignments = freshMonitorConfig;
+        setMonitorEventMetadata(monitorId, { monitorConfig });
     }
+
+    if (!currentAssignments) {
+        invalidateMonitorEventMetadataCache(monitorId);
+        console.warn(`Received events for unknown monitor: ${monitorId}`);
+        return result;
+    }
+
+    const monitorWorkerIds = Array.isArray(currentAssignments.workerIds)
+        ? currentAssignments.workerIds
+        : [];
+    const monitorLocations = Array.isArray(currentAssignments.locations)
+        ? currentAssignments.locations
+        : [];
+    configuredWorkers = await getEffectiveMonitorWorkers(
+        {
+            id: monitorId,
+            workerIds: monitorWorkerIds,
+            locations: monitorLocations,
+        },
+        { database: tx },
+    );
 
     const now = new Date();
     const activeMaintenance = await tx
