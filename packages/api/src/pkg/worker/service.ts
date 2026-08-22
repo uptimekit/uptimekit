@@ -69,6 +69,11 @@ interface ProcessedMonitorEventGroup {
     eventsToDispatch: WorkerIncidentEventDispatch[];
 }
 
+interface ProcessedMonitorEventBatch {
+    processed: ProcessedMonitorEventGroup;
+    monitorEvents: MonitorEvent[];
+}
+
 interface IncidentUpdate {
     id: string;
     values: Partial<typeof incident.$inferInsert>;
@@ -337,6 +342,25 @@ async function persistProcessedMonitorEventTimeSeries(input: {
     }
 }
 
+async function persistProcessedMonitorEventBatch(input: {
+    groups: ProcessedMonitorEventBatch[];
+    workerId: string;
+}) {
+    const { groups, workerId } = input;
+
+    await persistProcessedMonitorEventTimeSeries({
+        changesToInsert: groups.flatMap(
+            ({ processed }) => processed.changesToInsert,
+        ),
+        monitorEvents: groups.flatMap(({ monitorEvents }) => monitorEvents),
+        workerId,
+    });
+
+    if (groups.some(({ processed }) => processed.eventsToDispatch.length > 0)) {
+        await processPendingNotifications("worker-events");
+    }
+}
+
 export {
     type AutomaticIncidentOpenEvaluation,
     type ConfiguredWorkerStateResult,
@@ -454,50 +478,55 @@ export async function processMonitorEvents(
         eventsByMonitor.set(event.monitorId, list);
     }
 
-    const processedGroups: Array<{
-        processed: ProcessedMonitorEventGroup;
-        monitorEvents: MonitorEvent[];
-    }> = [];
+    const processedGroups: ProcessedMonitorEventBatch[] = [];
 
-    for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-        const processedGroup = await withMonitorEventLock(
-            monitorId,
-            async (tx) => {
-                const processedGroup = await processMonitorEventGroup({
-                    monitorId,
-                    monitorEvents,
+    try {
+        for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
+            const processedGroup = await withMonitorEventLock(
+                monitorId,
+                async (tx) => {
+                    const processedGroup = await processMonitorEventGroup({
+                        monitorId,
+                        monitorEvents,
+                        workerId,
+                        tx,
+                    });
+
+                    await persistProcessedMonitorEventGroup({
+                        processed: processedGroup,
+                        tx,
+                    });
+
+                    return processedGroup;
+                },
+            );
+
+            processedGroups.push({ processed: processedGroup, monitorEvents });
+        }
+
+        await persistProcessedMonitorEventBatch({
+            groups: processedGroups,
+            workerId,
+        });
+    } catch (error) {
+        if (processedGroups.length > 0) {
+            try {
+                // A later group may fail after earlier relational transactions
+                // committed. Replay those groups before returning the error so
+                // their time-series rows are not left behind.
+                await persistProcessedMonitorEventBatch({
+                    groups: processedGroups,
                     workerId,
-                    tx,
                 });
+            } catch (recoveryError) {
+                console.error(
+                    "Failed to recover persisted worker event groups:",
+                    recoveryError,
+                );
+            }
+        }
 
-                await persistProcessedMonitorEventGroup({
-                    processed: processedGroup,
-                    tx,
-                });
-
-                return processedGroup;
-            },
-        );
-
-        processedGroups.push({ processed: processedGroup, monitorEvents });
-    }
-
-    await persistProcessedMonitorEventTimeSeries({
-        changesToInsert: processedGroups.flatMap(
-            ({ processed }) => processed.changesToInsert,
-        ),
-        monitorEvents: processedGroups.flatMap(
-            ({ monitorEvents }) => monitorEvents,
-        ),
-        workerId,
-    });
-
-    if (
-        processedGroups.some(
-            ({ processed }) => processed.eventsToDispatch.length > 0,
-        )
-    ) {
-        await processPendingNotifications("worker-events");
+        throw error;
     }
 
     return { success: true, count: events.length };
