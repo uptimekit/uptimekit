@@ -32,9 +32,11 @@ type eventBatcher struct {
 	stop          chan struct{}
 
 	closeMu      sync.RWMutex
+	enqueueMu    sync.Mutex
 	retryMu      sync.Mutex
 	retryBlocked bool
 	retryReady   chan struct{}
+	ready        chan struct{}
 	stopOnce     sync.Once
 	closed       bool
 	shutdownErr  error
@@ -103,22 +105,37 @@ func newEventBatcherWithSpool(
 		stop:          make(chan struct{}),
 		retryBlocked:  true,
 		retryReady:    make(chan struct{}),
+		ready:         make(chan struct{}),
 	}
 	batcher.wg.Add(1)
 	go batcher.run()
 	return batcher
 }
 
-func (b *eventBatcher) Enqueue(result monitor.Result) {
+func (b *eventBatcher) Enqueue(result monitor.Result) error {
 	b.closeMu.RLock()
 	defer b.closeMu.RUnlock()
+	b.enqueueMu.Lock()
+	defer b.enqueueMu.Unlock()
+
+	select {
+	case <-b.ready:
+	case <-b.stop:
+		return nil
+	}
+
+	if b.closed {
+		return nil
+	}
+	if b.spool == nil {
+		return fmt.Errorf("event spool is not configured")
+	}
+	if err := b.spool.append(result); err != nil {
+		return fmt.Errorf("durably queuing monitor event: %w", err)
+	}
 
 	for {
 		b.retryMu.Lock()
-		if b.closed {
-			b.retryMu.Unlock()
-			return
-		}
 		if b.retryBlocked {
 			retryReady := b.retryReady
 			b.retryMu.Unlock()
@@ -127,16 +144,16 @@ func (b *eventBatcher) Enqueue(result monitor.Result) {
 			case <-retryReady:
 				continue
 			case <-b.stop:
-				return
+				return nil
 			}
 		}
 		b.retryMu.Unlock()
 
 		select {
 		case b.results <- result:
-			return
+			return nil
 		case <-b.stop:
-			return
+			return nil
 		}
 	}
 }
@@ -206,45 +223,16 @@ func (b *eventBatcher) pushBatch(results []monitor.Result) error {
 	return lastErr
 }
 
-func (b *eventBatcher) persistUnsent(
-	retryBatch []monitor.Result,
-	batch []monitor.Result,
-) error {
+func (b *eventBatcher) verifyDurableSpool() error {
 	if b.spool == nil {
 		return fmt.Errorf("event spool is not configured")
 	}
 
-	pending := make([]monitor.Result, 0, len(retryBatch)+len(batch))
-	pending = append(pending, retryBatch...)
-	pending = append(pending, batch...)
-	if len(pending) == 0 {
-		return nil
+	if _, err := b.spool.load(); err != nil {
+		return fmt.Errorf("verifying unsent event spool: %w", err)
 	}
 
-	if err := b.spool.replace(pending); err != nil {
-		return fmt.Errorf("persisting unsent event batch: %w", err)
-	}
-
-	log.Printf(
-		"Persisted %d unsent monitor events to %s",
-		len(pending),
-		b.spool.path,
-	)
 	return nil
-}
-
-func (b *eventBatcher) drainQueuedResults(batch *[]monitor.Result) {
-	for {
-		select {
-		case result, ok := <-b.results:
-			if !ok {
-				return
-			}
-			*batch = append(*batch, result)
-		default:
-			return
-		}
-	}
 }
 
 func (b *eventBatcher) run() {
@@ -275,6 +263,7 @@ func (b *eventBatcher) run() {
 	} else {
 		b.allowNewEvents()
 	}
+	close(b.ready)
 
 	flush := func() {
 		if len(batch) == 0 || len(retryBatch) > 0 {
@@ -287,19 +276,6 @@ func (b *eventBatcher) run() {
 			retryBatch = candidate
 			retryAt = time.Now().Add(b.retryDelay)
 			batch = batch[:0]
-			b.drainQueuedResults(&batch)
-			if b.spool != nil {
-				pending := append(
-					append([]monitor.Result(nil), retryBatch...),
-					batch...,
-				)
-				if spoolErr := b.spool.replace(pending); spoolErr != nil {
-					log.Printf(
-						"Could not persist failed event batch for retry: %v",
-						spoolErr,
-					)
-				}
-			}
 			log.Printf(
 				"Push events failed for batch of %d; will retry: %v",
 				len(candidate),
@@ -308,20 +284,9 @@ func (b *eventBatcher) run() {
 			return
 		}
 		batch = batch[:0]
-		b.drainQueuedResults(&batch)
-		if len(batch) > 0 {
-			if spoolErr := b.persistUnsent(nil, batch); spoolErr != nil {
-				log.Printf(
-					"Could not persist queued events after delivery: %v",
-					spoolErr,
-				)
-			}
-			return
-		}
-
 		if b.spool != nil {
-			if spoolErr := b.spool.clear(); spoolErr != nil {
-				log.Printf("Could not clear delivered event spool: %v", spoolErr)
+			if spoolErr := b.spool.removePrefix(len(candidate)); spoolErr != nil {
+				log.Printf("Could not remove delivered event batch from spool: %v", spoolErr)
 			}
 		}
 		b.allowNewEvents()
@@ -332,6 +297,7 @@ func (b *eventBatcher) run() {
 			return
 		}
 
+		deliveredCount := len(retryBatch)
 		if err := b.pushBatch(retryBatch); err != nil {
 			retryAt = time.Now().Add(b.retryDelay)
 			log.Printf(
@@ -344,20 +310,9 @@ func (b *eventBatcher) run() {
 
 		retryBatch = nil
 		retryAt = time.Time{}
-		b.drainQueuedResults(&batch)
-		if len(batch) > 0 {
-			if spoolErr := b.persistUnsent(nil, batch); spoolErr != nil {
-				log.Printf(
-					"Could not persist queued events after retry: %v",
-					spoolErr,
-				)
-			}
-			return
-		}
-
 		if b.spool != nil {
-			if err := b.spool.clear(); err != nil {
-				log.Printf("Could not clear delivered event spool: %v", err)
+			if err := b.spool.removePrefix(deliveredCount); err != nil {
+				log.Printf("Could not remove delivered retry batch from spool: %v", err)
 			}
 		}
 		b.allowNewEvents()
@@ -370,39 +325,36 @@ func (b *eventBatcher) run() {
 
 		// Deliver the failed batch before newer results to preserve event order.
 		if len(retryBatch) > 0 {
+			deliveredCount := len(retryBatch)
 			if err := b.pushBatch(retryBatch); err != nil {
 				log.Printf(
-					"Could not deliver pending event batch during shutdown; preserving %d results: %v",
+					"Could not deliver pending event batch during shutdown; durable spool retained %d results: %v",
 					len(retryBatch),
 					err,
 				)
-				return b.persistUnsent(retryBatch, batch)
+				return b.verifyDurableSpool()
 			}
 
-			retryBatch = nil
-			if len(batch) > 0 {
-				if err := b.persistUnsent(nil, batch); err != nil {
-					return err
-				}
-			} else if b.spool != nil {
-				if err := b.spool.clear(); err != nil {
-					log.Printf("Could not clear delivered event spool: %v", err)
+			if b.spool != nil {
+				if err := b.spool.removePrefix(deliveredCount); err != nil {
+					log.Printf("Could not remove delivered retry batch from spool: %v", err)
 				}
 			}
+			retryBatch = nil
 		}
 
 		if len(batch) > 0 {
 			if err := b.pushBatch(batch); err != nil {
 				log.Printf(
-					"Could not deliver event batch during shutdown; preserving %d results: %v",
+					"Could not deliver event batch during shutdown; durable spool retained %d results: %v",
 					len(batch),
 					err,
 				)
-				return b.persistUnsent(nil, batch)
+				return b.verifyDurableSpool()
 			}
 			if b.spool != nil {
-				if err := b.spool.clear(); err != nil {
-					log.Printf("Could not clear delivered event spool: %v", err)
+				if err := b.spool.removePrefix(len(batch)); err != nil {
+					log.Printf("Could not remove delivered event batch from spool: %v", err)
 				}
 			}
 		}

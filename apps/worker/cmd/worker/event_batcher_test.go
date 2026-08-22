@@ -19,6 +19,11 @@ type recordingEventPusher struct {
 	attempts  int
 }
 
+func testSpoolPath(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(t.TempDir(), "events.json")
+}
+
 func (p *recordingEventPusher) PushEvents(results []monitor.Result) error {
 	p.mu.Lock()
 	p.attempts++
@@ -66,7 +71,14 @@ func (p *recordingEventPusher) attemptCount() int {
 
 func TestEventBatcherFlushesAtMaximumBatchSize(t *testing.T) {
 	pusher := &recordingEventPusher{pushed: make(chan struct{}, 1)}
-	batcher := newEventBatcherWithConfig(pusher, 2, time.Hour)
+	batcher := newEventBatcherWithSpool(
+		pusher,
+		2,
+		time.Hour,
+		eventBatchPushAttempts,
+		eventBatchRetryDelay,
+		testSpoolPath(t),
+	)
 
 	batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"})
 	batcher.Enqueue(monitor.Result{MonitorID: "monitor-2"})
@@ -86,7 +98,14 @@ func TestEventBatcherFlushesAtMaximumBatchSize(t *testing.T) {
 
 func TestEventBatcherFlushesPendingResultsOnClose(t *testing.T) {
 	pusher := &recordingEventPusher{pushed: make(chan struct{}, 1)}
-	batcher := newEventBatcherWithConfig(pusher, 10, time.Hour)
+	batcher := newEventBatcherWithSpool(
+		pusher,
+		10,
+		time.Hour,
+		eventBatchPushAttempts,
+		eventBatchRetryDelay,
+		testSpoolPath(t),
+	)
 
 	batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"})
 	batcher.Close()
@@ -97,12 +116,48 @@ func TestEventBatcherFlushesPendingResultsOnClose(t *testing.T) {
 	}
 }
 
+func TestEventBatcherDurablyQueuesBeforeReturning(t *testing.T) {
+	spoolPath := testSpoolPath(t)
+	pusher := &recordingEventPusher{pushed: make(chan struct{}, 1)}
+	batcher := newEventBatcherWithSpool(
+		pusher,
+		10,
+		time.Hour,
+		eventBatchPushAttempts,
+		eventBatchRetryDelay,
+		spoolPath,
+	)
+
+	if err := batcher.Enqueue(monitor.Result{MonitorID: "durable-monitor"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+
+	persisted, err := newEventSpool(spoolPath).load()
+	if err != nil {
+		t.Fatalf("load() error = %v", err)
+	}
+	if len(persisted) != 1 || persisted[0].MonitorID != "durable-monitor" {
+		t.Fatalf("persisted = %#v, want the accepted result", persisted)
+	}
+
+	if err := batcher.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+}
+
 func TestEventBatcherRetriesFailedBatch(t *testing.T) {
 	pusher := &recordingEventPusher{
 		pushed:   make(chan struct{}, 1),
 		failures: 1,
 	}
-	batcher := newEventBatcherWithOptions(pusher, 2, time.Hour, 3, time.Millisecond)
+	batcher := newEventBatcherWithSpool(
+		pusher,
+		2,
+		time.Hour,
+		3,
+		time.Millisecond,
+		testSpoolPath(t),
+	)
 
 	batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"})
 	batcher.Enqueue(monitor.Result{MonitorID: "monitor-2"})
@@ -128,12 +183,13 @@ func TestEventBatcherRequeuesAfterRetryExhaustion(t *testing.T) {
 		pushed:   make(chan struct{}, 1),
 		failures: 3,
 	}
-	batcher := newEventBatcherWithOptions(
+	batcher := newEventBatcherWithSpool(
 		pusher,
 		2,
-		time.Millisecond,
+		10*time.Millisecond,
 		3,
 		time.Millisecond,
+		testSpoolPath(t),
 	)
 
 	batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"})
@@ -264,8 +320,10 @@ func TestEventBatcherCloseUnblocksBackpressure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load() before close error = %v", err)
 	}
-	if len(persistedBeforeClose) != 1 || persistedBeforeClose[0].MonitorID != "monitor-1" {
-		t.Fatalf("persisted before close = %#v, want the failed retry batch", persistedBeforeClose)
+	if len(persistedBeforeClose) != 2 ||
+		persistedBeforeClose[0].MonitorID != "monitor-1" ||
+		persistedBeforeClose[1].MonitorID != "monitor-2" {
+		t.Fatalf("persisted before close = %#v, want both ordered results", persistedBeforeClose)
 	}
 
 	closeDone := make(chan error, 1)
@@ -292,8 +350,10 @@ func TestEventBatcherCloseUnblocksBackpressure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load() error = %v", err)
 	}
-	if len(persisted) != 1 || persisted[0].MonitorID != "monitor-1" {
-		t.Fatalf("persisted = %#v, want only the failed retry batch", persisted)
+	if len(persisted) != 2 ||
+		persisted[0].MonitorID != "monitor-1" ||
+		persisted[1].MonitorID != "monitor-2" {
+		t.Fatalf("persisted = %#v, want both durable results", persisted)
 	}
 }
 
@@ -308,8 +368,10 @@ func TestEventBatcherReportsSpoolFailure(t *testing.T) {
 		t.TempDir(),
 	)
 
-	batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"})
-	if err := batcher.Close(); err == nil {
-		t.Fatal("Close() error = nil, want durable handoff failure")
+	if err := batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"}); err == nil {
+		t.Fatal("Enqueue() error = nil, want durable queue failure")
+	}
+	if err := batcher.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
 	}
 }

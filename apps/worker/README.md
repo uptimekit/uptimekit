@@ -43,7 +43,7 @@ The worker is configured via environment variables or a `.env` file.
 | `DASHBOARD_URL` | The URL of your UptimeKit instance. | `http://localhost:3000` |
 | `CHECK_INTERVAL` | Frequency (in seconds) to pull new monitor updates. | `60` |
 | `WORKER_MAX_CONCURRENCY` | Maximum number of monitor checks that may run simultaneously. | `20` |
-| `WORKER_EVENT_SPOOL_PATH` | Optional path for batches that could not be delivered; use a persistent volume for crash recovery across container replacement. | `/tmp/uptimekit-worker-events-<identity>.json` |
+| `WORKER_EVENT_SPOOL_PATH` | Optional path for the durable write-ahead queue of accepted monitor results; use a persistent volume across container replacement. | `/tmp/uptimekit-worker-events-<identity>.json` |
 
 ### 3. Run with Docker
 

@@ -255,8 +255,11 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 	log.Printf("[DEBUG] Result: ID=%s Status=%s Latency=%dms Error=%q",
 		result.MonitorID, result.Status, result.Latency, result.Error)
 
-	r.events.Enqueue(result)
-	log.Printf("Queued event for monitor %s.", result.MonitorID)
+	if err := r.events.Enqueue(result); err != nil {
+		log.Printf("Could not durably queue event for monitor %s: %v", result.MonitorID, err)
+	} else {
+		log.Printf("Queued event for monitor %s.", result.MonitorID)
+	}
 
 	if result.CertificateInfo != nil {
 		if err := r.client.PushCertificateInfo(result.MonitorID, result.CertificateInfo); err != nil {
