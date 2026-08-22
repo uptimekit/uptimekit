@@ -301,14 +301,14 @@ async function persistProcessedMonitorEventGroup(input: {
 }
 
 async function persistProcessedMonitorEventTimeSeries(input: {
-    processed: ProcessedMonitorEventGroup;
+    changesToInsert: MonitorChangeInsert[];
     monitorEvents: MonitorEvent[];
     workerId: string;
 }) {
-    const { processed, monitorEvents, workerId } = input;
+    const { changesToInsert, monitorEvents, workerId } = input;
 
-    if (processed.changesToInsert.length > 0) {
-        await timeseries.insertMonitorChanges(processed.changesToInsert);
+    if (changesToInsert.length > 0) {
+        await timeseries.insertMonitorChanges(changesToInsert);
     }
 
     if (monitorEvents.length > 0) {
@@ -449,8 +449,13 @@ export async function processMonitorEvents(
         eventsByMonitor.set(event.monitorId, list);
     }
 
+    const processedGroups: Array<{
+        processed: ProcessedMonitorEventGroup;
+        monitorEvents: MonitorEvent[];
+    }> = [];
+
     for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-        await withMonitorEventLock(
+        const processedGroup = await withMonitorEventLock(
             monitorId,
             async (tx) => {
                 const processedGroup = await processMonitorEventGroup({
@@ -467,18 +472,27 @@ export async function processMonitorEvents(
 
                 return processedGroup;
             },
-            async (processedGroup) => {
-                await persistProcessedMonitorEventTimeSeries({
-                    processed: processedGroup,
-                    monitorEvents,
-                    workerId,
-                });
-
-                if (processedGroup.eventsToDispatch.length > 0) {
-                    await processPendingNotifications("worker-events");
-                }
-            },
         );
+
+        processedGroups.push({ processed: processedGroup, monitorEvents });
+    }
+
+    await persistProcessedMonitorEventTimeSeries({
+        changesToInsert: processedGroups.flatMap(
+            ({ processed }) => processed.changesToInsert,
+        ),
+        monitorEvents: processedGroups.flatMap(
+            ({ monitorEvents }) => monitorEvents,
+        ),
+        workerId,
+    });
+
+    if (
+        processedGroups.some(
+            ({ processed }) => processed.eventsToDispatch.length > 0,
+        )
+    ) {
+        await processPendingNotifications("worker-events");
     }
 
     return { success: true, count: events.length };
