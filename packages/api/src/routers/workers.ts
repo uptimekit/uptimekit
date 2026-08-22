@@ -21,6 +21,7 @@ import { protectedProcedure } from "../index";
 import { createLogger } from "../lib/logger";
 import { getWorkerHeartbeatThreshold } from "../lib/worker-status";
 import { hashApiKey, invalidateApiKeyCache } from "../pkg/worker/auth";
+import { invalidateMonitorEventMetadataCache } from "../pkg/worker/monitor-event-cache";
 
 const logger = createLogger("API");
 
@@ -187,6 +188,8 @@ export const workersRouter = {
                     workerId: newWorker.id,
                 });
 
+                invalidateMonitorEventMetadataCache();
+
                 return {
                     worker: newWorker,
                     key: rawKey, // Return raw key only once
@@ -307,6 +310,7 @@ export const workersRouter = {
             });
 
             logger.info(`Updated worker ${updatedWorker.name}`);
+            invalidateMonitorEventMetadataCache();
 
             return updatedWorker;
         }),
@@ -476,6 +480,8 @@ export const workersRouter = {
             for (const key of apiKeys) {
                 invalidateApiKeyCache(key.keyHash);
             }
+
+            invalidateMonitorEventMetadataCache();
 
             logger.info(`Deleted worker ${workerRecord.name}`);
 

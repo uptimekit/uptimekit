@@ -22,6 +22,11 @@ import {
     type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
 import { processPendingNotifications } from "../notifications";
+import {
+    type EffectiveMonitorWorkers,
+    getMonitorEventMetadata,
+    setMonitorEventMetadata,
+} from "./monitor-event-cache";
 
 // Types
 export interface HTTPTimings {
@@ -82,59 +87,9 @@ type WorkerIncidentEventDispatch =
 const monitorEventLocks = new Map<string, Promise<void>>();
 type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AutomaticIncidentTriggerStatus = "down" | "degraded";
-type EffectiveMonitorWorkers = Awaited<
-    ReturnType<typeof getEffectiveMonitorWorkers>
->;
-type MonitorEventMetadata = {
-    monitorConfig: typeof monitor.$inferSelect;
-    configuredWorkers: EffectiveMonitorWorkers;
-};
-
-const MONITOR_EVENT_METADATA_CACHE_TTL_MS = 30 * 1000;
-const MAX_MONITOR_EVENT_METADATA_CACHE_ENTRIES = 1024;
-const monitorEventMetadataCache = new Map<
-    string,
-    { expiresAt: number; metadata: MonitorEventMetadata }
->();
 
 const UUID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function getCachedMonitorEventMetadata(monitorId: string) {
-    const entry = monitorEventMetadataCache.get(monitorId);
-    if (!entry) {
-        return undefined;
-    }
-
-    if (entry.expiresAt <= Date.now()) {
-        monitorEventMetadataCache.delete(monitorId);
-        return undefined;
-    }
-
-    return entry.metadata;
-}
-
-function cacheMonitorEventMetadata(
-    monitorId: string,
-    metadata: MonitorEventMetadata,
-) {
-    monitorEventMetadataCache.delete(monitorId);
-    monitorEventMetadataCache.set(monitorId, {
-        expiresAt: Date.now() + MONITOR_EVENT_METADATA_CACHE_TTL_MS,
-        metadata,
-    });
-
-    while (
-        monitorEventMetadataCache.size >
-        MAX_MONITOR_EVENT_METADATA_CACHE_ENTRIES
-    ) {
-        const oldestMonitorId = monitorEventMetadataCache.keys().next().value;
-        if (oldestMonitorId === undefined) {
-            break;
-        }
-        monitorEventMetadataCache.delete(oldestMonitorId);
-    }
-}
 
 function createDeterministicUuid(value: string) {
     const bytes = createHash("sha256").update(value).digest();
@@ -572,7 +527,7 @@ async function processMonitorEventGroup(input: {
         eventsToDispatch: [],
     };
 
-    const cachedMetadata = getCachedMonitorEventMetadata(monitorId);
+    const cachedMetadata = getMonitorEventMetadata(monitorId);
     let monitorConfig: typeof monitor.$inferSelect;
     let configuredWorkers: EffectiveMonitorWorkers;
 
@@ -604,7 +559,7 @@ async function processMonitorEventGroup(input: {
             { database: tx },
         );
 
-        cacheMonitorEventMetadata(monitorId, {
+        setMonitorEventMetadata(monitorId, {
             monitorConfig,
             configuredWorkers,
         });

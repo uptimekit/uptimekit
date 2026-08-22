@@ -46,6 +46,7 @@ import {
     fetchPublicHttpUrl,
     UnsafePublicHttpUrlError,
 } from "../lib/safe-url";
+import { invalidateMonitorEventMetadataCache } from "../pkg/worker/monitor-event-cache";
 
 const RESPONSE_TIME_RANGE_VALUES = [
     "3h",
@@ -1110,6 +1111,7 @@ export const monitorsRouter = {
             }
 
             await db.delete(monitor).where(eq(monitor.id, input.id));
+            invalidateMonitorEventMetadataCache(input.id);
             return { success: true };
         }),
 
@@ -1165,6 +1167,7 @@ export const monitorsRouter = {
                 })
                 .where(eq(monitor.id, input.id));
 
+            invalidateMonitorEventMetadataCache(input.id);
             return { success: true };
         }),
 
@@ -1304,6 +1307,7 @@ export const monitorsRouter = {
                 }
             });
 
+            invalidateMonitorEventMetadataCache(input.id);
             return { success: true };
         }),
 
@@ -1427,6 +1431,9 @@ export const monitorsRouter = {
                 }
             });
 
+            for (const monitorId of monitorIds) {
+                invalidateMonitorEventMetadataCache(monitorId);
+            }
             return { updatedCount: monitors.length };
         }),
 
