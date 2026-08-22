@@ -92,6 +92,8 @@ func TestMonitorSchedulerClaimsOnlyDueMonitors(t *testing.T) {
 		{ID: "fast", Interval: 30},
 		{ID: "slow", Interval: 120},
 	}, start)
+	scheduler.states["fast"].phase = 0
+	scheduler.states["slow"].phase = 90 * time.Second
 
 	initial := scheduler.claimDue(start, 10)
 	if len(initial) != 2 {
@@ -116,20 +118,25 @@ func TestMonitorSchedulerSkipsOverlappingStrictCadenceSlot(t *testing.T) {
 		t.Fatalf("initial due count = %d, want 1", len(initial))
 	}
 
-	overlap := scheduler.claimDue(start.Add(60*time.Second), 10)
+	firstNextDue := scheduler.states["monitor-1"].nextDue
+	if !firstNextDue.After(start) || !firstNextDue.Before(start.Add(60*time.Second)) {
+		t.Fatalf("first nextDue = %s, want a time within the next interval", firstNextDue)
+	}
+
+	overlap := scheduler.claimDue(firstNextDue, 10)
 	if len(overlap) != 0 {
 		t.Fatalf("overlap due count = %d, want 0", len(overlap))
 	}
 
 	nextDue := scheduler.states["monitor-1"].nextDue
-	wantNextDue := start.Add(120 * time.Second)
+	wantNextDue := firstNextDue.Add(60 * time.Second)
 	if !nextDue.Equal(wantNextDue) {
 		t.Fatalf("nextDue = %s, want %s", nextDue, wantNextDue)
 	}
 
 	scheduler.complete("monitor-1")
 
-	beforeNextSlot := scheduler.claimDue(start.Add(61*time.Second), 10)
+	beforeNextSlot := scheduler.claimDue(firstNextDue.Add(1*time.Second), 10)
 	if len(beforeNextSlot) != 0 {
 		t.Fatalf("before next slot due count = %d, want 0", len(beforeNextSlot))
 	}

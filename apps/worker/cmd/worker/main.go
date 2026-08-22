@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"hash/fnv"
 	"log"
 	"os"
 	"os/signal"
@@ -18,10 +19,12 @@ import (
 const schedulerTickInterval = time.Second
 
 type monitorState struct {
-	config  monitor.Config
-	nextDue time.Time
-	running bool
-	present bool
+	config   monitor.Config
+	nextDue  time.Time
+	phase    time.Duration
+	firstRun bool
+	running  bool
+	present  bool
 }
 
 type monitorScheduler struct {
@@ -46,14 +49,17 @@ func (s *monitorScheduler) sync(monitors []monitor.Config, now time.Time) {
 
 		if state, ok := s.states[cfg.ID]; ok {
 			state.config = cfg
+			state.phase = monitorPhase(cfg.ID, checkInterval(cfg))
 			state.present = true
 			continue
 		}
 
 		s.states[cfg.ID] = &monitorState{
-			config:  cfg,
-			nextDue: now,
-			present: true,
+			config:   cfg,
+			nextDue:  now,
+			phase:    monitorPhase(cfg.ID, checkInterval(cfg)),
+			firstRun: true,
+			present:  true,
 		}
 	}
 
@@ -89,7 +95,12 @@ func (s *monitorScheduler) claimDue(now time.Time, limit int) []monitor.Config {
 		}
 
 		state.running = true
-		state.nextDue = nextDueAfter(now, state.nextDue, interval)
+		if state.firstRun {
+			state.nextDue = nextDueAtPhase(now, interval, state.phase)
+			state.firstRun = false
+		} else {
+			state.nextDue = nextDueAfter(now, state.nextDue, interval)
+		}
 		due = append(due, state.config)
 	}
 
@@ -125,6 +136,30 @@ func nextDueAfter(now, due time.Time, interval time.Duration) time.Time {
 	}
 
 	return due
+}
+
+func nextDueAtPhase(now time.Time, interval, phase time.Duration) time.Time {
+	if interval <= 0 {
+		return now
+	}
+
+	base := now.Truncate(interval)
+	next := base.Add(phase)
+	if !next.After(now) {
+		next = next.Add(interval)
+	}
+
+	return next
+}
+
+func monitorPhase(id string, interval time.Duration) time.Duration {
+	if interval <= 0 || id == "" {
+		return 0
+	}
+
+	hasher := fnv.New64a()
+	_, _ = hasher.Write([]byte(id))
+	return time.Duration(hasher.Sum64() % uint64(interval))
 }
 
 func checkInterval(cfg monitor.Config) time.Duration {
