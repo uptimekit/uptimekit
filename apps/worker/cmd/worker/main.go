@@ -182,6 +182,7 @@ type runner struct {
 	client         *api.Client
 	registry       *monitor.Registry
 	scheduler      *monitorScheduler
+	events         *eventBatcher
 	maxConcurrency int
 	mu             sync.Mutex
 	wg             sync.WaitGroup
@@ -196,6 +197,7 @@ func newRunner(
 		client:         client,
 		registry:       registry,
 		scheduler:      newMonitorScheduler(),
+		events:         newEventBatcher(client),
 		maxConcurrency: maxConcurrency,
 	}
 }
@@ -253,11 +255,8 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 	log.Printf("[DEBUG] Result: ID=%s Status=%s Latency=%dms Error=%q",
 		result.MonitorID, result.Status, result.Latency, result.Error)
 
-	if err := r.client.PushEvents([]monitor.Result{result}); err != nil {
-		log.Printf("Push events failed: %v", err)
-	} else {
-		log.Printf("Pushed event for monitor %s.", result.MonitorID)
-	}
+	r.events.Enqueue(result)
+	log.Printf("Queued event for monitor %s.", result.MonitorID)
 
 	if result.CertificateInfo != nil {
 		if err := r.client.PushCertificateInfo(result.MonitorID, result.CertificateInfo); err != nil {
@@ -271,6 +270,9 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 
 func (r *runner) wait() {
 	r.wg.Wait()
+	if r.events != nil {
+		r.events.Close()
+	}
 }
 
 func checkWithRetries(m monitor.Monitor, cfg monitor.Config, sleep func(time.Duration)) monitor.Result {
