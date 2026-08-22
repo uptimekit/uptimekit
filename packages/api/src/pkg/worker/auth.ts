@@ -96,7 +96,9 @@ async function hashApiKey(key: string): Promise<string> {
  */
 export async function authenticateWorker(
     request: Request,
+    options: { updateHeartbeat?: boolean } = {},
 ): Promise<WorkerContext | { error: string; status: number }> {
+    const shouldUpdateHeartbeat = options.updateHeartbeat ?? true;
     const authHeader = request.headers.get("authorization");
 
     if (!authHeader?.startsWith("Bearer ")) {
@@ -125,8 +127,9 @@ export async function authenticateWorker(
     // Check positive cache
     const cached = apiKeyCache.get(keyHash);
     if (cached && cached.expiresAt > now) {
-        // Return cached result, but still update heartbeat asynchronously
-        updateHeartbeatAsync(cached.workerContext.worker.id);
+        if (shouldUpdateHeartbeat) {
+            updateHeartbeatAsync(cached.workerContext.worker.id);
+        }
         return cached.workerContext;
     }
 
@@ -183,12 +186,15 @@ export async function authenticateWorker(
         MAX_API_KEY_CACHE_ENTRIES,
     );
 
-    // Update heartbeat and last used timestamp
+    // Keep API key activity tracking on cache misses while allowing high-volume
+    // event ingestion to skip the separate heartbeat write.
     await Promise.all([
-        db
-            .update(worker)
-            .set({ lastHeartbeat: new Date() })
-            .where(eq(worker.id, workerRecord.id)),
+        shouldUpdateHeartbeat
+            ? db
+                  .update(worker)
+                  .set({ lastHeartbeat: new Date() })
+                  .where(eq(worker.id, workerRecord.id))
+            : Promise.resolve(),
         db
             .update(workerApiKey)
             .set({ lastUsedAt: new Date() })
