@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -144,16 +145,22 @@ func (s *eventSpool) appendLineUnlocked(result monitor.Result) error {
 		return fmt.Errorf("opening event spool for append: %w", err)
 	}
 	if err := file.Chmod(0o600); err != nil {
-		file.Close()
-		return fmt.Errorf("setting event spool permissions: %w", err)
+		return fmt.Errorf(
+			"setting event spool permissions: %w",
+			closeEventSpoolFile(file, err),
+		)
 	}
 	if _, err := file.Write(data); err != nil {
-		file.Close()
-		return fmt.Errorf("appending event spool entry: %w", err)
+		return fmt.Errorf(
+			"appending event spool entry: %w",
+			closeEventSpoolFile(file, err),
+		)
 	}
 	if err := file.Sync(); err != nil {
-		file.Close()
-		return fmt.Errorf("syncing event spool entry: %w", err)
+		return fmt.Errorf(
+			"syncing event spool entry: %w",
+			closeEventSpoolFile(file, err),
+		)
 	}
 	if err := file.Close(); err != nil {
 		return fmt.Errorf("closing event spool after append: %w", err)
@@ -196,16 +203,22 @@ func (s *eventSpool) replaceLinesUnlocked(results []monitor.Result) error {
 	defer os.Remove(temporaryPath)
 
 	if err := temporary.Chmod(0o600); err != nil {
-		temporary.Close()
-		return fmt.Errorf("setting event spool permissions: %w", err)
+		return fmt.Errorf(
+			"setting event spool permissions: %w",
+			closeEventSpoolFile(temporary, err),
+		)
 	}
 	if _, err := temporary.Write(data.Bytes()); err != nil {
-		temporary.Close()
-		return fmt.Errorf("writing event spool: %w", err)
+		return fmt.Errorf(
+			"writing event spool: %w",
+			closeEventSpoolFile(temporary, err),
+		)
 	}
 	if err := temporary.Sync(); err != nil {
-		temporary.Close()
-		return fmt.Errorf("syncing event spool: %w", err)
+		return fmt.Errorf(
+			"syncing event spool: %w",
+			closeEventSpoolFile(temporary, err),
+		)
 	}
 	if err := temporary.Close(); err != nil {
 		return fmt.Errorf("closing event spool: %w", err)
@@ -216,6 +229,18 @@ func (s *eventSpool) replaceLinesUnlocked(results []monitor.Result) error {
 	}
 
 	return nil
+}
+
+func closeEventSpoolFile(file *os.File, operationErr error) error {
+	closeErr := file.Close()
+	if operationErr == nil {
+		return closeErr
+	}
+	if closeErr == nil {
+		return operationErr
+	}
+
+	return errors.Join(operationErr, closeErr)
 }
 
 func (s *eventSpool) removePrefix(count int) error {

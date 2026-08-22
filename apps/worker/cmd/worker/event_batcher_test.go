@@ -178,6 +178,61 @@ func TestEventBatcherRetriesFailedBatch(t *testing.T) {
 	}
 }
 
+func TestEventBatcherRetriesAtRetryDeadline(t *testing.T) {
+	const retryDelay = 25 * time.Millisecond
+
+	pusher := &recordingEventPusher{
+		pushed:    make(chan struct{}, 2),
+		attempted: make(chan struct{}, 2),
+		failures:  1,
+	}
+	batcher := newEventBatcherWithSpool(
+		pusher,
+		1,
+		time.Hour,
+		1,
+		retryDelay,
+		testSpoolPath(t),
+	)
+
+	if err := batcher.Enqueue(monitor.Result{MonitorID: "monitor-1"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	select {
+	case <-pusher.attempted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for initial failed delivery")
+	}
+
+	enqueueDone := make(chan error, 1)
+	go func() {
+		enqueueDone <- batcher.Enqueue(monitor.Result{MonitorID: "monitor-2"})
+	}()
+
+	select {
+	case <-pusher.pushed:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timed out waiting for retry at its deadline")
+	}
+	select {
+	case err := <-enqueueDone:
+		if err != nil {
+			t.Fatalf("Enqueue() error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("new event remained blocked after retry succeeded")
+	}
+
+	if err := batcher.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	batches := pusher.snapshot()
+	if len(batches) != 2 || batches[0][0].MonitorID != "monitor-1" || batches[1][0].MonitorID != "monitor-2" {
+		t.Fatalf("batches = %#v, want ordered retry and newer event", batches)
+	}
+}
+
 func TestEventBatcherRequeuesAfterRetryExhaustion(t *testing.T) {
 	pusher := &recordingEventPusher{
 		pushed:   make(chan struct{}, 1),

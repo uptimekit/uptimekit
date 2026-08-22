@@ -362,6 +362,41 @@ func (b *eventBatcher) run() {
 		return nil
 	}
 
+	var retryTimer *time.Timer
+	var retryTimerC <-chan time.Time
+	stopRetryTimer := func() {
+		if retryTimer == nil {
+			return
+		}
+
+		if !retryTimer.Stop() {
+			select {
+			case <-retryTimer.C:
+			default:
+			}
+		}
+		retryTimerC = nil
+	}
+	defer stopRetryTimer()
+	resetRetryTimer := func() <-chan time.Time {
+		stopRetryTimer()
+		if len(retryBatch) == 0 {
+			return nil
+		}
+
+		delay := time.Until(retryAt)
+		if delay < 0 {
+			delay = 0
+		}
+		if retryTimer == nil {
+			retryTimer = time.NewTimer(delay)
+		} else {
+			retryTimer.Reset(delay)
+		}
+		retryTimerC = retryTimer.C
+		return retryTimerC
+	}
+
 	for {
 		if len(retryBatch) > 0 && !time.Now().Before(retryAt) {
 			retryPending(false)
@@ -380,12 +415,14 @@ func (b *eventBatcher) run() {
 			// before retry delivery can be acknowledged.
 			results = nil
 		}
+		retryTimerC = resetRetryTimer()
+		shutdown := false
 
 		select {
 		case result, ok := <-results:
 			if !ok {
-				b.shutdownErr = finish()
-				return
+				shutdown = true
+				break
 			}
 
 			batch = append(batch, result)
@@ -398,9 +435,16 @@ func (b *eventBatcher) run() {
 			} else {
 				flush()
 			}
+		case <-retryTimerC:
+			retryPending(true)
 		case <-b.stop:
 			// Close closes results after all producers have observed stop. The
 			// finish function can therefore drain the channel before returning.
+			shutdown = true
+		}
+
+		stopRetryTimer()
+		if shutdown {
 			b.shutdownErr = finish()
 			return
 		}
