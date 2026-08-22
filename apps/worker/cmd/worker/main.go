@@ -268,11 +268,12 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 	}
 }
 
-func (r *runner) wait() {
+func (r *runner) wait() error {
 	r.wg.Wait()
 	if r.events != nil {
-		r.events.Close()
+		return r.events.Close()
 	}
+	return nil
 }
 
 func checkWithRetries(m monitor.Monitor, cfg monitor.Config, sleep func(time.Duration)) monitor.Result {
@@ -340,7 +341,9 @@ func main() {
 		select {
 		case <-ctx.Done():
 			log.Println("Worker stopped.")
-			runner.wait()
+			if err := runner.wait(); err != nil {
+				log.Printf("Failed to persist unsent worker events: %v", err)
+			}
 			return
 		case <-syncTicker.C:
 			runner.syncMonitors()
