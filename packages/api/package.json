@@ -17,6 +17,9 @@
         "./pkg/integrations/definitions/discord-meta": {
             "default": "./src/pkg/integrations/definitions/discord-meta.ts"
         },
+        "./pkg/integrations/definitions/gchat-meta": {
+            "default": "./src/pkg/integrations/definitions/gchat-meta.ts"
+        },
         "./pkg/integrations/definitions/telegram-meta": {
             "default": "./src/pkg/integrations/definitions/telegram-meta.ts"
         },
