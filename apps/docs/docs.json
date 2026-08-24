@@ -46,6 +46,7 @@
                         "pages": [
                             "integrations/index",
                             "integrations/discord",
+                            "integrations/gchat",
                             "integrations/telegram",
                             "integrations/ntfy",
                             "integrations/webhook",

@@ -1,0 +1,42 @@
+---
+title: 'Google Chat Integration'
+description: 'Receive real-time notifications about incidents directly in a Google Chat space'
+icon: 'comments'
+---
+
+The Google Chat integration allows you to receive real-time notifications about incidents directly in a Google Chat space.
+
+## Configuration
+
+To set up the Google Chat integration, you need to provide the following configuration:
+
+| Field	| Description	| Required |
+| --- | --- | --- |
+| Webhook URL	| The incoming webhook URL from your Google Chat space settings.	| Yes |
+
+<Steps>
+  <Step title="Get Webhook URL">
+    1. Open Google Chat and navigate to the space where you want to receive notifications.
+    2. Click the space name at the top, then select **Apps & integrations**.
+    3. Click **Add webhooks**.
+    4. Give the webhook a name (e.g. "UptimeKit"), then click **Save**.
+    5. Copy the generated Webhook URL.
+  </Step>
+
+  <Step title="Setup in UptimeKit">
+    1. Go to **Settings** > **Integrations** in your UptimeKit dashboard.
+    2. Find **Google Chat** in the list and click **Configure**.
+    3. Paste the copied Webhook URL into the field.
+    4. Click **Save Changes**.
+  </Step>
+</Steps>
+
+## Events
+
+You will be notified for the following events:
+
+- Incident Created: When a new incident is reported.
+- Incident Acknowledged: When a team member acknowledges an incident.
+- Incident Updated: When a comment or update is added.
+- Incident Resolved: When the incident is marked as resolved.
+- SSL Certificate Expiring: When a monitored domain's SSL certificate is about to expire.
