@@ -23,6 +23,9 @@ export async function checkRateLimit(
         .update(`${namespace}:${identifier}`)
         .digest("hex");
 
+    const currentTimeSql = sql`${currentTime.toISOString()}::timestamp`;
+    const expiresAtSql = sql`${expiresAt.toISOString()}::timestamp`;
+
     await db
         .delete(rateLimitBucket)
         .where(lte(rateLimitBucket.expiresAt, currentTime));
@@ -34,11 +37,11 @@ export async function checkRateLimit(
             target: rateLimitBucket.key,
             set: {
                 attempts: sql<number>`case
-                    when ${rateLimitBucket.expiresAt} <= ${currentTime} then 1
+                    when ${rateLimitBucket.expiresAt} <= ${currentTimeSql} then 1
                     else ${rateLimitBucket.attempts} + 1
                 end`,
                 expiresAt: sql<Date>`case
-                    when ${rateLimitBucket.expiresAt} <= ${currentTime} then ${expiresAt}
+                    when ${rateLimitBucket.expiresAt} <= ${currentTimeSql} then ${expiresAtSql}
                     else ${rateLimitBucket.expiresAt}
                 end`,
             },
