@@ -385,6 +385,7 @@ export const statusPagesRouter = {
                         name: m.monitor.name,
                         type: m.monitor.type,
                         style: (m.style as "history" | "status") || "history",
+                        displayName: m.displayName,
                         description: m.description,
                     })),
                 })),
@@ -414,6 +415,7 @@ export const statusPagesRouter = {
                                 style: z
                                     .enum(["history", "status"])
                                     .default("history"),
+                                displayName: z.string().optional().nullable(),
                                 description: z.string().optional().nullable(),
                             }),
                         ),
@@ -496,6 +498,7 @@ export const statusPagesRouter = {
                                     monitorTypeById.get(m.id) === "instatus"
                                         ? "status"
                                         : m.style,
+                                displayName: m.displayName?.trim() || null,
                                 description: m.description || null,
                             })),
                         );

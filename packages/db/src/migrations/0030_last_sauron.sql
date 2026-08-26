@@ -1,0 +1,1 @@
+ALTER TABLE "status_page_monitor" ADD COLUMN "display_name" text;

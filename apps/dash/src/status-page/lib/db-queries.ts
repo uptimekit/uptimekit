@@ -25,6 +25,10 @@ import {
 } from "drizzle-orm";
 import { cache } from "react";
 import {
+    normalizeMonitorDisplayName,
+    resolveMonitorDisplayName,
+} from "@/lib/status-page-monitor-name";
+import {
     getIncidentHistoryCutoff,
     type IncidentHistoryPeriod,
 } from "./incident-history";
@@ -64,6 +68,35 @@ async function withRetry<T>(
     }
     throw lastError;
 }
+
+const getStatusPageMonitorDisplayNames = cache(
+    async (statusPageId: string): Promise<Map<string, string>> => {
+        const rows = await db
+            .select({
+                monitorId: statusPageMonitor.monitorId,
+                displayName: statusPageMonitor.displayName,
+            })
+            .from(statusPageMonitor)
+            .where(
+                and(
+                    eq(statusPageMonitor.statusPageId, statusPageId),
+                    isNotNull(statusPageMonitor.displayName),
+                ),
+            );
+
+        return new Map(
+            rows.flatMap((row) => {
+                const displayName = normalizeMonitorDisplayName(
+                    row.displayName,
+                );
+
+                return displayName
+                    ? ([[row.monitorId, displayName]] as const)
+                    : [];
+            }),
+        );
+    },
+);
 
 async function getPublishedIncidentRecords(
     statusPageId: string,
@@ -131,7 +164,7 @@ async function getPublishedIncidentRecords(
         return [];
     }
 
-    return db.query.incidentStatusPage.findMany({
+    const records = await db.query.incidentStatusPage.findMany({
         columns: {
             incidentId: true,
             statusPageId: true,
@@ -181,6 +214,26 @@ async function getPublishedIncidentRecords(
             },
         },
     });
+
+    const displayNames = await getStatusPageMonitorDisplayNames(statusPageId);
+
+    if (displayNames.size === 0) {
+        return records;
+    }
+
+    return records.map((record) => ({
+        ...record,
+        incident: {
+            ...record.incident,
+            monitors: record.incident.monitors.map((item) => ({
+                ...item,
+                monitor: {
+                    ...item.monitor,
+                    name: displayNames.get(item.monitorId) ?? item.monitor.name,
+                },
+            })),
+        },
+    }));
 }
 
 function mapPublishedIncidentRecord(
@@ -270,6 +323,7 @@ async function getStatusPageMonitorRecords(statusPageId: string) {
             monitorId: true,
             groupId: true,
             style: true,
+            displayName: true,
             description: true,
             order: true,
         },
@@ -296,10 +350,21 @@ async function getStatusPageMonitorRecords(statusPageId: string) {
         orderBy: [asc(statusPageMonitor.order)],
     });
 
-    const monitorIds = records.map((record) => record.monitor.id);
+    const withDisplayNames = records.map((record) => ({
+        ...record,
+        monitor: {
+            ...record.monitor,
+            name: resolveMonitorDisplayName({
+                name: record.monitor.name,
+                displayName: record.displayName,
+            }),
+        },
+    }));
+
+    const monitorIds = withDisplayNames.map((record) => record.monitor.id);
 
     if (monitorIds.length === 0) {
-        return records;
+        return withDisplayNames;
     }
 
     const externalMonitorConfigs = await db
@@ -318,7 +383,7 @@ async function getStatusPageMonitorRecords(statusPageId: string) {
         externalMonitorConfigs.map((record) => [record.id, record.config]),
     );
 
-    return records.map((record) => ({
+    return withDisplayNames.map((record) => ({
         ...record,
         monitor: {
             ...record.monitor,
