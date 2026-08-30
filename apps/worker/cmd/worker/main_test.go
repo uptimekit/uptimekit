@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,6 +14,27 @@ import (
 type fakeMonitor struct {
 	results []monitor.Result
 	calls   int
+}
+
+type blockingEventPusher struct {
+	started     chan struct{}
+	release     chan struct{}
+	startOnce   sync.Once
+	releaseOnce sync.Once
+}
+
+func (p *blockingEventPusher) PushEvents([]monitor.Result) error {
+	p.startOnce.Do(func() {
+		close(p.started)
+	})
+	<-p.release
+	return nil
+}
+
+func (p *blockingEventPusher) unblock() {
+	p.releaseOnce.Do(func() {
+		close(p.release)
+	})
 }
 
 func (m *fakeMonitor) Check(cfg monitor.Config) monitor.Result {
@@ -85,6 +110,41 @@ func TestCheckWithRetriesExhaustsRetryBudget(t *testing.T) {
 	}
 }
 
+func TestRunnerWaitHonorsShutdownDeadline(t *testing.T) {
+	pusher := &blockingEventPusher{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	events := newEventBatcherWithSpool(
+		pusher,
+		1,
+		time.Hour,
+		1,
+		time.Hour,
+		filepath.Join(t.TempDir(), "events.json"),
+	)
+	r := &runner{events: events}
+	t.Cleanup(func() {
+		pusher.unblock()
+		_ = events.Close()
+	})
+
+	if err := events.Enqueue(monitor.Result{MonitorID: "monitor-1"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	select {
+	case <-pusher.started:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for blocked event delivery")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	if err := r.wait(shutdownCtx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("wait() error = %v, want context deadline exceeded", err)
+	}
+}
+
 func TestMonitorSchedulerClaimsOnlyDueMonitors(t *testing.T) {
 	start := time.Date(2026, 5, 26, 10, 0, 0, 0, time.UTC)
 	scheduler := newMonitorScheduler()
@@ -92,6 +152,8 @@ func TestMonitorSchedulerClaimsOnlyDueMonitors(t *testing.T) {
 		{ID: "fast", Interval: 30},
 		{ID: "slow", Interval: 120},
 	}, start)
+	scheduler.states["fast"].phase = 0
+	scheduler.states["slow"].phase = 90 * time.Second
 
 	initial := scheduler.claimDue(start, 10)
 	if len(initial) != 2 {
@@ -116,20 +178,25 @@ func TestMonitorSchedulerSkipsOverlappingStrictCadenceSlot(t *testing.T) {
 		t.Fatalf("initial due count = %d, want 1", len(initial))
 	}
 
-	overlap := scheduler.claimDue(start.Add(60*time.Second), 10)
+	firstNextDue := scheduler.states["monitor-1"].nextDue
+	if !firstNextDue.After(start) || !firstNextDue.Before(start.Add(60*time.Second)) {
+		t.Fatalf("first nextDue = %s, want a time within the next interval", firstNextDue)
+	}
+
+	overlap := scheduler.claimDue(firstNextDue, 10)
 	if len(overlap) != 0 {
 		t.Fatalf("overlap due count = %d, want 0", len(overlap))
 	}
 
 	nextDue := scheduler.states["monitor-1"].nextDue
-	wantNextDue := start.Add(120 * time.Second)
+	wantNextDue := firstNextDue.Add(60 * time.Second)
 	if !nextDue.Equal(wantNextDue) {
 		t.Fatalf("nextDue = %s, want %s", nextDue, wantNextDue)
 	}
 
 	scheduler.complete("monitor-1")
 
-	beforeNextSlot := scheduler.claimDue(start.Add(61*time.Second), 10)
+	beforeNextSlot := scheduler.claimDue(firstNextDue.Add(1*time.Second), 10)
 	if len(beforeNextSlot) != 0 {
 		t.Fatalf("before next slot due count = %d, want 0", len(beforeNextSlot))
 	}

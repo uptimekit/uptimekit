@@ -13,6 +13,7 @@ import { createLogger } from "../../lib/logger";
 import { alertManagerIntegration } from "./definitions/alertmanager";
 import { appriseIntegration } from "./definitions/apprise";
 import { discordIntegration } from "./definitions/discord";
+import { gchatIntegration } from "./definitions/gchat";
 import { ntfyIntegration } from "./definitions/ntfy";
 import { smtpIntegration } from "./definitions/smtp";
 import { telegramIntegration } from "./definitions/telegram";
@@ -27,6 +28,7 @@ integrationRegistry.register(ntfyIntegration);
 integrationRegistry.register(smtpIntegration);
 integrationRegistry.register(alertManagerIntegration);
 integrationRegistry.register(appriseIntegration);
+integrationRegistry.register(gchatIntegration);
 
 const logger = createLogger("INTEGRATIONS");
 const INTEGRATION_TIMEOUT_MS = 15_000;

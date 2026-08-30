@@ -211,6 +211,13 @@
             "when": 1786256776454,
             "tag": "0029_wandering_nova",
             "breakpoints": true
+        },
+        {
+            "idx": 30,
+            "version": "7",
+            "when": 1787749257189,
+            "tag": "0030_last_sauron",
+            "breakpoints": true
         }
     ]
 }

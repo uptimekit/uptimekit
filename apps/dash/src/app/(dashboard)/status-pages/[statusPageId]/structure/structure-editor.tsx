@@ -74,6 +74,11 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+    hasMonitorDisplayNameOverride,
+    normalizeMonitorDisplayName,
+    resolveMonitorDisplayName,
+} from "@/lib/status-page-monitor-name";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -92,6 +97,7 @@ interface MonitorItem {
     name: string;
     type?: string;
     style: MonitorStyle;
+    displayName?: string | null; // Overrides `name` on this status page only
     description?: string | null;
 }
 
@@ -124,6 +130,7 @@ function toGroupItems(structure: any): GroupItem[] {
                 type: monitor.type,
                 style: monitor.style as MonitorStyle,
             }),
+            displayName: monitor.displayName,
             description: monitor.description,
         })),
     }));
@@ -470,6 +477,7 @@ function useStructureEditorState(statusPageId: string) {
                 monitors: g.monitors.map((m) => ({
                     id: m.id,
                     style: getMonitorStyle(m),
+                    displayName: normalizeMonitorDisplayName(m.displayName),
                     description: m.description,
                 })),
             })),
@@ -1086,8 +1094,13 @@ function MonitorRow({
                 {/* Icon + Name */}
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                     <span className="truncate font-medium text-sm">
-                        {monitor.name}
+                        {resolveMonitorDisplayName(monitor)}
                     </span>
+                    {hasMonitorDisplayNameOverride(monitor) && (
+                        <span className="truncate text-muted-foreground text-xs">
+                            {monitor.name}
+                        </span>
+                    )}
                 </div>
 
                 {/* Actions */}
@@ -1164,12 +1177,33 @@ function MonitorConfigModal({
                         </Label>
                         <div className="rounded-2xl border border-border bg-card p-6">
                             <MonitorPreview
-                                name={monitor.name}
+                                name={resolveMonitorDisplayName(monitor)}
                                 style={selectedStyle}
                                 barStyle={barStyle}
                                 description={monitor.description}
                             />
                         </div>
+                    </div>
+
+                    {/* Display Name */}
+                    <div className="space-y-2">
+                        <Label className="font-normal text-muted-foreground text-xs">
+                            Display Name (optional)
+                        </Label>
+                        <Input
+                            value={monitor.displayName || ""}
+                            onChange={(e) =>
+                                onConfigChange?.({
+                                    displayName: e.target.value || null,
+                                })
+                            }
+                            placeholder={monitor.name}
+                        />
+                        <p className="text-muted-foreground text-xs">
+                            Shown instead of &quot;{monitor.name}&quot; on this
+                            status page only. Other status pages keep their own
+                            name.
+                        </p>
                     </div>
 
                     {/* Display Style Select */}

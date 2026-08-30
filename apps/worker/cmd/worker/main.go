@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"hash/fnv"
 	"log"
 	"os"
 	"os/signal"
@@ -15,13 +16,18 @@ import (
 	"github.com/uptimekit/worker/internal/monitor"
 )
 
-const schedulerTickInterval = time.Second
+const (
+	schedulerTickInterval = time.Second
+	workerShutdownTimeout = 30 * time.Second
+)
 
 type monitorState struct {
-	config  monitor.Config
-	nextDue time.Time
-	running bool
-	present bool
+	config   monitor.Config
+	nextDue  time.Time
+	phase    time.Duration
+	firstRun bool
+	running  bool
+	present  bool
 }
 
 type monitorScheduler struct {
@@ -46,14 +52,17 @@ func (s *monitorScheduler) sync(monitors []monitor.Config, now time.Time) {
 
 		if state, ok := s.states[cfg.ID]; ok {
 			state.config = cfg
+			state.phase = monitorPhase(cfg.ID, checkInterval(cfg))
 			state.present = true
 			continue
 		}
 
 		s.states[cfg.ID] = &monitorState{
-			config:  cfg,
-			nextDue: now,
-			present: true,
+			config:   cfg,
+			nextDue:  now,
+			phase:    monitorPhase(cfg.ID, checkInterval(cfg)),
+			firstRun: true,
+			present:  true,
 		}
 	}
 
@@ -89,7 +98,12 @@ func (s *monitorScheduler) claimDue(now time.Time, limit int) []monitor.Config {
 		}
 
 		state.running = true
-		state.nextDue = nextDueAfter(now, state.nextDue, interval)
+		if state.firstRun {
+			state.nextDue = nextDueAtPhase(now, interval, state.phase)
+			state.firstRun = false
+		} else {
+			state.nextDue = nextDueAfter(now, state.nextDue, interval)
+		}
 		due = append(due, state.config)
 	}
 
@@ -127,6 +141,30 @@ func nextDueAfter(now, due time.Time, interval time.Duration) time.Time {
 	return due
 }
 
+func nextDueAtPhase(now time.Time, interval, phase time.Duration) time.Time {
+	if interval <= 0 {
+		return now
+	}
+
+	base := now.Truncate(interval)
+	next := base.Add(phase)
+	if !next.After(now) {
+		next = next.Add(interval)
+	}
+
+	return next
+}
+
+func monitorPhase(id string, interval time.Duration) time.Duration {
+	if interval <= 0 || id == "" {
+		return 0
+	}
+
+	hasher := fnv.New64a()
+	_, _ = hasher.Write([]byte(id))
+	return time.Duration(hasher.Sum64() % uint64(interval))
+}
+
 func checkInterval(cfg monitor.Config) time.Duration {
 	if cfg.Interval <= 0 {
 		return 60 * time.Second
@@ -147,6 +185,7 @@ type runner struct {
 	client         *api.Client
 	registry       *monitor.Registry
 	scheduler      *monitorScheduler
+	events         *eventBatcher
 	maxConcurrency int
 	mu             sync.Mutex
 	wg             sync.WaitGroup
@@ -161,6 +200,7 @@ func newRunner(
 		client:         client,
 		registry:       registry,
 		scheduler:      newMonitorScheduler(),
+		events:         newEventBatcher(client),
 		maxConcurrency: maxConcurrency,
 	}
 }
@@ -218,10 +258,10 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 	log.Printf("[DEBUG] Result: ID=%s Status=%s Latency=%dms Error=%q",
 		result.MonitorID, result.Status, result.Latency, result.Error)
 
-	if err := r.client.PushEvents([]monitor.Result{result}); err != nil {
-		log.Printf("Push events failed: %v", err)
+	if err := r.events.Enqueue(result); err != nil {
+		log.Printf("Could not durably queue event for monitor %s: %v", result.MonitorID, err)
 	} else {
-		log.Printf("Pushed event for monitor %s.", result.MonitorID)
+		log.Printf("Queued event for monitor %s.", result.MonitorID)
 	}
 
 	if result.CertificateInfo != nil {
@@ -234,8 +274,34 @@ func (r *runner) checkAndPush(cfg monitor.Config) {
 	}
 }
 
-func (r *runner) wait() {
-	r.wg.Wait()
+func (r *runner) wait(ctx context.Context) error {
+	checksDone := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(checksDone)
+	}()
+
+	select {
+	case <-checksDone:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	if r.events == nil {
+		return nil
+	}
+
+	eventsDone := make(chan error, 1)
+	go func() {
+		eventsDone <- r.events.Close()
+	}()
+
+	select {
+	case err := <-eventsDone:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func checkWithRetries(m monitor.Monitor, cfg monitor.Config, sleep func(time.Duration)) monitor.Result {
@@ -303,7 +369,14 @@ func main() {
 		select {
 		case <-ctx.Done():
 			log.Println("Worker stopped.")
-			runner.wait()
+			shutdownCtx, shutdownCancel := context.WithTimeout(
+				context.Background(),
+				workerShutdownTimeout,
+			)
+			if err := runner.wait(shutdownCtx); err != nil {
+				log.Printf("Worker shutdown did not complete: %v", err)
+			}
+			shutdownCancel()
 			return
 		case <-syncTicker.C:
 			runner.syncMonitors()

@@ -73,7 +73,9 @@ async function readJsonBody(request: Request): Promise<unknown> {
  * @returns A JSON HTTP response: on error returns an object with an `error` message and the appropriate status code; on success returns the result of processing the monitor events
  */
 async function handlePost(request: Request) {
-    const authResult = await authenticateWorker(request);
+    const authResult = await authenticateWorker(request, {
+        updateHeartbeat: false,
+    });
 
     if (isAuthError(authResult)) {
         return NextResponse.json(

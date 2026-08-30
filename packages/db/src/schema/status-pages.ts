@@ -66,6 +66,7 @@ export const statusPageMonitor = pgTable(
             onDelete: "set null",
         }),
         style: text("style").default("history").notNull(), // 'history' | 'status'
+        displayName: text("display_name"), // Optional per-page override for the monitor name
         description: text("description"), // Optional description shown in info tooltip
         order: integer("order").default(0).notNull(),
     },

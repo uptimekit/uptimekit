@@ -21,7 +21,24 @@ import {
     isAutomaticIncidentResolveEligible,
     type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
-import { processPendingNotifications } from "../notifications";
+import {
+    markEventProcessed,
+    processPendingNotifications,
+} from "../notifications";
+import {
+    getMonitorEventMetadata,
+    invalidateMonitorEventMetadataCache,
+    type MonitorEventConfig,
+    setMonitorEventMetadata,
+} from "./monitor-event-cache";
+import {
+    enqueueMonitorTimeseriesPersistence,
+    persistMonitorTimeseriesPayload,
+} from "./timeseries-outbox";
+import type {
+    MonitorTimeseriesOutboxPayload,
+    MonitorTimeseriesPersistencePayload,
+} from "./timeseries-payload";
 
 // Types
 export interface HTTPTimings {
@@ -55,6 +72,7 @@ interface MonitorChangeInsert {
 }
 
 interface ProcessedMonitorEventGroup {
+    organizationId: string | null;
     changesToInsert: MonitorChangeInsert[];
     incidentsToInsert: (typeof incident.$inferInsert)[];
     incidentUpdatesToApply: IncidentUpdate[];
@@ -62,6 +80,12 @@ interface ProcessedMonitorEventGroup {
     incidentStatusPagesToInsert: (typeof incidentStatusPage.$inferInsert)[];
     activitiesToInsert: (typeof incidentActivity.$inferInsert)[];
     eventsToDispatch: WorkerIncidentEventDispatch[];
+}
+
+interface ProcessedMonitorEventBatch {
+    processed: ProcessedMonitorEventGroup;
+    monitorEvents: MonitorEvent[];
+    timeseriesOutboxId: string | null;
 }
 
 interface IncidentUpdate {
@@ -82,6 +106,9 @@ type WorkerIncidentEventDispatch =
 const monitorEventLocks = new Map<string, Promise<void>>();
 type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AutomaticIncidentTriggerStatus = "down" | "degraded";
+type EffectiveMonitorWorkers = Awaited<
+    ReturnType<typeof getEffectiveMonitorWorkers>
+>;
 
 const UUID_PATTERN =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -301,34 +328,94 @@ async function persistProcessedMonitorEventGroup(input: {
 }
 
 async function persistProcessedMonitorEventTimeSeries(input: {
-    processed: ProcessedMonitorEventGroup;
+    changesToInsert: MonitorChangeInsert[];
     monitorEvents: MonitorEvent[];
     workerId: string;
 }) {
-    const { processed, monitorEvents, workerId } = input;
+    await persistMonitorTimeseriesPayload(
+        toMonitorTimeseriesPersistencePayload(input),
+    );
+}
 
-    if (processed.changesToInsert.length > 0) {
-        await timeseries.insertMonitorChanges(processed.changesToInsert);
+function toMonitorTimeseriesPersistencePayload(input: {
+    changesToInsert: MonitorChangeInsert[];
+    monitorEvents: MonitorEvent[];
+    workerId: string;
+}): MonitorTimeseriesPersistencePayload {
+    return {
+        workerId: input.workerId,
+        changesToInsert: input.changesToInsert.map((change) => ({
+            id: change.id,
+            monitorId: change.monitorId,
+            status: change.status,
+            timestamp: change.timestamp.toISOString(),
+            location: change.location,
+        })),
+        monitorEvents: input.monitorEvents.map((event) => ({
+            id: getStableMonitorEventId(event, input.workerId),
+            monitorId: event.monitorId,
+            status: event.status,
+            latency: event.latency,
+            timestamp: new Date(event.timestamp).toISOString(),
+            statusCode: event.statusCode,
+            error: event.error,
+            location: event.location || input.workerId,
+            dnsLookup: event.timings?.dnsLookup,
+            tcpConnect: event.timings?.tcpConnect,
+            tlsHandshake: event.timings?.tlsHandshake,
+            ttfb: event.timings?.ttfb,
+            transfer: event.timings?.transfer,
+        })),
+    };
+}
+
+async function enqueueProcessedMonitorEventGroup(input: {
+    processed: ProcessedMonitorEventGroup;
+    monitorEvents: MonitorEvent[];
+    workerId: string;
+    tx: TransactionLike;
+}): Promise<string | null> {
+    const { processed, monitorEvents, workerId, tx } = input;
+    if (!processed.organizationId) {
+        return null;
     }
 
-    if (monitorEvents.length > 0) {
-        await timeseries.insertMonitorEvents(
-            monitorEvents.map((event) => ({
-                id: getStableMonitorEventId(event, workerId),
-                monitorId: event.monitorId,
-                status: event.status,
-                latency: event.latency,
-                timestamp: new Date(event.timestamp),
-                statusCode: event.statusCode,
-                error: event.error,
-                location: event.location || workerId,
-                dnsLookup: event.timings?.dnsLookup,
-                tcpConnect: event.timings?.tcpConnect,
-                tlsHandshake: event.timings?.tlsHandshake,
-                ttfb: event.timings?.ttfb,
-                transfer: event.timings?.transfer,
-            })),
-        );
+    const payload = {
+        organizationId: processed.organizationId,
+        ...toMonitorTimeseriesPersistencePayload({
+            changesToInsert: processed.changesToInsert,
+            monitorEvents,
+            workerId,
+        }),
+    } satisfies MonitorTimeseriesOutboxPayload;
+
+    const { id } = await enqueueMonitorTimeseriesPersistence(payload, { tx });
+    return id;
+}
+
+async function persistProcessedMonitorEventBatch(input: {
+    groups: ProcessedMonitorEventBatch[];
+    workerId: string;
+}) {
+    const { groups, workerId } = input;
+
+    await persistProcessedMonitorEventTimeSeries({
+        changesToInsert: groups.flatMap(
+            ({ processed }) => processed.changesToInsert,
+        ),
+        monitorEvents: groups.flatMap(({ monitorEvents }) => monitorEvents),
+        workerId,
+    });
+
+    await Promise.all(
+        groups
+            .map(({ timeseriesOutboxId }) => timeseriesOutboxId)
+            .filter((id): id is string => id !== null)
+            .map((id) => markEventProcessed(id)),
+    );
+
+    if (groups.some(({ processed }) => processed.eventsToDispatch.length > 0)) {
+        await processPendingNotifications("worker-events");
     }
 }
 
@@ -449,8 +536,10 @@ export async function processMonitorEvents(
         eventsByMonitor.set(event.monitorId, list);
     }
 
+    const processedGroups: ProcessedMonitorEventBatch[] = [];
+
     for (const [monitorId, monitorEvents] of eventsByMonitor.entries()) {
-        await withMonitorEventLock(
+        const groupResult = await withMonitorEventLock(
             monitorId,
             async (tx) => {
                 const processedGroup = await processMonitorEventGroup({
@@ -465,21 +554,32 @@ export async function processMonitorEvents(
                     tx,
                 });
 
-                return processedGroup;
-            },
-            async (processedGroup) => {
-                await persistProcessedMonitorEventTimeSeries({
-                    processed: processedGroup,
-                    monitorEvents,
-                    workerId,
-                });
+                // Keep the relational result and its time-series recovery
+                // record in the same transaction so a process crash cannot
+                // commit one without the other.
+                const timeseriesOutboxId =
+                    await enqueueProcessedMonitorEventGroup({
+                        processed: processedGroup,
+                        monitorEvents,
+                        workerId,
+                        tx,
+                    });
 
-                if (processedGroup.eventsToDispatch.length > 0) {
-                    await processPendingNotifications("worker-events");
-                }
+                return { processedGroup, timeseriesOutboxId };
             },
         );
+
+        processedGroups.push({
+            processed: groupResult.processedGroup,
+            monitorEvents,
+            timeseriesOutboxId: groupResult.timeseriesOutboxId,
+        });
     }
+
+    await persistProcessedMonitorEventBatch({
+        groups: processedGroups,
+        workerId,
+    });
 
     return { success: true, count: events.length };
 }
@@ -499,6 +599,7 @@ async function processMonitorEventGroup(input: {
 }): Promise<ProcessedMonitorEventGroup> {
     const { monitorId, monitorEvents, workerId, tx } = input;
     const result: ProcessedMonitorEventGroup = {
+        organizationId: null,
         changesToInsert: [],
         incidentsToInsert: [],
         incidentUpdatesToApply: [],
@@ -508,14 +609,59 @@ async function processMonitorEventGroup(input: {
         eventsToDispatch: [],
     };
 
-    const monitorConfig = await tx.query.monitor.findFirst({
-        where: eq(monitor.id, monitorId),
-    });
+    const cachedMetadata = getMonitorEventMetadata(monitorId);
+    let monitorConfig: MonitorEventConfig;
+    let currentAssignments:
+        | Pick<typeof monitor.$inferSelect, "workerIds" | "locations">
+        | undefined;
 
-    if (!monitorConfig) {
+    if (cachedMetadata) {
+        monitorConfig = cachedMetadata.monitorConfig;
+        currentAssignments = await tx.query.monitor.findFirst({
+            where: eq(monitor.id, monitorId),
+            columns: {
+                workerIds: true,
+                locations: true,
+            },
+        });
+    } else {
+        const freshMonitorConfig = await tx.query.monitor.findFirst({
+            where: eq(monitor.id, monitorId),
+        });
+
+        if (!freshMonitorConfig) {
+            console.warn(`Received events for unknown monitor: ${monitorId}`);
+            return result;
+        }
+
+        monitorConfig = freshMonitorConfig;
+        currentAssignments = freshMonitorConfig;
+        setMonitorEventMetadata(monitorId, { monitorConfig });
+    }
+
+    if (!currentAssignments) {
+        invalidateMonitorEventMetadataCache(monitorId);
         console.warn(`Received events for unknown monitor: ${monitorId}`);
         return result;
     }
+
+    result.organizationId = monitorConfig.organizationId;
+
+    const monitorWorkerIds = Array.isArray(currentAssignments.workerIds)
+        ? currentAssignments.workerIds
+        : [];
+    const monitorLocations = Array.isArray(currentAssignments.locations)
+        ? currentAssignments.locations
+        : [];
+    const configuredWorkers: EffectiveMonitorWorkers =
+        await getEffectiveMonitorWorkers(
+            {
+                id: monitorId,
+                workerIds: monitorWorkerIds,
+                locations: monitorLocations,
+            },
+            { database: tx },
+        );
 
     const now = new Date();
     const activeMaintenance = await tx
@@ -575,20 +721,6 @@ async function processMonitorEventGroup(input: {
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    const monitorWorkerIds = Array.isArray(monitorConfig.workerIds)
-        ? monitorConfig.workerIds
-        : [];
-    const monitorLocations = Array.isArray(monitorConfig.locations)
-        ? monitorConfig.locations
-        : [];
-    const configuredWorkers = await getEffectiveMonitorWorkers(
-        {
-            id: monitorConfig.id,
-            workerIds: monitorWorkerIds,
-            locations: monitorLocations,
-        },
-        { database: tx },
-    );
     const configuredWorkerIds = configuredWorkers.map(
         (configuredWorker) => configuredWorker.id,
     );

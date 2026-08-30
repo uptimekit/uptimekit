@@ -1,5 +1,6 @@
 import { appEventOutbox, db } from "@uptimekit/db";
 import { type SQL, sql } from "drizzle-orm";
+import type { MonitorTimeseriesOutboxPayload } from "../pkg/worker/timeseries-payload";
 
 export const APP_EVENT_CHANNEL = "uptimekit_app_events";
 
@@ -68,6 +69,7 @@ export interface AppEvents {
         error?: string;
         threshold: number;
     };
+    "monitor.timeseries.persist": MonitorTimeseriesOutboxPayload;
 }
 
 export type AppEventName = keyof AppEvents;
@@ -84,7 +86,7 @@ export interface PersistedAppEvent<K extends AppEventName = AppEventName> {
     availableAt: Date;
 }
 
-type AppEventWriteClient = {
+export type AppEventWriteClient = {
     execute: (query: SQL) => Promise<unknown>;
     insert: (table: typeof appEventOutbox) => {
         values: (value: typeof appEventOutbox.$inferInsert) => Promise<unknown>;

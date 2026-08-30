@@ -23,6 +23,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { alertManagerIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/alertmanager-meta";
 import { appriseIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/apprise-meta";
 import { discordIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/discord-meta";
+import { gchatIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/gchat-meta";
 import { ntfyIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/ntfy-meta";
 import { smtpIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/smtp-meta";
 import { telegramIntegrationMeta } from "@uptimekit/api/pkg/integrations/definitions/telegram-meta";
@@ -119,6 +120,10 @@ const frontendRegistry = {
     } as IntegrationDefinition,
     discord: {
         ...discordIntegrationMeta,
+        handler: async () => {},
+    } as IntegrationDefinition,
+    gchat: {
+        ...gchatIntegrationMeta,
         handler: async () => {},
     } as IntegrationDefinition,
     telegram: {
