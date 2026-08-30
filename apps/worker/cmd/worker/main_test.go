@@ -145,6 +145,55 @@ func TestRunnerWaitHonorsShutdownDeadline(t *testing.T) {
 	}
 }
 
+func TestRunnerWaitReleasesChecksBeforeBlockedEventClose(t *testing.T) {
+	pusher := &blockingEventPusher{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	events := newEventBatcherWithSpool(
+		pusher,
+		1,
+		time.Hour,
+		1,
+		time.Hour,
+		filepath.Join(t.TempDir(), "events.json"),
+	)
+	r := &runner{events: events}
+	t.Cleanup(func() {
+		pusher.unblock()
+		_ = events.Close()
+	})
+
+	if err := events.Enqueue(monitor.Result{MonitorID: "monitor-1"}); err != nil {
+		t.Fatalf("Enqueue() error = %v", err)
+	}
+	select {
+	case <-pusher.started:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for blocked event delivery")
+	}
+
+	enqueueDone := make(chan struct{})
+	r.wg.Add(1)
+	go func() {
+		defer r.wg.Done()
+		_ = events.Enqueue(monitor.Result{MonitorID: "monitor-2"})
+		close(enqueueDone)
+	}()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	if err := r.wait(shutdownCtx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("wait() error = %v, want context deadline exceeded", err)
+	}
+
+	select {
+	case <-enqueueDone:
+	case <-time.After(time.Second):
+		t.Fatal("blocked check did not observe shutdown")
+	}
+}
+
 func TestMonitorSchedulerClaimsOnlyDueMonitors(t *testing.T) {
 	start := time.Date(2026, 5, 26, 10, 0, 0, 0, time.UTC)
 	scheduler := newMonitorScheduler()

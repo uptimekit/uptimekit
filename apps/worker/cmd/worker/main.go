@@ -281,27 +281,32 @@ func (r *runner) wait(ctx context.Context) error {
 		close(checksDone)
 	}()
 
-	select {
-	case <-checksDone:
-	case <-ctx.Done():
-		return ctx.Err()
+	var eventsDone <-chan error
+	if r.events != nil {
+		done := make(chan error, 1)
+		eventsDone = done
+		go func() {
+			done <- r.events.Close()
+		}()
 	}
 
-	if r.events == nil {
-		return nil
+	checksPending := true
+	eventsPending := r.events != nil
+	var eventsErr error
+	for checksPending || eventsPending {
+		select {
+		case <-checksDone:
+			checksPending = false
+		case err := <-eventsDone:
+			eventsPending = false
+			eventsDone = nil
+			eventsErr = err
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
-	eventsDone := make(chan error, 1)
-	go func() {
-		eventsDone <- r.events.Close()
-	}()
-
-	select {
-	case err := <-eventsDone:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return eventsErr
 }
 
 func checkWithRetries(m monitor.Monitor, cfg monitor.Config, sleep func(time.Duration)) monitor.Result {
