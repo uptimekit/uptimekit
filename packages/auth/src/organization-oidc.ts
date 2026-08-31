@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
+import { genericOAuth } from "better-auth/plugins";
 import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth";
 import type { BetterAuthPlugin } from "better-auth/types";
 import { and, eq } from "drizzle-orm";
@@ -17,6 +18,7 @@ export const DEFAULT_ORGANIZATION_OIDC_SCOPES = [
 
 type OrganizationOidcProvider =
     typeof schema.organizationOidcProvider.$inferSelect;
+type AuthContext = Parameters<NonNullable<BetterAuthPlugin["onRequest"]>>[1];
 
 export const organizationOidcOAuthConfigs: GenericOAuthConfig[] = [];
 
@@ -131,6 +133,28 @@ function upsertGenericOAuthConfig(provider: OrganizationOidcProvider) {
     }
 
     return config.providerId;
+}
+
+async function ensureProviderInAuthContext(
+    context: AuthContext,
+    config: GenericOAuthConfig,
+) {
+    if (
+        context.socialProviders.some(
+            (provider) => provider.id === config.providerId,
+        )
+    ) {
+        return;
+    }
+
+    const initialized = await genericOAuth({ config: [config] }).init(context);
+    const provider = initialized.context?.socialProviders?.find(
+        (candidate) => candidate.id === config.providerId,
+    );
+
+    if (provider) {
+        context.socialProviders.push(provider);
+    }
 }
 
 async function getProviderById(providerId: string) {
@@ -365,6 +389,18 @@ export function organizationOidcPlugin(): BetterAuthPlugin {
                     message: "OIDC provider not found",
                 });
             }
+
+            const config = organizationOidcOAuthConfigs.find(
+                (candidate) => candidate.providerId === registeredProviderId,
+            );
+
+            if (!config) {
+                throw new APIError("INTERNAL_SERVER_ERROR", {
+                    message: "OIDC provider configuration could not be loaded",
+                });
+            }
+
+            await ensureProviderInAuthContext(ctx, config);
         },
         rateLimit: [
             {
