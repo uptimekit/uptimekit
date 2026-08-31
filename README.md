@@ -60,7 +60,7 @@ Follow these steps to get UptimeKit running locally on your machine.
 2. **Edit these variables in the .env**
 
 ```bash
-APP_SECRET=change_me_to_a_secure_secret
+APP_SECRET=change_me_to_a_secure_secret # openssl rand -hex 32
 APP_URL=http://localhost:3000
 
 # Status Page Configuration (Optional)
