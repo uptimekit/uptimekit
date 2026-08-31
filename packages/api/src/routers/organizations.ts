@@ -139,7 +139,7 @@ function toOidcProviderResponse(
         clientSecretConfigured: provider.clientSecret.length > 0,
         domains: provider.domains,
         scopes: provider.scopes,
-        callbackPath: `/api/auth/oauth2/callback/${getOrganizationOidcProviderId(
+        callbackPath: `/api/auth/callback/${getOrganizationOidcProviderId(
             provider.id,
         )}`,
         createdAt: provider.createdAt,

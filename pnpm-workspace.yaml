@@ -8,7 +8,7 @@ catalog:
   "@orpc/server": 1.14.14
   "@orpc/tanstack-query": 1.14.14
   "@orpc/zod": 1.14.14
-  better-auth: 1.6.26
+  better-auth: 1.7.2
   dotenv: ^17.4.2
   drizzle-orm: ^0.45.2
   postgres: latest

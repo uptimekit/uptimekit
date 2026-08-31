@@ -218,6 +218,20 @@
             "when": 1787749257189,
             "tag": "0030_last_sauron",
             "breakpoints": true
+        },
+        {
+            "idx": 31,
+            "version": "7",
+            "when": 1788112833306,
+            "tag": "0031_add_two_factor_lockout_fields",
+            "breakpoints": true
+        },
+        {
+            "idx": 32,
+            "version": "7",
+            "when": 1788113542678,
+            "tag": "0032_add_better_auth_17_account_issuer",
+            "breakpoints": true
         }
     ]
 }

@@ -1,7 +1,6 @@
 import { apiKeyClient } from "@better-auth/api-key/client";
 import {
     adminClient,
-    genericOAuthClient,
     organizationClient,
     twoFactorClient,
 } from "better-auth/client/plugins";
@@ -10,7 +9,6 @@ import { createAuthClient } from "better-auth/react";
 const authClientPlugins = [
     apiKeyClient(),
     adminClient(),
-    genericOAuthClient(),
     organizationClient(),
     twoFactorClient({
         onTwoFactorRedirect: () => {

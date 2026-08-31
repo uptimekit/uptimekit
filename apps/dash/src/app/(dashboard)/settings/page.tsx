@@ -452,9 +452,9 @@ function TwoFactorSettings({ session }: { session: any }) {
                 },
             );
 
-            if (res.data) {
+            if (res.data?.method === "totp") {
                 setTotpURI(res.data.totpURI);
-                setBackupCodes(res.data.backupCodes || []);
+                setBackupCodes(res.data.backupCodes);
                 setStep("qr");
                 setPassword("");
             }
