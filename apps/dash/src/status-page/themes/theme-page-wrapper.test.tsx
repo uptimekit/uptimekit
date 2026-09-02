@@ -12,6 +12,7 @@ describe("ThemePageWrapper", () => {
             <ThemePageWrapper
                 themeId="default"
                 theme="light"
+                applyCustomCss
                 ThemeComponent={TestTheme}
                 componentProps={{
                     data: {
@@ -34,6 +35,7 @@ describe("ThemePageWrapper", () => {
         const markup = renderToStaticMarkup(
             <ThemePageWrapper
                 themeId="default"
+                applyCustomCss
                 ThemeComponent={TestTheme}
                 componentProps={{
                     data: {
@@ -49,5 +51,26 @@ describe("ThemePageWrapper", () => {
 
         expect(markup).toContain("</\\73 tyle><script>alert(1)</script>");
         expect(markup).not.toContain("</style><script>alert(1)</script>");
+    });
+
+    it("does not render custom CSS unless the route opts in", () => {
+        const markup = renderToStaticMarkup(
+            <ThemePageWrapper
+                themeId="default"
+                ThemeComponent={TestTheme}
+                componentProps={{
+                    data: {
+                        config: {
+                            design: {
+                                customCss: "body { display: none; }",
+                            },
+                        },
+                    },
+                }}
+            />,
+        );
+
+        expect(markup).not.toContain("data-uptimekit-custom-css");
+        expect(markup).not.toContain("body { display: none; }");
     });
 });

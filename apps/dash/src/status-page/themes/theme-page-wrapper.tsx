@@ -4,6 +4,7 @@ import { ThemeProvider } from "./theme-provider";
 interface ThemePageWrapperProps<T extends Record<string, any>> {
     themeId: string;
     theme?: "light" | "dark";
+    applyCustomCss?: boolean;
     ThemeComponent: ComponentType<T>;
     componentProps: T;
 }
@@ -28,6 +29,7 @@ function getCustomCss(componentProps: Record<string, any>): string {
 export function ThemePageWrapper<T extends Record<string, any>>({
     themeId,
     theme,
+    applyCustomCss = false,
     ThemeComponent,
     componentProps,
 }: ThemePageWrapperProps<T>) {
@@ -49,7 +51,7 @@ export function ThemePageWrapper<T extends Record<string, any>>({
                 suppressHydrationWarning
             />
             <ThemeProvider themeId={themeId} theme={theme} />
-            {customCss.trim() && (
+            {applyCustomCss && customCss.trim() && (
                 <style data-uptimekit-custom-css>{customCss}</style>
             )}
             <ThemeComponent {...componentProps} />
