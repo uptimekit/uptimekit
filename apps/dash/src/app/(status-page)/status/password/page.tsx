@@ -80,7 +80,7 @@ export default async function PasswordPage({
     }
 
     const design =
-        (page.design as { customCss?: string; theme?: string }) || {};
+        (page.design as { customCss?: unknown; theme?: string }) || {};
     const theme = design.theme === "dark" ? "dark" : "light";
     const customCss =
         typeof design.customCss === "string" ? design.customCss : "";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "../index.css";
+import "../../index.css";
 import Providers from "@/components/providers";
 import { getConfig } from "@/lib/config";
 import { getRuntimeStatusPageDomain } from "@/lib/status-page-runtime-config.server";

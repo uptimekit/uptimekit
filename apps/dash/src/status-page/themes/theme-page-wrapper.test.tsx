@@ -7,7 +7,7 @@ function TestTheme() {
 }
 
 describe("ThemePageWrapper", () => {
-    it("renders custom CSS from status page design", () => {
+    it("renders custom CSS for every themed status route", () => {
         const markup = renderToStaticMarkup(
             <ThemePageWrapper
                 themeId="default"
