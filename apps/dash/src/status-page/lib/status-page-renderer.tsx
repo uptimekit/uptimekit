@@ -34,7 +34,6 @@ export async function renderStatusPage(
         <ThemePageWrapper
             themeId={design.themeId}
             theme={design.theme}
-            applyCustomCss={Boolean(routeSlug)}
             ThemeComponent={ThemePage}
             componentProps={{ data }}
         />
