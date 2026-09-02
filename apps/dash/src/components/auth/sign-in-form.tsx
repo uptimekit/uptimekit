@@ -146,14 +146,12 @@ export default function SignInForm({
                         await lookupOrganizationOidcProvider(normalizedEmail);
 
                     if (oidcLookup.hasProvider) {
-                        await authClient.signIn.oauth2(
+                        await authClient.signIn.social(
                             {
-                                providerId: oidcLookup.providerId,
+                                provider: oidcLookup.providerId,
                                 callbackURL: getCallbackURL(),
                                 errorCallbackURL: "/login",
-                                additionalData: {
-                                    email: normalizedEmail,
-                                },
+                                loginHint: normalizedEmail,
                             },
                             {
                                 onError: (error) => {

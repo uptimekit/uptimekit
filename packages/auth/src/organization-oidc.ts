@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
+import { genericOAuth } from "better-auth/plugins";
 import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth";
 import type { BetterAuthPlugin } from "better-auth/types";
 import { and, eq } from "drizzle-orm";
@@ -17,6 +18,7 @@ export const DEFAULT_ORGANIZATION_OIDC_SCOPES = [
 
 type OrganizationOidcProvider =
     typeof schema.organizationOidcProvider.$inferSelect;
+type AuthContext = Parameters<NonNullable<BetterAuthPlugin["onRequest"]>>[1];
 
 export const organizationOidcOAuthConfigs: GenericOAuthConfig[] = [];
 
@@ -93,21 +95,10 @@ function toGenericOAuthConfig(
         clientId: provider.clientId,
         clientSecret: provider.clientSecret,
         discoveryUrl: provider.discoveryUrl,
-        issuer: provider.issuer,
+        accountIssuer: `local:oauth:${encodeURIComponent(providerId)}`,
         scopes: provider.scopes,
         pkce: true,
-        authorizationUrlParams: (ctx): Record<string, string> => {
-            const email = (ctx.body as { additionalData?: { email?: unknown } })
-                ?.additionalData?.email;
-
-            return typeof email === "string" && email.trim()
-                ? { login_hint: email.trim().toLowerCase() }
-                : {};
-        },
         mapProfileToUser: (profile) => {
-            const id =
-                getStringProfileValue(profile, "sub") ??
-                getStringProfileValue(profile, "id");
             const email = getStringProfileValue(profile, "email");
             const name =
                 getStringProfileValue(profile, "name") ??
@@ -119,7 +110,6 @@ function toGenericOAuthConfig(
                 profile.emailVerified !== false;
 
             return {
-                ...(id ? { id } : {}),
                 ...(email ? { email: email.toLowerCase() } : {}),
                 emailVerified,
                 name,
@@ -143,6 +133,28 @@ function upsertGenericOAuthConfig(provider: OrganizationOidcProvider) {
     }
 
     return config.providerId;
+}
+
+async function ensureProviderInAuthContext(
+    context: AuthContext,
+    config: GenericOAuthConfig,
+) {
+    if (
+        context.socialProviders.some(
+            (provider) => provider.id === config.providerId,
+        )
+    ) {
+        return;
+    }
+
+    const initialized = await genericOAuth({ config: [config] }).init(context);
+    const provider = initialized.context?.socialProviders?.find(
+        (candidate) => candidate.id === config.providerId,
+    );
+
+    if (provider) {
+        context.socialProviders.push(provider);
+    }
 }
 
 async function getProviderById(providerId: string) {
@@ -237,7 +249,7 @@ export function getOrganizationOidcProviderIdFromContext(
 ): string | null {
     const endpointContext = context as
         | {
-              body?: { providerId?: unknown };
+              body?: { provider?: unknown; providerId?: unknown };
               params?: { id?: unknown; providerId?: unknown };
           }
         | null
@@ -245,6 +257,7 @@ export function getOrganizationOidcProviderIdFromContext(
 
     const providerId =
         endpointContext?.params?.providerId ??
+        endpointContext?.body?.provider ??
         endpointContext?.body?.providerId ??
         endpointContext?.params?.id;
 
@@ -300,17 +313,21 @@ async function getProviderIdFromOAuthRequest(
         ? pathname.slice(basePath.length) || "/"
         : pathname;
 
-    if (authPath.startsWith("/oauth2/callback/")) {
-        return decodeURIComponent(authPath.slice("/oauth2/callback/".length));
+    if (authPath.startsWith("/callback/")) {
+        return decodeURIComponent(authPath.slice("/callback/".length));
     }
 
-    if (authPath !== "/sign-in/oauth2" || request.method !== "POST") {
+    if (authPath !== "/sign-in/social" || request.method !== "POST") {
         return null;
     }
 
     try {
-        const body = (await request.clone().json()) as { providerId?: unknown };
-        return typeof body.providerId === "string" ? body.providerId : null;
+        const body = (await request.clone().json()) as {
+            provider?: unknown;
+            providerId?: unknown;
+        };
+        const provider = body.provider ?? body.providerId;
+        return typeof provider === "string" ? provider : null;
     } catch {
         return null;
     }
@@ -372,6 +389,18 @@ export function organizationOidcPlugin(): BetterAuthPlugin {
                     message: "OIDC provider not found",
                 });
             }
+
+            const config = organizationOidcOAuthConfigs.find(
+                (candidate) => candidate.providerId === registeredProviderId,
+            );
+
+            if (!config) {
+                throw new APIError("INTERNAL_SERVER_ERROR", {
+                    message: "OIDC provider configuration could not be loaded",
+                });
+            }
+
+            await ensureProviderInAuthContext(ctx, config);
         },
         rateLimit: [
             {

@@ -21,7 +21,7 @@
         "typescript": "^7"
     },
     "dependencies": {
-        "@better-auth/api-key": "^1.6.26",
+        "@better-auth/api-key": "^1.7.2",
         "@uptimekit/db": "workspace:*",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
