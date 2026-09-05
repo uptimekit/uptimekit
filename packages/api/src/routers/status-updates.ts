@@ -417,13 +417,32 @@ export const statusUpdatesRouter = {
                     })
                     .where(eq(statusPageReportUpdate.id, input.updateId));
 
-                // 2. Update the parent report status
+                const [latestUpdate] = await tx
+                    .select({
+                        status: statusPageReportUpdate.status,
+                        createdAt: statusPageReportUpdate.createdAt,
+                    })
+                    .from(statusPageReportUpdate)
+                    .where(eq(statusPageReportUpdate.reportId, update.reportId))
+                    .orderBy(desc(statusPageReportUpdate.createdAt))
+                    .limit(1);
+
+                if (!latestUpdate) {
+                    throw new ORPCError("INTERNAL_SERVER_ERROR", {
+                        message: "Report has no updates",
+                    });
+                }
+
+                // 2. Keep the parent status derived from the newest update.
                 await tx
                     .update(statusPageReport)
                     .set({
-                        status: input.status,
+                        status: latestUpdate.status,
                         updatedAt: now,
-                        resolvedAt: input.status === "resolved" ? now : null,
+                        resolvedAt:
+                            latestUpdate.status === "resolved"
+                                ? latestUpdate.createdAt
+                                : null,
                     })
                     .where(eq(statusPageReport.id, update.reportId));
 
@@ -517,9 +536,39 @@ export const statusUpdatesRouter = {
                 });
             }
 
-            await db
-                .delete(statusPageReportUpdate)
-                .where(eq(statusPageReportUpdate.id, input.updateId));
+            await db.transaction(async (tx) => {
+                await tx
+                    .delete(statusPageReportUpdate)
+                    .where(eq(statusPageReportUpdate.id, input.updateId));
+
+                const [latestUpdate] = await tx
+                    .select({
+                        status: statusPageReportUpdate.status,
+                        createdAt: statusPageReportUpdate.createdAt,
+                    })
+                    .from(statusPageReportUpdate)
+                    .where(eq(statusPageReportUpdate.reportId, update.reportId))
+                    .orderBy(desc(statusPageReportUpdate.createdAt))
+                    .limit(1);
+
+                if (!latestUpdate) {
+                    throw new ORPCError("INTERNAL_SERVER_ERROR", {
+                        message: "Report has no updates",
+                    });
+                }
+
+                await tx
+                    .update(statusPageReport)
+                    .set({
+                        status: latestUpdate.status,
+                        updatedAt: new Date(),
+                        resolvedAt:
+                            latestUpdate.status === "resolved"
+                                ? latestUpdate.createdAt
+                                : null,
+                    })
+                    .where(eq(statusPageReport.id, update.reportId));
+            });
 
             return { success: true };
         }),
