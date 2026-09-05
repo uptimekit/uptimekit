@@ -125,7 +125,7 @@ func (m *HTTPMonitor) Check(cfg Config) Result {
 	defer resp.Body.Close()
 
 	// Read body to complete transfer timing
-	_, _ = io.Copy(io.Discard, resp.Body)
+	_, transferErr := io.Copy(io.Discard, resp.Body)
 	transferDone := time.Now()
 
 	// Calculate timings
@@ -152,6 +152,10 @@ func (m *HTTPMonitor) Check(cfg Config) Result {
 	result.Latency = timings.Total
 	result.Timings = timings
 	result.StatusCode = resp.StatusCode
+	if transferErr != nil {
+		result.Error = "failed to read response: " + transferErr.Error()
+		return result
+	}
 
 	// Check if status code is acceptable
 	isUp := m.isStatusAcceptable(resp.StatusCode, cfg.AcceptedStatusCodes)

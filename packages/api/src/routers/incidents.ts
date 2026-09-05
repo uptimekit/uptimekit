@@ -11,6 +11,7 @@ import { statusPage } from "@uptimekit/db/schema/status-pages";
 import { and, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+import { getAuditUserId } from "../lib/audit-user";
 import { publishAppEvent } from "../lib/events";
 import { processPendingNotifications } from "../pkg/notifications";
 
@@ -524,7 +525,7 @@ export const incidentsRouter = {
                     message: `Incident created by ${context.session.user.name}`,
                     type: "comment",
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 if (input.statusPageIds.length > 0) {
@@ -534,7 +535,7 @@ export const incidentsRouter = {
                         message: `Published to ${input.statusPageIds.length} status page${input.statusPageIds.length === 1 ? "" : "s"}`,
                         type: "event",
                         createdAt: now,
-                        userId: context.session.user.id,
+                        userId: getAuditUserId(context),
                     });
                 }
 
@@ -733,7 +734,7 @@ export const incidentsRouter = {
                             message,
                             type: "event",
                             createdAt: new Date(),
-                            userId: context.session.user.id,
+                            userId: getAuditUserId(context),
                         })),
                     );
                 }
@@ -795,7 +796,7 @@ export const incidentsRouter = {
                     .set({
                         status: existing.endedAt ? "resolved" : "identified",
                         acknowledgedAt: now,
-                        acknowledgedBy: context.session.user.id,
+                        acknowledgedBy: getAuditUserId(context),
                         updatedAt: now,
                     })
                     .where(eq(incident.id, input.id));
@@ -806,7 +807,7 @@ export const incidentsRouter = {
                     message: `Incident acknowledged by ${context.session.user.name}`,
                     type: "comment",
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 await publishAppEvent(
@@ -877,7 +878,7 @@ export const incidentsRouter = {
                     message: `Incident resolved by ${context.session.user.name}`,
                     type: "comment",
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 await publishAppEvent(
@@ -1040,7 +1041,7 @@ export const incidentsRouter = {
                     message: `Merged ${mergedCount} incident${mergedCount === 1 ? "" : "s"} into this incident: ${sourceTitles.join(", ")}`,
                     type: "event",
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 await tx
@@ -1104,7 +1105,7 @@ export const incidentsRouter = {
                     message: input.message,
                     type: "comment",
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 await publishAppEvent(
