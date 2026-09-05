@@ -11,6 +11,11 @@ import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { getAuditUserId } from "../lib/audit-user";
 
+const reportUpdateOrder = [
+    desc(statusPageReportUpdate.createdAt),
+    desc(statusPageReportUpdate.id),
+];
+
 export const statusUpdatesRouter = {
     list: protectedProcedure
         .route({
@@ -54,7 +59,7 @@ export const statusUpdatesRouter = {
                 orderBy: [desc(statusPageReport.createdAt)],
                 with: {
                     updates: {
-                        orderBy: [desc(statusPageReportUpdate.createdAt)],
+                        orderBy: reportUpdateOrder,
                     },
                     affectedMonitors: true,
                 },
@@ -108,7 +113,7 @@ export const statusUpdatesRouter = {
                 ),
                 with: {
                     updates: {
-                        orderBy: [desc(statusPageReportUpdate.createdAt)],
+                        orderBy: reportUpdateOrder,
                     },
                     affectedMonitors: true,
                 },
@@ -292,13 +297,32 @@ export const statusUpdatesRouter = {
                     userId: getAuditUserId(context),
                 });
 
-                // 2. Update the parent report status
+                const [latestUpdate] = await tx
+                    .select({
+                        status: statusPageReportUpdate.status,
+                        createdAt: statusPageReportUpdate.createdAt,
+                    })
+                    .from(statusPageReportUpdate)
+                    .where(eq(statusPageReportUpdate.reportId, input.reportId))
+                    .orderBy(...reportUpdateOrder)
+                    .limit(1);
+
+                if (!latestUpdate) {
+                    throw new ORPCError("INTERNAL_SERVER_ERROR", {
+                        message: "Report has no updates",
+                    });
+                }
+
+                // 2. Keep the parent status derived from the newest update.
                 await tx
                     .update(statusPageReport)
                     .set({
-                        status: input.status,
+                        status: latestUpdate.status,
                         updatedAt: now,
-                        resolvedAt: input.status === "resolved" ? now : null,
+                        resolvedAt:
+                            latestUpdate.status === "resolved"
+                                ? latestUpdate.createdAt
+                                : null,
                     })
                     .where(eq(statusPageReport.id, input.reportId));
 
@@ -424,7 +448,7 @@ export const statusUpdatesRouter = {
                     })
                     .from(statusPageReportUpdate)
                     .where(eq(statusPageReportUpdate.reportId, update.reportId))
-                    .orderBy(desc(statusPageReportUpdate.createdAt))
+                    .orderBy(...reportUpdateOrder)
                     .limit(1);
 
                 if (!latestUpdate) {
@@ -548,7 +572,7 @@ export const statusUpdatesRouter = {
                     })
                     .from(statusPageReportUpdate)
                     .where(eq(statusPageReportUpdate.reportId, update.reportId))
-                    .orderBy(desc(statusPageReportUpdate.createdAt))
+                    .orderBy(...reportUpdateOrder)
                     .limit(1);
 
                 if (!latestUpdate) {

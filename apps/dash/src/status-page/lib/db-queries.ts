@@ -255,7 +255,10 @@ async function getPublishedIncidentRecords(
         ],
         with: {
             updates: {
-                orderBy: [desc(statusPageReportUpdate.createdAt)],
+                orderBy: [
+                    desc(statusPageReportUpdate.createdAt),
+                    desc(statusPageReportUpdate.id),
+                ],
             },
             affectedMonitors: {
                 with: {
