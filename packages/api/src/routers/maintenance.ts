@@ -11,6 +11,7 @@ import { statusPage } from "@uptimekit/db/schema/status-pages";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+import { getAuditUserId } from "../lib/audit-user";
 
 const maintenanceStatusSchema = z.enum([
     "scheduled",
@@ -204,7 +205,7 @@ export const maintenanceRouter = {
                         message: input.description,
                         type: "comment",
                         createdAt: now,
-                        userId: context.session.user.id,
+                        userId: getAuditUserId(context),
                     });
                 }
             });
@@ -341,7 +342,7 @@ export const maintenanceRouter = {
                     message: input.message,
                     type: "comment",
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 await tx

@@ -9,6 +9,7 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
+import { getAuditUserId } from "../lib/audit-user";
 
 export const statusUpdatesRouter = {
     list: protectedProcedure
@@ -196,7 +197,7 @@ export const statusUpdatesRouter = {
                     message: input.message,
                     status: input.status,
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 if (input.monitors.length > 0) {
@@ -288,7 +289,7 @@ export const statusUpdatesRouter = {
                     message: input.message,
                     status: input.status,
                     createdAt: now,
-                    userId: context.session.user.id,
+                    userId: getAuditUserId(context),
                 });
 
                 // 2. Update the parent report status
