@@ -36,6 +36,7 @@ export function DataPagination({
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Previous page"
                             disabled={page === 1}
                             onClick={() => setPage(page - 1)}
                         >
@@ -83,6 +84,7 @@ export function DataPagination({
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Next page"
                             onClick={() => setPage(page + 1)}
                             disabled={page === totalPages}
                         >
