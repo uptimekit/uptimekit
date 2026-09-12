@@ -157,7 +157,7 @@ export const discordIntegration: IntegrationDefinition<
                             fields: [
                                 {
                                     name: "`📋` Incident",
-                                    value: payload.title,
+                                    value: payload.title.slice(0, 1024),
                                     inline: true,
                                 },
                                 {

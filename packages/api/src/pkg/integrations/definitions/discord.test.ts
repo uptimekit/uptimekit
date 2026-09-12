@@ -29,6 +29,35 @@ describe("discord integration", () => {
         mocks.findIncident.mockClear();
     });
 
+    it.each([1023, 1024, 1025, 10000])(
+        "bounds a deleted incident title of %i characters to the embed field limit",
+        async (length) => {
+            await discordIntegration.handler(
+                {
+                    webhookUrl:
+                        "https://discord.com/api/webhooks/webhook-id/webhook-token",
+                },
+                "incident.deleted",
+                {
+                    incidentId: "incident-1",
+                    organizationId: "org-1",
+                    title: "A".repeat(length),
+                    severity: "critical",
+                },
+            );
+
+            expect(mocks.fetchIntegrationWebhook).toHaveBeenCalledOnce();
+            const request = mocks.fetchIntegrationWebhook.mock.calls[0]?.[1];
+            const body = JSON.parse(String(request?.body));
+            expect(body.embeds[0].fields).toContainEqual({
+                name: "`📋` Incident",
+                value: "A".repeat(Math.min(length, 1024)),
+                inline: true,
+            });
+            expect(mocks.findIncident).not.toHaveBeenCalled();
+        },
+    );
+
     it("formats deleted incidents without querying or linking to the removed incident", async () => {
         await discordIntegration.handler(
             {
