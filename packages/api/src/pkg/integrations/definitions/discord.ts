@@ -141,6 +141,56 @@ export const discordIntegration: IntegrationDefinition<
             return;
         }
 
+        if (event === "incident.deleted") {
+            const timestamp = Math.floor(Date.now() / 1000);
+
+            await fetchIntegrationWebhook(config.webhookUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    embeds: [
+                        {
+                            color: 9807270,
+                            description: "> `🗑️` Incident deleted",
+                            fields: [
+                                {
+                                    name: "`📋` Incident",
+                                    value: payload.title.slice(0, 1024),
+                                    inline: true,
+                                },
+                                {
+                                    name: "`⚠️` Severity",
+                                    value: payload.severity,
+                                    inline: true,
+                                },
+                                {
+                                    name: "`📅` Date",
+                                    value: `<t:${timestamp}:D>`,
+                                    inline: true,
+                                },
+                                {
+                                    name: "`⏰` Time",
+                                    value: `<t:${timestamp}:T>`,
+                                    inline: true,
+                                },
+                                {
+                                    name: "`💬` Details",
+                                    value: "This incident and its history have been removed.",
+                                },
+                                {
+                                    name: "`🆔` Incident ID",
+                                    value: `\`${payload.incidentId}\``,
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            });
+            return;
+        }
+
         // Fetch full incident data to get monitors
         const incidentData = await db.query.incident.findFirst({
             where: (t, { eq }) => eq(t.id, payload.incidentId),
