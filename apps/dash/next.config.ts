@@ -22,10 +22,6 @@ const nextConfig: NextConfig = {
                 protocol: "https",
                 hostname: "r2.uptimekit.dev",
             },
-            {
-                protocol: "https",
-                hostname: "api.qrserver.com",
-            },
         ],
     },
     logging: {

@@ -3,7 +3,7 @@
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Image from "next/image";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { sileo } from "sileo";
@@ -654,11 +654,9 @@ function EnableTwoFactorDialog({
                 {step === "qr" && (
                     <div className="flex flex-col items-center gap-4">
                         <div className="overflow-hidden rounded-lg border bg-white p-2">
-                            <Image
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpURI)}`}
-                                alt="QR Code"
-                                width={200}
-                                height={200}
+                            <QRCodeSVG
+                                value={totpURI}
+                                size={200}
                                 className="h-48 w-48"
                             />
                         </div>
