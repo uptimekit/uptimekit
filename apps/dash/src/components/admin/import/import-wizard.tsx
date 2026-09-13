@@ -1,11 +1,13 @@
 "use client";
 
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import type * as React from "react";
 import { useState } from "react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
@@ -223,6 +225,58 @@ export function ImportWizard() {
 
 type ImportWizardState = ReturnType<typeof useImportWizardState>;
 
+/**
+ * Page shell shared by every wizard step so the import page matches the
+ * title/actions header used across the other admin pages.
+ */
+function ImportPageShell({
+    actions,
+    children,
+}: {
+    actions?: React.ReactNode;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="mx-auto w-full max-w-6xl space-y-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 className="font-bold text-2xl tracking-tight">
+                        Import monitors
+                    </h1>
+                    <p className="text-muted-foreground text-sm">
+                        Import monitors from another monitoring tool into an
+                        organization.
+                    </p>
+                </div>
+                {actions && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        {actions}
+                    </div>
+                )}
+            </div>
+            {children}
+        </div>
+    );
+}
+
+function ImportPanel({
+    title,
+    children,
+}: {
+    title: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            <div className="flex min-h-12 items-center gap-2 border-b bg-muted/20 px-4 py-3 font-medium text-muted-foreground text-sm">
+                <FontAwesomeIcon icon={faChevronDown} className="h-4 w-4" />
+                {title}
+            </div>
+            {children}
+        </div>
+    );
+}
+
 function ConnectStep({ state }: { state: ImportWizardState }) {
     const {
         sourceId,
@@ -243,9 +297,20 @@ function ConnectStep({ state }: { state: ImportWizardState }) {
     } = state;
 
     return (
-        <>
-            <Card>
-                <CardContent className="space-y-4 pt-6">
+        <ImportPageShell
+            actions={
+                <Button
+                    disabled={!canPreview || previewMutation.isPending}
+                    onClick={() => previewMutation.mutate()}
+                >
+                    {previewMutation.isPending
+                        ? "Connecting…"
+                        : "Connect & preview"}
+                </Button>
+            }
+        >
+            <ImportPanel title="Connection">
+                <div className="space-y-4 p-4">
                     <div className="space-y-2">
                         <Label>Import from</Label>
                         <button
@@ -298,16 +363,8 @@ function ConnectStep({ state }: { state: ImportWizardState }) {
                             onChange={setConnection}
                         />
                     )}
-                    <Button
-                        disabled={!canPreview || previewMutation.isPending}
-                        onClick={() => previewMutation.mutate()}
-                    >
-                        {previewMutation.isPending
-                            ? "Connecting…"
-                            : "Connect & preview"}
-                    </Button>
-                </CardContent>
-            </Card>
+                </div>
+            </ImportPanel>
 
             <Dialog open={sourceDialogOpen} onOpenChange={setSourceDialogOpen}>
                 <DialogContent className="sm:max-w-2xl">
@@ -355,7 +412,7 @@ function ConnectStep({ state }: { state: ImportWizardState }) {
                     </DialogPanel>
                 </DialogContent>
             </Dialog>
-        </>
+        </ImportPageShell>
     );
 }
 
@@ -382,9 +439,29 @@ function ReviewStep({ state }: { state: ImportWizardState }) {
         selectedMonitors.length > preview.quota.remaining;
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardContent className="space-y-4 pt-6">
+        <ImportPageShell
+            actions={
+                <>
+                    <Button
+                        variant="ghost"
+                        onClick={() => setStep("connect")}
+                        disabled={commitMutation.isPending}
+                    >
+                        Back
+                    </Button>
+                    <Button
+                        disabled={!canCommit || commitMutation.isPending}
+                        onClick={() => commitMutation.mutate()}
+                    >
+                        {commitMutation.isPending
+                            ? "Importing…"
+                            : `Import ${selectedMonitors.length} monitor(s)`}
+                    </Button>
+                </>
+            }
+        >
+            <ImportPanel title="Import options">
+                <div className="space-y-4 p-4">
                     <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                         Quota: {preview.quota.used} used /{" "}
                         {preview.quota.limit ?? "Unlimited"}
@@ -466,46 +543,55 @@ function ReviewStep({ state }: { state: ImportWizardState }) {
                             </div>
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </ImportPanel>
 
-            <Card>
-                <CardContent className="pt-6">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-10" />
-                                <TableHead>Name</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Tags</TableHead>
+            <ImportPanel
+                title={`Monitors (${selectedMonitors.length}/${preview.supported.length} selected)`}
+            >
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-10 pl-6" />
+                            <TableHead>Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Tags</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {preview.supported.map((m: PreviewMonitor) => (
+                            <TableRow
+                                key={m.sourceId}
+                                className="hover:bg-muted/40"
+                            >
+                                <TableCell className="w-10 pl-6">
+                                    <Checkbox
+                                        checked={selectedSourceIds.has(
+                                            m.sourceId,
+                                        )}
+                                        onCheckedChange={() =>
+                                            setSelectedSourceIds((s) =>
+                                                toggle(s, m.sourceId),
+                                            )
+                                        }
+                                    />
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                    {m.name}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                    {m.type}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground text-sm">
+                                    {m.tagNames.join(", ")}
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {preview.supported.map((m: PreviewMonitor) => (
-                                <TableRow key={m.sourceId}>
-                                    <TableCell>
-                                        <Checkbox
-                                            checked={selectedSourceIds.has(
-                                                m.sourceId,
-                                            )}
-                                            onCheckedChange={() =>
-                                                setSelectedSourceIds((s) =>
-                                                    toggle(s, m.sourceId),
-                                                )
-                                            }
-                                        />
-                                    </TableCell>
-                                    <TableCell>{m.name}</TableCell>
-                                    <TableCell>{m.type}</TableCell>
-                                    <TableCell>
-                                        {m.tagNames.join(", ")}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    {preview.skipped.length > 0 && (
-                        <details className="mt-4 text-sm">
+                        ))}
+                    </TableBody>
+                </Table>
+                {preview.skipped.length > 0 && (
+                    <div className="border-t bg-muted/20 px-4 py-3">
+                        <details className="text-sm">
                             <summary className="cursor-pointer text-muted-foreground">
                                 {preview.skipped.length} monitor(s) skipped
                             </summary>
@@ -517,24 +603,10 @@ function ReviewStep({ state }: { state: ImportWizardState }) {
                                 ))}
                             </ul>
                         </details>
-                    )}
-                </CardContent>
-            </Card>
-
-            <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setStep("connect")}>
-                    Back
-                </Button>
-                <Button
-                    disabled={!canCommit || commitMutation.isPending}
-                    onClick={() => commitMutation.mutate()}
-                >
-                    {commitMutation.isPending
-                        ? "Importing…"
-                        : `Import ${selectedMonitors.length} monitor(s)`}
-                </Button>
-            </div>
-        </div>
+                    </div>
+                )}
+            </ImportPanel>
+        </ImportPageShell>
     );
 }
 
@@ -544,31 +616,37 @@ function ImportComplete({ state }: { state: ImportWizardState }) {
     if (!result) return null;
 
     return (
-        <Card>
-            <CardContent className="space-y-4 pt-6">
-                <p className="font-medium">
-                    Imported {result.created} monitor(s), {result.groupsCreated}{" "}
-                    group(s), and {result.tagsCreated} tag(s).
-                </p>
-                {warned.length > 0 && (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 text-sm dark:bg-amber-950/30 dark:text-amber-200">
-                        <p className="font-medium">
-                            These monitors may not be fully compatible — please
-                            check them:
-                        </p>
-                        <ul className="mt-2 list-disc pl-6">
-                            {warned.map((m) => (
-                                <li key={m.sourceId}>
-                                    {m.name} — {m.warnings?.join(" ")}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
+        <ImportPageShell
+            actions={
                 <Button onClick={() => router.push("/monitors")}>
                     Go to monitors
                 </Button>
-            </CardContent>
-        </Card>
+            }
+        >
+            <ImportPanel title="Import complete">
+                <div className="space-y-4 p-4">
+                    <p className="font-medium">
+                        Imported {result.created} monitor(s),{" "}
+                        {result.groupsCreated} group(s), and{" "}
+                        {result.tagsCreated} tag(s).
+                    </p>
+                    {warned.length > 0 && (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 text-sm dark:bg-amber-950/30 dark:text-amber-200">
+                            <p className="font-medium">
+                                These monitors may not be fully compatible —
+                                please check them:
+                            </p>
+                            <ul className="mt-2 list-disc pl-6">
+                                {warned.map((m) => (
+                                    <li key={m.sourceId}>
+                                        {m.name} — {m.warnings?.join(" ")}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            </ImportPanel>
+        </ImportPageShell>
     );
 }
