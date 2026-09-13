@@ -78,16 +78,6 @@ The dashboard and public status pages are served from the same container.
 
 4. Now follow the steps on the app. Enjoy :D
 
-## Support
-
-Need help with UptimeKit? Join our community support room on Matrix:
-
-**[Join the UptimeKit Matrix room](https://matrix.to/#/#uptimekit:irazz.lol)**
-
-Room address: `#uptimekit:irazz.lol`
-
-Use the room to ask questions, report problems, and connect with other UptimeKit users and contributors.
-
 ## Project Structure
 
 ```bash
@@ -119,7 +109,6 @@ This project is licensed under a [MIT License](LICENSE)
 
 ---
 
-<!-- timeouts?
 ## Star History
 
 <a href="https://www.star-history.com/?repos=uptimekit%2Fuptimekit&type=date&legend=top-left">
@@ -129,8 +118,6 @@ This project is licensed under a [MIT License](LICENSE)
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=uptimekit/uptimekit&type=date&legend=top-left&sealed_token=pZxQDdxjnggzp90uakNdKGMS2_ZxGHDzplL-N6q4bl78Vy0v-waIwW6XEjHSJjhu6OSbMA0N0TL_W72AhXOT5W4iYhOmNQOKeeOtyJsK5-4w2HJDnEuLsA" />
  </picture>
 </a>
-
---- -->
 
 <div align="center">
   <sub>Built with ❤️ by the UptimeKit Team</sub>
