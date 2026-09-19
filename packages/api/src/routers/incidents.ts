@@ -293,8 +293,8 @@ export const incidentsRouter = {
         })
         .input(
             z.object({
-                limit: z.number().default(50),
-                offset: z.number().default(0),
+                limit: z.coerce.number().optional().default(50),
+                offset: z.coerce.number().optional().default(0),
                 status: z.enum(["open", "resolved", "all"]).default("all"),
                 q: z.string().optional(),
                 severity: incidentSeveritySchema.optional(),
