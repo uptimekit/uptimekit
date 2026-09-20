@@ -16,6 +16,11 @@ import { publishAppEvent } from "../lib/events";
 import { processPendingNotifications } from "../pkg/notifications";
 
 const incidentTimestampSchema = z.coerce.date();
+const incidentPaginationNumberSchema = z.preprocess(
+    (value) =>
+        typeof value === "string" && value.trim() === "" ? Number.NaN : value,
+    z.coerce.number(),
+);
 
 const incidentStatusSchema = z.enum([
     "investigating",
@@ -293,8 +298,8 @@ export const incidentsRouter = {
         })
         .input(
             z.object({
-                limit: z.coerce.number().optional().default(50),
-                offset: z.coerce.number().optional().default(0),
+                limit: incidentPaginationNumberSchema.optional().default(50),
+                offset: incidentPaginationNumberSchema.optional().default(0),
                 status: z.enum(["open", "resolved", "all"]).default("all"),
                 q: z.string().optional(),
                 severity: incidentSeveritySchema.optional(),
