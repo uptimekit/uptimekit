@@ -225,10 +225,6 @@ export function ImportWizard() {
 
 type ImportWizardState = ReturnType<typeof useImportWizardState>;
 
-/**
- * Page shell shared by every wizard step so the import page matches the
- * title/actions header used across the other admin pages.
- */
 function ImportPageShell({
     actions,
     children,
