@@ -54,7 +54,7 @@
         "@types/nodemailer": "^8.0.1",
         "@uptimekit/config": "workspace:*",
         "typescript": "^7.0.2",
-        "vitest": "^4.1.10"
+        "vitest": "^4.1.11"
     },
     "peerDependencies": {
         "typescript": "^7"
@@ -72,7 +72,7 @@
         "drizzle-orm": "catalog:",
         "effect": "^3.22.1",
         "evlog": "^2.24.0",
-        "nodemailer": "^9.0.4",
+        "nodemailer": "^9.1.1",
         "semver": "^7.8.5",
         "socket.io-client": "^4.8.3",
         "zod": "catalog:"

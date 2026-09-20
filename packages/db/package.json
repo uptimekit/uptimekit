@@ -23,7 +23,7 @@
         "testcontainers": "^12.1.0",
         "tsx": "^4.23.9",
         "typescript": "^7.0.2",
-        "vitest": "^4.1.10"
+        "vitest": "^4.1.11"
     },
     "peerDependencies": {
         "typescript": "^7"
