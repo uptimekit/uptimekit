@@ -51,9 +51,10 @@ export default async function EditWorkerPage({
     const { worker: w, apiKey: k } = data;
 
     return (
-        <div className="flex flex-col gap-4 p-4 pt-0">
+        <div className="mx-auto w-full max-w-6xl space-y-4">
             <div className="flex items-center gap-4">
                 <Button
+                    aria-label="Back to workers"
                     variant="outline"
                     size="icon"
                     render={<Link href="/admin/workers" />}

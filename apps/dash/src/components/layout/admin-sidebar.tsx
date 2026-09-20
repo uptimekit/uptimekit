@@ -13,7 +13,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
-import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     Sidebar,
@@ -77,14 +76,19 @@ export function AdminSidebar({
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" render={<Link href="/" />}>
-                            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                        <SidebarMenuButton
+                            size="lg"
+                            tooltip="Back to App"
+                            className="group-data-[collapsible=icon]:justify-center"
+                            render={<Link href="/" />}
+                        >
+                            <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground group-data-[collapsible=icon]:size-6">
                                 <FontAwesomeIcon
                                     icon={faChevronLeft}
                                     className="size-4"
                                 />
                             </div>
-                            <div className="grid flex-1 text-left text-sm leading-tight">
+                            <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                                 <span className="truncate font-semibold">
                                     Back to App
                                 </span>
@@ -147,9 +151,10 @@ function AdminUserMenu() {
     return (
         <SidebarMenuButton
             size="lg"
+            tooltip={`Admin (${session.user.email})`}
             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
         >
-            <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
+            <Avatar className="h-8 w-8 shrink-0 rounded-lg group-data-[collapsible=icon]:size-6">
                 <AvatarImage
                     src={session.user.image || ""}
                     alt={session.user.name}

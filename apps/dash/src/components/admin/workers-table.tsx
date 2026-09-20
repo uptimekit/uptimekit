@@ -81,13 +81,6 @@ const workerStatusMeta: Record<
     },
 };
 
-/**
- * Render a paginated, searchable table for managing workers with status filtering, creation, and deletion workflows.
- *
- * Shows loading and empty states, per-worker actions (edit, rotate token, delete with confirmation), region info, last-seen timestamps, and pagination controls.
- *
- * @returns The rendered JSX element for the Workers table and its associated controls.
- */
 function useWorkersTableModel() {
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -532,10 +525,10 @@ function WorkersTableView({ model }: { model: WorkersTableModel }) {
     } = model;
     return (
         <div className="mx-auto w-full max-w-6xl space-y-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <h1 className="font-bold text-2xl tracking-tight">Workers</h1>
-                <div className="flex items-center gap-2">
-                    <div className="relative w-64">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative w-full sm:w-64">
                         <FontAwesomeIcon
                             icon={faMagnifyingGlass}
                             className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground"

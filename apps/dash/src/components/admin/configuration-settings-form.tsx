@@ -56,15 +56,6 @@ function getFormString(formData: FormData, key: keyof ConfigFormData) {
     return typeof value === "string" ? value : "";
 }
 
-/**
- * Render a form for viewing and updating instance-wide configuration.
- *
- * Fetches current configuration, populates form fields for "instance_name" and
- * "data_retention_days", and saves changes to those keys when submitted. Shows
- * loading skeletons while fetching and displays success or error toasts after save.
- *
- * @returns The configuration settings form as a React element.
- */
 export function ConfigurationSettingsForm() {
     const queryClient = useQueryClient();
 

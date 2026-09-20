@@ -125,7 +125,15 @@ export default async function AdminPage() {
           : "All workers reachable";
 
     return (
-        <div className="flex flex-col p-4 pt-2">
+        <div className="mx-auto w-full max-w-6xl space-y-4">
+            <div>
+                <h1 className="font-bold text-2xl tracking-tight">
+                    Administration
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                    Instance overview and worker health.
+                </p>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -203,8 +211,8 @@ export default async function AdminPage() {
                 </Card>
             </div>
 
-            <div className="mt-4 grid grid-cols-12 gap-4">
-                <Card className="col-span-8">
+            <div className="grid gap-4 lg:grid-cols-12">
+                <Card className="lg:col-span-8">
                     <CardHeader>
                         <CardTitle>Workers Overview</CardTitle>
                     </CardHeader>
@@ -215,7 +223,7 @@ export default async function AdminPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-4">
+                <Card className="lg:col-span-4">
                     <CardHeader className="border-b">
                         <div className="flex items-center justify-between gap-3">
                             <CardTitle>Workers</CardTitle>

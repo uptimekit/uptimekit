@@ -120,11 +120,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 render={
                                     <SidebarMenuButton
                                         size="lg"
+                                        tooltip={currentOrgName}
                                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
                                     />
                                 }
                             >
-                                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
+                                <div className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
                                     <Image
                                         src={
                                             displayedActiveOrg?.logo ||
@@ -147,7 +148,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 </div>
                                 <FontAwesomeIcon
                                     icon={faChevronDown}
-                                    className="ml-auto group-data-[collapsible=icon]:hidden"
+                                    className="group-data-[collapsible=icon]:hidden! ml-auto shrink-0"
                                 />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -376,11 +377,12 @@ function UserMenuComponent() {
                 render={
                     <SidebarMenuButton
                         size="lg"
+                        tooltip={`${session.user.name} (${session.user.email})`}
                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
                     />
                 }
             >
-                <Avatar className="h-8 w-8 rounded-lg group-data-[collapsible=icon]:size-6">
+                <Avatar className="h-8 w-8 shrink-0 rounded-lg group-data-[collapsible=icon]:size-6">
                     <AvatarImage
                         src={session.user.image || ""}
                         alt={session.user.name}
@@ -399,7 +401,7 @@ function UserMenuComponent() {
                 </div>
                 <FontAwesomeIcon
                     icon={faUpDown}
-                    className="ml-auto size-4 group-data-[collapsible=icon]:hidden"
+                    className="group-data-[collapsible=icon]:hidden! ml-auto size-4 shrink-0"
                 />
             </DropdownMenuTrigger>
             <DropdownMenuContent

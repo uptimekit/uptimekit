@@ -2,12 +2,12 @@ import { ConfigurationSettingsForm } from "@/components/admin/configuration-sett
 
 export default function AdminSettingsPage() {
     return (
-        <div className="flex flex-col gap-6 p-4">
+        <div className="mx-auto w-full max-w-6xl space-y-4">
             <div>
-                <h1 className="font-bold text-3xl tracking-tight">
+                <h1 className="font-bold text-2xl tracking-tight">
                     System Settings
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                     Global configuration for the UptimeKit instance.
                 </p>
             </div>
