@@ -2,7 +2,7 @@
     "name": "uptimekit",
     "private": true,
     "type": "module",
-    "version": "5.1.0",
+    "version": "5.2.0",
     "engines": {
         "node": ">=22.22.0"
     },
