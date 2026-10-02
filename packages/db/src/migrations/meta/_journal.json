@@ -239,6 +239,13 @@
             "when": 1790951414592,
             "tag": "0033_talented_star_brand",
             "breakpoints": true
+        },
+        {
+            "idx": 34,
+            "version": "7",
+            "when": 1790958895085,
+            "tag": "0034_bent_metal_master",
+            "breakpoints": true
         }
     ]
 }
