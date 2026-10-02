@@ -95,7 +95,6 @@ function toGenericOAuthConfig(
         clientId: provider.clientId,
         clientSecret: provider.clientSecret,
         discoveryUrl: provider.discoveryUrl,
-        accountIssuer: `local:oauth:${encodeURIComponent(providerId)}`,
         scopes: provider.scopes,
         pkce: true,
         mapProfileToUser: (profile) => {
