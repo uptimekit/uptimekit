@@ -69,6 +69,8 @@ describe("publishAppEvent", () => {
                 organizationId: "org-1",
                 title: "API recovered",
                 severity: "major",
+                startedAt: "2026-01-01T10:00:00.000Z",
+                resolvedAt: "2026-01-01T12:15:00.000Z",
             },
             { id: "event-2", tx },
         );

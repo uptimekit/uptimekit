@@ -319,6 +319,8 @@ export default function MonitorDetailsPage() {
                         {monitorHref ? (
                             <a
                                 href={monitorHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="font-mono hover:underline"
                             >
                                 {monitorTarget}

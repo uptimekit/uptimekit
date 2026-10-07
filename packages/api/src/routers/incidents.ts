@@ -894,6 +894,8 @@ export const incidentsRouter = {
                         title: existing.title,
                         description: existing.description,
                         severity: existing.severity as any,
+                        startedAt: existing.startedAt.toISOString(),
+                        resolvedAt: now.toISOString(),
                     },
                     { tx },
                 );

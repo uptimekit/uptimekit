@@ -33,6 +33,10 @@ export interface AppEvents {
         title: string;
         description?: string | null;
         severity: "minor" | "major" | "critical" | "maintenance";
+        // Snapshot of the resolved timeline, so delayed or retried deliveries
+        // don't read timestamps that changed after this resolution.
+        startedAt: string;
+        resolvedAt: string;
     };
     "incident.comment_added": {
         incidentId: string;

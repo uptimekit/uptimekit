@@ -1,5 +1,6 @@
 import { db } from "@uptimekit/db";
 import type { z } from "zod";
+import { getResolvedIncidentDuration } from "../../../lib/duration";
 import { createLogger } from "../../../lib/logger";
 import { fetchIntegrationWebhook } from "../http";
 import type { IntegrationDefinition } from "../registry";
@@ -230,6 +231,12 @@ export const gchatIntegration: IntegrationDefinition<
 
             const incidentUrl = `${baseUrl}/incidents/${payload.incidentId}`;
 
+            const duration = getResolvedIncidentDuration(event, payload);
+
+            const durationWidgets: GchatWidget[] = duration
+                ? [decoratedText("Duration", duration)]
+                : [];
+
             let title = "";
             let detailsLabel = "Description";
             let detailsContent = "";
@@ -301,6 +308,7 @@ export const gchatIntegration: IntegrationDefinition<
                                             monitorNames,
                                             true,
                                         ),
+                                        ...durationWidgets,
                                         decoratedText(
                                             detailsLabel,
                                             detailsContent,

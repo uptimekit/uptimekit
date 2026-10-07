@@ -1,4 +1,5 @@
 import { db } from "@uptimekit/db";
+import { getResolvedIncidentDuration } from "../../../lib/duration";
 import { createLogger } from "../../../lib/logger";
 import { assertSafePublicHttpUrl } from "../../../lib/safe-url";
 import { fetchIntegrationWebhook } from "../http";
@@ -13,6 +14,8 @@ interface NtfyMessage {
 
 interface IncidentPayload {
     incidentId: string;
+    startedAt?: string;
+    resolvedAt?: string;
     title?: string;
     description?: string | null;
     message?: string;
@@ -176,12 +179,15 @@ async function buildIncidentMessage(
         incidentData?.monitors.map((item) => item.monitor.name).join(", ") ||
         "No monitors";
     const copy = getIncidentCopy(event, payload);
+    const duration = getResolvedIncidentDuration(event, payload);
+    const durationLine = duration ? [`Duration: ${duration}`] : [];
 
     return {
         title: `${copy.title}: ${incidentTitle}`,
         message: [
             `Severity: ${payload.severity || "Unknown"}`,
             `Monitors: ${monitorNames}`,
+            ...durationLine,
             "",
             copy.detail,
         ].join("\n"),

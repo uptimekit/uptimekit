@@ -34,6 +34,7 @@ vi.mock("@uptimekit/db", () => ({
     },
 }));
 
+import { db } from "@uptimekit/db";
 import { smtpIntegration } from "./smtp";
 import { type SmtpConfig, SmtpConfigSchema } from "./smtp-meta";
 
@@ -112,5 +113,49 @@ describe("smtp integration", () => {
                 html: expect.stringContaining("Health check failed"),
             }),
         );
+    });
+
+    it("shows the duration captured when the incident was resolved", async () => {
+        // The incident's timeline was edited after resolution; the notification
+        // must still describe the resolution that triggered it.
+        vi.mocked(db.query.incident.findFirst).mockResolvedValueOnce({
+            title: "API unavailable",
+            startedAt: new Date("2026-01-01T08:00:00.000Z"),
+            resolvedAt: new Date("2026-01-01T09:00:00.000Z"),
+            monitors: [{ monitor: { name: "API" } }],
+        } as never);
+
+        await smtpIntegration.handler(baseConfig, "incident.resolved", {
+            incidentId: "incident-1",
+            organizationId: "org-1",
+            title: "API unavailable",
+            severity: "critical",
+            startedAt: "2026-01-01T10:00:00.000Z",
+            resolvedAt: "2026-01-01T12:15:00.000Z",
+        });
+
+        expect(mocks.sendMail).toHaveBeenCalledWith(
+            expect.objectContaining({
+                text: expect.stringContaining("Duration: 2h 15m"),
+                html: expect.stringContaining(
+                    "<p><strong>Duration:</strong> 2h 15m</p>",
+                ),
+            }),
+        );
+    });
+
+    it("omits the duration when the resolved event has no timeline", async () => {
+        await smtpIntegration.handler(baseConfig, "incident.resolved", {
+            incidentId: "incident-1",
+            organizationId: "org-1",
+            title: "API unavailable",
+            severity: "critical",
+        });
+
+        const [mail] = mocks.sendMail.mock.calls[0] as unknown as [
+            { text: string; html: string },
+        ];
+        expect(mail.text).not.toContain("Duration");
+        expect(mail.html).not.toContain("Duration");
     });
 });

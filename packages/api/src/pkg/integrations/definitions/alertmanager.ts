@@ -173,6 +173,8 @@ export async function processAlertManagerWebhook(
                             | "major"
                             | "critical"
                             | "maintenance",
+                        startedAt: existingIncident.startedAt.toISOString(),
+                        resolvedAt: now.toISOString(),
                     },
                     { tx },
                 );

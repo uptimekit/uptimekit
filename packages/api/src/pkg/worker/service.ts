@@ -698,6 +698,7 @@ async function processMonitorEventGroup(input: {
             title: incident.title,
             description: incident.description,
             severity: incident.severity,
+            startedAt: incident.startedAt,
             endedAt: incident.endedAt,
             type: incident.type,
         })
@@ -819,6 +820,8 @@ async function processMonitorEventGroup(input: {
                         | "major"
                         | "critical"
                         | "maintenance",
+                    startedAt: resolvedIncident.startedAt.toISOString(),
+                    resolvedAt: eventTime.toISOString(),
                 },
             });
 
@@ -924,6 +927,7 @@ async function processMonitorEventGroup(input: {
                 title: incidentTitle,
                 description: incidentDescription,
                 severity: incidentSeverity,
+                startedAt: openEvaluation.startedAt,
                 endedAt: null,
                 type: "automatic",
             };

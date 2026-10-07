@@ -1,5 +1,6 @@
 import { db } from "@uptimekit/db";
 import type { z } from "zod";
+import { getResolvedIncidentDuration } from "../../../lib/duration";
 import { createLogger } from "../../../lib/logger";
 import { fetchIntegrationWebhook } from "../http";
 import type { IntegrationDefinition } from "../registry";
@@ -117,6 +118,10 @@ export const appriseIntegration: IntegrationDefinition<
 
             const incidentUrl = `${baseUrl}/incidents/${payload.incidentId}`;
 
+            const duration = getResolvedIncidentDuration(event, payload);
+
+            const durationLine = duration ? [`Duration: ${duration}`] : [];
+
             // Determine Content based on Event
             let statusHeader = "";
             let reasonLabel = "Details:";
@@ -152,6 +157,7 @@ export const appriseIntegration: IntegrationDefinition<
 
             const body = [
                 `Monitors: ${monitorNames}`,
+                ...durationLine,
                 "",
                 reasonLabel,
                 reasonContent,
