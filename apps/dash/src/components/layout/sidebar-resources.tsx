@@ -20,26 +20,26 @@ const SIDEBAR_MONITOR_LIMIT = 8;
 const SIDEBAR_INCIDENT_LIMIT = 5;
 const SIDEBAR_REFETCH_INTERVAL = 60_000;
 
-const monitorStatusDotClasses: Record<string, string> = {
+const healthDotClasses: Record<string, string> = {
     up: "bg-emerald-500",
-    down: "bg-red-500",
     degraded: "bg-amber-500",
-    maintenance: "bg-blue-500",
-    pending: "bg-zinc-500",
+    down: "bg-red-500",
 };
 
-const incidentSeverityDotClasses: Record<string, string> = {
-    minor: "bg-amber-500",
-    major: "bg-orange-500",
-    critical: "bg-red-500",
-    maintenance: "bg-blue-500",
+const incidentSeverityHealth: Record<string, string> = {
+    minor: "degraded",
+    major: "down",
+    critical: "down",
 };
 
 function StatusDot({ className }: { className?: string }) {
     return (
         <span className="flex size-4 shrink-0 items-center justify-center">
             <span
-                className={cn("size-2 rounded-full bg-zinc-500", className)}
+                className={cn(
+                    "size-2 rounded-full bg-muted-foreground/40",
+                    className,
+                )}
             />
         </span>
     );
@@ -99,8 +99,11 @@ export function SidebarActiveIncidents() {
                                             <Link href={href as any}>
                                                 <StatusDot
                                                     className={cn(
-                                                        incidentSeverityDotClasses[
-                                                            incident.severity
+                                                        healthDotClasses[
+                                                            incidentSeverityHealth[
+                                                                incident
+                                                                    .severity
+                                                            ] ?? ""
                                                         ],
                                                         "animate-pulse",
                                                     )}
@@ -146,11 +149,7 @@ export function SidebarMonitors() {
                             data?.items.map((monitor) => {
                                 const href = `/monitors/${monitor.id}`;
                                 const dotClass =
-                                    monitor.type === "instatus"
-                                        ? "bg-purple-500"
-                                        : monitorStatusDotClasses[
-                                              monitor.status
-                                          ];
+                                    healthDotClasses[monitor.status];
                                 return (
                                     <SidebarMenuItem key={monitor.id}>
                                         <SidebarMenuButton
