@@ -25,4 +25,4 @@ onlyBuiltDependencies:
 overrides:
   esbuild: ^0.28.0
   postcss: ^8.5.14
-  vite: ^8.0.16
+  vite: ^8.3.2

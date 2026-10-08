@@ -37,7 +37,7 @@ catalogs:
 overrides:
   esbuild: ^0.28.0
   postcss: ^8.5.14
-  vite: ^8.0.16
+  vite: ^8.3.2
 
 importers:
 
@@ -2001,7 +2001,7 @@ packages:
     resolution: {integrity: sha512-T8sWAIbkSyAjkwTcaEc3Iu0o9A27X1/kdXrizhZkGuSKScRQtRzclfAMpOTcGdXCsqxeWlpGy3XjqaW8CpLORg==}
     peerDependencies:
       msw: ^2.4.9
-      vite: ^8.0.16
+      vite: ^8.3.2
     peerDependenciesMeta:
       msw:
         optional: true
@@ -2625,7 +2625,7 @@ packages:
       ofetch: ^1.5.1
       react: '>=19.2.8'
       react-router: '>=7.18.3'
-      vite: ^8.0.16
+      vite: ^8.3.2
     peerDependenciesMeta:
       '@nestjs/common':
         optional: true
@@ -3704,7 +3704,7 @@ packages:
       '@vitest/ui': 5.0.3
       happy-dom: '*'
       jsdom: '*'
-      vite: ^8.0.16
+      vite: ^8.3.2
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
