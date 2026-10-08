@@ -21,6 +21,10 @@ import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import { CreateOrganizationDialog } from "@/components/layout/create-organization-dialog";
 import {
+    SidebarActiveIncidents,
+    SidebarMonitors,
+} from "@/components/layout/sidebar-resources";
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -278,6 +282,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
+                <SidebarActiveIncidents />
+                <SidebarMonitors />
                 <SidebarSeparator />
                 <SidebarGroup>
                     <SidebarGroupLabel>Configuration</SidebarGroupLabel>

@@ -645,7 +645,7 @@ function SidebarMenuBadge({
     );
 }
 
-function SidebarMenuSkeleton({
+export function SidebarMenuSkeleton({
     className,
     showIcon = false,
     ...props
