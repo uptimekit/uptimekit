@@ -65,7 +65,7 @@ export interface SidebarContextProps {
 const SidebarContext: React.Context<SidebarContextProps | null> =
     React.createContext<SidebarContextProps | null>(null);
 
-function useSidebar(): SidebarContextProps {
+export function useSidebar(): SidebarContextProps {
     const context = React.useContext(SidebarContext);
     if (!context) {
         throw new Error("useSidebar must be used within a SidebarProvider.");
@@ -645,7 +645,7 @@ function SidebarMenuBadge({
     );
 }
 
-function SidebarMenuSkeleton({
+export function SidebarMenuSkeleton({
     className,
     showIcon = false,
     ...props
