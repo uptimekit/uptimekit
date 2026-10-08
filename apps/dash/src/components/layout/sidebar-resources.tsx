@@ -12,7 +12,10 @@ import {
     SidebarMenuItem,
     SidebarMenuSkeleton,
     SidebarSeparator,
+    useSidebar,
 } from "@/components/ui/sidebar";
+import { useHydrated } from "@/hooks/use-hydrated";
+import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { orpc } from "@/utils/orpc";
 
@@ -31,6 +34,19 @@ const incidentSeverityHealth: Record<string, string> = {
     major: "down",
     critical: "down",
 };
+
+/**
+ * The resource queries are organization-scoped and only worth polling while the
+ * sections are actually visible, i.e. not hidden by the icon-collapsed sidebar.
+ */
+function useSidebarResourcesEnabled() {
+    const isMounted = useHydrated();
+    const { state, isMobile, openMobile } = useSidebar();
+    const { data: activeOrg } = authClient.useActiveOrganization();
+    const isVisible = isMobile ? openMobile : state === "expanded";
+
+    return isMounted && Boolean(activeOrg?.id) && isVisible;
+}
 
 function StatusDot({ className }: { className?: string }) {
     return (
@@ -72,19 +88,21 @@ function ViewAllItem({ href, total }: { href: string; total: number }) {
 
 export function SidebarActiveIncidents() {
     const pathname = usePathname();
+    const enabled = useSidebarResourcesEnabled();
     const { data } = useQuery({
         ...orpc.incidents.list.queryOptions({
             input: { status: "open", limit: SIDEBAR_INCIDENT_LIMIT },
         }),
+        enabled,
         refetchInterval: SIDEBAR_REFETCH_INTERVAL,
     });
 
-    if (!data || data.items.length === 0) return null;
+    if (!enabled || !data || data.items.length === 0) return null;
 
     return (
         <>
-            <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />
-            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+            <SidebarSeparator />
+            <SidebarGroup>
                 <SidebarGroupLabel>Active Incidents</SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
@@ -127,19 +145,23 @@ export function SidebarActiveIncidents() {
 
 export function SidebarMonitors() {
     const pathname = usePathname();
+    const enabled = useSidebarResourcesEnabled();
     const { data, isPending } = useQuery({
         ...orpc.monitors.list.queryOptions({
             input: { limit: SIDEBAR_MONITOR_LIMIT },
         }),
+        enabled,
         refetchInterval: SIDEBAR_REFETCH_INTERVAL,
     });
 
-    if (!isPending && (!data || data.items.length === 0)) return null;
+    if (!enabled || (!isPending && (!data || data.items.length === 0))) {
+        return null;
+    }
 
     return (
         <>
-            <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />
-            <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+            <SidebarSeparator />
+            <SidebarGroup>
                 <SidebarGroupLabel>Monitors</SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
