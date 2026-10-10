@@ -1187,6 +1187,55 @@ export const incidentsRouter = {
             return { success: true };
         }),
 
+    deleteActivity: writeProcedure
+        .route({
+            method: "DELETE",
+            path: "/incidents/{incidentId}/activities/{activityId}",
+            tags: ["incidents"],
+            summary: "Delete activity",
+            description: "Delete an incident timeline entry.",
+        })
+        .input(
+            z.object({
+                incidentId: z.string(),
+                activityId: z.string(),
+            }),
+        )
+        .handler(async ({ input, context }) => {
+            const activity = await db.query.incidentActivity.findFirst({
+                where: and(
+                    eq(incidentActivity.id, input.activityId),
+                    eq(incidentActivity.incidentId, input.incidentId),
+                ),
+                with: {
+                    incident: true,
+                },
+            });
+
+            if (
+                !activity ||
+                activity.incident.organizationId !==
+                    getActiveOrganizationId(
+                        context.session.session.activeOrganizationId,
+                    )
+            ) {
+                throw new ORPCError("NOT_FOUND", {
+                    message: "Activity not found",
+                });
+            }
+
+            await db
+                .delete(incidentActivity)
+                .where(
+                    and(
+                        eq(incidentActivity.id, input.activityId),
+                        eq(incidentActivity.incidentId, input.incidentId),
+                    ),
+                );
+
+            return { success: true };
+        }),
+
     delete: writeProcedure
         .route({
             method: "DELETE",

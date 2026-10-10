@@ -302,6 +302,7 @@ function IncidentTimeline({
     setComment,
     submitComment,
     setActivityToEdit,
+    setActivityToDelete,
 }: {
     incident: any;
     id: string;
@@ -313,6 +314,7 @@ function IncidentTimeline({
         isPending: boolean;
     };
     setActivityToEdit: (activity: EditableActivity | null) => void;
+    setActivityToDelete: (activity: EditableActivity | null) => void;
 }) {
     return (
         <div className="min-w-[600px] space-y-6 md:col-span-2">
@@ -468,6 +470,24 @@ function IncidentTimeline({
                                                         className="mr-2 h-4 w-4"
                                                     />
                                                     Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    className="text-red-500"
+                                                    onSelect={() =>
+                                                        setActivityToDelete({
+                                                            id: activity.id,
+                                                            message:
+                                                                activity.message,
+                                                            createdAt:
+                                                                activity.createdAt,
+                                                        })
+                                                    }
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={faTrash}
+                                                        className="mr-2 h-4 w-4"
+                                                    />
+                                                    Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -638,6 +658,8 @@ export function IncidentDetails({ id }: { id: string }) {
     const [editOpen, setEditOpen] = useState(false);
     const [activityToEdit, setActivityToEdit] =
         useState<EditableActivity | null>(null);
+    const [activityToDelete, setActivityToDelete] =
+        useState<EditableActivity | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const submitComment = useMutation(
@@ -727,6 +749,26 @@ export function IncidentDetails({ id }: { id: string }) {
         }),
     );
 
+    const deleteActivity = useMutation(
+        orpc.incidents.deleteActivity.mutationOptions({
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: orpc.incidents.get.key({ input: { id } }),
+                });
+                queryClient.invalidateQueries({
+                    queryKey: orpc.incidents.list.key(),
+                });
+                setActivityToDelete(null);
+                sileo.success({ title: "Timeline entry deleted" });
+            },
+            onError: (err) => {
+                sileo.error({
+                    title: `Failed to delete timeline entry: ${err.message}`,
+                });
+            },
+        }),
+    );
+
     if (isLoading) return <IncidentSkeleton />;
 
     if (!incident) {
@@ -774,6 +816,7 @@ export function IncidentDetails({ id }: { id: string }) {
                         setComment={setComment}
                         submitComment={submitComment}
                         setActivityToEdit={setActivityToEdit}
+                        setActivityToDelete={setActivityToDelete}
                     />
 
                     <IncidentSidebar
@@ -807,6 +850,47 @@ export function IncidentDetails({ id }: { id: string }) {
                 }}
                 isPending={editActivity.isPending}
             />
+
+            <AlertDialog
+                open={!!activityToDelete}
+                onOpenChange={(open) => {
+                    if (!open) setActivityToDelete(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Delete timeline entry?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete the timeline entry &quot;
+                            {activityToDelete?.message}&quot;.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleteActivity.isPending}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => {
+                                if (!activityToDelete) return;
+                                deleteActivity.mutate({
+                                    incidentId: id,
+                                    activityId: activityToDelete.id,
+                                });
+                            }}
+                            disabled={deleteActivity.isPending}
+                        >
+                            {deleteActivity.isPending
+                                ? "Deleting..."
+                                : "Delete"}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog
                 open={showDeleteDialog}
