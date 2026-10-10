@@ -1,6 +1,12 @@
 "use client";
 
-import { faCheck, faCopy, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import {
+    faCheck,
+    faCopy,
+    faEye,
+    faEyeSlash,
+    faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -47,11 +53,21 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
         mutate({ id: workerId });
     };
 
-    const handleCopy = () => {
-        if (newKey) {
-            navigator.clipboard.writeText(newKey);
-            setIsRevealed(true);
+    const isSecureContext =
+        typeof window !== "undefined" &&
+        (window.isSecureContext || window.location.protocol === "https:");
+
+    const handleCopy = async () => {
+        if (!newKey) return;
+
+        // Reveal first so the key stays manually copyable if the clipboard write fails
+        setIsRevealed(true);
+
+        try {
+            await navigator.clipboard.writeText(newKey);
             sileo.success({ title: "Copied to clipboard" });
+        } catch {
+            sileo.error({ title: "Failed to copy API key" });
         }
     };
 
@@ -132,25 +148,52 @@ export function WorkerApiKeyManager({ workerId }: WorkerApiKeyManagerProps) {
                                     type={isRevealed ? "text" : "password"}
                                 />
                             </div>
-                            <Button
-                                type="submit"
-                                size="sm"
-                                className="px-3"
-                                onClick={handleCopy}
-                            >
-                                <span className="sr-only">Copy</span>
-                                {isRevealed ? (
-                                    <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="h-4 w-4"
-                                    />
-                                ) : (
-                                    <FontAwesomeIcon
-                                        icon={faCopy}
-                                        className="h-4 w-4"
-                                    />
-                                )}
-                            </Button>
+                            {isSecureContext ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="px-3"
+                                    onClick={handleCopy}
+                                >
+                                    <span className="sr-only">Copy</span>
+                                    {isRevealed ? (
+                                        <FontAwesomeIcon
+                                            icon={faCheck}
+                                            className="h-4 w-4"
+                                        />
+                                    ) : (
+                                        <FontAwesomeIcon
+                                            icon={faCopy}
+                                            className="h-4 w-4"
+                                        />
+                                    )}
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="px-3"
+                                    onClick={() =>
+                                        setIsRevealed((prev) => !prev)
+                                    }
+                                >
+                                    <span className="sr-only">
+                                        {isRevealed ? "Hide" : "Show"} API Key
+                                    </span>
+                                    {isRevealed ? (
+                                        <FontAwesomeIcon
+                                            icon={faEyeSlash}
+                                            className="h-4 w-4"
+                                        />
+                                    ) : (
+                                        <FontAwesomeIcon
+                                            icon={faEye}
+                                            className="h-4 w-4"
+                                        />
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </DialogPanel>
                     <DialogFooter>
