@@ -138,6 +138,12 @@ function getInsertDeduplicationToken(id: string) {
         .digest("hex");
 }
 
+// ClickHouse DateTime64 expects Unix timestamps in seconds in JSONEachRow.
+// Passing epoch milliseconds overflows the column and gets clamped to year 9999.
+function toClickHouseDateTime(value: Date) {
+    return value.getTime() / 1000;
+}
+
 export interface ClickHouseDriverOptions {
     url?: string;
     username?: string;
@@ -327,7 +333,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                         monitorId: event.monitorId,
                         status: event.status,
                         latency: event.latency,
-                        timestamp: event.timestamp.getTime(),
+                        timestamp: toClickHouseDateTime(event.timestamp),
                         statusCode: event.statusCode ?? null,
                         error: event.error ?? null,
                         location: event.location ?? null,
@@ -368,7 +374,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                         id: change.id,
                         monitorId: change.monitorId,
                         status: change.status,
-                        timestamp: change.timestamp.getTime(),
+                        timestamp: toClickHouseDateTime(change.timestamp),
                         location: change.location ?? null,
                     },
                 ],

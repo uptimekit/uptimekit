@@ -21,7 +21,7 @@ export default async function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen w-full">
+        <div className="min-h-screen w-full bg-card">
             <SignUpForm
                 showLogin={showLogin}
                 showDiscordLogin={!!process.env.DISCORD_CLIENT_ID}

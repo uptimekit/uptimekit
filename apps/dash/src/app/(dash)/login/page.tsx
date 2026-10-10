@@ -23,7 +23,7 @@ export default async function LoginPage() {
     const isDemo = process.env.DEMO_MODE === "true";
 
     return (
-        <div className="min-h-screen w-full">
+        <div className="h-screen w-full bg-card">
             <SignInForm
                 showRegister={showRegister}
                 showDiscordLogin={!!process.env.DISCORD_CLIENT_ID}
