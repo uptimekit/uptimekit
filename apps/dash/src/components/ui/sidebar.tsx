@@ -468,7 +468,7 @@ export function SidebarGroupLabel({
     });
 }
 
-function SidebarGroupAction({
+export function SidebarGroupAction({
     className,
     render,
     ...props

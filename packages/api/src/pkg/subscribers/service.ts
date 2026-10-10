@@ -68,9 +68,18 @@ function getStatusPageBaseUrl(page: SubscriberStatusPage) {
         return `https://${normalizedDomain}`;
     }
 
-    const baseDomain =
-        process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN || "status.uptimekit.dev";
-    return `https://${baseDomain.replace(/\/$/, "")}/${page.slug}`;
+    const baseDomain = (
+        process.env.APP_STATUS_PAGE_DOMAIN ||
+        process.env.NEXT_PUBLIC_STATUS_PAGE_DOMAIN
+    )?.trim();
+    if (!baseDomain) {
+        return `${getDashboardBaseUrl()}/status/${page.slug}`;
+    }
+
+    const normalizedDomain = baseDomain
+        .replace(/^https?:\/\//, "")
+        .replace(/\/$/, "");
+    return `https://${normalizedDomain}/${page.slug}`;
 }
 
 function getIncidentLink(page: SubscriberStatusPage, incidentId: string) {

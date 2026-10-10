@@ -1940,35 +1940,39 @@ function CreateMonitorFormCardSection5({
                                             : "Select all"}
                                     </Button>
                                 </FormLabel>
-                                <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                        {activeMonitorLimit === null ? (
-                                            ""
-                                        ) : (
-                                            <span className="font-medium">
-                                                Active monitors:{" "}
-                                                {organizationQuota?.activeMonitorCount ??
-                                                    0}
-                                                {` / ${activeMonitorLimit}`}
-                                            </span>
-                                        )}
-                                        {regionLimit === null ? (
-                                            ""
-                                        ) : (
-                                            <span className="text-muted-foreground">
-                                                Selected workers:{" "}
-                                                {selectedRegionCount}
-                                                {` / ${regionLimit}`}
-                                            </span>
+                                {(activeMonitorLimit !== null ||
+                                    regionLimit !== null) && (
+                                    <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                            {activeMonitorLimit === null ? (
+                                                ""
+                                            ) : (
+                                                <span className="font-medium">
+                                                    Active monitors:{" "}
+                                                    {organizationQuota?.activeMonitorCount ??
+                                                        0}
+                                                    {` / ${activeMonitorLimit}`}
+                                                </span>
+                                            )}
+                                            {regionLimit === null ? (
+                                                ""
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    Selected workers:{" "}
+                                                    {selectedRegionCount}
+                                                    {` / ${regionLimit}`}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {isOverRegionLimit && (
+                                            <p className="mt-2 text-destructive text-xs">
+                                                This organization allows at most{" "}
+                                                {regionLimit} worker(s) per
+                                                monitor.
+                                            </p>
                                         )}
                                     </div>
-                                    {isOverRegionLimit && (
-                                        <p className="mt-2 text-destructive text-xs">
-                                            This organization allows at most{" "}
-                                            {regionLimit} worker(s) per monitor.
-                                        </p>
-                                    )}
-                                </div>
+                                )}
                                 <div className="space-y-2">
                                     {Object.entries(workersByContinent)
                                         .sort(([a], [b]) => a.localeCompare(b))
