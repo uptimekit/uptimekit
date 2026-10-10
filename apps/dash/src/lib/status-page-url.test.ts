@@ -43,3 +43,14 @@ describe("status page URLs", () => {
         ).toBe("https://status.customer.example");
     });
 });
+
+describe("dashboard-origin status page URLs", () => {
+    it("keeps the /status prefix for a non-local dashboard origin", () => {
+        expect(
+            getStatusPageUrl(
+                { slug: "demo" },
+                "https://app.example.com/status",
+            ),
+        ).toBe("https://app.example.com/status/demo");
+    });
+});

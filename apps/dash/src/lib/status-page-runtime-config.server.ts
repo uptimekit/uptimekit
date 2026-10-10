@@ -27,9 +27,24 @@ export function getRuntimeStatusPageDomain(
     );
 }
 
+export function getRequestOrigin(requestHeaders: Headers) {
+    const host =
+        requestHeaders.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+        requestHeaders.get("host");
+    if (!host) return undefined;
+
+    // Next.js sets x-forwarded-proto from the incoming socket, so a missing
+    // value means plain HTTP rather than something to guess from the host.
+    const protocol =
+        requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+        "http";
+    return `${protocol}://${host}`;
+}
+
 /**
- * Uses the configured env var when set, otherwise the origin the browser
- * used to reach the app, so self-hosted installs don't show uptimekit.dev.
+ * Uses the configured env var when set, otherwise the dashboard origin, so
+ * self-hosted installs don't show uptimekit.dev. The dashboard host isn't
+ * rewritten to status pages, so that fallback keeps the /status prefix.
  */
 export async function resolveStatusPageDomain(
     environment: StatusPageEnvironment = process.env,
@@ -37,13 +52,8 @@ export async function resolveStatusPageDomain(
     const configured = getConfiguredStatusPageDomain(environment);
     if (configured) return configured;
 
-    const requestHeaders = await headers();
-    const host =
-        requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
-    if (!host) return DEFAULT_STATUS_PAGE_DOMAIN;
+    const origin = getRequestOrigin(await headers());
+    if (!origin) return DEFAULT_STATUS_PAGE_DOMAIN;
 
-    const protocol =
-        requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
-        (host.startsWith("localhost") ? "http" : "https");
-    return `${protocol}://${host}`;
+    return `${origin}/status`;
 }

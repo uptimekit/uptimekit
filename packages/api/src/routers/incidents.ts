@@ -1208,7 +1208,9 @@ export const incidentsRouter = {
                     eq(incidentActivity.incidentId, input.incidentId),
                 ),
                 with: {
-                    incident: true,
+                    incident: {
+                        with: { activities: { columns: { id: true } } },
+                    },
                 },
             });
 
@@ -1221,6 +1223,16 @@ export const incidentsRouter = {
             ) {
                 throw new ORPCError("NOT_FOUND", {
                     message: "Activity not found",
+                });
+            }
+
+            if (
+                activity.incident.severity === "maintenance" &&
+                activity.incident.activities.length <= 1
+            ) {
+                throw new ORPCError("BAD_REQUEST", {
+                    message:
+                        "Cannot delete the last update from a maintenance window.",
                 });
             }
 

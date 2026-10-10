@@ -114,7 +114,7 @@ export function SidebarActiveIncidents() {
         refetchInterval: SIDEBAR_REFETCH_INTERVAL,
     });
 
-    if (!enabled || !data || data.items.length === 0) return null;
+    if (!enabled || !data) return null;
 
     return (
         <>
@@ -172,9 +172,7 @@ export function SidebarMonitors() {
         refetchInterval: SIDEBAR_REFETCH_INTERVAL,
     });
 
-    if (!enabled || (!isPending && (!data || data.items.length === 0))) {
-        return null;
-    }
+    if (!enabled) return null;
 
     return (
         <>
