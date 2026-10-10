@@ -70,13 +70,11 @@ export function SubscribersTable({ statusPageId }: { statusPageId: string }) {
     const totalPages = Math.ceil(total / pageSize);
 
     return (
-        <div className="mx-auto w-full max-w-6xl space-y-4">
+        <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h1 className="font-bold text-2xl tracking-tight">
-                        Subscribers
-                    </h1>
-                    <p className="mt-1 text-muted-foreground text-sm">
+                    <h2 className="font-medium text-lg">Subscribers</h2>
+                    <p className="text-muted-foreground text-sm">
                         Email subscribers for this status page.
                     </p>
                 </div>

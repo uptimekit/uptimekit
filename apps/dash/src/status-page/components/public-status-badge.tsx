@@ -37,15 +37,41 @@ const badgeStatus = {
     },
 } satisfies Record<StatusType, { label: string; color: string }>;
 
+export type BadgeTheme = "light" | "dark";
+
+const badgeThemes = {
+    light: {
+        background: "#ffffff",
+        border: "#e5e7eb",
+        text: "#0f172a",
+        icon: "#94a3b8",
+        shadow: "0 1px 2px rgb(15 23 42 / 0.06)",
+    },
+    dark: {
+        background: "#0f172a",
+        border: "#1e293b",
+        text: "#f8fafc",
+        icon: "#64748b",
+        shadow: "0 1px 2px rgb(0 0 0 / 0.3)",
+    },
+} satisfies Record<BadgeTheme, Record<string, string>>;
+
+export function parseBadgeTheme(value: string | string[] | undefined) {
+    return value === "dark" ? "dark" : "light";
+}
+
 export function PublicStatusBadge({
     href,
     name,
     status,
+    theme = "light",
 }: {
     href: string;
     name: string;
     status: StatusType;
+    theme?: BadgeTheme;
 }) {
+    const colors = badgeThemes[theme];
     const current = badgeStatus[status] ?? badgeStatus.unknown;
 
     return (
@@ -56,12 +82,12 @@ export function PublicStatusBadge({
             aria-label={`View ${name} status page: ${current.label}`}
             style={{
                 alignItems: "center",
-                background: "#ffffff",
-                border: "1px solid #e5e7eb",
+                background: colors.background,
+                border: `1px solid ${colors.border}`,
                 borderRadius: 9999,
-                boxShadow: "0 1px 2px rgb(15 23 42 / 0.06)",
+                boxShadow: colors.shadow,
                 boxSizing: "border-box",
-                color: "#0f172a",
+                color: colors.text,
                 display: "inline-flex",
                 fontFamily:
                     "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -98,7 +124,7 @@ export function PublicStatusBadge({
             </span>
             <span
                 aria-hidden="true"
-                style={{ color: "#94a3b8", fontSize: 15, fontWeight: 400 }}
+                style={{ color: colors.icon, fontSize: 15, fontWeight: 400 }}
             >
                 <FontAwesomeIcon icon={faUpRightFromSquare} />
             </span>

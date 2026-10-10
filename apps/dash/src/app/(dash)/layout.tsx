@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "../../index.css";
 import Providers from "@/components/providers";
 import { getConfig } from "@/lib/config";
-import { getRuntimeStatusPageDomain } from "@/lib/status-page-runtime-config.server";
+import { resolveStatusPageDomain } from "@/lib/status-page-runtime-config.server";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +56,12 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const statusPageDomain = getRuntimeStatusPageDomain();
+    const statusPageDomain = await resolveStatusPageDomain();
 
     return (
         <html lang="en" suppressHydrationWarning>

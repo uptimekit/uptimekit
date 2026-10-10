@@ -18,6 +18,18 @@ function getUrlForHost(value: string) {
     return `https://${stripProtocol(normalizedValue)}`;
 }
 
+function isBareLocalDashUrl(url: string) {
+    try {
+        const { hostname, pathname } = new URL(url);
+        return (
+            ["localhost", "127.0.0.1", "[::1]"].includes(hostname) &&
+            pathname === "/"
+        );
+    } catch {
+        return false;
+    }
+}
+
 export function getStatusPageBaseDomain(
     statusPageDomain = DEFAULT_STATUS_PAGE_DOMAIN,
 ) {
@@ -39,7 +51,12 @@ export function getStatusPageUrl(
         return getUrlForHost(domain);
     }
 
-    return `${getUrlForHost(
+    const baseUrl = getUrlForHost(
         statusPageDomain.trim() || DEFAULT_STATUS_PAGE_DOMAIN,
-    )}/${page.slug}`;
+    );
+
+    // Local dashboard hosts aren't rewritten to the status page routes.
+    const routePrefix = isBareLocalDashUrl(baseUrl) ? "/status" : "";
+
+    return `${baseUrl}${routePrefix}/${page.slug}`;
 }

@@ -3,12 +3,25 @@
 import { faCopy, faExternalLink } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { sileo as toast } from "sileo";
 import { useStatusPageDomain } from "@/components/providers/status-page-domain-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { getStatusPageUrl } from "@/lib/status-page-url";
 import { orpc } from "@/utils/orpc";
+
+const themeOptions = [
+    { label: "Light", value: "light" },
+    { label: "Dark", value: "dark" },
+];
 
 function escapeHtmlAttribute(value: string) {
     return value
@@ -24,6 +37,7 @@ export function StatusBadgeSettings({
     statusPageId: string;
 }) {
     const statusPageDomain = useStatusPageDomain();
+    const [theme, setTheme] = useState("light");
     const { data: statusPage, isLoading } = useQuery(
         orpc.statusPages.get.queryOptions({ input: { id: statusPageId } }),
     );
@@ -32,7 +46,7 @@ export function StatusBadgeSettings({
         return <div className="h-48 animate-pulse rounded-xl bg-muted" />;
     }
 
-    const badgeUrl = `${getStatusPageUrl(statusPage, statusPageDomain)}/badge`;
+    const badgeUrl = `${getStatusPageUrl(statusPage, statusPageDomain)}/badge?theme=${theme}`;
     const iframeCode = `<iframe src="${escapeHtmlAttribute(badgeUrl)}" title="${escapeHtmlAttribute(statusPage.name)} system status" width="290" height="38" frameborder="0" scrolling="no"></iframe>`;
 
     const copyEmbedCode = async () => {
@@ -41,16 +55,42 @@ export function StatusBadgeSettings({
     };
 
     return (
-        <div className="grid max-w-4xl gap-6">
+        <div className="space-y-6">
+            <div>
+                <h2 className="font-medium text-lg">Status badge</h2>
+                <p className="text-muted-foreground text-sm">
+                    Add a compact live service-status indicator to your website
+                    footer, documentation, or help center. It opens your full
+                    status page when selected.
+                </p>
+            </div>
             <Card>
                 <CardContent className="grid gap-6 p-6">
-                    <div className="space-y-2">
-                        <h2 className="font-semibold text-xl">Status badge</h2>
-                        <p className="max-w-2xl text-muted-foreground text-sm">
-                            Add a compact live service-status indicator to your
-                            website footer, documentation, or help center. It
-                            opens your full status page when selected.
-                        </p>
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="status-badge-theme"
+                            className="font-medium text-sm"
+                        >
+                            Theme
+                        </label>
+                        <Select
+                            aria-label="Badge theme"
+                            value={theme}
+                            onValueChange={(value) =>
+                                setTheme(value ?? "light")
+                            }
+                        >
+                            <SelectTrigger id="status-badge-theme">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {themeOptions.map(({ label, value }) => (
+                                    <SelectItem key={value} value={value}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="flex min-h-24 items-center justify-center rounded-lg border border-dashed bg-muted/30 p-6">

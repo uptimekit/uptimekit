@@ -1,10 +1,13 @@
 "use client";
 
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     SidebarGroup,
+    SidebarGroupAction,
     SidebarGroupContent,
     SidebarGroupLabel,
     SidebarMenu,
@@ -70,6 +73,20 @@ function SidebarListSkeleton({ rows }: { rows: number }) {
     ));
 }
 
+function CreateAction({ href, label }: { href: string; label: string }) {
+    return (
+        <SidebarGroupAction
+            title={label}
+            aria-label={label}
+            render={
+                <Link href={href as any}>
+                    <FontAwesomeIcon icon={faPlus} className="size-3!" />
+                </Link>
+            }
+        />
+    );
+}
+
 function ViewAllItem({ href, total }: { href: string; total: number }) {
     return (
         <SidebarMenuItem>
@@ -104,6 +121,7 @@ export function SidebarActiveIncidents() {
             <SidebarSeparator />
             <SidebarGroup>
                 <SidebarGroupLabel>Active Incidents</SidebarGroupLabel>
+                <CreateAction href="/incidents/new" label="New incident" />
                 <SidebarGroupContent>
                     <SidebarMenu>
                         {data.items.map((incident) => {
@@ -163,6 +181,7 @@ export function SidebarMonitors() {
             <SidebarSeparator />
             <SidebarGroup>
                 <SidebarGroupLabel>Monitors</SidebarGroupLabel>
+                <CreateAction href="/monitors/new" label="New monitor" />
                 <SidebarGroupContent>
                     <SidebarMenu>
                         {isPending ? (

@@ -1,4 +1,7 @@
-import { PublicStatusBadge } from "@/status-page/components/public-status-badge";
+import {
+    type BadgeTheme,
+    PublicStatusBadge,
+} from "@/status-page/components/public-status-badge";
 import { prepareStatusPageData } from "./data-preparer";
 
 interface PublicPageRecord {
@@ -12,6 +15,7 @@ interface PublicPageRecord {
 export async function renderStatusBadge(
     pageConfig: PublicPageRecord,
     routeSlug?: string,
+    theme: BadgeTheme = "light",
 ) {
     const data = await prepareStatusPageData(pageConfig, routeSlug);
 
@@ -32,6 +36,7 @@ export async function renderStatusBadge(
                 href={routeSlug ? `/${routeSlug}` : "/"}
                 name={pageConfig.name}
                 status={data.overallStatus}
+                theme={theme}
             />
         </main>
     );

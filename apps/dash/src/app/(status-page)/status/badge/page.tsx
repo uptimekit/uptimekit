@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { parseBadgeTheme } from "@/status-page/components/public-status-badge";
 import { checkStatusPageAccess } from "@/status-page/lib/access-check";
 import { getStatusPageByDomain } from "@/status-page/lib/db-queries";
 import {
@@ -17,7 +18,12 @@ export const metadata = {
     },
 };
 
-export default async function CustomDomainStatusBadgePage() {
+export default async function CustomDomainStatusBadgePage({
+    searchParams,
+}: {
+    searchParams: Promise<{ theme?: string | string[] }>;
+}) {
+    const { theme } = await searchParams;
     const headersList = await headers();
     const host = getHostFromHeaders(headersList);
 
@@ -33,5 +39,5 @@ export default async function CustomDomainStatusBadgePage() {
 
     await checkStatusPageAccess(pageConfig, "/badge");
 
-    return renderStatusBadge(pageConfig);
+    return renderStatusBadge(pageConfig, undefined, parseBadgeTheme(theme));
 }
