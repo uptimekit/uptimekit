@@ -47,7 +47,7 @@ export function StatusBadgeSettings({
     }
 
     const badgeUrl = `${getStatusPageUrl(statusPage, statusPageDomain)}/badge?theme=${theme}`;
-    const iframeCode = `<iframe src="${escapeHtmlAttribute(badgeUrl)}" title="${escapeHtmlAttribute(statusPage.name)} system status" width="290" height="38" frameborder="0" scrolling="no"></iframe>`;
+    const iframeCode = `<iframe src="${escapeHtmlAttribute(badgeUrl)}" title="${escapeHtmlAttribute(statusPage.name)} system status" width="290" height="38" frameborder="0" scrolling="no" style="color-scheme: normal"></iframe>`;
 
     const copyEmbedCode = async () => {
         await navigator.clipboard.writeText(iframeCode);
@@ -101,6 +101,7 @@ export function StatusBadgeSettings({
                             height="38"
                             frameBorder="0"
                             scrolling="no"
+                            style={{ colorScheme: "normal" }}
                         />
                     </div>
 
