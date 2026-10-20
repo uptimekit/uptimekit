@@ -2,7 +2,7 @@ import type { Incident } from "@/status-page/themes/types";
 import { canAccessStatusPage } from "./access-check";
 import type { StatusPageRecord } from "./db-queries";
 import { getFeedLinks } from "./feed-links";
-import { getHostFromHeaders, getProtocolFromHeaders } from "./route-utils";
+import { getRequestOrigin } from "./route-utils";
 import { prepareUpdatesPageData } from "./subpage-data-preparer";
 
 type FeedFormat = "rss" | "atom";
@@ -146,16 +146,6 @@ function getItemSummary(item: Incident) {
     return [latestMessage, monitors ? `Affected components: ${monitors}` : ""]
         .filter(Boolean)
         .join("\n\n");
-}
-
-function getRequestOrigin(request: Request) {
-    const host = getHostFromHeaders(request.headers);
-
-    if (!host) {
-        return new URL(request.url).origin;
-    }
-
-    return `${getProtocolFromHeaders(request.headers)}://${host}`;
 }
 
 function absoluteUrl(path: string, origin: string) {

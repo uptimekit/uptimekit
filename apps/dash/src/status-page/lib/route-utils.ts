@@ -104,3 +104,13 @@ export function getProtocolFromHeaders(
         ? "http"
         : "https";
 }
+
+export function getRequestOrigin(request: Request): string {
+    const host = getHostFromHeaders(request.headers);
+
+    if (!host) {
+        return new URL(request.url).origin;
+    }
+
+    return `${getProtocolFromHeaders(request.headers)}://${host}`;
+}

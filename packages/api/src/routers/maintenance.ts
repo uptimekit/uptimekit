@@ -12,6 +12,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { getAuditUserId } from "../lib/audit-user";
+import { getMaintenanceStatus } from "../lib/maintenance-status";
 
 const maintenanceStatusSchema = z.enum([
     "scheduled",
@@ -29,19 +30,6 @@ function getActiveOrganizationId(
     }
 
     return activeOrganizationId;
-}
-
-function getMaintenanceStatus(item: {
-    startedAt: Date;
-    plannedEndAt?: Date | null;
-    endedAt: Date | null;
-}) {
-    const now = new Date();
-
-    if (item.endedAt) return "completed";
-    if (item.plannedEndAt && item.plannedEndAt <= now) return "completed";
-    if (item.startedAt > now) return "scheduled";
-    return "in_progress";
 }
 
 function toMaintenance<T extends { startedAt: Date; endedAt: Date | null }>(

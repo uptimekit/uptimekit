@@ -1,3 +1,4 @@
+import { getMaintenanceStatus } from "@uptimekit/api/lib/maintenance-status";
 import { getAggregateMonitorStatusForMonitor } from "@uptimekit/api/lib/monitor-status";
 import {
     db,
@@ -348,19 +349,6 @@ function mapPublishedIncidentRecord(
         })),
         updates: record.incident.activities,
     };
-}
-
-function getMaintenanceStatus(item: {
-    startedAt: Date;
-    plannedEndAt?: Date | null;
-    endedAt: Date | null;
-}) {
-    const now = new Date();
-
-    if (item.endedAt) return "completed";
-    if (item.plannedEndAt && item.plannedEndAt <= now) return "completed";
-    if (item.startedAt > now) return "scheduled";
-    return "in_progress";
 }
 
 function mapPublishedMaintenanceRecord(

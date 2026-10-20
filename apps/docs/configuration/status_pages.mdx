@@ -71,6 +71,53 @@ https://status.example.com/your-slug
     Slugs must be unique across all status pages in your UptimeKit instance.
 </Info>
 
+## JSON Status Summary
+
+Every public status page exposes a read-only JSON summary that can be fetched from the browser without an API key, for example to show a banner in your own app when an incident or maintenance is in progress.
+
+```text
+https://status.example.com/summary.json
+https://status.example.com/your-slug/summary.json
+```
+
+The response includes the overall page status, the status of each component (monitor) on the page, and incidents and maintenances that are active, upcoming, or were resolved within the last 24 hours. Only data that is already visible on the status page is included.
+
+```json
+{
+    "page": { "id": "...", "name": "Example", "url": "https://status.example.com/" },
+    "status": "maintenance",
+    "updatedAt": "2026-10-20T19:00:00.000Z",
+    "components": [
+        { "id": "3f2c9a1e-...", "name": "API", "group": "Core", "status": "maintenance" }
+    ],
+    "incidents": [],
+    "maintenances": [
+        {
+            "id": "...",
+            "title": "Database upgrade",
+            "description": "Short read-only window",
+            "status": "in_progress",
+            "startAt": "2026-10-20T19:00:00.000Z",
+            "endAt": "2026-10-20T20:00:00.000Z",
+            "url": "https://status.example.com/incidents/...",
+            "componentIds": ["3f2c9a1e-..."]
+        }
+    ]
+}
+```
+
+| Field                   | Values                                                        |
+| ----------------------- | ------------------------------------------------------------- |
+| `status`                | `operational`, `degraded`, `outage`, `maintenance`, `unknown` |
+| `components[].status`   | `up`, `down`, `degraded`, `maintenance`, `pending`            |
+| `incidents[].status`    | `investigating`, `identified`, `monitoring`, `resolved`       |
+| `incidents[].severity`  | `minor`, `major`, `critical`                                  |
+| `maintenances[].status` | `scheduled`, `in_progress`, `completed`                       |
+
+Component IDs are monitor IDs, and `componentIds` on incidents and maintenances reference them. All timestamps are ISO 8601 in UTC. A page `status` of `unknown` means UptimeKit has no health data for it yet, so it should not be treated as operational.
+
+The endpoint sends `Access-Control-Allow-Origin: *` and is cached for 30 seconds. Password-protected status pages return `404`.
+
 ## Password Protection
 
 You can make status pages private by enabling password protection. This is useful for internal status pages or pages with sensitive information.
