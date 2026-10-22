@@ -170,6 +170,9 @@ export const organizationOidcProvider = pgTable(
             .references(() => organization.id, { onDelete: "cascade" }),
         name: text("name").notNull(),
         enabled: boolean("enabled").default(false).notNull(),
+        allowPasswordLogin: boolean("allow_password_login")
+            .default(true)
+            .notNull(),
         issuer: text("issuer").notNull(),
         discoveryUrl: text("discovery_url").notNull(),
         clientId: text("client_id").notNull(),

@@ -20,14 +20,23 @@ import { authClient } from "@/lib/auth-client";
 import { DiscordIcon } from "./discord-icon";
 import { handleSocialSignIn } from "./social-sign-in";
 
-type OidcLookupResponse =
-    | { hasProvider: false }
-    | {
-          hasProvider: true;
-          organizationName: string;
-          providerId: string;
-          providerName: string;
-      };
+type OidcProvider = {
+    hasProvider: true;
+    allowPasswordLogin: boolean;
+    organizationName: string;
+    providerId: string;
+    providerName: string;
+};
+
+type OidcLookupResponse = { hasProvider: false } | OidcProvider;
+
+type SignInStep = "email" | "sso" | "password";
+
+const stepDescriptions: Record<SignInStep, string> = {
+    email: "Enter your email to continue.",
+    sso: "Your organization uses single sign-on.",
+    password: "Enter your password to access your account.",
+};
 
 function SocialSignInButtons({
     showDiscordLogin,
@@ -122,7 +131,11 @@ export default function SignInForm({
     startInPasswordStep?: boolean;
 }) {
     const router = useRouter();
-    const [isPasswordStep, setIsPasswordStep] = useState(startInPasswordStep);
+    const [step, setStep] = useState<SignInStep>(
+        startInPasswordStep ? "password" : "email",
+    );
+    const [ssoProvider, setSsoProvider] = useState<OidcProvider | null>(null);
+    const isPasswordStep = step === "password";
 
     const getCallbackURL = () => {
         if (onSuccess && typeof window !== "undefined") {
@@ -140,33 +153,39 @@ export default function SignInForm({
         onSubmit: async ({ value }) => {
             const normalizedEmail = value.email.trim().toLowerCase();
 
-            if (!isPasswordStep) {
+            if (step === "sso" && ssoProvider) {
+                await authClient.signIn.social(
+                    {
+                        provider: ssoProvider.providerId,
+                        callbackURL: getCallbackURL(),
+                        errorCallbackURL: "/login",
+                        loginHint: normalizedEmail,
+                    },
+                    {
+                        onError: (error) => {
+                            sileo.error({
+                                title:
+                                    error.error.message ||
+                                    `Unable to start ${ssoProvider.providerName} sign-in`,
+                            });
+                        },
+                    },
+                );
+                return;
+            }
+
+            if (step === "email") {
                 try {
                     const oidcLookup =
                         await lookupOrganizationOidcProvider(normalizedEmail);
 
                     if (oidcLookup.hasProvider) {
-                        await authClient.signIn.social(
-                            {
-                                provider: oidcLookup.providerId,
-                                callbackURL: getCallbackURL(),
-                                errorCallbackURL: "/login",
-                                loginHint: normalizedEmail,
-                            },
-                            {
-                                onError: (error) => {
-                                    sileo.error({
-                                        title:
-                                            error.error.message ||
-                                            `Unable to start ${oidcLookup.providerName} sign-in`,
-                                    });
-                                },
-                            },
-                        );
+                        setSsoProvider(oidcLookup);
+                        setStep("sso");
                         return;
                     }
 
-                    setIsPasswordStep(true);
+                    setStep("password");
                     return;
                 } catch (error) {
                     sileo.error({
@@ -236,9 +255,7 @@ export default function SignInForm({
                     Welcome Back
                 </h1>
                 <p className="text-base text-muted-foreground">
-                    {isPasswordStep
-                        ? "Enter your password to access your account."
-                        : "Enter your email to continue."}
+                    {stepDescriptions[step]}
                 </p>
             </div>
             <form
@@ -266,7 +283,7 @@ export default function SignInForm({
                                         onBlur={field.handleBlur}
                                         onChange={(e) => {
                                             field.handleChange(e.target.value);
-                                            setIsPasswordStep(false);
+                                            setStep("email");
                                         }}
                                         placeholder="your.email@example.com"
                                         disabled={emailReadOnly}
@@ -349,10 +366,26 @@ export default function SignInForm({
                                     : "Continuing..."
                                 : isPasswordStep
                                   ? "Sign In"
-                                  : "Continue"}
+                                  : step === "sso" && ssoProvider
+                                    ? `Continue with ${ssoProvider.providerName}`
+                                    : "Continue"}
                         </Button>
                     )}
                 </form.Subscribe>
+
+                {step === "sso" && ssoProvider && (
+                    <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={() => setStep("password")}
+                    >
+                        {ssoProvider.allowPasswordLogin
+                            ? "Sign in with password instead"
+                            : "Instance admin? Sign in with password"}
+                    </Button>
+                )}
             </form>
 
             <SocialSignInButtons

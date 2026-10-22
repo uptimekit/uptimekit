@@ -60,6 +60,7 @@ const oidcDomainSchema = z
 const oidcProviderInputSchema = z.object({
     name: z.string().trim().min(2).max(80),
     enabled: z.boolean(),
+    allowPasswordLogin: z.boolean().default(true),
     issuer: z.string().trim().url(),
     discoveryUrl: z.string().trim().url().nullable().optional(),
     clientId: z.string().trim().min(1),
@@ -133,6 +134,7 @@ function toOidcProviderResponse(
         id: provider.id,
         name: provider.name,
         enabled: provider.enabled,
+        allowPasswordLogin: provider.allowPasswordLogin,
         issuer: provider.issuer,
         discoveryUrl: provider.discoveryUrl,
         clientId: provider.clientId,
@@ -495,6 +497,7 @@ export const organizationsRouter = {
             const values = {
                 name: input.name,
                 enabled: input.enabled,
+                allowPasswordLogin: input.allowPasswordLogin,
                 issuer: normalizeOidcIssuer(input.issuer),
                 discoveryUrl: getOidcDiscoveryUrl(
                     input.issuer,

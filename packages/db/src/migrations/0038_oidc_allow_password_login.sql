@@ -1,0 +1,1 @@
+ALTER TABLE "organization_oidc_provider" ADD COLUMN "allow_password_login" boolean DEFAULT true NOT NULL;

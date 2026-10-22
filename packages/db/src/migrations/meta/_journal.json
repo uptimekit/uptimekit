@@ -267,6 +267,13 @@
             "when": 1792076910626,
             "tag": "0037_monitor_location_status_since",
             "breakpoints": true
+        },
+        {
+            "idx": 38,
+            "version": "7",
+            "when": 1792695532415,
+            "tag": "0038_oidc_allow_password_login",
+            "breakpoints": true
         }
     ]
 }
