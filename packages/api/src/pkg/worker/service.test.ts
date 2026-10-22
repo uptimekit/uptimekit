@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     getConfiguredWorkerStates,
     getStableMonitorEventId,
+    hasFailingWorkersChanged,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     type MonitorEvent,
@@ -420,5 +421,35 @@ describe("automatic incident recovery duration", () => {
                 incidentRecoveryDurationSeconds: 0,
             }),
         ).toBe(true);
+    });
+});
+
+describe("hasFailingWorkersChanged", () => {
+    const description = [
+        "Monitor Streamline is down.",
+        "Reason: lon-bny (GB), otp-bny (RO) are reporting down",
+        "Last failure: HTTP 502 502 Bad Gateway",
+    ].join("\n\n");
+
+    it("ignores a flapping last-failure error when the failing workers are the same", () => {
+        expect(
+            hasFailingWorkersChanged(
+                description,
+                "lon-bny (GB), otp-bny (RO) are reporting down",
+            ),
+        ).toBe(false);
+    });
+
+    it("detects when another worker starts failing", () => {
+        expect(
+            hasFailingWorkersChanged(
+                description,
+                "lon-bny (GB), otp-bny (RO), bru-luna (BE) are reporting down",
+            ),
+        ).toBe(true);
+    });
+
+    it("does not log without a reason", () => {
+        expect(hasFailingWorkersChanged(description, null)).toBe(false);
     });
 });
