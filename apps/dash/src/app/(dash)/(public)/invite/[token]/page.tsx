@@ -1,3 +1,7 @@
+import {
+    getOrganizationOidcProviderForEmail,
+    isPasswordLoginAllowed,
+} from "@uptimekit/auth/organization-oidc";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
 import { eq } from "drizzle-orm";
@@ -39,8 +43,15 @@ export default async function InvitePage({
         notFound();
     }
 
+    const oidcProvider = await getOrganizationOidcProviderForEmail(
+        invitationData.email,
+    );
+
     return (
         <InviteClient
+            passwordSignUpAllowed={
+                !oidcProvider || isPasswordLoginAllowed(oidcProvider)
+            }
             token={token}
             invitation={{
                 id: invitationData.id,

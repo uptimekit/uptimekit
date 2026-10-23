@@ -338,7 +338,9 @@ async function getProviderIdFromOAuthRequest(
     }
 }
 
-function isPasswordLoginAllowed(provider: { allowPasswordLogin: boolean }) {
+export function isPasswordLoginAllowed(provider: {
+    allowPasswordLogin: boolean;
+}) {
     // Break-glass for self-hosters: lets everyone back in when the IdP is down.
     return (
         provider.allowPasswordLogin ||
