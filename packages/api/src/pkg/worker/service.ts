@@ -24,6 +24,7 @@ import {
     getEffectiveMonitorWorkers,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
+    normalizeMonitorStatus,
     type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
 import { deleteAppEvent, processPendingNotifications } from "../notifications";
@@ -253,14 +254,16 @@ function getAutomaticIncidentEscalatedMessage(input: {
     return details.join(" ");
 }
 
-// The description also embeds the latest worker error, which flaps between workers,
-// so compare only the reason line (the set of failing workers) to decide whether to log activity.
+// Compare the reporting worker's own down state rather than the reason text, which truncates
+// to the first three workers and would hide changes beyond them.
 export function hasFailingWorkersChanged(
-    description: string | null,
-    reason: string | null,
+    previousStatus: string | undefined,
+    nextStatus: string,
 ) {
-    if (!reason) return false;
-    return !(description ?? "").split("\n\n").includes(`Reason: ${reason}`);
+    const wasDown =
+        previousStatus !== undefined &&
+        normalizeMonitorStatus(previousStatus) === "down";
+    return wasDown !== (normalizeMonitorStatus(nextStatus) === "down");
 }
 
 export async function mapWithConcurrency<T, R>(
@@ -948,8 +951,8 @@ async function processMonitorEventGroup(input: {
                 activeIncident.title !== incidentTitle ||
                 activeIncident.severity !== "major";
             const failingWorkersChanged = hasFailingWorkersChanged(
-                activeIncident.description,
-                aggregateStatus.statusReason,
+                previousWorkerStatus?.status,
+                event.status,
             );
 
             if (

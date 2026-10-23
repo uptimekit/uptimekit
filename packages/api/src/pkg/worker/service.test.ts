@@ -425,31 +425,22 @@ describe("automatic incident recovery duration", () => {
 });
 
 describe("hasFailingWorkersChanged", () => {
-    const description = [
-        "Monitor Streamline is down.",
-        "Reason: lon-bny (GB), otp-bny (RO) are reporting down",
-        "Last failure: HTTP 502 502 Bad Gateway",
-    ].join("\n\n");
-
-    it("ignores a flapping last-failure error when the failing workers are the same", () => {
-        expect(
-            hasFailingWorkersChanged(
-                description,
-                "lon-bny (GB), otp-bny (RO) are reporting down",
-            ),
-        ).toBe(false);
+    it("ignores a flapping error from a worker that stays down", () => {
+        expect(hasFailingWorkersChanged("down", "down")).toBe(false);
     });
 
-    it("detects when another worker starts failing", () => {
-        expect(
-            hasFailingWorkersChanged(
-                description,
-                "lon-bny (GB), otp-bny (RO), bru-luna (BE) are reporting down",
-            ),
-        ).toBe(true);
+    // The reason text only lists three workers, so a swap beyond them reads identically.
+    it("detects a worker that starts failing even when the reason text would not change", () => {
+        expect(hasFailingWorkersChanged("up", "down")).toBe(true);
+        expect(hasFailingWorkersChanged(undefined, "down")).toBe(true);
     });
 
-    it("does not log without a reason", () => {
-        expect(hasFailingWorkersChanged(description, null)).toBe(false);
+    it("detects a worker that stops failing", () => {
+        expect(hasFailingWorkersChanged("down", "up")).toBe(true);
+        expect(hasFailingWorkersChanged("down", "degraded")).toBe(true);
+    });
+
+    it("ignores transitions that do not involve down", () => {
+        expect(hasFailingWorkersChanged("up", "degraded")).toBe(false);
     });
 });
