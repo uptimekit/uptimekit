@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@uptimekit/db";
 import * as schema from "@uptimekit/db/schema/auth";
-import { APIError, createAuthEndpoint } from "better-auth/api";
+import {
+    APIError,
+    createAuthEndpoint,
+    createAuthMiddleware,
+} from "better-auth/api";
 import { genericOAuth } from "better-auth/plugins";
 import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth";
 import type { BetterAuthPlugin } from "better-auth/types";
@@ -179,6 +183,8 @@ export async function getOrganizationOidcProviderForEmail(email: string) {
             organizationId: schema.organizationOidcProvider.organizationId,
             name: schema.organizationOidcProvider.name,
             enabled: schema.organizationOidcProvider.enabled,
+            allowPasswordLogin:
+                schema.organizationOidcProvider.allowPasswordLogin,
             issuer: schema.organizationOidcProvider.issuer,
             discoveryUrl: schema.organizationOidcProvider.discoveryUrl,
             clientId: schema.organizationOidcProvider.clientId,
@@ -332,6 +338,41 @@ async function getProviderIdFromOAuthRequest(
     }
 }
 
+export function isPasswordLoginAllowed(provider: {
+    allowPasswordLogin: boolean;
+}) {
+    // Break-glass for self-hosters: lets everyone back in when the IdP is down.
+    return (
+        provider.allowPasswordLogin ||
+        process.env.AUTH_FORCE_PASSWORD_LOGIN === "true"
+    );
+}
+
+async function assertPasswordLoginAllowed(email: unknown) {
+    if (typeof email !== "string") {
+        return;
+    }
+
+    const provider = await getOrganizationOidcProviderForEmail(email);
+    if (!provider || isPasswordLoginAllowed(provider)) {
+        return;
+    }
+
+    // Instance admins stay exempt so they can always fix a broken SSO setup.
+    const [existingUser] = await db
+        .select({ role: schema.user.role })
+        .from(schema.user)
+        .where(eq(schema.user.email, email.trim().toLowerCase()))
+        .limit(1);
+    if (existingUser?.role === "admin") {
+        return;
+    }
+
+    throw new APIError("FORBIDDEN", {
+        message: `Password sign-in is disabled for this domain. Continue with ${provider.name}.`,
+    });
+}
+
 export function organizationOidcPlugin(): BetterAuthPlugin {
     return {
         id: "organization-oidc",
@@ -357,6 +398,7 @@ export function organizationOidcPlugin(): BetterAuthPlugin {
 
                     return ctx.json({
                         hasProvider: true,
+                        allowPasswordLogin: isPasswordLoginAllowed(provider),
                         providerId,
                         providerName: provider.name,
                         organizationId: provider.organizationId,
@@ -400,6 +442,18 @@ export function organizationOidcPlugin(): BetterAuthPlugin {
             }
 
             await ensureProviderInAuthContext(ctx, config);
+        },
+        hooks: {
+            before: [
+                {
+                    matcher: (ctx) =>
+                        ctx.path === "/sign-in/email" ||
+                        ctx.path === "/sign-up/email",
+                    handler: createAuthMiddleware(async (ctx) => {
+                        await assertPasswordLoginAllowed(ctx.body?.email);
+                    }),
+                },
+            ],
         },
         rateLimit: [
             {

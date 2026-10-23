@@ -11,6 +11,7 @@ import { authClient } from "@/lib/auth-client";
 
 interface InviteClientProps {
     token: string;
+    passwordSignUpAllowed: boolean;
     invitation: {
         organizationName: string;
         email: string;
@@ -36,12 +37,18 @@ async function acceptInvitation(
     );
 }
 
-export default function InviteClient({ token, invitation }: InviteClientProps) {
+export default function InviteClient({
+    token,
+    passwordSignUpAllowed,
+    invitation,
+}: InviteClientProps) {
     const { data: session, isPending: isSessionPending } =
         authClient.useSession();
     const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState("register");
+    const [activeTab, setActiveTab] = useState(
+        passwordSignUpAllowed ? "register" : "login",
+    );
 
     const acceptInvite = () => acceptInvitation(token, router);
 
@@ -72,10 +79,12 @@ export default function InviteClient({ token, invitation }: InviteClientProps) {
                     onValueChange={setActiveTab}
                     className="w-full"
                 >
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="register">Register</TabsTrigger>
-                        <TabsTrigger value="login">Login</TabsTrigger>
-                    </TabsList>
+                    {passwordSignUpAllowed && (
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="register">Register</TabsTrigger>
+                            <TabsTrigger value="login">Login</TabsTrigger>
+                        </TabsList>
+                    )}
                     <div className="mt-6">
                         <TabsContent value="login" className="m-0">
                             <SignInForm

@@ -20,6 +20,7 @@ const emptyForm = {
     discoveryUrl: "",
     domains: "",
     enabled: false,
+    allowPasswordLogin: true,
     issuer: "",
     name: "",
     scopes: "openid email profile",
@@ -91,6 +92,7 @@ function OidcSettingsContent({
                   discoveryUrl: provider.discoveryUrl,
                   domains: joinList(provider.domains),
                   enabled: provider.enabled,
+                  allowPasswordLogin: provider.allowPasswordLogin,
                   issuer: provider.issuer,
                   name: provider.name,
                   scopes: joinList(provider.scopes),
@@ -117,6 +119,7 @@ function OidcSettingsContent({
                 discoveryUrl: form.discoveryUrl.trim() || null,
                 domains: splitList(form.domains),
                 enabled: form.enabled,
+                allowPasswordLogin: form.allowPasswordLogin,
                 issuer: form.issuer.trim(),
                 name: form.name.trim(),
                 scopes: splitList(form.scopes),
@@ -178,7 +181,7 @@ function OidcSettingsContent({
                         <div>
                             <Label htmlFor="oidc-enabled">OIDC sign-in</Label>
                             <p className="text-muted-foreground text-sm">
-                                Enabled domains redirect to this provider after
+                                Enabled domains are offered this provider after
                                 email entry.
                             </p>
                         </div>
@@ -187,6 +190,29 @@ function OidcSettingsContent({
                             checked={form.enabled}
                             onCheckedChange={(enabled) =>
                                 setForm((current) => ({ ...current, enabled }))
+                            }
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <Label htmlFor="oidc-allow-password">
+                                Allow password sign-in
+                            </Label>
+                            <p className="text-muted-foreground text-sm">
+                                Lets members of these domains fall back to their
+                                password if the provider is unavailable.
+                                Instance admins can always use a password.
+                            </p>
+                        </div>
+                        <Switch
+                            id="oidc-allow-password"
+                            checked={form.allowPasswordLogin}
+                            onCheckedChange={(allowPasswordLogin) =>
+                                setForm((current) => ({
+                                    ...current,
+                                    allowPasswordLogin,
+                                }))
                             }
                         />
                     </div>
