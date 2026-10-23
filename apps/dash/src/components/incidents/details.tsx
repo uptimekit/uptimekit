@@ -107,36 +107,37 @@ type EditableActivity = {
     createdAt: string | Date;
 };
 
-type IncidentHeaderState =
-    | "resolved-incident"
-    | "resolved-maintenance"
-    | "active-incident"
-    | "acknowledged-incident"
-    | "scheduled-maintenance"
-    | "scheduled-maintenance-acknowledged"
-    | "active-maintenance"
-    | "active-maintenance-acknowledged";
-
-function getIncidentHeaderState({
-    isResolved,
-    isAcknowledged,
-    isMaintenance,
-    isScheduledMaintenance,
-}: {
+type IncidentState = {
     isResolved: boolean;
     isAcknowledged: boolean;
     isMaintenance: boolean;
     isScheduledMaintenance: boolean;
-}): IncidentHeaderState {
-    if (isResolved) {
-        return isMaintenance ? "resolved-maintenance" : "resolved-incident";
-    }
-    if (!isMaintenance) {
-        return isAcknowledged ? "acknowledged-incident" : "active-incident";
-    }
+};
 
-    const phase = isScheduledMaintenance ? "scheduled" : "active";
-    return `${phase}-maintenance${isAcknowledged ? "-acknowledged" : ""}`;
+type StatusBadge = {
+    label: string;
+    variant: "success" | "info" | "warning" | "error";
+};
+
+const DATE_FORMAT = "MMM d, yyyy 'at' h:mm a";
+
+function getStatusBadge({
+    isResolved,
+    isAcknowledged,
+    isMaintenance,
+    isScheduledMaintenance,
+}: IncidentState): StatusBadge {
+    if (isMaintenance) {
+        if (isResolved) return { label: "Completed", variant: "success" };
+        return {
+            label: isScheduledMaintenance ? "Scheduled" : "In progress",
+            variant: "info",
+        };
+    }
+    if (isResolved) return { label: "Resolved", variant: "success" };
+    return isAcknowledged
+        ? { label: "Acknowledged", variant: "warning" }
+        : { label: "Ongoing", variant: "error" };
 }
 
 function IncidentHeader({
@@ -150,7 +151,7 @@ function IncidentHeader({
 }: {
     incident: any;
     id: string;
-    state: IncidentHeaderState;
+    state: IncidentState;
     acknowledge: {
         mutate: (input: { id: string }) => void;
         isPending: boolean;
@@ -159,145 +160,306 @@ function IncidentHeader({
     setEditOpen: (open: boolean) => void;
     setShowDeleteDialog: (open: boolean) => void;
 }) {
-    const isResolved = state.startsWith("resolved");
-    const isAcknowledged = state.includes("acknowledged");
-    const isMaintenance = state.includes("maintenance");
-    const isScheduledMaintenance = state.startsWith("scheduled");
+    const { isResolved, isAcknowledged, isMaintenance } = state;
+    const status = getStatusBadge(state);
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div
-                        className={cn(
-                            "flex h-12 w-12 items-center justify-center rounded-xl border",
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div
+                    className={cn(
+                        "flex size-10 shrink-0 items-center justify-center rounded-lg border sm:size-12 sm:rounded-xl",
+                        isMaintenance
+                            ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                            : isResolved
+                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                              : "border-red-500/20 bg-red-500/10 text-red-500",
+                    )}
+                >
+                    <FontAwesomeIcon
+                        icon={
                             isMaintenance
-                                ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                                ? faWrench
                                 : isResolved
-                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                                  : "border-red-500/20 bg-red-500/10 text-red-500",
-                        )}
-                    >
-                        {isMaintenance ? (
-                            <FontAwesomeIcon
-                                icon={faWrench}
-                                className="h-6 w-6"
-                            />
-                        ) : isResolved ? (
-                            <FontAwesomeIcon
-                                icon={faCircleCheck}
-                                className="h-6 w-6"
-                            />
-                        ) : (
-                            <FontAwesomeIcon
-                                icon={faShieldHalved}
-                                className="h-6 w-6"
-                            />
-                        )}
-                    </div>
-
-                    <div>
-                        <h1 className="font-bold text-2xl tracking-tight">
-                            {incident.title}
-                        </h1>
-
-                        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
-                            <span
-                                className={cn(
-                                    "font-medium",
-                                    isResolved
-                                        ? "text-emerald-500"
-                                        : "text-red-500",
-                                )}
-                            >
-                                {isMaintenance
-                                    ? isResolved
-                                        ? "Completed"
-                                        : isScheduledMaintenance
-                                          ? "Scheduled"
-                                          : "In progress"
-                                    : isResolved
-                                      ? "Resolved"
-                                      : "Ongoing"}
-                            </span>
-                            <span>·</span>
-                            <span>
-                                Started{" "}
-                                {format(
-                                    new Date(incident.startedAt),
-                                    "MMM d, yyyy 'at' h:mm a",
-                                )}
-                            </span>
-                            {(incident.statusPages?.length ?? 0) > 0 && (
-                                <>
-                                    <span>·</span>
-                                    <Badge variant="secondary">Public</Badge>
-                                </>
-                            )}
-                        </div>
-                    </div>
+                                  ? faCircleCheck
+                                  : faShieldHalved
+                        }
+                        className="size-5 sm:size-6"
+                    />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {!isResolved && !isAcknowledged && (
-                        <Button
+                <div className="min-w-0 space-y-2">
+                    <h1 className="break-words font-semibold text-xl leading-tight tracking-tight sm:text-2xl">
+                        {incident.title}
+                    </h1>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={status.variant} size="lg">
+                            {status.label}
+                        </Badge>
+                        {!isMaintenance && (
+                            <Badge
+                                variant="outline"
+                                size="lg"
+                                className="capitalize"
+                            >
+                                {incident.severity}
+                            </Badge>
+                        )}
+                        <Badge
                             variant="outline"
-                            onClick={() => acknowledge.mutate({ id })}
-                            disabled={acknowledge.isPending}
+                            size="lg"
+                            className="capitalize"
                         >
-                            Acknowledge
-                        </Button>
-                    )}
-                    {!isResolved && (
-                        <Button
-                            variant="outline"
-                            onClick={() => resolve.mutate({ id })}
-                            disabled={resolve.isPending}
-                        >
-                            Resolve
-                        </Button>
-                    )}
-                    <Button variant="outline" onClick={() => setEditOpen(true)}>
-                        <FontAwesomeIcon
-                            icon={faPencil}
-                            className="mr-2 h-4 w-4"
-                        />
-                        Edit
-                    </Button>
+                            {incident.type}
+                        </Badge>
+                    </div>
+                </div>
+            </div>
 
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {!isResolved && !isAcknowledged && (
+                    <Button
+                        variant="outline"
+                        onClick={() => acknowledge.mutate({ id })}
+                        disabled={acknowledge.isPending}
+                    >
+                        Acknowledge
+                    </Button>
+                )}
+                {!isResolved && (
+                    <Button
+                        variant="outline"
+                        onClick={() => resolve.mutate({ id })}
+                        disabled={resolve.isPending}
+                    >
+                        <FontAwesomeIcon icon={faCircleCheck} />
+                        Resolve
+                    </Button>
+                )}
+                <Button variant="outline" onClick={() => setEditOpen(true)}>
+                    <FontAwesomeIcon icon={faPencil} />
+                    Edit
+                </Button>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        render={
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="More actions"
+                            />
+                        }
+                    >
+                        <FontAwesomeIcon
+                            icon={faEllipsis}
+                            className="h-4 w-4"
+                        />
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            className="text-red-500"
+                            onSelect={() => setShowDeleteDialog(true)}
+                        >
+                            <FontAwesomeIcon
+                                icon={faTrash}
+                                className="mr-2 h-4 w-4"
+                            />
+                            Delete incident
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+        </div>
+    );
+}
+
+function getDurationLabel(
+    startedAt: Date,
+    endedAt: Date | null,
+    currentTime: number,
+) {
+    if (endedAt) return formatDistance(startedAt, endedAt);
+    // currentTime is 0 during SSR, and scheduled maintenance has not started yet
+    if (currentTime <= startedAt.getTime()) return "—";
+    return `${formatDistance(startedAt, currentTime)} so far`;
+}
+
+function IncidentStats({
+    incident,
+    isMaintenance,
+    currentTime,
+}: {
+    incident: any;
+    isMaintenance: boolean;
+    currentTime: number;
+}) {
+    const startedAt = new Date(incident.startedAt);
+    const endedAt = incident.endedAt ? new Date(incident.endedAt) : null;
+    const showPlannedEnd = isMaintenance && !endedAt;
+
+    const stats = [
+        { label: "Started", value: format(startedAt, DATE_FORMAT) },
+        showPlannedEnd
+            ? {
+                  label: "Planned end",
+                  value: incident.plannedEndAt
+                      ? format(new Date(incident.plannedEndAt), DATE_FORMAT)
+                      : "Not set",
+              }
+            : {
+                  label: "Ended",
+                  value: endedAt ? format(endedAt, DATE_FORMAT) : "Ongoing",
+              },
+        {
+            label: "Duration",
+            value: getDurationLabel(startedAt, endedAt, currentTime),
+        },
+        {
+            label: "Acknowledged",
+            value: incident.acknowledgedAt
+                ? `${incident.acknowledgedByUser?.name ?? "User"} · ${formatDistanceToNow(new Date(incident.acknowledgedAt), { addSuffix: true })}`
+                : "Not yet",
+        },
+    ];
+
+    return (
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">
+            {stats.map((stat) => (
+                <div key={stat.label} className="min-w-0 bg-card p-4">
+                    <dt className="text-muted-foreground text-xs">
+                        {stat.label}
+                    </dt>
+                    <dd className="mt-1 break-words font-medium text-sm">
+                        {stat.value}
+                    </dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
+
+function IncidentDescription({ incident }: { incident: any }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Description</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p
+                    className={cn(
+                        "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                        !incident.description && "text-muted-foreground",
+                    )}
+                >
+                    {incident.description || "No description provided."}
+                </p>
+            </CardContent>
+        </Card>
+    );
+}
+
+function TimelineEntry({
+    activity,
+    setActivityToEdit,
+    setActivityToDelete,
+}: {
+    activity: any;
+    setActivityToEdit: (activity: EditableActivity | null) => void;
+    setActivityToDelete: (activity: EditableActivity | null) => void;
+}) {
+    const createdAt = new Date(activity.createdAt);
+    const editable: EditableActivity = {
+        id: activity.id,
+        message: activity.message,
+        createdAt: activity.createdAt,
+    };
+
+    return (
+        <li className="relative flex gap-3">
+            <div className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-card">
+                {activity.user ? (
+                    <Avatar className="size-6">
+                        <AvatarImage
+                            src={activity.user.image ?? undefined}
+                            alt={activity.user.name}
+                        />
+                        <AvatarFallback className="text-[9px]">
+                            {activity.user.name?.slice(0, 2).toUpperCase() ??
+                                "??"}
+                        </AvatarFallback>
+                    </Avatar>
+                ) : (
+                    <span className="size-2 rounded-full bg-muted-foreground" />
+                )}
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="flex h-6 items-center justify-between gap-2">
+                    <p className="truncate text-muted-foreground text-xs">
+                        <span className="font-medium text-foreground">
+                            {activity.user?.name ?? "System"}
+                        </span>
+                        {" · "}
+                        <time
+                            dateTime={createdAt.toISOString()}
+                            title={format(createdAt, DATE_FORMAT)}
+                        >
+                            {formatDistanceToNow(createdAt, {
+                                addSuffix: true,
+                            })}
+                        </time>
+                    </p>
                     <DropdownMenu>
                         <DropdownMenuTrigger
-                            render={<Button variant="ghost" size="icon" />}
+                            render={
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 shrink-0"
+                                    aria-label="Entry actions"
+                                />
+                            }
                         >
                             <FontAwesomeIcon
                                 icon={faEllipsis}
-                                className="h-4 w-4"
+                                className="h-3 w-3"
                             />
                         </DropdownMenuTrigger>
-
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem
+                                onSelect={() => setActivityToEdit(editable)}
+                            >
+                                <FontAwesomeIcon
+                                    icon={faPencil}
+                                    className="mr-2 h-4 w-4"
+                                />
+                                Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                                 className="text-red-500"
-                                onSelect={() => setShowDeleteDialog(true)}
+                                onSelect={() => setActivityToDelete(editable)}
                             >
                                 <FontAwesomeIcon
                                     icon={faTrash}
                                     className="mr-2 h-4 w-4"
                                 />
-                                Delete incident
+                                Delete
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                    {activity.message}
+                </p>
             </div>
-        </div>
+        </li>
     );
 }
 
 function IncidentTimeline({
     incident,
     id,
-    isMaintenance,
     comment,
     setComment,
     submitComment,
@@ -306,7 +468,6 @@ function IncidentTimeline({
 }: {
     incident: any;
     id: string;
-    isMaintenance: boolean;
     comment: string;
     setComment: (comment: string) => void;
     submitComment: {
@@ -316,337 +477,121 @@ function IncidentTimeline({
     setActivityToEdit: (activity: EditableActivity | null) => void;
     setActivityToDelete: (activity: EditableActivity | null) => void;
 }) {
+    const activities = incident.activities ?? [];
+    const trimmedComment = comment.trim();
+
     return (
-        <div className="min-w-[600px] space-y-6 md:col-span-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Description</CardTitle>
-                    <CardDescription>
-                        {isMaintenance
-                            ? "Maintenance details and affected monitors."
-                            : "Incident details and affected monitors."}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
-                        {incident.description || "No description provided."}
-                    </div>
-
-                    {(incident.monitors?.length ?? 0) > 0 && (
-                        <div className="mt-4">
-                            <h4 className="mb-2 font-medium text-sm">
-                                Affected Monitors
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                                {incident.monitors.map((m: any) => (
-                                    <Badge
-                                        key={m.monitor.id}
-                                        variant="outline"
-                                        className="gap-1"
-                                    >
-                                        {m.monitor.name}
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Timeline</CardTitle>
-                    <CardDescription>
-                        Activity history and comments.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex gap-2">
-                        <Input
-                            placeholder="Add a comment..."
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    const message = comment.trim();
-                                    if (!message) return;
-                                    submitComment.mutate({
-                                        incidentId: id,
-                                        message,
-                                    });
-                                }
-                            }}
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Timeline</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <form
+                    className="flex gap-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!trimmedComment || submitComment.isPending) return;
+                        submitComment.mutate({
+                            incidentId: id,
+                            message: trimmedComment,
+                        });
+                    }}
+                >
+                    <Input
+                        aria-label="Add a comment"
+                        placeholder="Add a comment..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                    />
+                    <Button
+                        type="submit"
+                        size="icon"
+                        variant="outline"
+                        aria-label="Post comment"
+                        disabled={!trimmedComment || submitComment.isPending}
+                    >
+                        <FontAwesomeIcon
+                            icon={faArrowRight}
+                            className="h-4 w-4"
                         />
-                        <Button
-                            size="icon"
-                            variant="outline"
-                            onClick={() => {
-                                const message = comment.trim();
-                                if (!message) return;
-                                submitComment.mutate({
-                                    incidentId: id,
-                                    message,
-                                });
-                            }}
-                            disabled={
-                                !comment.trim() || submitComment.isPending
-                            }
-                        >
-                            <FontAwesomeIcon
-                                icon={faArrowRight}
-                                className="h-4 w-4"
-                            />
-                        </Button>
-                    </div>
+                    </Button>
+                </form>
 
-                    <Separator />
-
-                    {(incident.activities ?? []).map(
-                        (activity: any, i: number) => (
-                            <div
+                {activities.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                        No activity yet.
+                    </p>
+                ) : (
+                    <ol className="relative space-y-5 before:absolute before:top-3 before:bottom-3 before:left-3 before:w-px before:bg-border">
+                        {activities.map((activity: any) => (
+                            <TimelineEntry
                                 key={activity.id}
-                                className="relative flex gap-4 pl-2"
-                            >
-                                {i !==
-                                    (incident.activities?.length ?? 0) - 1 && (
-                                    <div className="absolute top-8 bottom-[-24px] left-[11px] w-px bg-border" />
-                                )}
-                                <div className="relative z-10 mt-1 h-2.5 w-2.5 rounded-full bg-muted-foreground ring-4 ring-background" />
-                                <div className="min-w-0 flex-1 space-y-1">
-                                    <div className="flex items-start justify-between gap-2 text-sm leading-none">
-                                        <div className="flex min-w-0 items-center gap-1.5">
-                                            {activity.user && (
-                                                <Avatar className="h-4 w-4 shrink-0">
-                                                    <AvatarImage
-                                                        src={
-                                                            activity.user
-                                                                .image ??
-                                                            undefined
-                                                        }
-                                                        alt={activity.user.name}
-                                                    />
-                                                    <AvatarFallback className="text-[8px]">
-                                                        {activity.user.name
-                                                            ?.slice(0, 2)
-                                                            .toUpperCase() ??
-                                                            "??"}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                            <span className="break-words leading-5">
-                                                {activity.message}
-                                            </span>
-                                        </div>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger
-                                                render={
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-7 w-7 shrink-0"
-                                                    />
-                                                }
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faEllipsis}
-                                                    className="h-3 w-3"
-                                                />
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem
-                                                    onSelect={() =>
-                                                        setActivityToEdit({
-                                                            id: activity.id,
-                                                            message:
-                                                                activity.message,
-                                                            createdAt:
-                                                                activity.createdAt,
-                                                        })
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faPencil}
-                                                        className="mr-2 h-4 w-4"
-                                                    />
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="text-red-500"
-                                                    onSelect={() =>
-                                                        setActivityToDelete({
-                                                            id: activity.id,
-                                                            message:
-                                                                activity.message,
-                                                            createdAt:
-                                                                activity.createdAt,
-                                                        })
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={faTrash}
-                                                        className="mr-2 h-4 w-4"
-                                                    />
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                    <p className="text-muted-foreground text-xs">
-                                        {formatDistanceToNow(
-                                            new Date(activity.createdAt),
-                                            {
-                                                addSuffix: true,
-                                            },
-                                        )}
-                                    </p>
-                                </div>
-                            </div>
-                        ),
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+                                activity={activity}
+                                setActivityToEdit={setActivityToEdit}
+                                setActivityToDelete={setActivityToDelete}
+                            />
+                        ))}
+                    </ol>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
-function IncidentSidebar({
-    incident,
-    isMaintenance,
-    isAcknowledged,
-}: {
-    incident: any;
-    isMaintenance: boolean;
-    isAcknowledged: boolean;
-}) {
+function IncidentSidebar({ incident }: { incident: any }) {
+    const monitors = incident.monitors ?? [];
+    const statusPages = incident.statusPages ?? [];
+
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Details</CardTitle>
-                    <CardDescription>
-                        Incident metadata and status.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid gap-1">
-                        <span className="font-medium text-sm">Started at</span>
-                        <span className="text-muted-foreground text-sm">
-                            {format(
-                                new Date(incident.startedAt),
-                                "MMM d, yyyy 'at' h:mm a",
-                            )}
-                        </span>
-                    </div>
-                    <Separator />
-                    {isMaintenance && (
-                        <>
-                            <div className="grid gap-1">
-                                <span className="font-medium text-sm">
-                                    Planned end
-                                </span>
-                                <span className="text-muted-foreground text-sm">
-                                    {incident.plannedEndAt
-                                        ? format(
-                                              new Date(incident.plannedEndAt),
-                                              "MMM d, yyyy 'at' h:mm a",
-                                          )
-                                        : "Not set"}
-                                </span>
-                            </div>
-                            <Separator />
-                        </>
-                    )}
-                    <div className="grid gap-1">
-                        <span className="font-medium text-sm">Ended at</span>
-                        <span className="text-muted-foreground text-sm">
-                            {incident.endedAt
-                                ? format(
-                                      new Date(incident.endedAt),
-                                      "MMM d, yyyy 'at' h:mm a",
-                                  )
-                                : "Ongoing"}
-                        </span>
-                    </div>
-                    <Separator />
-                    {isAcknowledged && (
-                        <>
-                            <div className="grid gap-1">
-                                <span className="font-medium text-sm">
-                                    Acknowledged by
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="secondary"
-                                        className="w-fit bg-zinc-800 text-zinc-400"
+        <Card>
+            <CardContent className="space-y-5 pt-6">
+                <section className="space-y-2">
+                    <h3 className="font-medium text-muted-foreground text-xs">
+                        Affected monitors
+                    </h3>
+                    {monitors.length > 0 ? (
+                        <ul className="-mx-2 space-y-0.5">
+                            {monitors.map((m: any) => (
+                                <li key={m.monitor.id}>
+                                    <Link
+                                        href={`/monitors/${m.monitor.id}`}
+                                        className="block truncate rounded-md px-2 py-1.5 text-sm hover:bg-accent"
                                     >
-                                        {incident.acknowledgedByUser?.name ||
-                                            "User"}
-                                    </Badge>
-                                    <span className="text-muted-foreground text-xs">
-                                        {incident.acknowledgedAt &&
-                                            formatDistanceToNow(
-                                                new Date(
-                                                    incident.acknowledgedAt,
-                                                ),
-                                                { addSuffix: true },
-                                            )}
-                                    </span>
-                                </div>
-                            </div>
-                            <Separator />
-                        </>
+                                        {m.monitor.name}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-muted-foreground text-sm">
+                            None, global incident
+                        </p>
                     )}
-                    <div className="grid gap-1">
-                        <span className="font-medium text-sm">Duration</span>
-                        <span className="text-muted-foreground text-sm">
-                            {incident.endedAt
-                                ? formatDistance(
-                                      new Date(incident.startedAt),
-                                      new Date(incident.endedAt),
-                                  )
-                                : "Ongoing"}
-                        </span>
-                    </div>
-                    <Separator />
-                    <div className="grid gap-1">
-                        <span className="font-medium text-sm">Severity</span>
-                        <Badge variant="outline" className="w-fit">
-                            {incident.severity}
-                        </Badge>
-                    </div>
-                    <Separator />
-                    <div className="grid gap-1">
-                        <span className="font-medium text-sm">Type</span>
-                        <span className="text-muted-foreground text-sm capitalize">
-                            {incident.type}
-                        </span>
-                    </div>
-                    <Separator />
-                    <div className="grid gap-1">
-                        <span className="font-medium text-sm">
-                            Published on
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                            {(incident.statusPages?.length ?? 0) > 0 ? (
-                                incident.statusPages.map((item: any) => (
-                                    <Badge
-                                        key={item.statusPageId}
-                                        variant="secondary"
-                                    >
-                                        {item.statusPage.name}
-                                    </Badge>
-                                ))
-                            ) : (
-                                <span className="text-muted-foreground text-sm">
-                                    Internal only
-                                </span>
-                            )}
+                </section>
+                <Separator />
+                <section className="space-y-2">
+                    <h3 className="font-medium text-muted-foreground text-xs">
+                        Published on
+                    </h3>
+                    {statusPages.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                            {statusPages.map((item: any) => (
+                                <Badge
+                                    key={item.statusPageId}
+                                    variant="secondary"
+                                >
+                                    {item.statusPage.name}
+                                </Badge>
+                            ))}
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-sm">
+                            Internal only
+                        </p>
+                    )}
+                </section>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -791,38 +736,42 @@ export function IncidentDetails({ id }: { id: string }) {
 
     return (
         <>
-            <div className="mx-auto max-w-5xl space-y-6 p-6">
+            <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
                 <IncidentHeader
                     incident={incident}
                     id={id}
-                    state={getIncidentHeaderState({
+                    state={{
                         isResolved,
                         isAcknowledged,
                         isMaintenance,
                         isScheduledMaintenance,
-                    })}
+                    }}
                     acknowledge={acknowledge}
                     resolve={resolve}
                     setEditOpen={setEditOpen}
                     setShowDeleteDialog={setShowDeleteDialog}
                 />
 
-                <div className="grid gap-6 md:grid-cols-3">
+                <IncidentStats
+                    incident={incident}
+                    isMaintenance={isMaintenance}
+                    currentTime={currentTime}
+                />
+
+                {/* Sidebar sits between description and timeline in DOM so it isn't buried under a long timeline on mobile */}
+                <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[auto_1fr]">
+                    <IncidentDescription incident={incident} />
+                    <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                        <IncidentSidebar incident={incident} />
+                    </div>
                     <IncidentTimeline
                         incident={incident}
                         id={id}
-                        isMaintenance={isMaintenance}
                         comment={comment}
                         setComment={setComment}
                         submitComment={submitComment}
                         setActivityToEdit={setActivityToEdit}
                         setActivityToDelete={setActivityToDelete}
-                    />
-
-                    <IncidentSidebar
-                        incident={incident}
-                        isMaintenance={isMaintenance}
-                        isAcknowledged={isAcknowledged}
                     />
                 </div>
             </div>
@@ -1590,16 +1539,42 @@ function MultiSelectField({
 
 function IncidentSkeleton() {
     return (
-        <div className="mx-auto max-w-5xl p-6">
-            <Skeleton className="mb-6 h-20 w-full" />
-            <div className="grid gap-6 md:grid-cols-3">
-                <div className="md:col-span-2">
-                    <Skeleton className="mb-6 h-40" />
-                    <Skeleton className="h-60" />
+        <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3 sm:gap-4">
+                    <Skeleton className="size-10 shrink-0 rounded-lg sm:size-12 sm:rounded-xl" />
+                    <div className="space-y-2">
+                        <Skeleton className="h-7 w-56 sm:h-8 sm:w-80" />
+                        <div className="flex gap-1.5">
+                            <Skeleton className="h-5.5 w-16" />
+                            <Skeleton className="h-5.5 w-14" />
+                            <Skeleton className="h-5.5 w-20" />
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <Skeleton className="h-60" />
+                <div className="flex gap-2">
+                    <Skeleton className="h-9 w-28" />
+                    <Skeleton className="h-9 w-24" />
+                    <Skeleton className="h-9 w-20" />
+                    <Skeleton className="size-9" />
                 </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border lg:grid-cols-4">
+                {["started", "ended", "duration", "acknowledged"].map(
+                    (stat) => (
+                        <div key={stat} className="space-y-2 bg-card p-4">
+                            <Skeleton className="h-3 w-16" />
+                            <Skeleton className="h-4 w-32 max-w-full" />
+                        </div>
+                    ),
+                )}
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[auto_1fr]">
+                <Skeleton className="h-36 rounded-xl" />
+                <Skeleton className="h-44 rounded-xl lg:col-start-2 lg:row-span-2 lg:row-start-1" />
+                <Skeleton className="h-96 rounded-xl" />
             </div>
         </div>
     );
