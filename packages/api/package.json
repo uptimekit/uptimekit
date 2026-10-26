@@ -54,14 +54,14 @@
         "@types/nodemailer": "^8.0.2",
         "@uptimekit/config": "workspace:*",
         "typescript": "^7.0.2",
-        "vitest": "^5.0.3"
+        "vitest": "^5.0.5"
     },
     "peerDependencies": {
         "typescript": "^7"
     },
     "dependencies": {
-        "@clickhouse/client": "^1.23.1",
-        "@node-rs/argon2": "^2.2.1",
+        "@clickhouse/client": "^1.24.1",
+        "@node-rs/argon2": "^2.2.2",
         "@orpc/client": "catalog:",
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
@@ -70,9 +70,9 @@
         "@uptimekit/db": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
-        "effect": "^4.0.0",
-        "evlog": "^2.29.0",
-        "nodemailer": "^10.1.4",
+        "effect": "^4.0.6",
+        "evlog": "^2.33.1",
+        "nodemailer": "^10.2.1",
         "semver": "^7.8.5",
         "socket.io-client": "^4.8.4",
         "zod": "catalog:"

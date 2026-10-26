@@ -36,17 +36,17 @@
         "zod": "catalog:"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.5.15",
-        "@commitlint/cli": "^21.2.3",
-        "@commitlint/config-conventional": "^21.2.3",
-        "@types/node": "^26.6.4",
+        "@biomejs/biome": "~2.5.15",
+        "@commitlint/cli": "^21.2.4",
+        "@commitlint/config-conventional": "^21.2.4",
+        "@types/node": "^26.6.5",
         "husky": "^9.1.7",
         "lint-staged": "^17.6.0",
         "tsx": "^4.23.15",
-        "turbo": "^2.11.6",
+        "turbo": "^2.11.10",
         "typescript": "^7.0.2",
         "vite": "^8.3.5",
-        "vitest": "^5.0.3"
+        "vitest": "^5.0.5"
     },
     "lint-staged": {
         "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
