@@ -24,6 +24,7 @@ import {
     getEffectiveMonitorWorkers,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
+    normalizeMonitorStatus,
     type WorkerStatusSnapshot,
 } from "../../lib/monitor-status";
 import { deleteAppEvent, processPendingNotifications } from "../notifications";
@@ -234,8 +235,13 @@ function getAutomaticIncidentEscalatedMessage(input: {
     reason: string | null;
     error?: string;
     workerLabel: string;
+    isEscalation: boolean;
 }) {
-    const details = ["Incident escalated automatically. Monitor is down."];
+    const details = [
+        input.isEscalation
+            ? "Incident escalated automatically. Monitor is down."
+            : "Monitor is still down.",
+    ];
 
     if (input.reason) {
         details.push(input.reason);
@@ -246,6 +252,18 @@ function getAutomaticIncidentEscalatedMessage(input: {
     );
 
     return details.join(" ");
+}
+
+// Compare the reporting worker's own down state rather than the reason text, which truncates
+// to the first three workers and would hide changes beyond them.
+export function hasFailingWorkersChanged(
+    previousStatus: string | undefined,
+    nextStatus: string,
+) {
+    const wasDown =
+        previousStatus !== undefined &&
+        normalizeMonitorStatus(previousStatus) === "down";
+    return wasDown !== (normalizeMonitorStatus(nextStatus) === "down");
 }
 
 export async function mapWithConcurrency<T, R>(
@@ -929,10 +947,17 @@ async function processMonitorEventGroup(input: {
                 error: event.error,
             });
 
-            if (
+            const isEscalation =
                 activeIncident.title !== incidentTitle ||
-                activeIncident.description !== incidentDescription ||
-                activeIncident.severity !== "major"
+                activeIncident.severity !== "major";
+            const failingWorkersChanged = hasFailingWorkersChanged(
+                previousWorkerStatus?.status,
+                event.status,
+            );
+
+            if (
+                isEscalation ||
+                activeIncident.description !== incidentDescription
             ) {
                 result.incidentUpdatesToApply.push({
                     id: activeIncident.id,
@@ -944,19 +969,23 @@ async function processMonitorEventGroup(input: {
                     },
                 });
 
-                result.activitiesToInsert.push({
-                    id: crypto.randomUUID(),
-                    incidentId: activeIncident.id,
-                    message: getAutomaticIncidentEscalatedMessage({
-                        reason: aggregateStatus.statusReason,
-                        error: event.error,
-                        workerLabel:
-                            workerLabels.get(eventWorkerId) || eventWorkerId,
-                    }),
-                    type: "event",
-                    createdAt: eventTime,
-                    userId: null,
-                });
+                if (isEscalation || failingWorkersChanged) {
+                    result.activitiesToInsert.push({
+                        id: crypto.randomUUID(),
+                        incidentId: activeIncident.id,
+                        message: getAutomaticIncidentEscalatedMessage({
+                            reason: aggregateStatus.statusReason,
+                            error: event.error,
+                            workerLabel:
+                                workerLabels.get(eventWorkerId) ||
+                                eventWorkerId,
+                            isEscalation,
+                        }),
+                        type: "event",
+                        createdAt: eventTime,
+                        userId: null,
+                    });
+                }
 
                 activeIncident = {
                     ...activeIncident,

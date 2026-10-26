@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     getConfiguredWorkerStates,
     getStableMonitorEventId,
+    hasFailingWorkersChanged,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     type MonitorEvent,
@@ -420,5 +421,26 @@ describe("automatic incident recovery duration", () => {
                 incidentRecoveryDurationSeconds: 0,
             }),
         ).toBe(true);
+    });
+});
+
+describe("hasFailingWorkersChanged", () => {
+    it("ignores a flapping error from a worker that stays down", () => {
+        expect(hasFailingWorkersChanged("down", "down")).toBe(false);
+    });
+
+    // The reason text only lists three workers, so a swap beyond them reads identically.
+    it("detects a worker that starts failing even when the reason text would not change", () => {
+        expect(hasFailingWorkersChanged("up", "down")).toBe(true);
+        expect(hasFailingWorkersChanged(undefined, "down")).toBe(true);
+    });
+
+    it("detects a worker that stops failing", () => {
+        expect(hasFailingWorkersChanged("down", "up")).toBe(true);
+        expect(hasFailingWorkersChanged("down", "degraded")).toBe(true);
+    });
+
+    it("ignores transitions that do not involve down", () => {
+        expect(hasFailingWorkersChanged("up", "degraded")).toBe(false);
     });
 });
