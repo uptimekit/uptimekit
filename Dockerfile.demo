@@ -8,7 +8,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
-RUN pnpm add -g turbo@^2.5.4
+RUN pnpm add -g turbo@2.11.6
 
 FROM base AS builder
 COPY . .
@@ -20,13 +20,21 @@ COPY --from=builder /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 RUN pnpm install --frozen-lockfile
 COPY --from=builder /app/out/full/ .
 RUN pnpm exec turbo build --filter=@uptimekit/dash...
+# Bundle the migrator and the seed into single files so the runtime image needs
+# neither tsx nor the workspace's node_modules. The seed is bundled from the
+# dash app so it resolves the same workspace packages the app uses.
+RUN pnpm --filter @uptimekit/db run build:migrate
+COPY --from=builder /app/scripts/seed-db.ts ./apps/dash/seed-db.ts
+RUN pnpm --filter @uptimekit/db exec esbuild ../../apps/dash/seed-db.ts \
+    --bundle --platform=node --format=esm --target=node22 \
+    --outfile=/app/seed/seed.mjs \
+    --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);"
 
 # ---- Demo Stage ----
 FROM node:22-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-15 \
-    postgresql-client-15 \
     curl \
     ca-certificates \
     gnupg \
@@ -35,44 +43,49 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         > /etc/apt/sources.list.d/timescaledb.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends timescaledb-2-postgresql-15 \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get purge -y --auto-remove curl gnupg \
+    && rm -rf /var/lib/apt/lists/* \
+    # The timescaledb package ships a library for every past release (~500MB);
+    # only the installed version is ever loaded.
+    && TS_VERSION="$(dpkg-query -W -f='${Version}' timescaledb-2-postgresql-15 | cut -d'~' -f1)" \
+    && find /usr/lib/postgresql/15/lib -name 'timescaledb-*.so' \
+        ! -name "timescaledb-${TS_VERSION}.so" ! -name "timescaledb-tsl-${TS_VERSION}.so" -delete \
+    # JIT is disabled in the entrypoint, so the LLVM runtime (~130MB) is dead weight.
+    && rm -rf /usr/lib/postgresql/15/lib/llvmjit* /usr/lib/postgresql/15/lib/bitcode /usr/lib/*/libLLVM-*.so*
 
 WORKDIR /app
-
-COPY --from=installer /app/apps/dash/next.config.ts ./
-
-COPY --from=installer /app/packages/db ./packages/db
-COPY --from=installer /app/packages/config ./packages/config
-COPY --from=installer /app/packages/api ./packages/api
-COPY --from=installer /app/packages/auth ./packages/auth
 
 COPY --from=installer /app/apps/dash/.next/standalone ./
 COPY --from=installer /app/apps/dash/.next/static ./apps/dash/.next/static
 COPY --from=installer /app/apps/dash/public ./apps/dash/public
-COPY --from=installer /app/node_modules ./node_modules
-
-COPY --from=builder /app/scripts/seed-db.ts ./scripts/seed-db.ts
+COPY --from=installer /app/packages/db/dist/migrate.mjs ./migrate/migrate.mjs
+COPY --from=installer /app/packages/db/dist/migrations ./migrate/migrations
+COPY --from=installer /app/seed/seed.mjs ./seed/seed.mjs
+# Lets the env loader find the repository root instead of logging a warning.
 COPY --from=builder /app/turbo.json ./turbo.json
 
 COPY docker/demo-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENV NODE_ENV=production
-ENV NODE_PATH=/app/node_modules
-ENV DATABASE_URL=postgres://uptimekit:uptimekit@localhost:5432/uptimekit
 ENV TIMESERIES_BACKEND=timescale
-ENV APP_SECRET=demo-secret-change-in-production
-ENV APP_URL=https://demo.uptimekit.dev
+# Override APP_URL with the public URL when hosting the demo; auth only
+# trusts requests from this origin.
+ENV APP_URL=http://localhost:3000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV PGDATA=/var/lib/postgresql/data
 ENV PGDATABASE=uptimekit
 ENV PGUSER=uptimekit
 ENV PGPASSWORD=uptimekit
+ENV DATABASE_URL=postgres://uptimekit:uptimekit@localhost:5432/uptimekit
 ENV DEMO_MODE=true
-ENV DEMO_EMAIL=demo@uptimekit.local
+ENV DEMO_EMAIL=demo@acme.example
 ENV DEMO_PASSWORD=DemoPassword123!
-ENV DEMO_STATUS_PAGE_SLUG=northstar-status
+ENV DEMO_STATUS_PAGE_SLUG=acme-status
+ENV DEMO_RESET_MINUTES=30
 
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s \
+    CMD node -e "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 ENTRYPOINT ["/entrypoint.sh"]

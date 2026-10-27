@@ -45,6 +45,7 @@ import {
     SidebarMenuItem,
     SidebarRail,
     SidebarSeparator,
+    useSidebar,
 } from "@/components/ui/sidebar";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { authClient } from "@/lib/auth-client";
@@ -94,6 +95,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const router = useRouter(); // Use useRouter from next/navigation
     const queryClient = useQueryClient();
     const [showCreateOrgModal, setShowCreateOrgModal] = React.useState(false);
+    const { setOpenMobile } = useSidebar();
     const isMounted = useHydrated();
 
     const { data: organizations, isPending: isLoadingOrgs } =
@@ -116,247 +118,262 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const currentOrgName = displayedActiveOrg?.name || "Select Organization";
 
     return (
-        <Sidebar collapsible="icon" {...props} variant="inset">
-            <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
-                                render={
-                                    <SidebarMenuButton
-                                        size="lg"
-                                        tooltip={currentOrgName}
-                                        className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
-                                    />
-                                }
-                            >
-                                <div className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
-                                    <Image
-                                        src={
-                                            displayedActiveOrg?.logo ||
-                                            "https://r2.uptimekit.dev/logos/uptimekit.svg"
-                                        }
-                                        alt={currentOrgName}
-                                        width={50}
-                                        height={50}
-                                        className="size-full object-cover"
-                                    />
-                                </div>
-                                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                                    <span className="truncate font-semibold">
-                                        {currentOrgName}
-                                    </span>
-                                    <span className="truncate text-xs">
-                                        {displayedActiveOrg?.slug ||
-                                            "Organization"}
-                                    </span>
-                                </div>
-                                <FontAwesomeIcon
-                                    icon={faChevronDown}
-                                    className="group-data-[collapsible=icon]:hidden! ml-auto shrink-0"
-                                />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                className="w-(--anchor-width) min-w-56 rounded-lg"
-                                align="start"
-                                side="bottom"
-                                sideOffset={4}
-                            >
-                                <DropdownMenuLabel className="text-muted-foreground text-xs">
-                                    Organizations
-                                </DropdownMenuLabel>
-                                {!isMounted || isLoadingOrgs ? (
-                                    <DropdownMenuItem disabled>
-                                        Loading...
-                                    </DropdownMenuItem>
-                                ) : (
-                                    displayedOrganizations?.map((org) => (
-                                        <DropdownMenuItem
-                                            key={org.id}
-                                            onClick={() => {
-                                                authClient.organization.setActive(
-                                                    {
-                                                        organizationId: org.id,
-                                                    },
-                                                    {
-                                                        onSuccess: async () => {
-                                                            await queryClient.invalidateQueries();
-                                                            router.refresh();
-                                                            router.push("/");
-                                                        },
-                                                    },
-                                                );
-                                            }}
-                                            className="gap-2 p-2"
-                                        >
-                                            <div className="flex size-6 items-center justify-center overflow-hidden rounded-sm border">
-                                                <Image
-                                                    src={
-                                                        org.logo ||
-                                                        "https://r2.uptimekit.dev/logos/uptimekit.svg"
-                                                    }
-                                                    alt={org.name}
-                                                    width={24}
-                                                    height={24}
-                                                    className="size-full object-cover"
-                                                />
-                                            </div>
-                                            {org.name}
-                                            {displayedActiveOrg?.id ===
-                                                org.id && (
-                                                <span className="ml-auto text-muted-foreground text-xs">
-                                                    Active
-                                                </span>
-                                            )}
-                                        </DropdownMenuItem>
-                                    ))
-                                )}
-                                {isGlobalAdmin && (
-                                    <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            className="cursor-pointer gap-2 p-2"
-                                            onSelect={() =>
-                                                setShowCreateOrgModal(true)
-                                            }
-                                        >
-                                            <div className="flex size-6 items-center justify-center rounded-md border bg-background">
-                                                <FontAwesomeIcon
-                                                    icon={faPlus}
-                                                    className="size-4"
-                                                />
-                                            </div>
-                                            <div className="font-medium text-muted-foreground">
-                                                Add Organization
-                                            </div>
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarHeader>
-            <SidebarContent className="overflow-x-hidden">
-                <SidebarGroup>
-                    <SidebarGroupLabel>Main</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {mainNav
-                                .filter((item) => {
-                                    if (item.title === "Notifications") {
-                                        const members =
-                                            displayedActiveOrg?.members;
-                                        const role = members?.find(
-                                            (m) =>
-                                                m.userId ===
-                                                displayedSession?.user?.id,
-                                        )?.role;
-                                        return (
-                                            role === "owner" || role === "admin"
-                                        );
+        <>
+            <Sidebar collapsible="icon" {...props} variant="inset">
+                <SidebarHeader>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger
+                                    render={
+                                        <SidebarMenuButton
+                                            size="lg"
+                                            tooltip={currentOrgName}
+                                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+                                        />
                                     }
-                                    return true;
-                                })
-                                .map((item) => (
-                                    <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton
-                                            isActive={
-                                                item.url === "/"
-                                                    ? pathname === "/"
-                                                    : pathname.startsWith(
-                                                          item.url,
-                                                      )
+                                >
+                                    <div className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:size-6">
+                                        <Image
+                                            src={
+                                                displayedActiveOrg?.logo ||
+                                                "https://r2.uptimekit.dev/logos/uptimekit.svg"
                                             }
-                                            tooltip={item.title}
-                                            render={
-                                                <Link href={item.url as any}>
-                                                    <FontAwesomeIcon
-                                                        icon={item.icon}
-                                                    />
-                                                    <span>{item.title}</span>
-                                                </Link>
-                                            }
+                                            alt={currentOrgName}
+                                            width={50}
+                                            height={50}
+                                            className="size-full object-cover"
                                         />
-                                    </SidebarMenuItem>
-                                ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-                <SidebarActiveIncidents />
-                <SidebarMonitors />
-                <SidebarSeparator />
-                <SidebarGroup>
-                    <SidebarGroupLabel>Configuration</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {configNav
-                                .filter(
-                                    (item) =>
-                                        item.title !== "Admin" ||
-                                        displayedSession?.user?.role ===
-                                            "admin",
-                                )
-                                .map((item) => (
-                                    <SidebarMenuItem key={item.title}>
-                                        <SidebarMenuButton
-                                            isActive={
-                                                item.title === "Organization"
-                                                    ? pathname.startsWith(
-                                                          "/organization/",
-                                                      )
-                                                    : pathname.startsWith(
-                                                          item.url,
-                                                      )
-                                            }
-                                            tooltip={item.title}
-                                            render={
-                                                <Link
-                                                    href={
-                                                        (item.title ===
-                                                        "Organization"
-                                                            ? organizationSettingsUrl
-                                                            : item.url) as any
-                                                    }
-                                                >
-                                                    <FontAwesomeIcon
-                                                        icon={item.icon}
+                                    </div>
+                                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                                        <span className="truncate font-semibold">
+                                            {currentOrgName}
+                                        </span>
+                                        <span className="truncate text-xs">
+                                            {displayedActiveOrg?.slug ||
+                                                "Organization"}
+                                        </span>
+                                    </div>
+                                    <FontAwesomeIcon
+                                        icon={faChevronDown}
+                                        className="group-data-[collapsible=icon]:hidden! ml-auto shrink-0"
+                                    />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-(--anchor-width) min-w-56 rounded-lg"
+                                    align="start"
+                                    side="bottom"
+                                    sideOffset={4}
+                                >
+                                    <DropdownMenuLabel className="text-muted-foreground text-xs">
+                                        Organizations
+                                    </DropdownMenuLabel>
+                                    {!isMounted || isLoadingOrgs ? (
+                                        <DropdownMenuItem disabled>
+                                            Loading...
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        displayedOrganizations?.map((org) => (
+                                            <DropdownMenuItem
+                                                key={org.id}
+                                                onClick={() => {
+                                                    authClient.organization.setActive(
+                                                        {
+                                                            organizationId:
+                                                                org.id,
+                                                        },
+                                                        {
+                                                            onSuccess:
+                                                                async () => {
+                                                                    await queryClient.invalidateQueries();
+                                                                    router.refresh();
+                                                                    router.push(
+                                                                        "/",
+                                                                    );
+                                                                },
+                                                        },
+                                                    );
+                                                }}
+                                                className="gap-2 p-2"
+                                            >
+                                                <div className="flex size-6 items-center justify-center overflow-hidden rounded-sm border">
+                                                    <Image
+                                                        src={
+                                                            org.logo ||
+                                                            "https://r2.uptimekit.dev/logos/uptimekit.svg"
+                                                        }
+                                                        alt={org.name}
+                                                        width={24}
+                                                        height={24}
+                                                        className="size-full object-cover"
                                                     />
-                                                    <span>{item.title}</span>
-                                                </Link>
-                                            }
-                                        />
-                                    </SidebarMenuItem>
-                                ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-            </SidebarContent>
-            <SidebarFooter>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <UserMenuComponent />
-                    </SidebarMenuItem>
-                </SidebarMenu>
-                {appVersion && (
-                    <div className="px-2 text-center text-muted-foreground text-xs group-data-[collapsible=icon]:hidden">
-                        v{appVersion.version}
-                        {hasUpdate && (
-                            <span className="ml-2 text-warning-foreground">
-                                Update available
-                            </span>
-                        )}
-                    </div>
-                )}
-            </SidebarFooter>
-            <SidebarRail />
+                                                </div>
+                                                {org.name}
+                                                {displayedActiveOrg?.id ===
+                                                    org.id && (
+                                                    <span className="ml-auto text-muted-foreground text-xs">
+                                                        Active
+                                                    </span>
+                                                )}
+                                            </DropdownMenuItem>
+                                        ))
+                                    )}
+                                    {isGlobalAdmin && (
+                                        <>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                className="cursor-pointer gap-2 p-2"
+                                                onSelect={() => {
+                                                    setOpenMobile(false);
+                                                    setShowCreateOrgModal(true);
+                                                }}
+                                            >
+                                                <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                                                    <FontAwesomeIcon
+                                                        icon={faPlus}
+                                                        className="size-4"
+                                                    />
+                                                </div>
+                                                <div className="font-medium text-muted-foreground">
+                                                    Add Organization
+                                                </div>
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarHeader>
+                <SidebarContent className="overflow-x-hidden">
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Main</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {mainNav
+                                    .filter((item) => {
+                                        if (item.title === "Notifications") {
+                                            const members =
+                                                displayedActiveOrg?.members;
+                                            const role = members?.find(
+                                                (m) =>
+                                                    m.userId ===
+                                                    displayedSession?.user?.id,
+                                            )?.role;
+                                            return (
+                                                role === "owner" ||
+                                                role === "admin"
+                                            );
+                                        }
+                                        return true;
+                                    })
+                                    .map((item) => (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton
+                                                isActive={
+                                                    item.url === "/"
+                                                        ? pathname === "/"
+                                                        : pathname.startsWith(
+                                                              item.url,
+                                                          )
+                                                }
+                                                tooltip={item.title}
+                                                render={
+                                                    <Link
+                                                        href={item.url as any}
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={item.icon}
+                                                        />
+                                                        <span>
+                                                            {item.title}
+                                                        </span>
+                                                    </Link>
+                                                }
+                                            />
+                                        </SidebarMenuItem>
+                                    ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                    <SidebarActiveIncidents />
+                    <SidebarMonitors />
+                    <SidebarSeparator />
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {configNav
+                                    .filter(
+                                        (item) =>
+                                            item.title !== "Admin" ||
+                                            displayedSession?.user?.role ===
+                                                "admin",
+                                    )
+                                    .map((item) => (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton
+                                                isActive={
+                                                    item.title ===
+                                                    "Organization"
+                                                        ? pathname.startsWith(
+                                                              "/organization/",
+                                                          )
+                                                        : pathname.startsWith(
+                                                              item.url,
+                                                          )
+                                                }
+                                                tooltip={item.title}
+                                                render={
+                                                    <Link
+                                                        href={
+                                                            (item.title ===
+                                                            "Organization"
+                                                                ? organizationSettingsUrl
+                                                                : item.url) as any
+                                                        }
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={item.icon}
+                                                        />
+                                                        <span>
+                                                            {item.title}
+                                                        </span>
+                                                    </Link>
+                                                }
+                                            />
+                                        </SidebarMenuItem>
+                                    ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                </SidebarContent>
+                <SidebarFooter>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <UserMenuComponent />
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                    {appVersion && (
+                        <div className="px-2 text-center text-muted-foreground text-xs group-data-[collapsible=icon]:hidden">
+                            v{appVersion.version}
+                            {hasUpdate && (
+                                <span className="ml-2 text-warning-foreground">
+                                    Update available
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </SidebarFooter>
+                <SidebarRail />
+            </Sidebar>
             {isGlobalAdmin && (
                 <CreateOrganizationDialog
                     open={showCreateOrgModal}
                     setOpen={setShowCreateOrgModal}
                 />
             )}
-        </Sidebar>
+        </>
     );
 }
 

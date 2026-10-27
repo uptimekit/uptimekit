@@ -13,7 +13,8 @@ function isPublicDashboardPath(pathname: string): boolean {
         pathname === "/register" ||
         pathname === "/two-factor" ||
         pathname.startsWith("/api/") ||
-        pathname.startsWith("/status") ||
+        pathname === "/status" ||
+        pathname.startsWith("/status/") ||
         isPublicAssetPath(pathname)
     );
 }

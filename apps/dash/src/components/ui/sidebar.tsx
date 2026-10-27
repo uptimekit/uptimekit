@@ -5,6 +5,7 @@ import { useRender } from "@base-ui/react/use-render";
 import { faBars } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { cva, type VariantProps } from "class-variance-authority";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,6 +90,12 @@ export function SidebarProvider({
 }): React.ReactElement {
     const isMobile = useMediaQuery("max-md");
     const [openMobile, setOpenMobile] = React.useState(false);
+    const pathname = usePathname();
+    const [lastPathname, setLastPathname] = React.useState(pathname);
+    if (pathname !== lastPathname) {
+        setLastPathname(pathname);
+        setOpenMobile(false);
+    }
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.

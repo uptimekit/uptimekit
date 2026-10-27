@@ -18,10 +18,13 @@ export async function checkStatusPageAccess(
         return;
     }
 
-    // No valid token, redirect to password page
-    const redirectUrl = encodeURIComponent(currentPath);
+    // Status page hosts pass /status/* paths through unchanged, so prefixed
+    // URLs resolve on the dashboard host and on status page domains alike.
+    const redirectUrl = encodeURIComponent(
+        currentPath === "/" ? "/status" : `/status${currentPath}`,
+    );
     redirect(
-        `/password?pageId=${statusPage.id}&redirect=${redirectUrl}` as never,
+        `/status/password?pageId=${statusPage.id}&redirect=${redirectUrl}` as never,
     );
 }
 

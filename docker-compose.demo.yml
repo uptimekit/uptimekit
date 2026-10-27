@@ -1,0 +1,19 @@
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    image: uptimekit-demo:local
+    ports:
+      - "${DEMO_PORT:-3000}:3000"
+    environment:
+      # Must be the URL people open in the browser; auth only trusts this origin.
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      DEMO_EMAIL: ${DEMO_EMAIL:-demo@acme.example}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-DemoPassword123!}
+      DEMO_STATUS_PAGE_SLUG: ${DEMO_STATUS_PAGE_SLUG:-acme-status}
+      DEMO_RESET_MINUTES: ${DEMO_RESET_MINUTES:-30}
+      # Set a fixed secret so logins survive container restarts; otherwise a
+      # random one is generated on every start.
+      # APP_SECRET: change-me-to-a-long-random-string
+    restart: unless-stopped

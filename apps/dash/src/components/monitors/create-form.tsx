@@ -1261,10 +1261,6 @@ function useCreateMonitorFormModel({
         defaultValues: getFormValuesFromInitialData(),
     });
 
-    // The form context is a spread copy of `form`; subscribing to errors here
-    // keeps that copy fresh so field errors clear once corrected.
-    useFormState({ control: form.control }).errors;
-
     const router = useRouter();
     const utils = useQueryClient();
 
