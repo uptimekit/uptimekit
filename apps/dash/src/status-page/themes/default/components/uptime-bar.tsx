@@ -303,94 +303,79 @@ export function UptimeBar({
                     {/* Flex container for the bar segments */}
                     <div className="flex h-8 w-full gap-[3px]">
                         {days.map((day, index) => (
-                            <>
-                                {/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
-                                <div
-                                    key={day.date}
-                                    className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
-                                    onMouseEnter={(event) =>
-                                        handleDayMouseEnter(index, event)
-                                    }
-                                    onMouseLeave={handleDayMouseLeave}
-                                >
-                                    {/* The visible bar segment */}
-                                    {style === "length" ? (
-                                        <div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
-                                            <StackedBar
-                                                segments={calculateBarSegments(
-                                                    day,
-                                                )}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div
-                                            className={cn(
-                                                "h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
-                                                statusColors[day.status],
-                                            )}
+                            // biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target
+                            <div
+                                key={day.date}
+                                className="group relative flex-1 first:rounded-l-sm last:rounded-r-sm"
+                                onMouseEnter={(event) =>
+                                    handleDayMouseEnter(index, event)
+                                }
+                                onMouseLeave={handleDayMouseLeave}
+                            >
+                                {/* The visible bar segment */}
+                                {style === "length" ? (
+                                    <div className="h-full w-full rounded-[1px] transition-opacity hover:opacity-80">
+                                        <StackedBar
+                                            segments={calculateBarSegments(day)}
                                         />
-                                    )}
-
-                                    {/* Tooltip */}
-                                    {hoveredIndex === index &&
-                                        tooltipPosition && (
-                                            <ViewportTooltip
-                                                position={tooltipPosition}
-                                            >
-                                                <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl transition-[opacity,transform] duration-200">
-                                                    <div className="font-semibold text-popover-foreground text-sm">
-                                                        {day.annotation ||
-                                                            statusConfig[
-                                                                day.status
-                                                            ].label}
-                                                    </div>
-                                                    <div className="mt-1 text-muted-foreground text-xs">
-                                                        {formatTooltipDate(
-                                                            day.date,
-                                                        )}
-                                                    </div>
-                                                    {style === "length" && (
-                                                        <SegmentTooltip
-                                                            day={day}
-                                                            toFixed={toFixed}
-                                                        />
-                                                    )}
-                                                    {isMaintenanceStatus(
-                                                        day.status,
-                                                    ) ? (
-                                                        <div className="mt-1 text-muted-foreground text-xs">
-                                                            {formatMaintenanceDuration(
-                                                                day,
-                                                            )}
-                                                        </div>
-                                                    ) : day.duration ? (
-                                                        <div className="mt-1 text-muted-foreground text-xs">
-                                                            Duration:{" "}
-                                                            {day.duration}
-                                                        </div>
-                                                    ) : (
-                                                        day.status !==
-                                                            "unknown" && (
-                                                            <div className="mt-1 text-muted-foreground text-xs">
-                                                                {day.downtimeMs !==
-                                                                    undefined &&
-                                                                day.downtimeMs >
-                                                                    0
-                                                                    ? formatDowntime(
-                                                                          day.downtimeMs,
-                                                                      )
-                                                                    : "No downtime"}
-                                                            </div>
-                                                        )
-                                                    )}
-
-                                                    {/* Arrow */}
-                                                    <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-                                                </div>
-                                            </ViewportTooltip>
+                                    </div>
+                                ) : (
+                                    <div
+                                        className={cn(
+                                            "h-full w-full rounded-[1px] transition-opacity hover:opacity-80",
+                                            statusColors[day.status],
                                         )}
-                                </div>
-                            </>
+                                    />
+                                )}
+
+                                {/* Tooltip */}
+                                {hoveredIndex === index && tooltipPosition && (
+                                    <ViewportTooltip position={tooltipPosition}>
+                                        <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-3 py-2 shadow-xl transition-[opacity,transform] duration-200">
+                                            <div className="font-semibold text-popover-foreground text-sm">
+                                                {day.annotation ||
+                                                    statusConfig[day.status]
+                                                        .label}
+                                            </div>
+                                            <div className="mt-1 text-muted-foreground text-xs">
+                                                {formatTooltipDate(day.date)}
+                                            </div>
+                                            {style === "length" && (
+                                                <SegmentTooltip
+                                                    day={day}
+                                                    toFixed={toFixed}
+                                                />
+                                            )}
+                                            {isMaintenanceStatus(day.status) ? (
+                                                <div className="mt-1 text-muted-foreground text-xs">
+                                                    {formatMaintenanceDuration(
+                                                        day,
+                                                    )}
+                                                </div>
+                                            ) : day.duration ? (
+                                                <div className="mt-1 text-muted-foreground text-xs">
+                                                    Duration: {day.duration}
+                                                </div>
+                                            ) : (
+                                                day.status !== "unknown" && (
+                                                    <div className="mt-1 text-muted-foreground text-xs">
+                                                        {day.downtimeMs !==
+                                                            undefined &&
+                                                        day.downtimeMs > 0
+                                                            ? formatDowntime(
+                                                                  day.downtimeMs,
+                                                              )
+                                                            : "No downtime"}
+                                                    </div>
+                                                )
+                                            )}
+
+                                            {/* Arrow */}
+                                            <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+                                        </div>
+                                    </ViewportTooltip>
+                                )}
+                            </div>
                         ))}
                     </div>
                 </>

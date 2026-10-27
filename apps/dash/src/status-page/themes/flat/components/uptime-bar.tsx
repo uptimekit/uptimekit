@@ -226,80 +226,76 @@ export function UptimeBar({
                             }}
                         >
                             {days.map((day, index) => (
-                                <>
-                                    {/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
-                                    <div
-                                        key={day.date}
-                                        className="relative h-full"
-                                        onMouseEnter={(event) =>
-                                            handleDayMouseEnter(index, event)
-                                        }
-                                        onMouseLeave={handleDayMouseLeave}
-                                    >
-                                        {hoveredIndex === index ? (
-                                            <div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
-                                                <div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-card/18" />
-                                            </div>
-                                        ) : null}
+                                // biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target
+                                <div
+                                    key={day.date}
+                                    className="relative h-full"
+                                    onMouseEnter={(event) =>
+                                        handleDayMouseEnter(index, event)
+                                    }
+                                    onMouseLeave={handleDayMouseLeave}
+                                >
+                                    {hoveredIndex === index ? (
+                                        <div className="pointer-events-none absolute inset-x-0 top-3 bottom-0">
+                                            <div className="h-1.5 w-full rounded-full bg-black/16 dark:bg-card/18" />
+                                        </div>
+                                    ) : null}
 
-                                        {hoveredIndex === index &&
-                                        tooltipPosition ? (
-                                            <ViewportTooltip
-                                                position={tooltipPosition}
-                                            >
-                                                <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-2.5 py-1.5 shadow-lg transition-[opacity,transform] duration-200">
-                                                    <div className="font-semibold text-popover-foreground text-xs">
-                                                        {day.annotation ||
-                                                            statusConfig[
-                                                                day.status
-                                                            ].label}
-                                                    </div>
+                                    {hoveredIndex === index &&
+                                    tooltipPosition ? (
+                                        <ViewportTooltip
+                                            position={tooltipPosition}
+                                        >
+                                            <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-2.5 py-1.5 shadow-lg transition-[opacity,transform] duration-200">
+                                                <div className="font-semibold text-popover-foreground text-xs">
+                                                    {day.annotation ||
+                                                        statusConfig[day.status]
+                                                            .label}
+                                                </div>
+                                                <div className="text-[10px] text-muted-foreground">
+                                                    {new Date(
+                                                        day.date,
+                                                    ).toLocaleDateString(
+                                                        "en-US",
+                                                        {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            timeZone: "UTC",
+                                                            hour12: false,
+                                                        },
+                                                    )}{" "}
+                                                    UTC
+                                                </div>
+                                                {isMaintenanceStatus(
+                                                    day.status,
+                                                ) ? (
                                                     <div className="text-[10px] text-muted-foreground">
-                                                        {new Date(
-                                                            day.date,
-                                                        ).toLocaleDateString(
-                                                            "en-US",
-                                                            {
-                                                                month: "short",
-                                                                day: "numeric",
-                                                                timeZone: "UTC",
-                                                                hour12: false,
-                                                            },
-                                                        )}{" "}
-                                                        UTC
+                                                        {formatMaintenanceDuration(
+                                                            day,
+                                                        )}
                                                     </div>
-                                                    {isMaintenanceStatus(
-                                                        day.status,
-                                                    ) ? (
+                                                ) : day.duration ? (
+                                                    <div className="text-[10px] text-muted-foreground">
+                                                        {day.duration}
+                                                    </div>
+                                                ) : (
+                                                    day.status !== "unknown" &&
+                                                    day.downtimeMs !==
+                                                        undefined &&
+                                                    day.downtimeMs > 0 && (
                                                         <div className="text-[10px] text-muted-foreground">
-                                                            {formatMaintenanceDuration(
-                                                                day,
+                                                            {formatDowntime(
+                                                                day.downtimeMs,
                                                             )}
                                                         </div>
-                                                    ) : day.duration ? (
-                                                        <div className="text-[10px] text-muted-foreground">
-                                                            {day.duration}
-                                                        </div>
-                                                    ) : (
-                                                        day.status !==
-                                                            "unknown" &&
-                                                        day.downtimeMs !==
-                                                            undefined &&
-                                                        day.downtimeMs > 0 && (
-                                                            <div className="text-[10px] text-muted-foreground">
-                                                                {formatDowntime(
-                                                                    day.downtimeMs,
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    )}
+                                                    )
+                                                )}
 
-                                                    <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-                                                </div>
-                                            </ViewportTooltip>
-                                        ) : null}
-                                    </div>
-                                </>
+                                                <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+                                            </div>
+                                        </ViewportTooltip>
+                                    ) : null}
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -307,94 +303,89 @@ export function UptimeBar({
             ) : (
                 <div className="flex h-9 w-full gap-px">
                     {days.map((day, index) => (
-                        <>
-                            {/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target */}
-                            <div
-                                key={day.date}
-                                className="group relative flex-1"
-                                onMouseEnter={(event) =>
-                                    handleDayMouseEnter(index, event)
-                                }
-                                onMouseLeave={handleDayMouseLeave}
-                            >
-                                {style === "length" ? (
-                                    <div
-                                        className={cn(
-                                            "h-full w-full transition-opacity hover:opacity-80",
-                                            index === 0 && "rounded-l-md",
-                                            index === days.length - 1 &&
-                                                "rounded-r-md",
-                                        )}
-                                    >
-                                        <StackedBar
-                                            segments={calculateBarSegments(day)}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div
-                                        className={cn(
-                                            "h-full w-full transition-opacity hover:opacity-80",
-                                            statusColors[day.status],
-                                            index === 0 && "rounded-l-md",
-                                            index === days.length - 1 &&
-                                                "rounded-r-md",
-                                        )}
+                        // biome-ignore lint/a11y/noStaticElementInteractions: hover-only tooltip target
+                        <div
+                            key={day.date}
+                            className="group relative flex-1"
+                            onMouseEnter={(event) =>
+                                handleDayMouseEnter(index, event)
+                            }
+                            onMouseLeave={handleDayMouseLeave}
+                        >
+                            {style === "length" ? (
+                                <div
+                                    className={cn(
+                                        "h-full w-full transition-opacity hover:opacity-80",
+                                        index === 0 && "rounded-l-md",
+                                        index === days.length - 1 &&
+                                            "rounded-r-md",
+                                    )}
+                                >
+                                    <StackedBar
+                                        segments={calculateBarSegments(day)}
                                     />
-                                )}
+                                </div>
+                            ) : (
+                                <div
+                                    className={cn(
+                                        "h-full w-full transition-opacity hover:opacity-80",
+                                        statusColors[day.status],
+                                        index === 0 && "rounded-l-md",
+                                        index === days.length - 1 &&
+                                            "rounded-r-md",
+                                    )}
+                                />
+                            )}
 
-                                {hoveredIndex === index && tooltipPosition && (
-                                    <ViewportTooltip position={tooltipPosition}>
-                                        <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-2.5 py-1.5 shadow-lg transition-[opacity,transform] duration-200">
-                                            <div className="font-semibold text-popover-foreground text-xs">
-                                                {day.annotation ||
-                                                    statusConfig[day.status]
-                                                        .label}
-                                            </div>
+                            {hoveredIndex === index && tooltipPosition && (
+                                <ViewportTooltip position={tooltipPosition}>
+                                    <div className="fade-in zoom-in-95 relative max-w-64 animate-in rounded-lg border border-border bg-popover px-2.5 py-1.5 shadow-lg transition-[opacity,transform] duration-200">
+                                        <div className="font-semibold text-popover-foreground text-xs">
+                                            {day.annotation ||
+                                                statusConfig[day.status].label}
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground">
+                                            {new Date(
+                                                day.date,
+                                            ).toLocaleDateString("en-US", {
+                                                month: "short",
+                                                day: "numeric",
+                                                timeZone: "UTC",
+                                                hour12: false,
+                                            })}{" "}
+                                            UTC
+                                        </div>
+                                        {style === "length" && (
+                                            <SegmentTooltip
+                                                day={day}
+                                                toFixed={toFixed}
+                                            />
+                                        )}
+                                        {isMaintenanceStatus(day.status) ? (
                                             <div className="text-[10px] text-muted-foreground">
-                                                {new Date(
-                                                    day.date,
-                                                ).toLocaleDateString("en-US", {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                    timeZone: "UTC",
-                                                    hour12: false,
-                                                })}{" "}
-                                                UTC
+                                                {formatMaintenanceDuration(day)}
                                             </div>
-                                            {style === "length" && (
-                                                <SegmentTooltip
-                                                    day={day}
-                                                    toFixed={toFixed}
-                                                />
-                                            )}
-                                            {isMaintenanceStatus(day.status) ? (
+                                        ) : day.duration ? (
+                                            <div className="text-[10px] text-muted-foreground">
+                                                {day.duration}
+                                            </div>
+                                        ) : (
+                                            day.status !== "unknown" &&
+                                            day.downtimeMs !== undefined &&
+                                            day.downtimeMs > 0 && (
                                                 <div className="text-[10px] text-muted-foreground">
-                                                    {formatMaintenanceDuration(
-                                                        day,
+                                                    {formatDowntime(
+                                                        day.downtimeMs,
                                                     )}
                                                 </div>
-                                            ) : day.duration ? (
-                                                <div className="text-[10px] text-muted-foreground">
-                                                    {day.duration}
-                                                </div>
-                                            ) : (
-                                                day.status !== "unknown" &&
-                                                day.downtimeMs !== undefined &&
-                                                day.downtimeMs > 0 && (
-                                                    <div className="text-[10px] text-muted-foreground">
-                                                        {formatDowntime(
-                                                            day.downtimeMs,
-                                                        )}
-                                                    </div>
-                                                )
-                                            )}
+                                            )
+                                        )}
 
-                                            <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
-                                        </div>
-                                    </ViewportTooltip>
-                                )}
-                            </div>
-                        </>
+                                        <div className="absolute top-full left-1/2 -ml-2 h-0 w-0 border-8 border-transparent border-t-popover" />
+                                    </div>
+                                </ViewportTooltip>
+                            )}
+                        </div>
                     ))}
                 </div>
             )}
