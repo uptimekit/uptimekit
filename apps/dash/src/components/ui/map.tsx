@@ -29,6 +29,11 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 
+// MapLibre looks for its worker next to its own module, which no longer exists once bundled.
+MapLibreGL.setWorkerUrl(
+    new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href,
+);
+
 const defaultStyles = {
     dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
     light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
