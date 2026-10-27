@@ -15,6 +15,9 @@
 
   <img width="1622" height="996" alt="image" src="https://github.com/user-attachments/assets/b8343ad2-c5b9-4886-a308-2609d559fe09" />
 
+  <a href="https://neon.com">
+    <img src="https://r2.uptimekit.dev/logos/neon-logo.svg" alt="Neon Logo" height="60">
+  </a>
 
   <br/>
 <!-- looks kinda bad
