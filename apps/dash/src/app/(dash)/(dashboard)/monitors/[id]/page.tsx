@@ -260,7 +260,7 @@ export default function MonitorDetailsPage() {
     return (
         <div className="flex flex-col gap-6 p-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -273,8 +273,8 @@ export default function MonitorDetailsPage() {
                         </Link>
                     }
                 />
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 basis-64 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <h1 className="font-bold text-2xl tracking-tight">
                             {monitor.name}
                         </h1>
@@ -311,7 +311,7 @@ export default function MonitorDetailsPage() {
                             ""
                         )}
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-sm">
                         <FontAwesomeIcon
                             icon={faGlobe}
                             className="h-3.5 w-3.5"
@@ -321,12 +321,14 @@ export default function MonitorDetailsPage() {
                                 href={monitorHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-mono hover:underline"
+                                className="break-all font-mono hover:underline"
                             >
                                 {monitorTarget}
                             </a>
                         ) : (
-                            <span className="font-mono">{monitorTarget}</span>
+                            <span className="break-all font-mono">
+                                {monitorTarget}
+                            </span>
                         )}
                         {!isExternal && (
                             <>
