@@ -22,7 +22,7 @@ export function PasswordForm({ statusPageId, redirectUrl }: PasswordFormProps) {
         setIsLoading(true);
 
         try {
-            const response = await fetch("/api/verify-password", {
+            const response = await fetch("/status/api/verify-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ statusPageId, password }),
