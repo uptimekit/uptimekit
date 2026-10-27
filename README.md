@@ -15,10 +15,6 @@
 
   <img width="1622" height="996" alt="image" src="https://github.com/user-attachments/assets/b8343ad2-c5b9-4886-a308-2609d559fe09" />
 
-  <a href="https://neon.com">
-    <img src="https://r2.uptimekit.dev/logos/neon-logo.svg" alt="Neon Logo" height="60">
-  </a>
-
   <br/>
 <!-- looks kinda bad
   <img src="https://r2.uptimekit.dev/banners/banner-smaller.png" alt="UptimeKit Banner" width="100%"> -->
@@ -99,6 +95,12 @@ uptimekit/
 ## 💝 Sponsors
 
 Thank you to all our amazing sponsors who make this project possible!
+
+<p align="center">
+  <a href="https://neon.com">
+    <img src="https://r2.uptimekit.dev/logos/neon-logo.svg" alt="Neon" height="50">
+  </a>
+</p>
 
 **[Become a sponsor](https://github.com/sponsors/irazvan2745)** and get your logo here!
 
