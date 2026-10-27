@@ -15,6 +15,7 @@ import {
     incidentMonitor,
     incidentStatusPage,
     integrationConfig,
+    invitation,
     type MonitorChangeInsert,
     type MonitorEventInsert,
     member,
@@ -40,15 +41,51 @@ import {
 } from "@uptimekit/db";
 import { and, eq, inArray } from "drizzle-orm";
 
+// Every hostname uses the reserved .example TLD (RFC 2606) so a real worker
+// pointed at the demo data never probes someone else's infrastructure.
 const DEMO = {
-    email: process.env.DEMO_EMAIL?.trim() || "demo@uptimekit.local",
+    email: process.env.DEMO_EMAIL?.trim() || "demo@acme.example",
     password: process.env.DEMO_PASSWORD || "DemoPassword123!",
-    organizationName: "uptimekit Cloud",
-    organizationSlug: process.env.DEMO_ORG_SLUG?.trim() || "uptimekit-cloud",
-    statusPageName: "uptimekit Cloud Status",
-    statusPageSlug:
-        process.env.DEMO_STATUS_PAGE_SLUG?.trim() || "uptimekit-status",
+    organizationName: "Acme Inc.",
+    organizationSlug: process.env.DEMO_ORG_SLUG?.trim() || "acme",
+    statusPageName: "Acme",
+    statusPageSlug: process.env.DEMO_STATUS_PAGE_SLUG?.trim() || "acme-status",
+    internalStatusPagePassword: "acme-internal",
+    // Precomputed argon2id hash of "acme-internal", so the seed bundle needs no
+    // native argon2 module at runtime.
+    internalStatusPagePasswordHash:
+        "$argon2id$v=19$m=65536,t=3,p=4$Pl7Fs0p5nRYZPAuGkws8Sg$tmgoD5LAC8WdK82fTjQ4kaHZ5Ht9l5BdrrmDvYOVSDI",
 };
+
+const teammates = [
+    {
+        userId: randomUUID(),
+        memberId: randomUUID(),
+        name: "Jordan Lee",
+        email: "jordan@acme.example",
+        role: "admin",
+    },
+    {
+        userId: randomUUID(),
+        memberId: randomUUID(),
+        name: "Sam Rivera",
+        email: "sam@acme.example",
+        role: "member",
+    },
+] as const;
+
+const [jordan, sam] = teammates;
+
+const ALL_NOTIFICATION_EVENTS = [
+    "incident.created",
+    "incident.updated",
+    "incident.resolved",
+    "incident.acknowledged",
+    "incident.comment_added",
+    "incident.merged",
+    "incident.deleted",
+    "monitor.ssl.expiring",
+];
 
 const HISTORY_DAYS = 30;
 const CHECK_INTERVAL_MINUTES = 5;
@@ -61,16 +98,13 @@ const ids = {
     account: randomUUID(),
     organization: randomUUID(),
     member: randomUUID(),
+    invitation: randomUUID(),
     apiKey: randomUUID(),
     workers: {
         brussels: randomUUID(),
         frankfurt: randomUUID(),
         singapore: randomUUID(),
-    },
-    workerApiKeys: {
-        brussels: randomUUID(),
-        frankfurt: randomUUID(),
-        singapore: randomUUID(),
+        virginia: randomUUID(),
     },
     groups: {
         edge: randomUUID(),
@@ -85,10 +119,17 @@ const ids = {
         critical: randomUUID(),
         internal: randomUUID(),
         regional: randomUUID(),
+        vendor: randomUUID(),
     },
     integrations: {
         webhook: randomUUID(),
         ntfy: randomUUID(),
+        discord: randomUUID(),
+        telegram: randomUUID(),
+        gchat: randomUUID(),
+        smtp: randomUUID(),
+        apprise: randomUUID(),
+        alertmanager: randomUUID(),
     },
     monitors: {
         api: randomUUID(),
@@ -102,15 +143,18 @@ const ids = {
         dns: randomUUID(),
         search: randomUUID(),
         admin: randomUUID(),
+        vpn: randomUUID(),
+        statusVendor: randomUUID(),
     },
-    statusPage: randomUUID(),
-    statusGroups: {
-        core: randomUUID(),
-        data: randomUUID(),
-        platform: randomUUID(),
+    statusPages: {
+        public: randomUUID(),
+        developers: randomUUID(),
+        europe: randomUUID(),
+        internal: randomUUID(),
     },
     incidents: {
         api: randomUUID(),
+        ingest: randomUUID(),
         checkout: randomUUID(),
         database: randomUUID(),
         queue: randomUUID(),
@@ -139,8 +183,11 @@ const workerLocations = {
     [ids.workers.brussels]: "be",
     [ids.workers.frankfurt]: "de",
     [ids.workers.singapore]: "sg",
+    [ids.workers.virginia]: "us",
 } satisfies Record<string, string>;
 
+// Virginia is deliberately offline and assigned to no monitor, so its stale
+// heartbeat never contradicts fresh check results.
 const allWorkerIds = [
     ids.workers.brussels,
     ids.workers.frankfurt,
@@ -312,6 +359,16 @@ const workers = [
         createdAt: daysAgo(58, 8),
         updatedAt: now,
     },
+    {
+        id: ids.workers.virginia,
+        name: "Virginia · US East",
+        location: "us",
+        active: true,
+        lastHeartbeat: daysAgo(2, 6, 40),
+        version: "4.2.1",
+        createdAt: daysAgo(20, 8),
+        updatedAt: daysAgo(2, 6, 40),
+    },
 ] satisfies Array<typeof worker.$inferInsert>;
 
 const groups = [
@@ -398,49 +455,133 @@ const tags = [
         createdAt: daysAgo(60, 10),
         updatedAt: now,
     },
+    {
+        id: ids.tags.vendor,
+        organizationId: ids.organization,
+        name: "Third-party",
+        color: "#64748b",
+        createdAt: daysAgo(30, 10),
+        updatedAt: now,
+    },
 ] satisfies Array<typeof tag.$inferInsert>;
 
-const integrations = [
-    {
-        id: ids.integrations.webhook,
+function createIntegration(input: {
+    id: string;
+    name: string;
+    type: string;
+    config: Record<string, unknown>;
+    active?: boolean;
+    isDefault?: boolean;
+    enabledEvents?: string[];
+    createdAt: Date;
+}) {
+    return {
         organizationId: ids.organization,
+        active: false,
+        isDefault: false,
+        enabledEvents: ALL_NOTIFICATION_EVENTS,
+        updatedAt: now,
+        ...input,
+    } satisfies typeof integrationConfig.$inferInsert;
+}
+
+// Only the .example webhook is active: demo visitors can create incidents, and
+// the chat/email integrations would otherwise send to real third-party APIs.
+const integrations = [
+    createIntegration({
+        id: ids.integrations.webhook,
         name: "Incident webhook",
         type: "webhook",
         config: {
-            url: "https://hooks.uptimekit.demo/uptimekit",
+            url: "https://hooks.acme.example/uptimekit",
             secret: randomBytes(24).toString("hex"),
         },
         active: true,
         isDefault: true,
-        enabledEvents: [
-            "incident.created",
-            "incident.updated",
-            "incident.resolved",
-            "incident.acknowledged",
-            "incident.comment_added",
-            "monitor.ssl.expiring",
-        ],
         createdAt: daysAgo(42, 11),
-        updatedAt: now,
-    },
-    {
+    }),
+    createIntegration({
+        id: ids.integrations.discord,
+        name: "#incidents on Discord",
+        type: "discord",
+        config: {
+            webhookUrl: `https://discord.com/api/webhooks/000000000000000000/${randomBytes(24).toString("hex")}`,
+        },
+        createdAt: daysAgo(40, 10),
+    }),
+    createIntegration({
+        id: ids.integrations.gchat,
+        name: "Support team Google Chat",
+        type: "gchat",
+        config: {
+            webhookUrl:
+                "https://chat.googleapis.com/v1/spaces/ACME_DEMO/messages?key=demo&token=demo",
+        },
+        createdAt: daysAgo(36, 15),
+    }),
+    createIntegration({
+        id: ids.integrations.telegram,
+        name: "On-call Telegram",
+        type: "telegram",
+        config: {
+            botToken: "000000000:acme-demo-token",
+            chatId: "-1000000000000",
+        },
+        enabledEvents: ["incident.created", "incident.resolved"],
+        createdAt: daysAgo(35, 9),
+    }),
+    createIntegration({
         id: ids.integrations.ntfy,
-        organizationId: ids.organization,
-        name: "On-call notifications",
+        name: "Phone push via ntfy",
         type: "ntfy",
         config: {
-            serverUrl: "https://ntfy.sh",
-            topic: "uptimekit-ops-demo",
+            serverUrl: "https://ntfy.acme.example",
+            topic: "acme-ops",
             priority: "high",
             tags: "warning,rotating_light",
         },
-        active: false,
-        isDefault: false,
         enabledEvents: ["incident.created", "incident.resolved"],
         createdAt: daysAgo(38, 14),
-        updatedAt: daysAgo(4, 16),
-    },
-] satisfies Array<typeof integrationConfig.$inferInsert>;
+    }),
+    createIntegration({
+        id: ids.integrations.smtp,
+        name: "Engineering email digest",
+        type: "smtp",
+        config: {
+            host: "smtp.acme.example",
+            port: 587,
+            secure: "auto",
+            username: "alerts",
+            password: "demo-password",
+            from: "alerts@acme.example",
+            to: "engineering@acme.example, cto@acme.example",
+        },
+        createdAt: daysAgo(31, 12),
+    }),
+    createIntegration({
+        id: ids.integrations.apprise,
+        name: "Apprise relay",
+        type: "apprise",
+        config: {
+            notifyUrl: "mailto://alerts:demo@acme.example",
+        },
+        createdAt: daysAgo(18, 12),
+    }),
+    createIntegration({
+        id: ids.integrations.alertmanager,
+        name: "Prometheus Alertmanager",
+        type: "alertmanager",
+        config: {
+            bearerToken: randomBytes(24).toString("hex"),
+            autoResolve: true,
+            defaultSeverity: "minor",
+            titleTemplate: "Alert: {{alertname}}",
+        },
+        active: true,
+        enabledEvents: [],
+        createdAt: daysAgo(26, 10),
+    }),
+];
 
 const monitors = [
     createMonitor({
@@ -453,7 +594,7 @@ const monitors = [
         retries: 2,
         retryInterval: 15,
         workerIds: allWorkerIds,
-        config: createHttpConfig("https://api.uptimekit.demo/health"),
+        config: createHttpConfig("https://api.acme.example/health"),
         successStatuses: [200, 204],
         incidentPendingDuration: 60,
         incidentRecoveryDuration: 180,
@@ -469,7 +610,7 @@ const monitors = [
         retries: 2,
         retryInterval: 15,
         workerIds: allWorkerIds,
-        config: createHttpConfig("https://app.uptimekit.demo/"),
+        config: createHttpConfig("https://app.acme.example/"),
         successStatuses: [200],
         incidentPendingDuration: 120,
         incidentRecoveryDuration: 180,
@@ -485,7 +626,7 @@ const monitors = [
         retries: 2,
         retryInterval: 15,
         workerIds: euWorkerIds,
-        config: createHttpConfig("https://auth.uptimekit.demo/health", {
+        config: createHttpConfig("https://auth.acme.example/health", {
             type: "http-json",
             jsonPath: "$.status",
             expectedValue: "ok",
@@ -503,7 +644,7 @@ const monitors = [
         retries: 2,
         retryInterval: 20,
         workerIds: euWorkerIds,
-        config: createHttpConfig("https://checkout.uptimekit.demo/ready"),
+        config: createHttpConfig("https://checkout.acme.example/ready"),
         successStatuses: [200],
         incidentPendingDuration: 120,
         incidentRecoveryDuration: 180,
@@ -519,7 +660,7 @@ const monitors = [
         retries: 2,
         retryInterval: 20,
         workerIds: allWorkerIds,
-        config: createHttpConfig("https://events.uptimekit.demo/health"),
+        config: createHttpConfig("https://events.acme.example/health"),
         successStatuses: [200, 202],
         createdAt: daysAgo(49, 10),
     }),
@@ -535,7 +676,7 @@ const monitors = [
         workerIds: euWorkerIds,
         config: {
             type: "tcp",
-            hostname: "db-primary.uptimekit.demo",
+            hostname: "db-primary.acme.example",
             port: 5432,
         },
         successStatuses: null,
@@ -555,7 +696,7 @@ const monitors = [
         workerIds: euWorkerIds,
         config: {
             type: "tcp",
-            hostname: "cache.uptimekit.demo",
+            hostname: "cache.acme.example",
             port: 6379,
         },
         successStatuses: null,
@@ -571,7 +712,7 @@ const monitors = [
         retries: 2,
         retryInterval: 20,
         workerIds: [ids.workers.brussels, ids.workers.singapore],
-        config: createHttpConfig("https://queue.uptimekit.demo/health", {
+        config: createHttpConfig("https://queue.acme.example/health", {
             type: "keyword",
             keyword: "ready",
         }),
@@ -590,7 +731,7 @@ const monitors = [
         workerIds: allWorkerIds,
         config: {
             type: "dns",
-            hostname: "uptimekit.demo",
+            hostname: "acme.example",
             resolverServers: "1.1.1.1",
             port: 53,
             recordType: "A",
@@ -609,7 +750,7 @@ const monitors = [
         retries: 2,
         retryInterval: 20,
         workerIds: euWorkerIds,
-        config: createHttpConfig("https://search.uptimekit.demo/health"),
+        config: createHttpConfig("https://search.acme.example/health"),
         successStatuses: [200],
         createdAt: daysAgo(43, 10),
     }),
@@ -623,52 +764,109 @@ const monitors = [
         retries: 2,
         retryInterval: 30,
         workerIds: [ids.workers.brussels],
-        config: createHttpConfig("https://admin.uptimekit.demo/"),
+        config: createHttpConfig("https://admin.acme.example/"),
         successStatuses: [200],
         active: false,
         pauseReason: "Paused after the console migration",
         publishIncidentToStatusPage: false,
         createdAt: daysAgo(39, 10),
     }),
+    createMonitor({
+        id: ids.monitors.vpn,
+        groupId: ids.groups.platform,
+        name: "Office VPN gateway",
+        type: "ping",
+        interval: 60,
+        timeout: 10,
+        retries: 3,
+        retryInterval: 10,
+        workerIds: euWorkerIds,
+        config: { type: "ping", hostname: "vpn.acme.example" },
+        publishIncidentToStatusPage: false,
+        createdAt: daysAgo(33, 10),
+    }),
+    // shortcut: reads the live public Instatus page, so its status follows
+    // Instatus rather than the seed; swap the URL if that page ever goes away.
+    createMonitor({
+        id: ids.monitors.statusVendor,
+        groupId: ids.groups.platform,
+        name: "Instatus website",
+        type: "instatus",
+        interval: 300,
+        timeout: 30,
+        retries: 0,
+        retryInterval: 60,
+        workerIds: [],
+        config: {
+            type: "instatus",
+            url: "https://status.instatus.com",
+            componentId: "cktptd80w1445657roplsuitq7n",
+            hostname: "Website",
+        },
+        publishIncidentToStatusPage: false,
+        createdAt: daysAgo(14, 10),
+    }),
 ] satisfies Array<MonitorSeed>;
 
-const monitorTags = [
-    [ids.monitors.api, ids.tags.production],
-    [ids.monitors.api, ids.tags.public],
-    [ids.monitors.api, ids.tags.critical],
-    [ids.monitors.web, ids.tags.production],
-    [ids.monitors.web, ids.tags.public],
-    [ids.monitors.web, ids.tags.critical],
-    [ids.monitors.auth, ids.tags.production],
-    [ids.monitors.auth, ids.tags.critical],
-    [ids.monitors.checkout, ids.tags.production],
-    [ids.monitors.checkout, ids.tags.public],
-    [ids.monitors.ingest, ids.tags.production],
-    [ids.monitors.ingest, ids.tags.internal],
-    [ids.monitors.database, ids.tags.production],
-    [ids.monitors.database, ids.tags.critical],
-    [ids.monitors.database, ids.tags.internal],
-    [ids.monitors.cache, ids.tags.internal],
-    [ids.monitors.queue, ids.tags.internal],
-    [ids.monitors.queue, ids.tags.regional],
-    [ids.monitors.dns, ids.tags.production],
-    [ids.monitors.dns, ids.tags.public],
-    [ids.monitors.search, ids.tags.production],
-    [ids.monitors.search, ids.tags.public],
-    [ids.monitors.admin, ids.tags.internal],
-].map(([monitorId, tagId]) => ({
+const monitorTags = (
+    [
+        [ids.monitors.api, ids.tags.production],
+        [ids.monitors.api, ids.tags.public],
+        [ids.monitors.api, ids.tags.critical],
+        [ids.monitors.web, ids.tags.production],
+        [ids.monitors.web, ids.tags.public],
+        [ids.monitors.web, ids.tags.critical],
+        [ids.monitors.auth, ids.tags.production],
+        [ids.monitors.auth, ids.tags.critical],
+        [ids.monitors.checkout, ids.tags.production],
+        [ids.monitors.checkout, ids.tags.public],
+        [ids.monitors.ingest, ids.tags.production],
+        [ids.monitors.ingest, ids.tags.internal],
+        [ids.monitors.database, ids.tags.production],
+        [ids.monitors.database, ids.tags.critical],
+        [ids.monitors.database, ids.tags.internal],
+        [ids.monitors.cache, ids.tags.internal],
+        [ids.monitors.queue, ids.tags.internal],
+        [ids.monitors.queue, ids.tags.regional],
+        [ids.monitors.dns, ids.tags.production],
+        [ids.monitors.dns, ids.tags.public],
+        [ids.monitors.search, ids.tags.production],
+        [ids.monitors.search, ids.tags.public],
+        [ids.monitors.admin, ids.tags.internal],
+        [ids.monitors.vpn, ids.tags.internal],
+        [ids.monitors.statusVendor, ids.tags.vendor],
+    ] satisfies Array<[string, string]>
+).map(([monitorId, tagId]) => ({
     monitorId,
     tagId,
     createdAt: daysAgo(38, 11),
 }));
 
-const monitorNotifications = monitors
-    .filter((item) => item.active)
-    .map((item) => ({
-        monitorId: item.id,
-        integrationConfigId: ids.integrations.webhook,
-        createdAt: daysAgo(37, 12),
-    }));
+const criticalMonitorIds = [
+    ids.monitors.api,
+    ids.monitors.web,
+    ids.monitors.auth,
+    ids.monitors.database,
+];
+
+const monitorNotifications = [
+    ...monitors
+        .filter((item) => item.active)
+        .map((item) => ({
+            monitorId: item.id,
+            integrationConfigId: ids.integrations.webhook,
+            createdAt: daysAgo(37, 12),
+        })),
+    ...criticalMonitorIds.flatMap((monitorId) =>
+        [ids.integrations.discord, ids.integrations.telegram].map(
+            (integrationConfigId) => ({
+                monitorId,
+                integrationConfigId,
+                createdAt: daysAgo(34, 12),
+            }),
+        ),
+    ),
+];
 
 const activeMaintenanceStart = minutesAgo(18);
 const activeMaintenanceEnd = minutesAfter(activeMaintenanceStart, 90);
@@ -694,8 +892,27 @@ const incidents = [
         resolvedAt: null,
         createdAt: minutesAgo(75),
         updatedAt: minutesAgo(9),
-        externalId: "pd-ns-20260806-1842",
-        externalSource: "pagerduty",
+        externalId: null,
+        externalSource: null,
+    },
+    {
+        id: ids.incidents.ingest,
+        organizationId: ids.organization,
+        title: "Alert: IngestWorkerMemoryHigh",
+        description:
+            "Prometheus reports ingest workers in Singapore above 90% memory. Event ingestion latency is elevated in Asia Pacific.",
+        status: "investigating",
+        severity: "minor",
+        type: "automatic",
+        acknowledgedAt: null,
+        acknowledgedBy: null,
+        startedAt: minutesAgo(22),
+        endedAt: null,
+        resolvedAt: null,
+        createdAt: minutesAgo(22),
+        updatedAt: minutesAgo(22),
+        externalId: "a3f1c9e2b7d04f61",
+        externalSource: "alertmanager",
     },
     {
         id: ids.incidents.checkout,
@@ -707,14 +924,14 @@ const incidents = [
         severity: "major",
         type: "automatic",
         acknowledgedAt: daysAgo(3, 9, 35),
-        acknowledgedBy: ids.user,
+        acknowledgedBy: jordan.userId,
         startedAt: daysAgo(3, 9, 12),
         endedAt: daysAgo(3, 10, 4),
         resolvedAt: daysAgo(3, 10, 4),
         createdAt: daysAgo(3, 9, 12),
         updatedAt: daysAgo(3, 10, 4),
-        externalId: "pd-ns-20260803-0912",
-        externalSource: "pagerduty",
+        externalId: null,
+        externalSource: null,
     },
     {
         id: ids.incidents.database,
@@ -732,8 +949,8 @@ const incidents = [
         resolvedAt: daysAgo(12, 4, 43),
         createdAt: daysAgo(12, 4, 5),
         updatedAt: daysAgo(12, 4, 43),
-        externalId: "pd-ns-20260725-0405",
-        externalSource: "pagerduty",
+        externalId: null,
+        externalSource: null,
     },
     {
         id: ids.incidents.queue,
@@ -745,7 +962,7 @@ const incidents = [
         severity: "minor",
         type: "manual",
         acknowledgedAt: daysAgo(21, 16, 20),
-        acknowledgedBy: ids.user,
+        acknowledgedBy: sam.userId,
         startedAt: daysAgo(21, 16, 0),
         endedAt: daysAgo(21, 17, 8),
         resolvedAt: daysAgo(21, 17, 8),
@@ -785,11 +1002,20 @@ const incidentActivities = [
     },
     {
         id: randomUUID(),
+        incidentId: ids.incidents.ingest,
+        message:
+            "Incident opened by Prometheus Alertmanager (alertname=IngestWorkerMemoryHigh, region=ap-southeast-1).",
+        type: "event",
+        createdAt: minutesAgo(22),
+        userId: null,
+    },
+    {
+        id: randomUUID(),
         incidentId: ids.incidents.checkout,
         message: "The deploy was rolled back and 5xx responses stopped.",
         type: "comment",
         createdAt: daysAgo(3, 9, 43),
-        userId: ids.user,
+        userId: jordan.userId,
     },
     {
         id: randomUUID(),
@@ -797,7 +1023,7 @@ const incidentActivities = [
         message: "Checkout error rate has returned to baseline.",
         type: "comment",
         createdAt: daysAgo(3, 10, 4),
-        userId: ids.user,
+        userId: jordan.userId,
     },
     {
         id: randomUUID(),
@@ -822,7 +1048,7 @@ const incidentActivities = [
             "Consumer capacity was increased and the backlog began draining.",
         type: "comment",
         createdAt: daysAgo(21, 16, 35),
-        userId: ids.user,
+        userId: sam.userId,
     },
 ] satisfies Array<typeof incidentActivity.$inferInsert>;
 
@@ -905,77 +1131,277 @@ const maintenanceActivities = [
     },
 ] satisfies Array<typeof incidentActivity.$inferInsert>;
 
-function buildStatusPageMonitorLinks() {
-    const links = [
-        {
-            monitorId: ids.monitors.api,
-            groupId: ids.statusGroups.core,
-            style: "history",
-            description: "Public REST and GraphQL ingress.",
-        },
-        {
-            monitorId: ids.monitors.web,
-            groupId: ids.statusGroups.core,
-            style: "history",
-            description: "Customer-facing web application.",
-        },
-        {
-            monitorId: ids.monitors.auth,
-            groupId: ids.statusGroups.core,
-            style: "status",
-            description: "Login, session, and token services.",
-        },
-        {
-            monitorId: ids.monitors.checkout,
-            groupId: ids.statusGroups.core,
-            style: "history",
-            description: "Payment and order checkout endpoints.",
-        },
-        {
-            monitorId: ids.monitors.database,
-            groupId: ids.statusGroups.data,
-            style: "history",
-            description: "Primary write database endpoint.",
-        },
-        {
-            monitorId: ids.monitors.cache,
-            groupId: ids.statusGroups.data,
-            style: "status",
-            description: "Shared cache and session store.",
-        },
-        {
-            monitorId: ids.monitors.queue,
-            groupId: ids.statusGroups.data,
-            style: "history",
-            description: "Background delivery and job processing.",
-        },
-        {
-            monitorId: ids.monitors.dns,
-            groupId: ids.statusGroups.platform,
-            style: "history",
-            description: "Authoritative DNS resolution.",
-        },
-        {
-            monitorId: ids.monitors.search,
-            groupId: ids.statusGroups.platform,
-            style: "history",
-            description: "Product search query service.",
-        },
-    ];
+type StatusPageMonitorSeed = {
+    monitorId: string;
+    style: "history" | "status";
+    description: string;
+};
 
-    return links.map((link, order) => ({
-        statusPageId: ids.statusPage,
-        monitorId: link.monitorId,
-        groupId: link.groupId,
-        style: link.style,
-        description: link.description,
-        order,
+type StatusPageSeed = {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    passwordProtected?: boolean;
+    design: Record<string, unknown>;
+    groups: Array<{
+        name: string;
+        defaultCollapsed?: boolean;
+        monitors: StatusPageMonitorSeed[];
+    }>;
+};
+
+const statusPageMonitors = {
+    api: {
+        monitorId: ids.monitors.api,
+        style: "history",
+        description: "Public REST and GraphQL ingress.",
+    },
+    web: {
+        monitorId: ids.monitors.web,
+        style: "history",
+        description: "Customer-facing web application.",
+    },
+    auth: {
+        monitorId: ids.monitors.auth,
+        style: "status",
+        description: "Login, session, and token services.",
+    },
+    checkout: {
+        monitorId: ids.monitors.checkout,
+        style: "history",
+        description: "Payment and order checkout endpoints.",
+    },
+    ingest: {
+        monitorId: ids.monitors.ingest,
+        style: "history",
+        description: "Event and analytics ingestion endpoint.",
+    },
+    database: {
+        monitorId: ids.monitors.database,
+        style: "history",
+        description: "Primary write database endpoint.",
+    },
+    cache: {
+        monitorId: ids.monitors.cache,
+        style: "status",
+        description: "Shared cache and session store.",
+    },
+    queue: {
+        monitorId: ids.monitors.queue,
+        style: "history",
+        description: "Background delivery and job processing.",
+    },
+    dns: {
+        monitorId: ids.monitors.dns,
+        style: "history",
+        description: "Authoritative DNS resolution.",
+    },
+    search: {
+        monitorId: ids.monitors.search,
+        style: "history",
+        description: "Product search query service.",
+    },
+    vpn: {
+        monitorId: ids.monitors.vpn,
+        style: "status",
+        description: "Office VPN gateway reachability (ICMP).",
+    },
+    statusVendor: {
+        monitorId: ids.monitors.statusVendor,
+        style: "status",
+        description: "Live component status pulled from Instatus.",
+    },
+} satisfies Record<string, StatusPageMonitorSeed>;
+
+// One page per theme so every theme and design option is visible out of the box.
+const statusPages: StatusPageSeed[] = [
+    {
+        id: ids.statusPages.public,
+        name: DEMO.statusPageName,
+        slug: DEMO.statusPageSlug,
+        description: "Live service health and incident history for Acme.",
+        design: {
+            themeId: "default",
+            theme: "dark",
+            headerLayout: "vertical",
+            barStyle: "length",
+            barDays: 90,
+            percentDigits: 2,
+            allowSubscriptions: true,
+            defaultSectionCollapsible: true,
+            defaultSectionCollapsed: false,
+            websiteUrl: "https://acme.example",
+            contactUrl: "mailto:status@acme.example",
+        },
+        groups: [
+            {
+                name: "Core services",
+                monitors: [
+                    statusPageMonitors.api,
+                    statusPageMonitors.web,
+                    statusPageMonitors.auth,
+                    statusPageMonitors.checkout,
+                ],
+            },
+            {
+                name: "Data & messaging",
+                monitors: [
+                    statusPageMonitors.database,
+                    statusPageMonitors.cache,
+                    statusPageMonitors.queue,
+                ],
+            },
+            {
+                name: "Platform",
+                monitors: [statusPageMonitors.dns, statusPageMonitors.search],
+            },
+        ],
+    },
+    {
+        id: ids.statusPages.developers,
+        name: "Acme Developer Platform",
+        slug: "acme-developers",
+        description: "API, auth, and ingestion health for integrators.",
+        design: {
+            themeId: "flat",
+            theme: "dark",
+            headerLayout: "horizontal",
+            barStyle: "normal",
+            barDays: 30,
+            percentDigits: 3,
+            allowSubscriptions: false,
+            defaultSectionCollapsible: false,
+            defaultSectionCollapsed: false,
+            websiteUrl: "https://developers.acme.example",
+            contactUrl: "https://developers.acme.example/support",
+            customCss: ":root { --radius: 0.25rem; }",
+        },
+        groups: [
+            {
+                name: "APIs",
+                monitors: [
+                    statusPageMonitors.api,
+                    statusPageMonitors.auth,
+                    statusPageMonitors.ingest,
+                ],
+            },
+        ],
+    },
+    {
+        id: ids.statusPages.europe,
+        name: "Acme EU",
+        slug: "acme-eu",
+        description: "Service health for the EU region.",
+        design: {
+            themeId: "spark",
+            theme: "dark",
+            barStyle: "normal",
+            barDays: 60,
+            percentDigits: 2,
+            allowSubscriptions: true,
+            defaultSectionCollapsible: true,
+            defaultSectionCollapsed: false,
+            websiteUrl: "https://acme.example/eu",
+        },
+        groups: [
+            {
+                name: "EU services",
+                monitors: [
+                    statusPageMonitors.api,
+                    statusPageMonitors.checkout,
+                    statusPageMonitors.database,
+                ],
+            },
+        ],
+    },
+    {
+        id: ids.statusPages.internal,
+        name: "Acme Internal",
+        slug: "acme-internal",
+        description: "Internal infrastructure and vendor status for staff.",
+        passwordProtected: true,
+        design: {
+            themeId: "signal",
+            theme: "dark",
+            barStyle: "signal",
+            barDays: 30,
+            percentDigits: 2,
+            allowSubscriptions: false,
+            defaultSectionCollapsible: true,
+            defaultSectionCollapsed: true,
+        },
+        groups: [
+            {
+                name: "Infrastructure",
+                defaultCollapsed: false,
+                monitors: [
+                    statusPageMonitors.database,
+                    statusPageMonitors.cache,
+                    statusPageMonitors.queue,
+                    statusPageMonitors.ingest,
+                    statusPageMonitors.vpn,
+                ],
+            },
+            {
+                name: "Vendors",
+                monitors: [statusPageMonitors.statusVendor],
+            },
+        ],
+    },
+];
+
+function buildStatusPageRows() {
+    const pages = statusPages.map((page) => ({
+        id: page.id,
+        organizationId: ids.organization,
+        name: page.name,
+        slug: page.slug,
+        domain: null,
+        description: page.description,
+        public: !page.passwordProtected,
+        password: page.passwordProtected
+            ? DEMO.internalStatusPagePasswordHash
+            : null,
+        design: page.design,
+        createdAt: daysAgo(60, 9),
+        updatedAt: now,
     }));
+    const groupRows: Array<typeof statusPageGroup.$inferInsert> = [];
+    const monitorRows: Array<typeof statusPageMonitor.$inferInsert> = [];
+
+    for (const page of statusPages) {
+        let monitorOrder = 0;
+        for (const [groupOrder, group] of page.groups.entries()) {
+            const groupId = randomUUID();
+            groupRows.push({
+                id: groupId,
+                statusPageId: page.id,
+                name: group.name,
+                order: groupOrder,
+                collapsible: true,
+                defaultCollapsed:
+                    group.defaultCollapsed ??
+                    page.design.defaultSectionCollapsed === true,
+            });
+            for (const link of group.monitors) {
+                monitorRows.push({
+                    statusPageId: page.id,
+                    groupId,
+                    ...link,
+                    order: monitorOrder++,
+                });
+            }
+        }
+    }
+
+    return { pages, groupRows, monitorRows };
 }
 
 const incidentMonitorLinks = [
     { incidentId: ids.incidents.api, monitorId: ids.monitors.api },
     { incidentId: ids.incidents.api, monitorId: ids.monitors.web },
+    { incidentId: ids.incidents.ingest, monitorId: ids.monitors.ingest },
     { incidentId: ids.incidents.checkout, monitorId: ids.monitors.checkout },
     { incidentId: ids.incidents.database, monitorId: ids.monitors.database },
     { incidentId: ids.incidents.queue, monitorId: ids.monitors.queue },
@@ -994,17 +1420,32 @@ const maintenanceMonitorLinks = [
     },
 ] satisfies Array<typeof incidentMonitor.$inferInsert>;
 
-const incidentStatusPageLinks = [...incidents, ...maintenanceWindows].map(
-    (item) => ({
-        incidentId: item.id,
-        statusPageId: ids.statusPage,
-    }),
+// The Alertmanager incident is internal-only; everything else is public.
+const incidentStatusPageLinks = [...incidents, ...maintenanceWindows].flatMap(
+    (item) => {
+        const statusPageIds: string[] =
+            item.id === ids.incidents.ingest
+                ? [ids.statusPages.internal]
+                : [
+                      ids.statusPages.public,
+                      ids.statusPages.europe,
+                      ids.statusPages.internal,
+                  ];
+        if (item.id === ids.incidents.api) {
+            statusPageIds.push(ids.statusPages.developers);
+        }
+
+        return statusPageIds.map((statusPageId) => ({
+            incidentId: item.id,
+            statusPageId,
+        }));
+    },
 );
 
 const statusPageReports = [
     {
         id: ids.reports.api,
-        statusPageId: ids.statusPage,
+        statusPageId: ids.statusPages.public,
         title: "Elevated API latency in Central Europe",
         status: "monitoring",
         severity: "major",
@@ -1014,7 +1455,7 @@ const statusPageReports = [
     },
     {
         id: ids.reports.database,
-        statusPageId: ids.statusPage,
+        statusPageId: ids.statusPages.public,
         title: "Database failover completed",
         status: "resolved",
         severity: "critical",
@@ -1024,7 +1465,7 @@ const statusPageReports = [
     },
     {
         id: ids.reports.queue,
-        statusPageId: ids.statusPage,
+        statusPageId: ids.statusPages.public,
         title: "Webhook delivery delays",
         status: "resolved",
         severity: "minor",
@@ -1157,7 +1598,14 @@ async function resetExistingDemoWorkspace() {
             await tx.delete(worker).where(inArray(worker.id, workerIds));
         }
 
-        await tx.delete(user).where(eq(user.email, DEMO.email));
+        await tx
+            .delete(user)
+            .where(
+                inArray(user.email, [
+                    DEMO.email,
+                    ...teammates.map((teammate) => teammate.email),
+                ]),
+            );
     });
 }
 
@@ -1181,6 +1629,14 @@ function statusForEvent(input: {
         if (time > apiIncidentDownUntil) {
             return "degraded";
         }
+    }
+
+    if (
+        monitorId === ids.monitors.ingest &&
+        workerId === ids.workers.singapore &&
+        time >= minutesAgo(22).getTime()
+    ) {
+        return "degraded";
     }
 
     if (
@@ -1259,6 +1715,8 @@ function baseLatencyForMonitor(monitorId: string) {
             return 96;
         case ids.monitors.admin:
             return 128;
+        case ids.monitors.vpn:
+            return 18;
         default:
             return 80;
     }
@@ -1401,21 +1859,36 @@ async function insertTimeSeriesInChunks<T>(
 async function seedRelationalData(
     passwordHash: string,
     rawOrganizationApiKey: string,
-    workerKeys: Record<string, string>,
 ) {
     await db.transaction(async (tx) => {
-        await tx.insert(user).values({
-            id: ids.user,
-            name: "Avery Morgan",
-            email: DEMO.email,
-            emailVerified: true,
-            image: null,
-            role: "admin",
-            banned: false,
-            twoFactorEnabled: false,
-            createdAt: daysAgo(61, 8),
-            updatedAt: now,
-        });
+        await tx.insert(user).values([
+            {
+                id: ids.user,
+                name: "Alex Carter",
+                email: DEMO.email,
+                emailVerified: true,
+                image: null,
+                role: "admin",
+                banned: false,
+                twoFactorEnabled: false,
+                createdAt: daysAgo(61, 8),
+                updatedAt: now,
+            },
+            // Teammates have no credential account; they exist to populate
+            // the members list and incident timelines.
+            ...teammates.map((teammate) => ({
+                id: teammate.userId,
+                name: teammate.name,
+                email: teammate.email,
+                emailVerified: true,
+                image: null,
+                role: "user",
+                banned: false,
+                twoFactorEnabled: false,
+                createdAt: daysAgo(55, 8),
+                updatedAt: now,
+            })),
+        ]);
 
         await tx.insert(account).values({
             id: ids.account,
@@ -1439,45 +1912,52 @@ async function seedRelationalData(
                 plan: "scale",
                 billingStatus: "active",
                 source: "demo",
-                workerIds: allWorkerIds,
+                workerIds: workers.map((item) => item.id),
             }),
         });
 
-        await tx.insert(member).values({
-            id: ids.member,
+        await tx.insert(member).values([
+            {
+                id: ids.member,
+                organizationId: ids.organization,
+                userId: ids.user,
+                role: "owner",
+                createdAt: daysAgo(61, 8),
+            },
+            ...teammates.map((teammate) => ({
+                id: teammate.memberId,
+                organizationId: ids.organization,
+                userId: teammate.userId,
+                role: teammate.role,
+                createdAt: daysAgo(55, 8),
+            })),
+        ]);
+
+        await tx.insert(invitation).values({
+            id: ids.invitation,
             organizationId: ids.organization,
-            userId: ids.user,
-            role: "owner",
-            createdAt: daysAgo(61, 8),
+            email: "taylor@acme.example",
+            role: "member",
+            status: "pending",
+            expiresAt: daysFromNow(5),
+            createdAt: daysAgo(2, 10),
+            inviterId: ids.user,
         });
 
         await tx.insert(worker).values(workers);
-        await tx.insert(workerApiKey).values([
-            {
-                id: ids.workerApiKeys.brussels,
-                keyHash: hashWorkerApiKey(workerKeys.brussels),
-                keyHint: `${workerKeys.brussels.slice(0, 11)}...`,
-                workerId: ids.workers.brussels,
-                createdAt: daysAgo(60, 8),
-                lastUsedAt: minutesAgo(1),
-            },
-            {
-                id: ids.workerApiKeys.frankfurt,
-                keyHash: hashWorkerApiKey(workerKeys.frankfurt),
-                keyHint: `${workerKeys.frankfurt.slice(0, 11)}...`,
-                workerId: ids.workers.frankfurt,
-                createdAt: daysAgo(59, 8),
-                lastUsedAt: minutesAgo(2),
-            },
-            {
-                id: ids.workerApiKeys.singapore,
-                keyHash: hashWorkerApiKey(workerKeys.singapore),
-                keyHint: `${workerKeys.singapore.slice(0, 11)}...`,
-                workerId: ids.workers.singapore,
-                createdAt: daysAgo(57, 8),
-                lastUsedAt: minutesAgo(3),
-            },
-        ]);
+        await tx.insert(workerApiKey).values(
+            workers.map((item) => {
+                const key = generateWorkerApiKey();
+                return {
+                    id: randomUUID(),
+                    keyHash: hashWorkerApiKey(key),
+                    keyHint: `${key.slice(0, 11)}...`,
+                    workerId: item.id,
+                    createdAt: item.createdAt,
+                    lastUsedAt: item.lastHeartbeat,
+                };
+            }),
+        );
 
         await tx.insert(apikey).values({
             id: ids.apiKey,
@@ -1513,61 +1993,10 @@ async function seedRelationalData(
         await tx.insert(monitorTag).values(monitorTags);
         await tx.insert(monitorNotification).values(monitorNotifications);
 
-        await tx.insert(statusPage).values({
-            id: ids.statusPage,
-            organizationId: ids.organization,
-            name: DEMO.statusPageName,
-            slug: DEMO.statusPageSlug,
-            domain: null,
-            description:
-                "Live service health and incident history for uptimekit Cloud.",
-            public: true,
-            password: null,
-            design: {
-                themeId: "spark",
-                theme: "dark",
-                headerLayout: "vertical",
-                barStyle: "length",
-                barDays: 90,
-                percentDigits: 2,
-                allowSubscriptions: true,
-                defaultSectionCollapsible: true,
-                defaultSectionCollapsed: false,
-                websiteUrl: "https://uptimekit.demo",
-                contactUrl: "mailto:status@uptimekit.demo",
-            },
-            createdAt: daysAgo(60, 9),
-            updatedAt: now,
-        });
-        await tx.insert(statusPageGroup).values([
-            {
-                id: ids.statusGroups.core,
-                statusPageId: ids.statusPage,
-                name: "Core services",
-                order: 0,
-                collapsible: true,
-                defaultCollapsed: false,
-            },
-            {
-                id: ids.statusGroups.data,
-                statusPageId: ids.statusPage,
-                name: "Data & messaging",
-                order: 1,
-                collapsible: true,
-                defaultCollapsed: false,
-            },
-            {
-                id: ids.statusGroups.platform,
-                statusPageId: ids.statusPage,
-                name: "Platform operations",
-                order: 2,
-                collapsible: true,
-                defaultCollapsed: false,
-            },
-        ]);
-        await tx
-            .insert(statusPageMonitor)
-            .values(buildStatusPageMonitorLinks());
+        const statusPageRows = buildStatusPageRows();
+        await tx.insert(statusPage).values(statusPageRows.pages);
+        await tx.insert(statusPageGroup).values(statusPageRows.groupRows);
+        await tx.insert(statusPageMonitor).values(statusPageRows.monitorRows);
 
         await tx.insert(incident).values([...incidents, ...maintenanceWindows]);
         await tx
@@ -1586,18 +2015,18 @@ async function seedRelationalData(
 
         await tx.insert(statusPageEmailSubscribers).values([
             {
-                statusPageId: ids.statusPage,
-                email: "on-call@uptimekit.demo",
+                statusPageId: ids.statusPages.public,
+                email: "on-call@acme.example",
                 createdAt: daysAgo(28, 8),
             },
             {
-                statusPageId: ids.statusPage,
-                email: "platform@uptimekit.demo",
+                statusPageId: ids.statusPages.public,
+                email: "platform@acme.example",
                 createdAt: daysAgo(20, 8),
             },
             {
-                statusPageId: ids.statusPage,
-                email: "status-updates@uptimekit.demo",
+                statusPageId: ids.statusPages.public,
+                email: "status-updates@acme.example",
                 createdAt: daysAgo(7, 8),
             },
         ]);
@@ -1606,7 +2035,7 @@ async function seedRelationalData(
             {
                 id: ids.ssl.web,
                 monitorId: ids.monitors.web,
-                domain: "app.uptimekit.demo",
+                domain: "app.acme.example",
                 lastNotifiedAt: daysAgo(4, 7),
                 daysUntilExpiryAtNotification: "21",
                 createdAt: daysAgo(30, 7),
@@ -1615,7 +2044,7 @@ async function seedRelationalData(
             {
                 id: ids.ssl.api,
                 monitorId: ids.monitors.api,
-                domain: "api.uptimekit.demo",
+                domain: "api.acme.example",
                 lastNotifiedAt: daysAgo(12, 7),
                 daysUntilExpiryAtNotification: "30",
                 createdAt: daysAgo(30, 7),
@@ -1695,7 +2124,7 @@ async function verifySeed() {
             ),
             db.$count(
                 statusPageReport,
-                eq(statusPageReport.statusPageId, ids.statusPage),
+                eq(statusPageReport.statusPageId, ids.statusPages.public),
             ),
         ]);
 
@@ -1712,15 +2141,11 @@ async function main() {
     console.log(`Seeding ${DEMO.organizationName} with fresh UUIDs...`);
     await resetExistingDemoWorkspace();
 
-    const passwordHash = await hashPassword(DEMO.password);
     const rawOrganizationApiKey = generateOrganizationApiKey();
-    const workerKeys = {
-        brussels: generateWorkerApiKey(),
-        frankfurt: generateWorkerApiKey(),
-        singapore: generateWorkerApiKey(),
-    };
-
-    await seedRelationalData(passwordHash, rawOrganizationApiKey, workerKeys);
+    await seedRelationalData(
+        await hashPassword(DEMO.password),
+        rawOrganizationApiKey,
+    );
     console.log("Seeded workspace, monitors, incidents, and status page data.");
 
     await seedTimeSeries();
@@ -1729,7 +2154,15 @@ async function main() {
     console.log("Demo login:");
     console.log(`  Email: ${DEMO.email}`);
     console.log(`  Password: ${DEMO.password}`);
-    console.log(`  Status page: /status/${DEMO.statusPageSlug}`);
+    console.log(`  API key: ${rawOrganizationApiKey}`);
+    console.log("Status pages:");
+    for (const page of statusPages) {
+        const theme = String(page.design.themeId);
+        const password = page.passwordProtected
+            ? `, password: ${DEMO.internalStatusPagePassword}`
+            : "";
+        console.log(`  /status/${page.slug} (${theme}${password})`);
+    }
 }
 
 (async () => {
