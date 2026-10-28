@@ -1,11 +1,11 @@
-FROM docker.io/node:22-alpine AS base
+FROM docker.io/node:26-alpine AS base
 WORKDIR /app
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
 RUN apk add --no-cache libc6-compat
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+RUN npm install -g pnpm@10.33.0
 RUN pnpm add -g turbo@^2.5.4
 
 FROM base AS builder
@@ -24,7 +24,7 @@ RUN pnpm --filter @uptimekit/db run build:migrate
 
 # The runtime image only ships Next's traced standalone output plus the
 # bundled migrator; no package manager, build tooling or dev dependencies.
-FROM docker.io/node:22-alpine AS runner
+FROM docker.io/node:26-alpine AS runner
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat \
