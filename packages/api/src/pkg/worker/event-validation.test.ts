@@ -16,13 +16,14 @@ describe("parseWorkerEvents", () => {
                 { ...valid, timestamp: "not-a-date" },
                 { ...valid, status: "exploded" },
                 { ...valid, latency: -1 },
+                { ...valid, timestamp: "9999-12-31T23:59:59Z" },
                 null,
             ],
             "worker-1",
         );
 
         expect(events).toHaveLength(1);
-        expect(rejected).toBe(4);
+        expect(rejected).toBe(5);
     });
 
     it("attributes events to the authenticated worker", () => {

@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { MonitorEvent } from "./service";
 
 const MAX_ERROR_LENGTH = 2_000;
+// A future timestamp would outrank every real event in "latest status" queries forever.
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const optionalTiming = z.number().finite().nonnegative().optional();
 
 const monitorEventSchema = z.object({
@@ -13,7 +15,12 @@ const monitorEventSchema = z.object({
         .union([z.string(), z.number()])
         .refine((value) => !Number.isNaN(new Date(value).getTime()), {
             message: "Invalid timestamp",
-        }),
+        })
+        .refine(
+            (value) =>
+                new Date(value).getTime() <= Date.now() + MAX_CLOCK_SKEW_MS,
+            { message: "Timestamp is in the future" },
+        ),
     statusCode: z.number().int().min(0).max(999).optional(),
     error: z
         .string()
