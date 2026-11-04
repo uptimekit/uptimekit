@@ -89,7 +89,7 @@ function getStringProfileValue(
     return typeof value === "string" && value.trim() ? value : undefined;
 }
 
-function toGenericOAuthConfig(
+export function toGenericOAuthConfig(
     provider: OrganizationOidcProvider,
 ): GenericOAuthConfig {
     const providerId = getOrganizationOidcProviderId(provider.id);
@@ -108,13 +108,14 @@ function toGenericOAuthConfig(
                 getStringProfileValue(profile, "preferred_username") ??
                 email ??
                 "OIDC User";
+            // Some IdPs send the claim as a string, so "false" must not read as verified.
             const emailVerified =
-                profile.email_verified !== false &&
-                profile.emailVerified !== false;
+                profile.email_verified ?? profile.emailVerified;
 
             return {
                 ...(email ? { email: email.toLowerCase() } : {}),
-                emailVerified,
+                emailVerified:
+                    emailVerified === true || emailVerified === "true",
                 name,
                 image: getStringProfileValue(profile, "picture"),
             };
