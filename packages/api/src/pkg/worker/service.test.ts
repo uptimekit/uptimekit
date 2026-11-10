@@ -7,6 +7,7 @@ import {
     isAutomaticIncidentResolveEligible,
     type MonitorEvent,
     mapWithConcurrency,
+    toWorkerHeaders,
 } from "./service";
 
 function toMap(
@@ -442,5 +443,37 @@ describe("hasFailingWorkersChanged", () => {
 
     it("ignores transitions that do not involve down", () => {
         expect(hasFailingWorkersChanged("up", "degraded")).toBe(false);
+    });
+});
+
+describe("toWorkerHeaders", () => {
+    it("converts dashboard header rows into a worker header map, dropping empty rows", () => {
+        expect(
+            toWorkerHeaders([
+                { key: "Authorization", value: "Bearer token" },
+                { key: "", value: "" },
+                { key: "X-Api-Key", value: "abc" },
+            ]),
+        ).toEqual({
+            Authorization: "Bearer token",
+            "X-Api-Key": "abc",
+        });
+    });
+
+    it("skips null and malformed rows instead of throwing", () => {
+        expect(
+            toWorkerHeaders([
+                null,
+                { key: "Authorization", value: "Bearer token" },
+                { key: "X-Num", value: 42 },
+            ] as unknown as Array<{ key: string; value: string }>),
+        ).toEqual({ Authorization: "Bearer token" });
+    });
+
+    it("passes through object maps and defaults missing headers to an empty map", () => {
+        expect(toWorkerHeaders({ Authorization: "Bearer token" })).toEqual({
+            Authorization: "Bearer token",
+        });
+        expect(toWorkerHeaders(undefined)).toEqual({});
     });
 });
