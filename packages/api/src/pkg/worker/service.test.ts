@@ -460,6 +460,16 @@ describe("toWorkerHeaders", () => {
         });
     });
 
+    it("skips null and malformed rows instead of throwing", () => {
+        expect(
+            toWorkerHeaders([
+                null,
+                { key: "Authorization", value: "Bearer token" },
+                { key: "X-Num", value: 42 },
+            ] as unknown as Array<{ key: string; value: string }>),
+        ).toEqual({ Authorization: "Bearer token" });
+    });
+
     it("passes through object maps and defaults missing headers to an empty map", () => {
         expect(toWorkerHeaders({ Authorization: "Bearer token" })).toEqual({
             Authorization: "Bearer token",

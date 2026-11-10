@@ -486,7 +486,7 @@ type StoredMonitorHeaders =
     | Record<string, string>
     | Array<{ key: string; value: string }>;
 
-/** Dashboards store headers as [{key,value}] rows; workers expect a map. */
+/** Dashboards store headers as [{key,value}] rows; workers expect a map. Invalid rows (null, non-string fields) are skipped — config is saved unvalidated, and one bad monitor must not break the whole heartbeat. */
 export function toWorkerHeaders(
     headers: StoredMonitorHeaders | undefined,
 ): Record<string, string> {
@@ -494,10 +494,15 @@ export function toWorkerHeaders(
         return headers ?? {};
     }
     const result: Record<string, string> = {};
-    for (const { key, value } of headers) {
-        if (key) {
-            result[key] = value;
+    for (const row of headers) {
+        if (
+            typeof row?.key !== "string" ||
+            typeof row?.value !== "string" ||
+            !row.key
+        ) {
+            continue;
         }
+        result[row.key] = row.value;
     }
     return result;
 }
