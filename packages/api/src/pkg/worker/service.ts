@@ -482,6 +482,26 @@ export {
     type WorkerStatusSnapshot,
 };
 
+type StoredMonitorHeaders =
+    | Record<string, string>
+    | Array<{ key: string; value: string }>;
+
+/** Dashboards store headers as [{key,value}] rows; workers expect a map. */
+export function toWorkerHeaders(
+    headers: StoredMonitorHeaders | undefined,
+): Record<string, string> {
+    if (!Array.isArray(headers)) {
+        return headers ?? {};
+    }
+    const result: Record<string, string> = {};
+    for (const { key, value } of headers) {
+        if (key) {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
 /**
  * Retrieve active monitors assigned to the given worker location and return their runtime configuration.
  *
@@ -530,7 +550,9 @@ export async function getMonitorsForWorker(workerId: string) {
             resolverServers?: string;
             recordType?: string;
             method?: string;
-            headers?: Record<string, string>;
+            headers?:
+                | Record<string, string>
+                | Array<{ key: string; value: string }>;
             body?: string;
             acceptedStatusCodes?: string;
             keyword?: string;
@@ -552,7 +574,7 @@ export async function getMonitorsForWorker(workerId: string) {
             retries: m.retries,
             retryInterval: m.retryInterval,
             method: config.method || "GET",
-            headers: config.headers || {},
+            headers: toWorkerHeaders(config.headers),
             body: config.body,
             acceptedStatusCodes: config.acceptedStatusCodes,
             keyword: config.keyword,
