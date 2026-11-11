@@ -947,17 +947,19 @@ async function processMonitorEventGroup(input: {
                 error: event.error,
             });
 
-            const isEscalation = activeIncident.severity !== "major";
+            const currentIncident: (typeof activeIncidentList)[0] =
+                activeIncident;
+            const isEscalation = currentIncident.severity !== "major";
             // Merged or user-edited incidents carry another title; rewriting it per monitor
             // made every event from each linked monitor look like a fresh escalation.
             const ownsIncidentText =
-                activeIncident.title === incidentTitle ||
-                activeIncident.title ===
+                currentIncident.title === incidentTitle ||
+                currentIncident.title ===
                     getAutomaticIncidentTitle(monitorConfig.name, "degraded");
             const textChanged =
                 ownsIncidentText &&
-                (activeIncident.title !== incidentTitle ||
-                    activeIncident.description !== incidentDescription);
+                (currentIncident.title !== incidentTitle ||
+                    currentIncident.description !== incidentDescription);
             const failingWorkersChanged = hasFailingWorkersChanged(
                 previousWorkerStatus?.status,
                 event.status,
@@ -969,7 +971,7 @@ async function processMonitorEventGroup(input: {
                     : {};
 
                 result.incidentUpdatesToApply.push({
-                    id: activeIncident.id,
+                    id: currentIncident.id,
                     values: {
                         ...textValues,
                         severity: "major",
@@ -978,7 +980,7 @@ async function processMonitorEventGroup(input: {
                 });
 
                 activeIncident = {
-                    ...activeIncident,
+                    ...currentIncident,
                     ...textValues,
                     severity: "major",
                 };
@@ -987,7 +989,7 @@ async function processMonitorEventGroup(input: {
             if (isEscalation || failingWorkersChanged) {
                 result.activitiesToInsert.push({
                     id: crypto.randomUUID(),
-                    incidentId: activeIncident.id,
+                    incidentId: currentIncident.id,
                     message: getAutomaticIncidentEscalatedMessage({
                         reason: aggregateStatus.statusReason,
                         error: event.error,
