@@ -974,52 +974,60 @@ async function processMonitorEventGroup(input: {
                 error: event.error,
             });
 
-            const isEscalation =
-                activeIncident.title !== incidentTitle ||
-                activeIncident.severity !== "major";
+            const currentIncident: (typeof activeIncidentList)[0] =
+                activeIncident;
+            const isEscalation = currentIncident.severity !== "major";
+            // Merged or user-edited incidents carry another title; rewriting it per monitor
+            // made every event from each linked monitor look like a fresh escalation.
+            const ownsIncidentText =
+                currentIncident.title === incidentTitle ||
+                currentIncident.title ===
+                    getAutomaticIncidentTitle(monitorConfig.name, "degraded");
+            const textChanged =
+                ownsIncidentText &&
+                (currentIncident.title !== incidentTitle ||
+                    currentIncident.description !== incidentDescription);
             const failingWorkersChanged = hasFailingWorkersChanged(
                 previousWorkerStatus?.status,
                 event.status,
             );
 
-            if (
-                isEscalation ||
-                activeIncident.description !== incidentDescription
-            ) {
+            if (isEscalation || textChanged) {
+                const textValues = textChanged
+                    ? { title: incidentTitle, description: incidentDescription }
+                    : {};
+
                 result.incidentUpdatesToApply.push({
-                    id: activeIncident.id,
+                    id: currentIncident.id,
                     values: {
-                        title: incidentTitle,
-                        description: incidentDescription,
+                        ...textValues,
                         severity: "major",
                         updatedAt: eventTime,
                     },
                 });
 
-                if (isEscalation || failingWorkersChanged) {
-                    result.activitiesToInsert.push({
-                        id: crypto.randomUUID(),
-                        incidentId: activeIncident.id,
-                        message: getAutomaticIncidentEscalatedMessage({
-                            reason: aggregateStatus.statusReason,
-                            error: event.error,
-                            workerLabel:
-                                workerLabels.get(eventWorkerId) ||
-                                eventWorkerId,
-                            isEscalation,
-                        }),
-                        type: "event",
-                        createdAt: eventTime,
-                        userId: null,
-                    });
-                }
-
                 activeIncident = {
-                    ...activeIncident,
-                    title: incidentTitle,
-                    description: incidentDescription,
+                    ...currentIncident,
+                    ...textValues,
                     severity: "major",
                 };
+            }
+
+            if (isEscalation || failingWorkersChanged) {
+                result.activitiesToInsert.push({
+                    id: crypto.randomUUID(),
+                    incidentId: currentIncident.id,
+                    message: getAutomaticIncidentEscalatedMessage({
+                        reason: aggregateStatus.statusReason,
+                        error: event.error,
+                        workerLabel:
+                            workerLabels.get(eventWorkerId) || eventWorkerId,
+                        isEscalation,
+                    }),
+                    type: "event",
+                    createdAt: eventTime,
+                    userId: null,
+                });
             }
         }
 
