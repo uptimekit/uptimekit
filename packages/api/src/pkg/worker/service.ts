@@ -947,9 +947,10 @@ async function processMonitorEventGroup(input: {
                 error: event.error,
             });
 
-            const isEscalation =
-                activeIncident.title !== incidentTitle ||
-                activeIncident.severity !== "major";
+            const isEscalation = activeIncident.severity !== "major";
+            // Merged or user-edited incidents carry another title; rewriting it per monitor
+            // made every event from each linked monitor look like a fresh escalation.
+            const ownsIncidentText = activeIncident.title === incidentTitle;
             const failingWorkersChanged = hasFailingWorkersChanged(
                 previousWorkerStatus?.status,
                 event.status,
@@ -957,7 +958,8 @@ async function processMonitorEventGroup(input: {
 
             if (
                 isEscalation ||
-                activeIncident.description !== incidentDescription
+                (ownsIncidentText &&
+                    activeIncident.description !== incidentDescription)
             ) {
                 result.incidentUpdatesToApply.push({
                     id: activeIncident.id,
