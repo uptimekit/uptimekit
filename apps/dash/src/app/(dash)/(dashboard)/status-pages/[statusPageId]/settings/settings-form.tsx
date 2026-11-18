@@ -56,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getStatusPageBaseDomain } from "@/lib/status-page-url";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 
 const settingsSchema = z.object({
     name: z.string().min(1, "Company name is required"),
@@ -395,19 +396,17 @@ function BasicInformationSection({
                                     <FormLabel className="flex h-6 items-end pb-1">
                                         Slug *
                                     </FormLabel>
-                                    <div className="flex rounded-md shadow-sm ring-1 ring-input ring-inset">
-                                        <div className="flex select-none items-center rounded-l-md border-r bg-muted/50 px-3 text-muted-foreground text-sm">
-                                            {baseDomain}/
-                                        </div>
-                                        <Input
-                                            placeholder="acme"
-                                            {...field}
-                                            className="min-w-0 rounded-l-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                        />
-                                    </div>
+                                    <FormControl>
+                                        <InputGroup>
+                                            <InputGroupAddon>
+                                                <InputGroupText>{baseDomain}/</InputGroupText>
+                                            </InputGroupAddon>
+                                            <InputGroupInput placeholder="acme" {...field} />
+                                        </InputGroup>
+                                    </FormControl>
                                     <FormDescription className="pt-2">
-                                        Your status page URL. You can also
-                                        configure a custom domain below.
+                                        Your status page URL. You can also configure a custom
+                                        domain below.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

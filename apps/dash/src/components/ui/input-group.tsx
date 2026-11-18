@@ -60,7 +60,7 @@ export function InputGroupAddon({
     );
 }
 
-function InputGroupText({
+export function InputGroupText({
     className,
     ...props
 }: React.ComponentProps<"span">): React.ReactElement {
