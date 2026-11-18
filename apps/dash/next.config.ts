@@ -9,6 +9,9 @@ loadEnv();
 const nextConfig: NextConfig = {
     typedRoutes: true,
     reactCompiler: true,
+    experimental: {
+        agentUpgrade: "security",
+    },
     output: "standalone",
     transpilePackages: [
         "@uptimekit/api",
