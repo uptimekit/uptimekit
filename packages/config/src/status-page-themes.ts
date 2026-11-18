@@ -3,6 +3,7 @@ export const statusPageThemeIds = [
     "flat",
     "signal",
     "spark",
+    "dashboard",
 ] as const;
 
 export type StatusPageThemeId = (typeof statusPageThemeIds)[number];
@@ -73,6 +74,14 @@ export const statusPageThemes = [
             headerLayout: false,
             barStyles: ["normal"],
         },
+    },
+    {
+        id: "dashboard",
+        name: "Dashboard",
+        description:
+            "Console-style dashboard layout matching the UptimeKit console",
+        supportsDarkMode: true,
+        capabilities: completeCapabilities,
     },
 ] as const satisfies readonly StatusPageThemeDefinition[];
 

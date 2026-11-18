@@ -50,9 +50,12 @@ export function StatusDot({
     const config = statusConfig[status];
 
     return (
-        <span className={cn("relative block h-2.5 w-2.5", className)}>
+        <span className={cn("relative block h-2.5 w-2.5 shrink-0", className)}>
             <span
-                className={cn("block h-2.5 w-2.5 rounded-full", config.bgColor)}
+                className={cn(
+                    "block h-full w-full rounded-full",
+                    config.bgColor,
+                )}
             />
             {status === "operational" ? (
                 <span

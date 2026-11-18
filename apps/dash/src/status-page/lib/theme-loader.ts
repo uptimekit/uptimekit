@@ -38,6 +38,12 @@ const themeRuntimes: Record<StatusPageThemeId, ThemeRuntime> = {
         incident: () => import("@/status-page/themes/spark/incident-detail"),
         updates: () => import("@/status-page/themes/spark/updates"),
     },
+    dashboard: {
+        page: () => import("@/status-page/themes/dashboard/theme-page"),
+        incident: () =>
+            import("@/status-page/themes/dashboard/incident-detail"),
+        updates: () => import("@/status-page/themes/dashboard/updates"),
+    },
 };
 
 export async function loadThemeComponent(
