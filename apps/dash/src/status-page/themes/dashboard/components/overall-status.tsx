@@ -77,7 +77,7 @@ export function OverallStatus({
                 {lastUpdated && (
                     <div className="shrink-0 text-muted-foreground text-xs sm:text-right">
                         <span className="block font-medium text-foreground/80">
-                            Last check
+                            Last updated
                         </span>
                         <span>
                             {format(lastUpdated, "dd.MM.yyyy - hh:mm:ss a")}

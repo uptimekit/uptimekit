@@ -39,7 +39,6 @@ export function MonitorListItem({
 }: MonitorListItemProps): React.JSX.Element {
     const isCard = variant === "card";
 
-    // Status-only mode: show only name and current status
     if (displayStyle === "status") {
         return (
             <div
@@ -95,7 +94,6 @@ export function MonitorListItem({
         );
     }
 
-    // History mode: show full uptime bar with history
     return (
         <div
             className={cn(
