@@ -27,6 +27,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     parseAsBoolean,
     parseAsString,
@@ -2507,8 +2508,18 @@ function BulkAssignWorkerDialog({
     );
 }
 
-function MonitorActions({ monitor }: { monitor: Monitor }) {
+interface MonitorActionsProps {
+    monitor: Pick<Monitor, "id" | "name" | "active" | "pauseReason">;
+    placement?: "row" | "header";
+}
+
+export function MonitorActions({
+    monitor,
+    placement = "row",
+}: MonitorActionsProps) {
     const queryClient = useQueryClient();
+    const router = useRouter();
+    const isHeader = placement === "header";
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [nukeDialogOpen, setNukeDialogOpen] = useState(false);
 
@@ -2520,6 +2531,9 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
             queryClient.invalidateQueries({
                 queryKey: orpc.monitors.list.key(),
             });
+            if (isHeader) {
+                router.push("/monitors");
+            }
         },
         onError: () => sileo.error({ title: "Failed to delete monitor" }),
     });
@@ -2531,6 +2545,9 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
             sileo.success({ title: "Monitor updated" });
             queryClient.invalidateQueries({
                 queryKey: orpc.monitors.list.key(),
+            });
+            queryClient.invalidateQueries({
+                queryKey: orpc.monitors.get.key({ input: { id: monitor.id } }),
             });
         },
         onError: () => sileo.error({ title: "Failed to update monitor" }),
@@ -2561,6 +2578,9 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
             queryClient.invalidateQueries({
                 queryKey: orpc.monitors.getBatchLatencySparkline.key(),
             });
+            queryClient.invalidateQueries({
+                queryKey: orpc.monitors.getStatusCodeDistribution.key(),
+            });
         },
         onError: () => sileo.error({ title: "Failed to nuke monitor data" }),
     });
@@ -2570,12 +2590,16 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
             <DropdownMenu>
                 <DropdownMenuTrigger
                     render={
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                            onClick={(e) => e.stopPropagation()}
-                        />
+                        isHeader ? (
+                            <Button variant="outline" size="icon-sm" />
+                        ) : (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        )
                     }
                 >
                     <FontAwesomeIcon icon={faEllipsis} className="h-4 w-4" />
@@ -2589,12 +2613,16 @@ function MonitorActions({ monitor }: { monitor: Monitor }) {
                         <DropdownMenuGroupLabel>
                             {monitor.name}
                         </DropdownMenuGroupLabel>
-                        <DropdownMenuItem
-                            render={<Link href={`/monitors/${monitor.id}`} />}
-                        >
-                            <FontAwesomeIcon icon={faEye} />
-                            View details
-                        </DropdownMenuItem>
+                        {!isHeader && (
+                            <DropdownMenuItem
+                                render={
+                                    <Link href={`/monitors/${monitor.id}`} />
+                                }
+                            >
+                                <FontAwesomeIcon icon={faEye} />
+                                View details
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                             render={
                                 <Link href={`/monitors/${monitor.id}/edit`} />
