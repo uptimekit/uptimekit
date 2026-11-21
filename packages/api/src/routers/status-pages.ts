@@ -213,7 +213,7 @@ export const statusPagesRouter = {
                         logoUrl: z.string().optional(),
                         websiteUrl: z.string().optional(),
                         contactUrl: z.string().optional(),
-                        theme: z.enum(["light", "dark"]).optional(),
+                        theme: z.enum(["light", "dark", "system"]).optional(),
                         headerLayout: z
                             .enum(["vertical", "horizontal"])
                             .optional(),

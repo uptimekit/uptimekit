@@ -1,9 +1,10 @@
 import type { ComponentType } from "react";
 import { ThemeProvider } from "./theme-provider";
+import type { StatusPageColorMode } from "./types";
 
 interface ThemePageWrapperProps<T extends Record<string, any>> {
     themeId: string;
-    theme?: "light" | "dark";
+    theme?: StatusPageColorMode;
     ThemeComponent: ComponentType<T>;
     componentProps: T;
 }
@@ -32,12 +33,16 @@ export function ThemePageWrapper<T extends Record<string, any>>({
     componentProps,
 }: ThemePageWrapperProps<T>) {
     const sanitizedThemeId = JSON.stringify(themeId);
+    const isDarkExpression =
+        theme === "system"
+            ? "window.matchMedia('(prefers-color-scheme: dark)').matches"
+            : String(theme === "dark");
     const customCss = getCustomCss(componentProps);
 
     const themeScript = `
 		(function() {
 			document.documentElement.setAttribute('data-theme', ${sanitizedThemeId});
-			${theme ? `document.documentElement.classList.${theme === "dark" ? "add" : "remove"}('dark');` : ""}
+			${theme ? `document.documentElement.classList.toggle('dark', ${isDarkExpression});` : ""}
 		})();
 	`;
 

@@ -4,6 +4,8 @@ import type {
 } from "@uptimekit/config/status-page-themes";
 import type { IncidentHistoryPeriod } from "@/status-page/lib/incident-history";
 
+export type StatusPageColorMode = "light" | "dark" | "system";
+
 // Status Type Definition
 export type StatusType =
     | "operational"
@@ -29,7 +31,7 @@ export interface UptimeDay {
 
 export interface StatusPageDesign {
     themeId?: StatusPageThemeId;
-    theme?: "light" | "dark";
+    theme?: StatusPageColorMode;
     logoUrl?: string;
     faviconUrl?: string;
     websiteUrl?: string;
@@ -46,7 +48,7 @@ export interface StatusPageDesign {
 
 export interface NormalizedStatusPageDesign {
     themeId: StatusPageThemeId;
-    theme: "light" | "dark";
+    theme: StatusPageColorMode;
     logoUrl?: string;
     faviconUrl?: string;
     websiteUrl?: string;

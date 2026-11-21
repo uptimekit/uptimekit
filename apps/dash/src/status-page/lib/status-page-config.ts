@@ -4,6 +4,7 @@ import {
 } from "@uptimekit/config/status-page-themes";
 import type {
     NormalizedStatusPageDesign,
+    StatusPageColorMode,
     StatusPageConfig,
 } from "@/status-page/themes/types";
 
@@ -18,6 +19,12 @@ export interface RawStatusPageConfig {
 
 function asOptionalString(value: unknown): string | undefined {
     return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+export function normalizeStatusPageColorMode(
+    value: unknown,
+): StatusPageColorMode {
+    return value === "dark" || value === "system" ? value : "light";
 }
 
 function normalizeBarStyle(value: unknown): StatusPageBarStyle {
@@ -45,7 +52,7 @@ export function normalizeStatusPageDesign(
 
     return {
         themeId: normalizeStatusPageThemeId(design.themeId),
-        theme: design.theme === "dark" ? "dark" : "light",
+        theme: normalizeStatusPageColorMode(design.theme),
         logoUrl: asOptionalString(design.logoUrl),
         faviconUrl: asOptionalString(design.faviconUrl),
         websiteUrl: asOptionalString(design.websiteUrl),

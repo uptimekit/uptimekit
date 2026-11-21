@@ -47,6 +47,15 @@ describe("status page design normalization", () => {
         });
     });
 
+    it("keeps the system color mode and falls back to light for unknown values", () => {
+        expect(normalizeStatusPageDesign({ theme: "system" }).theme).toBe(
+            "system",
+        );
+        expect(normalizeStatusPageDesign({ theme: "sepia" }).theme).toBe(
+            "light",
+        );
+    });
+
     it("preserves supported settings on every public page config", () => {
         const config = prepareStatusPageConfig(
             {

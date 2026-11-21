@@ -41,6 +41,12 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    InputGroupText,
+} from "@/components/ui/input-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SaveBar } from "@/components/ui/save-bar";
 import {
@@ -56,7 +62,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { getStatusPageBaseDomain } from "@/lib/status-page-url";
 import { cn } from "@/lib/utils";
 import { client, orpc } from "@/utils/orpc";
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 
 const settingsSchema = z.object({
     name: z.string().min(1, "Company name is required"),
@@ -70,7 +75,7 @@ const settingsSchema = z.object({
         .optional()
         .or(z.literal("")),
     themeId: z.enum(statusPageThemeIds).optional(),
-    theme: z.enum(["light", "dark"]),
+    theme: z.enum(["light", "dark", "system"]),
     headerLayout: z.enum(["vertical", "horizontal"]),
     barStyle: z.enum(["normal", "length", "signal"]),
     barDays: z.enum(["30", "60", "90"]),
@@ -270,6 +275,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
     const colorThemes = [
         { value: "dark", label: "Dark version" },
         { value: "light", label: "Light version" },
+        { value: "system", label: "Auto (match visitor's system)" },
     ];
 
     const barDayOptions = [
@@ -399,14 +405,19 @@ function BasicInformationSection({
                                     <FormControl>
                                         <InputGroup>
                                             <InputGroupAddon>
-                                                <InputGroupText>{baseDomain}/</InputGroupText>
+                                                <InputGroupText>
+                                                    {baseDomain}/
+                                                </InputGroupText>
                                             </InputGroupAddon>
-                                            <InputGroupInput placeholder="acme" {...field} />
+                                            <InputGroupInput
+                                                placeholder="acme"
+                                                {...field}
+                                            />
                                         </InputGroup>
                                     </FormControl>
                                     <FormDescription className="pt-2">
-                                        Your status page URL. You can also configure a custom
-                                        domain below.
+                                        Your status page URL. You can also
+                                        configure a custom domain below.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
