@@ -2,8 +2,9 @@
 
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
+import type { StatusPageColorMode } from "@/status-page/themes/types";
 
-export function ThemeSetter({ theme }: { theme?: "light" | "dark" }) {
+export function ThemeSetter({ theme }: { theme?: StatusPageColorMode }) {
     const { setTheme } = useTheme();
 
     useEffect(() => {

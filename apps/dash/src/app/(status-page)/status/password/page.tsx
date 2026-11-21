@@ -9,6 +9,7 @@ import {
     getCookieName,
     verifyAccessToken,
 } from "@/status-page/lib/access-token";
+import { normalizeStatusPageColorMode } from "@/status-page/lib/status-page-config";
 
 function isSafeInternalPath(path: string): boolean {
     return (
@@ -81,7 +82,7 @@ export default async function PasswordPage({
 
     const design =
         (page.design as { customCss?: unknown; theme?: string }) || {};
-    const theme = design.theme === "dark" ? "dark" : "light";
+    const theme = normalizeStatusPageColorMode(design.theme);
     const customCss =
         typeof design.customCss === "string" ? design.customCss : "";
 

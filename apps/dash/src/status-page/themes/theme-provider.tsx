@@ -2,10 +2,11 @@
 
 import { useTheme } from "next-themes";
 import { useLayoutEffect } from "react";
+import type { StatusPageColorMode } from "./types";
 
 interface ThemeProviderProps {
     themeId: string;
-    theme?: "light" | "dark";
+    theme?: StatusPageColorMode;
 }
 
 export function ThemeProvider({ themeId, theme }: ThemeProviderProps) {
