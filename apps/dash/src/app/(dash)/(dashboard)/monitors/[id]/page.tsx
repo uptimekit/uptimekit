@@ -19,6 +19,7 @@ import { AvailabilityTable } from "@/components/monitors/availability-table";
 import { MonitorCards } from "@/components/monitors/monitor-cards";
 import { ResponseTimeChart } from "@/components/monitors/response-time-chart";
 import { StatusCodePieChart } from "@/components/monitors/status-code-pie-chart";
+import { MonitorActions } from "@/components/monitors/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -373,6 +374,7 @@ export default function MonitorDetailsPage() {
                     >
                         {monitor.active ? "Pause" : "Resume"}
                     </Button>
+                    <MonitorActions monitor={monitor} placement="header" />
                 </div>
             </div>
 
