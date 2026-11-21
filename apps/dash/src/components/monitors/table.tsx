@@ -2578,6 +2578,9 @@ export function MonitorActions({
             queryClient.invalidateQueries({
                 queryKey: orpc.monitors.getBatchLatencySparkline.key(),
             });
+            queryClient.invalidateQueries({
+                queryKey: orpc.monitors.getStatusCodeDistribution.key(),
+            });
         },
         onError: () => sileo.error({ title: "Failed to nuke monitor data" }),
     });
