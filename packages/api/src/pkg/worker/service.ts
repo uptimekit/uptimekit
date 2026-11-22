@@ -22,6 +22,7 @@ import {
     getAggregateMonitorStatus,
     getConfiguredWorkerStates,
     getEffectiveMonitorWorkers,
+    getReportingWorkers,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     normalizeMonitorStatus,
@@ -796,9 +797,10 @@ async function processMonitorEventGroup(input: {
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    const configuredWorkerIds = configuredWorkers.map(
-        (configuredWorker) => configuredWorker.id,
-    );
+    const configuredWorkerIds = getReportingWorkers(configuredWorkers, {
+        now,
+        reportingWorkerId: workerId,
+    }).map((configuredWorker) => configuredWorker.id);
     const workerLabels = new Map(
         configuredWorkers.map((workerRecord) => [
             workerRecord.id,

@@ -3,6 +3,7 @@ import { incident, incidentMonitor } from "@uptimekit/db/schema/incidents";
 import { worker } from "@uptimekit/db/schema/workers";
 import { and, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
 import { getLatestMonitorLocationStatuses } from "./monitor-location-state";
+import { isWorkerHeartbeatFresh } from "./worker-status";
 
 type TransactionLike = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type QueryableDatabase = typeof db | TransactionLike;
@@ -42,6 +43,7 @@ export interface EffectiveMonitorWorker {
     id: string;
     name: string;
     location: string;
+    lastHeartbeat: Date | null;
 }
 
 export interface MonitorWorkerAssignment {
@@ -362,10 +364,12 @@ export function getAggregateMonitorStatus(input: {
             workerStatusById: input.workerStatusById,
             configuredWorkerStates,
             status: "down",
+            // The last worker to fail starts the outage, so pending duration
+            // counts from when it went down, not from its latest report.
             allWorkersDownSince: new Date(
                 Math.max(
                     ...configuredWorkerStates.states.map((state) =>
-                        state.timestamp.getTime(),
+                        (state.since ?? state.timestamp).getTime(),
                     ),
                 ),
             ),
@@ -559,6 +563,25 @@ async function getActiveMaintenanceMonitorIds(monitorIds: string[]) {
     return new Set(rows.map((row) => row.monitorId));
 }
 
+/**
+ * Drop workers whose heartbeat is stale, so a worker that died (e.g. together
+ * with the host it runs on) cannot veto an outage with its last "up" report.
+ * Falls back to every worker when none is online, keeping the last known
+ * state instead of reporting the monitor as unassigned.
+ */
+export function getReportingWorkers<T extends EffectiveMonitorWorker>(
+    workers: T[],
+    options: { now?: Date; reportingWorkerId?: string } = {},
+): T[] {
+    const onlineWorkers = workers.filter(
+        (workerRecord) =>
+            workerRecord.id === options.reportingWorkerId ||
+            isWorkerHeartbeatFresh(workerRecord.lastHeartbeat, options.now),
+    );
+
+    return onlineWorkers.length > 0 ? onlineWorkers : workers;
+}
+
 export async function getEffectiveWorkersForMonitors(
     monitors: MonitorWorkerAssignment[],
     options: {
@@ -586,6 +609,7 @@ export async function getEffectiveWorkersForMonitors(
                       id: worker.id,
                       name: worker.name,
                       location: worker.location,
+                      lastHeartbeat: worker.lastHeartbeat,
                   })
                   .from(worker)
                   .where(
@@ -603,6 +627,7 @@ export async function getEffectiveWorkersForMonitors(
                       id: worker.id,
                       name: worker.name,
                       location: worker.location,
+                      lastHeartbeat: worker.lastHeartbeat,
                   })
                   .from(worker)
                   .where(
@@ -712,6 +737,7 @@ export async function getAggregateMonitorStatusesForMonitors(
         statusesForMonitor.set(workerStatus.location, {
             status: normalizeMonitorStatus(workerStatus.status),
             timestamp: workerStatus.timestamp,
+            since: workerStatus.statusSince ?? workerStatus.timestamp,
         });
         latestStatusesByMonitorId.set(
             workerStatus.monitorId,
@@ -720,9 +746,13 @@ export async function getAggregateMonitorStatusesForMonitors(
     }
 
     const statusesByMonitorId = new Map<string, AggregateMonitorStatusResult>();
+    const now = new Date();
 
     for (const monitorRecord of monitors) {
-        const effectiveWorkers = workersByMonitorId.get(monitorRecord.id) ?? [];
+        const effectiveWorkers = getReportingWorkers(
+            workersByMonitorId.get(monitorRecord.id) ?? [],
+            { now },
+        );
         statusesByMonitorId.set(
             monitorRecord.id,
             getAggregateMonitorStatus({

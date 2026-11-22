@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+    type EffectiveMonitorWorker,
     getAggregateMonitorStatus,
+    getReportingWorkers,
+    isAutomaticIncidentOpenEligible,
     type MonitorRuntimeStatus,
 } from "./monitor-status";
 
@@ -104,5 +107,90 @@ describe("aggregate monitor status", () => {
         });
 
         expect(result.status).toBe("maintenance");
+    });
+});
+
+describe("reporting workers", () => {
+    const now = new Date("2026-04-26T10:10:00Z");
+
+    function createWorker(
+        id: string,
+        lastHeartbeat: Date | null,
+    ): EffectiveMonitorWorker {
+        return { id, name: id, location: "pl", lastHeartbeat };
+    }
+
+    it("drops workers whose heartbeat is stale", () => {
+        const workers = [
+            createWorker("dedicated", new Date("2026-04-26T10:00:00Z")),
+            createWorker("vps", new Date("2026-04-26T10:09:30Z")),
+        ];
+
+        expect(getReportingWorkers(workers, { now }).map((w) => w.id)).toEqual([
+            "vps",
+        ]);
+    });
+
+    it("keeps the worker sending events even without a fresh heartbeat", () => {
+        const workers = [
+            createWorker("dedicated", new Date("2026-04-26T10:00:00Z")),
+            createWorker("vps", null),
+        ];
+
+        expect(
+            getReportingWorkers(workers, {
+                now,
+                reportingWorkerId: "vps",
+            }).map((w) => w.id),
+        ).toEqual(["vps"]);
+    });
+
+    it("falls back to every worker when none is online", () => {
+        const workers = [
+            createWorker("dedicated", new Date("2026-04-26T10:00:00Z")),
+            createWorker("vps", null),
+        ];
+
+        expect(getReportingWorkers(workers, { now })).toEqual(workers);
+    });
+
+    it("opens an incident when the only online worker reports down", () => {
+        const workers = [
+            createWorker("dedicated", new Date("2026-04-26T10:00:00Z")),
+            createWorker("vps", new Date("2026-04-26T10:09:30Z")),
+        ];
+        const workerStatusById = new Map([
+            [
+                "dedicated",
+                {
+                    status: "up" as const,
+                    timestamp: new Date("2026-04-26T10:00:00Z"),
+                },
+            ],
+            [
+                "vps",
+                {
+                    status: "down" as const,
+                    timestamp: now,
+                    since: new Date("2026-04-26T10:01:00Z"),
+                },
+            ],
+        ]);
+
+        const result = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: getReportingWorkers(workers, {
+                now,
+                reportingWorkerId: "vps",
+            }).map((w) => w.id),
+            workerStatusById,
+            activeIncident: undefined,
+            eventTime: now,
+            incidentPendingDurationSeconds: 60,
+        });
+
+        expect(result.eligible).toBe(true);
+        expect(result.startedAt?.toISOString()).toBe(
+            "2026-04-26T10:01:00.000Z",
+        );
     });
 });
