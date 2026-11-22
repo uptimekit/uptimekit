@@ -298,4 +298,41 @@ describe("worker status since", () => {
             evaluate(new Date("2026-04-26T11:01:00Z")).startedAt?.toISOString(),
         ).toBe(returnedAt.toISOString());
     });
+
+    it("does not reach back past the last recovery for a delayed report", () => {
+        // A's 10:01 report was queued, so B resolved the incident at 10:04
+        // while A was excluded; the late report keeps A's 10:00 streak.
+        const recoveredAt = new Date("2026-04-26T10:04:00Z");
+        const workerStatusById = new Map<string, WorkerStatusSnapshot>([
+            ["worker-b", { status: "up", timestamp: recoveredAt }],
+            [
+                "worker-a",
+                {
+                    status: "down",
+                    timestamp: new Date("2026-04-26T10:07:30Z"),
+                    since: previous.since,
+                },
+            ],
+        ]);
+        const evaluate = (eventTime: Date) =>
+            isAutomaticIncidentOpenEligible({
+                configuredWorkerIds: getReportingWorkerIds({
+                    workerIds: ["worker-a", "worker-b"],
+                    workerStatusById,
+                    at: eventTime,
+                    timing,
+                    reportingWorkerId: "worker-a",
+                }),
+                workerStatusById,
+                activeIncident: undefined,
+                eventTime,
+                incidentPendingDurationSeconds: 300,
+                lastRecoveredAt: recoveredAt,
+            });
+
+        expect(evaluate(new Date("2026-04-26T10:08:00Z")).eligible).toBe(false);
+        expect(
+            evaluate(new Date("2026-04-26T10:09:00Z")).startedAt?.toISOString(),
+        ).toBe(recoveredAt.toISOString());
+    });
 });

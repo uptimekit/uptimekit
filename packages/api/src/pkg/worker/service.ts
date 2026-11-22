@@ -9,7 +9,17 @@ import {
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { worker } from "@uptimekit/db/schema/workers";
-import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import {
+    and,
+    desc,
+    eq,
+    gt,
+    isNotNull,
+    isNull,
+    lte,
+    or,
+    sql,
+} from "drizzle-orm";
 import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
     getLatestMonitorLocationStatuses,
@@ -825,6 +835,21 @@ async function processMonitorEventGroup(input: {
     let activeIncident: (typeof activeIncidentList)[0] | undefined =
         activeIncidentList[0];
 
+    const [lastRecovery] = await tx
+        .select({ endedAt: incident.endedAt })
+        .from(incident)
+        .innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
+        .where(
+            and(
+                eq(incidentMonitor.monitorId, monitorId),
+                eq(incident.type, "automatic"),
+                isNotNull(incident.endedAt),
+            ),
+        )
+        .orderBy(desc(incident.endedAt))
+        .limit(1);
+    let lastRecoveredAt = lastRecovery?.endedAt ?? null;
+
     // Sort by timestamp
     monitorEvents.sort(
         (a, b) =>
@@ -982,6 +1007,7 @@ async function processMonitorEventGroup(input: {
             });
 
             activeIncident = undefined;
+            lastRecoveredAt = eventTime;
             continue;
         }
 
@@ -1061,6 +1087,7 @@ async function processMonitorEventGroup(input: {
             eventTime,
             incidentPendingDurationSeconds:
                 monitorConfig.incidentPendingDuration,
+            lastRecoveredAt,
             isUnderMaintenance,
             workerLabels,
         });

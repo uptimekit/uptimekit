@@ -435,6 +435,7 @@ export function isAutomaticIncidentOpenEligible(input: {
     activeIncident: { id: string } | undefined;
     eventTime: Date;
     incidentPendingDurationSeconds: number;
+    lastRecoveredAt?: Date | null;
     isUnderMaintenance?: boolean;
     workerLabels?: Map<string, string>;
 }): AutomaticIncidentOpenEvaluation {
@@ -468,19 +469,20 @@ export function isAutomaticIncidentOpenEligible(input: {
         };
     }
 
-    const durationMs =
-        input.eventTime.getTime() -
-        aggregateStatus.allWorkersDownSince.getTime();
-    const pendingMs = input.incidentPendingDurationSeconds * 1000;
+    // Late or out-of-order reports can carry failures from before the last
+    // recovery; those belong to the incident that recovery closed.
+    const outageStartMs = Math.max(
+        aggregateStatus.allWorkersDownSince.getTime(),
+        input.lastRecoveredAt?.getTime() ?? 0,
+    );
+    const durationMs = input.eventTime.getTime() - outageStartMs;
+    const eligible = durationMs >= input.incidentPendingDurationSeconds * 1000;
 
     return {
-        eligible: durationMs >= pendingMs,
+        eligible,
         allWorkersDownSince: aggregateStatus.allWorkersDownSince,
-        triggerStatus: durationMs >= pendingMs ? "down" : null,
-        startedAt:
-            durationMs >= pendingMs
-                ? aggregateStatus.allWorkersDownSince
-                : null,
+        triggerStatus: eligible ? "down" : null,
+        startedAt: eligible ? new Date(outageStartMs) : null,
         reason: aggregateStatus.statusReason,
     };
 }
