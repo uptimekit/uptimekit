@@ -169,6 +169,8 @@ export async function prepareStatusPageData(
             id: pm.monitorId,
             workerIds: (pm.monitor.workerIds as string[] | null) ?? [],
             locations: (pm.monitor.locations as string[] | null) ?? [],
+            interval: pm.monitor.interval,
+            timeout: pm.monitor.timeout,
         });
     }
     const aggregateMonitorStatusesPromise =

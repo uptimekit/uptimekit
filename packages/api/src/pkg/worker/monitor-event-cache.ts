@@ -5,6 +5,8 @@ export type MonitorEventConfig = Pick<
     | "id"
     | "organizationId"
     | "name"
+    | "interval"
+    | "timeout"
     | "incidentPendingDuration"
     | "incidentRecoveryDuration"
     | "publishIncidentToStatusPage"

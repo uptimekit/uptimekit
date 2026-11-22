@@ -704,6 +704,8 @@ export const monitorsRouter = {
                                     (row.monitor.locations as
                                         | string[]
                                         | null) ?? [],
+                                interval: row.monitor.interval,
+                                timeout: row.monitor.timeout,
                             })),
                         );
 
@@ -1580,6 +1582,8 @@ export const monitorsRouter = {
                         id: found.monitor.id,
                         workerIds: monitorWorkerIds,
                         locations: monitorLocations,
+                        interval: found.monitor.interval,
+                        timeout: found.monitor.timeout,
                     }),
                 ),
             ]);

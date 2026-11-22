@@ -22,7 +22,7 @@ import {
     getAggregateMonitorStatus,
     getConfiguredWorkerStates,
     getEffectiveMonitorWorkers,
-    getReportingWorkers,
+    getReportingWorkerIds,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     normalizeMonitorStatus,
@@ -646,6 +646,12 @@ export async function processMonitorEvents(
     return { success: true, count: events.length };
 }
 
+function getLatestReportTime(statuses: MonitorLocationStatus[]) {
+    return new Date(
+        Math.max(...statuses.map((status) => status.timestamp.getTime())),
+    );
+}
+
 /**
  * Processes a batch of events for a single monitor, producing monitor change records,
  * opening or resolving automatic incidents based on the monitor's pending duration,
@@ -797,10 +803,9 @@ async function processMonitorEventGroup(input: {
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
 
-    const configuredWorkerIds = getReportingWorkers(configuredWorkers, {
-        now,
-        reportingWorkerId: workerId,
-    }).map((configuredWorker) => configuredWorker.id);
+    const configuredWorkerIds = configuredWorkers.map(
+        (configuredWorker) => configuredWorker.id,
+    );
     const workerLabels = new Map(
         configuredWorkers.map((workerRecord) => [
             workerRecord.id,
@@ -821,10 +826,16 @@ async function processMonitorEventGroup(input: {
         });
     }
 
+    // Evaluate at the last report time so a worker dropping out records a change.
     let currentStatus =
         latestWorkerStatuses.length > 0
             ? getAggregateMonitorStatus({
-                  configuredWorkerIds,
+                  configuredWorkerIds: getReportingWorkerIds({
+                      workerIds: configuredWorkerIds,
+                      workerStatusById,
+                      at: getLatestReportTime(latestWorkerStatuses),
+                      timing: monitorConfig,
+                  }),
                   workerStatusById,
                   isUnderMaintenance,
               }).status
@@ -853,8 +864,15 @@ async function processMonitorEventGroup(input: {
             statusSince,
         });
 
+        const reportingWorkerIds = getReportingWorkerIds({
+            workerIds: configuredWorkerIds,
+            workerStatusById,
+            at: eventTime,
+            timing: monitorConfig,
+            reportingWorkerId: eventWorkerId,
+        });
         const aggregateStatus = getAggregateMonitorStatus({
-            configuredWorkerIds,
+            configuredWorkerIds: reportingWorkerIds,
             workerStatusById,
             isUnderMaintenance,
             workerLabels,
@@ -878,7 +896,7 @@ async function processMonitorEventGroup(input: {
 
         if (
             isAutomaticIncidentResolveEligible({
-                configuredWorkerIds,
+                configuredWorkerIds: reportingWorkerIds,
                 workerStatusById,
                 activeIncident,
                 eventTime,
@@ -999,7 +1017,7 @@ async function processMonitorEventGroup(input: {
         }
 
         const openEvaluation = isAutomaticIncidentOpenEligible({
-            configuredWorkerIds,
+            configuredWorkerIds: reportingWorkerIds,
             workerStatusById,
             activeIncident,
             eventTime,

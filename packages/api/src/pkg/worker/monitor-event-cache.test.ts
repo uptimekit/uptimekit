@@ -12,6 +12,8 @@ function metadata(name: string): MonitorEventMetadata {
             id: "monitor-id",
             name,
             organizationId: "organization-id",
+            interval: 60,
+            timeout: 48,
             incidentPendingDuration: 0,
             incidentRecoveryDuration: 0,
             publishIncidentToStatusPage: false,
