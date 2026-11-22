@@ -424,6 +424,10 @@ async function getStatusPageMonitorRecords(statusPageId: string) {
                     type: true,
                     workerIds: true,
                     locations: true,
+                    interval: true,
+                    timeout: true,
+                    retries: true,
+                    retryInterval: true,
                 },
             },
             group: {
@@ -696,6 +700,10 @@ export const getMonitorStatus = async (monitorId: string) => {
                 id: true,
                 workerIds: true,
                 locations: true,
+                interval: true,
+                timeout: true,
+                retries: true,
+                retryInterval: true,
             },
         });
 
@@ -707,6 +715,10 @@ export const getMonitorStatus = async (monitorId: string) => {
                 id: monitorRecord.id,
                 workerIds: (monitorRecord.workerIds as string[] | null) ?? [],
                 locations: (monitorRecord.locations as string[] | null) ?? [],
+                interval: monitorRecord.interval,
+                timeout: monitorRecord.timeout,
+                retries: monitorRecord.retries,
+                retryInterval: monitorRecord.retryInterval,
             }),
         ]);
 
