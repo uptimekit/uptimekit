@@ -23,6 +23,7 @@ import {
     getConfiguredWorkerStates,
     getEffectiveMonitorWorkers,
     getReportingWorkerIds,
+    getWorkerStatusSince,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     normalizeMonitorStatus,
@@ -873,10 +874,12 @@ async function processMonitorEventGroup(input: {
         const eventWorkerId = event.location || workerId;
 
         const previousWorkerStatus = workerStatusById.get(eventWorkerId);
-        const statusSince =
-            previousWorkerStatus?.status === event.status
-                ? (previousWorkerStatus.since ?? previousWorkerStatus.timestamp)
-                : eventTime;
+        const statusSince = getWorkerStatusSince({
+            previous: previousWorkerStatus,
+            status: event.status,
+            at: eventTime,
+            timing: monitorConfig,
+        });
 
         workerStatusById.set(eventWorkerId, {
             status: event.status,

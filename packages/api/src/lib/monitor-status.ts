@@ -583,6 +583,28 @@ export function getWorkerReportWindowMs(timing: MonitorCheckTiming = {}) {
     return (interval + checkDuration + WORKER_REPORT_GRACE_SECONDS) * 1000;
 }
 
+// A reporting gap breaks the streak, so a returning worker cannot carry an
+// outage that was already resolved into a new incident.
+export function getWorkerStatusSince(input: {
+    previous: WorkerStatusSnapshot | undefined;
+    status: MonitorRuntimeStatus;
+    at: Date;
+    timing?: MonitorCheckTiming;
+}) {
+    const { previous, at } = input;
+    if (!previous || previous.status !== input.status) {
+        return at;
+    }
+
+    const oldestAcceptedMs =
+        at.getTime() - getWorkerReportWindowMs(input.timing);
+    if (previous.timestamp.getTime() < oldestAcceptedMs) {
+        return at;
+    }
+
+    return previous.since ?? previous.timestamp;
+}
+
 // A dead worker must not veto an outage with its last "up" report.
 export function getReportingWorkerIds(input: {
     workerIds: string[];
