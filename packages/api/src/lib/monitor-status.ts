@@ -44,7 +44,14 @@ export interface EffectiveMonitorWorker {
     location: string;
 }
 
-export interface MonitorWorkerAssignment {
+export interface MonitorCheckTiming {
+    interval?: number; // in seconds
+    timeout?: number; // in seconds
+    retries?: number;
+    retryInterval?: number; // in seconds
+}
+
+export interface MonitorWorkerAssignment extends MonitorCheckTiming {
     id: string;
     workerIds?: string[] | null;
     locations?: string[] | null;
@@ -365,7 +372,7 @@ export function getAggregateMonitorStatus(input: {
             allWorkersDownSince: new Date(
                 Math.max(
                     ...configuredWorkerStates.states.map((state) =>
-                        state.timestamp.getTime(),
+                        (state.since ?? state.timestamp).getTime(),
                     ),
                 ),
             ),
@@ -559,6 +566,48 @@ async function getActiveMaintenanceMonitorIds(monitorIds: string[]) {
     return new Set(rows.map((row) => row.monitorId));
 }
 
+const DEFAULT_CHECK_INTERVAL_SECONDS = 60;
+const DEFAULT_CHECK_TIMEOUT_SECONDS = 48;
+const DEFAULT_CHECK_RETRIES = 2;
+const DEFAULT_RETRY_INTERVAL_SECONDS = 20;
+const WORKER_REPORT_GRACE_SECONDS = 30;
+
+// Workers send one result per check, after all retries.
+export function getWorkerReportWindowMs(timing: MonitorCheckTiming = {}) {
+    const interval = timing.interval ?? DEFAULT_CHECK_INTERVAL_SECONDS;
+    const timeout = timing.timeout ?? DEFAULT_CHECK_TIMEOUT_SECONDS;
+    const retries = Math.max(timing.retries ?? DEFAULT_CHECK_RETRIES, 0);
+    const retryInterval =
+        timing.retryInterval ?? DEFAULT_RETRY_INTERVAL_SECONDS;
+    const checkDuration = (retries + 1) * timeout + retries * retryInterval;
+    return (interval + checkDuration + WORKER_REPORT_GRACE_SECONDS) * 1000;
+}
+
+// A dead worker must not veto an outage with its last "up" report.
+export function getReportingWorkerIds(input: {
+    workerIds: string[];
+    workerStatusById: Map<string, WorkerStatusSnapshot>;
+    at: Date;
+    timing?: MonitorCheckTiming;
+    reportingWorkerId?: string;
+}) {
+    const oldestAcceptedMs =
+        input.at.getTime() - getWorkerReportWindowMs(input.timing);
+    const reportingWorkerIds = input.workerIds.filter((workerId) => {
+        if (workerId === input.reportingWorkerId) {
+            return true;
+        }
+
+        const snapshot = input.workerStatusById.get(workerId);
+        return (
+            snapshot === undefined ||
+            snapshot.timestamp.getTime() >= oldestAcceptedMs
+        );
+    });
+
+    return reportingWorkerIds.length > 0 ? reportingWorkerIds : input.workerIds;
+}
+
 export async function getEffectiveWorkersForMonitors(
     monitors: MonitorWorkerAssignment[],
     options: {
@@ -712,6 +761,7 @@ export async function getAggregateMonitorStatusesForMonitors(
         statusesForMonitor.set(workerStatus.location, {
             status: normalizeMonitorStatus(workerStatus.status),
             timestamp: workerStatus.timestamp,
+            since: workerStatus.statusSince ?? workerStatus.timestamp,
         });
         latestStatusesByMonitorId.set(
             workerStatus.monitorId,
@@ -720,18 +770,31 @@ export async function getAggregateMonitorStatusesForMonitors(
     }
 
     const statusesByMonitorId = new Map<string, AggregateMonitorStatusResult>();
+    const now = new Date();
 
     for (const monitorRecord of monitors) {
-        const effectiveWorkers = workersByMonitorId.get(monitorRecord.id) ?? [];
+        const workerStatusById =
+            latestStatusesByMonitorId.get(monitorRecord.id) ?? new Map();
+        const reportingWorkerIds = new Set(
+            getReportingWorkerIds({
+                workerIds: (workersByMonitorId.get(monitorRecord.id) ?? []).map(
+                    (workerRecord) => workerRecord.id,
+                ),
+                workerStatusById,
+                at: now,
+                timing: monitorRecord,
+            }),
+        );
+        const effectiveWorkers = (
+            workersByMonitorId.get(monitorRecord.id) ?? []
+        ).filter((workerRecord) => reportingWorkerIds.has(workerRecord.id));
         statusesByMonitorId.set(
             monitorRecord.id,
             getAggregateMonitorStatus({
                 configuredWorkerIds: effectiveWorkers.map(
                     (workerRecord) => workerRecord.id,
                 ),
-                workerStatusById:
-                    latestStatusesByMonitorId.get(monitorRecord.id) ??
-                    new Map(),
+                workerStatusById,
                 isUnderMaintenance: activeMaintenanceMonitorIds.has(
                     monitorRecord.id,
                 ),

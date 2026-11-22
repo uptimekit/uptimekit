@@ -704,6 +704,10 @@ export const monitorsRouter = {
                                     (row.monitor.locations as
                                         | string[]
                                         | null) ?? [],
+                                interval: row.monitor.interval,
+                                timeout: row.monitor.timeout,
+                                retries: row.monitor.retries,
+                                retryInterval: row.monitor.retryInterval,
                             })),
                         );
 
@@ -1580,6 +1584,10 @@ export const monitorsRouter = {
                         id: found.monitor.id,
                         workerIds: monitorWorkerIds,
                         locations: monitorLocations,
+                        interval: found.monitor.interval,
+                        timeout: found.monitor.timeout,
+                        retries: found.monitor.retries,
+                        retryInterval: found.monitor.retryInterval,
                     }),
                 ),
             ]);
