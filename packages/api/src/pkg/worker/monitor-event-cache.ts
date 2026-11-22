@@ -7,6 +7,8 @@ export type MonitorEventConfig = Pick<
     | "name"
     | "interval"
     | "timeout"
+    | "retries"
+    | "retryInterval"
     | "incidentPendingDuration"
     | "incidentRecoveryDuration"
     | "publishIncidentToStatusPage"

@@ -47,6 +47,8 @@ export interface EffectiveMonitorWorker {
 export interface MonitorCheckTiming {
     interval?: number; // in seconds
     timeout?: number; // in seconds
+    retries?: number;
+    retryInterval?: number; // in seconds
 }
 
 export interface MonitorWorkerAssignment extends MonitorCheckTiming {
@@ -566,12 +568,19 @@ async function getActiveMaintenanceMonitorIds(monitorIds: string[]) {
 
 const DEFAULT_CHECK_INTERVAL_SECONDS = 60;
 const DEFAULT_CHECK_TIMEOUT_SECONDS = 48;
+const DEFAULT_CHECK_RETRIES = 2;
+const DEFAULT_RETRY_INTERVAL_SECONDS = 20;
 const WORKER_REPORT_GRACE_SECONDS = 30;
 
+// Workers send one result per check, after all retries.
 export function getWorkerReportWindowMs(timing: MonitorCheckTiming = {}) {
     const interval = timing.interval ?? DEFAULT_CHECK_INTERVAL_SECONDS;
     const timeout = timing.timeout ?? DEFAULT_CHECK_TIMEOUT_SECONDS;
-    return (2 * interval + timeout + WORKER_REPORT_GRACE_SECONDS) * 1000;
+    const retries = Math.max(timing.retries ?? DEFAULT_CHECK_RETRIES, 0);
+    const retryInterval =
+        timing.retryInterval ?? DEFAULT_RETRY_INTERVAL_SECONDS;
+    const checkDuration = (retries + 1) * timeout + retries * retryInterval;
+    return (interval + checkDuration + WORKER_REPORT_GRACE_SECONDS) * 1000;
 }
 
 // A dead worker must not veto an outage with its last "up" report.
@@ -591,7 +600,7 @@ export function getReportingWorkerIds(input: {
 
         const snapshot = input.workerStatusById.get(workerId);
         return (
-            snapshot !== undefined &&
+            snapshot === undefined ||
             snapshot.timestamp.getTime() >= oldestAcceptedMs
         );
     });

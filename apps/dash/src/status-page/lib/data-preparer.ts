@@ -171,6 +171,8 @@ export async function prepareStatusPageData(
             locations: (pm.monitor.locations as string[] | null) ?? [],
             interval: pm.monitor.interval,
             timeout: pm.monitor.timeout,
+            retries: pm.monitor.retries,
+            retryInterval: pm.monitor.retryInterval,
         });
     }
     const aggregateMonitorStatusesPromise =

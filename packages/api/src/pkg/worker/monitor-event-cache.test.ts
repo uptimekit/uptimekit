@@ -14,6 +14,8 @@ function metadata(name: string): MonitorEventMetadata {
             organizationId: "organization-id",
             interval: 60,
             timeout: 48,
+            retries: 2,
+            retryInterval: 20,
             incidentPendingDuration: 0,
             incidentRecoveryDuration: 0,
             publishIncidentToStatusPage: false,

@@ -111,7 +111,8 @@ describe("aggregate monitor status", () => {
 
 describe("reporting workers", () => {
     const now = new Date("2026-04-26T10:10:00Z");
-    const timing = { interval: 60, timeout: 30 };
+    // Window: 60 + 3 * 30 + 2 * 20 + 30 = 220 seconds.
+    const timing = { interval: 60, timeout: 30, retries: 2, retryInterval: 20 };
 
     function snapshot(
         status: MonitorRuntimeStatus,
@@ -141,44 +142,59 @@ describe("reporting workers", () => {
         ).toEqual(["vps"]);
     });
 
-    it("keeps a worker that reported within two intervals plus timeout", () => {
+    it("keeps a worker that is still finishing its retries", () => {
         const workerStatusById = new Map([
-            ["slow", snapshot("up", "2026-04-26T10:07:30Z")],
+            ["retrying", snapshot("up", "2026-04-26T10:06:30Z")],
             ["vps", snapshot("down", "2026-04-26T10:09:30Z")],
         ]);
 
         expect(
             getReportingWorkerIds({
-                workerIds: ["slow", "vps"],
+                workerIds: ["retrying", "vps"],
                 workerStatusById,
                 at: now,
                 timing,
             }),
-        ).toEqual(["slow", "vps"]);
+        ).toEqual(["retrying", "vps"]);
+    });
+
+    it("stays pending until a new worker sends its first report", () => {
+        const workerStatusById = new Map([
+            ["vps", snapshot("down", "2026-04-26T10:09:30Z")],
+        ]);
+        const reportingWorkerIds = getReportingWorkerIds({
+            workerIds: ["new", "vps"],
+            workerStatusById,
+            at: now,
+            timing,
+            reportingWorkerId: "vps",
+        });
+
+        expect(reportingWorkerIds).toEqual(["new", "vps"]);
+        expect(
+            getAggregateMonitorStatus({
+                configuredWorkerIds: reportingWorkerIds,
+                workerStatusById,
+            }).status,
+        ).toBe("pending");
     });
 
     it("keeps the worker sending events and falls back when none reports", () => {
         const workerStatusById = new Map([
             ["dedicated", snapshot("up", "2026-04-26T09:00:00Z")],
+            ["vps", snapshot("up", "2026-04-26T09:00:00Z")],
         ]);
+        const input = {
+            workerIds: ["dedicated", "vps"],
+            workerStatusById,
+            at: now,
+            timing,
+        };
 
         expect(
-            getReportingWorkerIds({
-                workerIds: ["dedicated", "vps"],
-                workerStatusById,
-                at: now,
-                timing,
-                reportingWorkerId: "vps",
-            }),
+            getReportingWorkerIds({ ...input, reportingWorkerId: "vps" }),
         ).toEqual(["vps"]);
-        expect(
-            getReportingWorkerIds({
-                workerIds: ["dedicated", "vps"],
-                workerStatusById,
-                at: now,
-                timing,
-            }),
-        ).toEqual(["dedicated", "vps"]);
+        expect(getReportingWorkerIds(input)).toEqual(["dedicated", "vps"]);
     });
 
     it("opens an incident from the outage start once the dead worker drops out", () => {
