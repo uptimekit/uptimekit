@@ -335,4 +335,23 @@ describe("worker status since", () => {
             evaluate(new Date("2026-04-26T10:09:00Z")).startedAt?.toISOString(),
         ).toBe(recoveredAt.toISOString());
     });
+
+    it("ignores a recovery dated after the report", () => {
+        const eventTime = new Date("2026-04-26T10:05:00Z");
+        const result = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a"],
+            workerStatusById: new Map([
+                ["worker-a", { ...previous, timestamp: eventTime }],
+            ]),
+            activeIncident: undefined,
+            eventTime,
+            incidentPendingDurationSeconds: 60,
+            lastRecoveredAt: new Date("2026-04-27T10:00:00Z"),
+        });
+
+        expect(result.eligible).toBe(true);
+        expect(result.startedAt?.toISOString()).toBe(
+            previous.since.toISOString(),
+        );
+    });
 });
