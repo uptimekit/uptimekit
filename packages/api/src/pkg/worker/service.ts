@@ -9,17 +9,7 @@ import {
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { worker } from "@uptimekit/db/schema/workers";
-import {
-    and,
-    desc,
-    eq,
-    gt,
-    isNotNull,
-    isNull,
-    lte,
-    or,
-    sql,
-} from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
     getLatestMonitorLocationStatuses,
@@ -843,7 +833,8 @@ async function processMonitorEventGroup(input: {
             and(
                 eq(incidentMonitor.monitorId, monitorId),
                 eq(incident.type, "automatic"),
-                isNotNull(incident.endedAt),
+                // End dates are editable; a future one must not mute alerts.
+                lte(incident.endedAt, now),
             ),
         )
         .orderBy(desc(incident.endedAt))
@@ -899,6 +890,14 @@ async function processMonitorEventGroup(input: {
         const eventWorkerId = event.location || workerId;
 
         const previousWorkerStatus = workerStatusById.get(eventWorkerId);
+        // Like the stored state, a retried older report must not replace a newer one.
+        if (
+            previousWorkerStatus &&
+            eventTime < previousWorkerStatus.timestamp
+        ) {
+            continue;
+        }
+
         const statusSince = getWorkerStatusSince({
             previous: previousWorkerStatus,
             status: event.status,

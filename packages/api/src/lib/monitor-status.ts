@@ -470,12 +470,10 @@ export function isAutomaticIncidentOpenEligible(input: {
     }
 
     // Late or out-of-order reports can carry failures from before the last
-    // recovery; those belong to the incident that recovery closed. Incident end
-    // dates are editable, so one after this report must not mute alerts.
-    const recoveredAtMs = input.lastRecoveredAt?.getTime() ?? 0;
+    // recovery; those belong to the incident that recovery closed.
     const outageStartMs = Math.max(
         aggregateStatus.allWorkersDownSince.getTime(),
-        recoveredAtMs <= input.eventTime.getTime() ? recoveredAtMs : 0,
+        input.lastRecoveredAt?.getTime() ?? 0,
     );
     const durationMs = input.eventTime.getTime() - outageStartMs;
     const eligible = durationMs >= input.incidentPendingDurationSeconds * 1000;

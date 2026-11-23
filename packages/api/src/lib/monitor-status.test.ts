@@ -336,8 +336,8 @@ describe("worker status since", () => {
         ).toBe(recoveredAt.toISOString());
     });
 
-    it("ignores a recovery dated after the report", () => {
-        const eventTime = new Date("2026-04-26T10:05:00Z");
+    it("does not reopen a resolved outage from reports older than the recovery", () => {
+        const eventTime = new Date("2026-04-26T10:01:00Z");
         const result = isAutomaticIncidentOpenEligible({
             configuredWorkerIds: ["worker-a"],
             workerStatusById: new Map([
@@ -346,12 +346,9 @@ describe("worker status since", () => {
             activeIncident: undefined,
             eventTime,
             incidentPendingDurationSeconds: 60,
-            lastRecoveredAt: new Date("2026-04-27T10:00:00Z"),
+            lastRecoveredAt: new Date("2026-04-26T10:05:00Z"),
         });
 
-        expect(result.eligible).toBe(true);
-        expect(result.startedAt?.toISOString()).toBe(
-            previous.since.toISOString(),
-        );
+        expect(result.eligible).toBe(false);
     });
 });
