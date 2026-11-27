@@ -3,6 +3,7 @@ import {
     buildUptimeSegments,
     calculateBarSegments,
     formatTooltipDate,
+    getNewestEvent,
     parseDuration,
 } from "./uptime";
 
@@ -35,5 +36,24 @@ describe("shared uptime behavior", () => {
 
     it("formats date-only values in UTC", () => {
         expect(formatTooltipDate("2026-08-07")).toContain("Aug 7, 2026");
+    });
+});
+
+describe("getNewestEvent", () => {
+    it("picks the event that started last across outages and maintenance", () => {
+        expect(
+            getNewestEvent([
+                { id: "outage", startedAt: "2026-10-22T09:00:00Z" },
+                {
+                    id: "maintenance",
+                    startedAt: new Date("2026-10-22T14:00:00Z"),
+                },
+                { id: "older", startedAt: "2026-10-21T23:00:00Z" },
+            ])?.id,
+        ).toBe("maintenance");
+    });
+
+    it("returns nothing for a day without events", () => {
+        expect(getNewestEvent([])).toBeUndefined();
     });
 });

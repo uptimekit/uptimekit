@@ -145,3 +145,19 @@ export function calculateBarSegments(day: UptimeDay): BarSegments {
 
     return segments;
 }
+
+export interface DayEvent {
+    id: string;
+    startedAt: Date | string;
+}
+
+// The event that started last, whether it is an outage or a maintenance.
+export function getNewestEvent(events: DayEvent[]): DayEvent | undefined {
+    let newest: DayEvent | undefined;
+    for (const event of events) {
+        if (!newest || new Date(event.startedAt) > new Date(newest.startedAt)) {
+            newest = event;
+        }
+    }
+    return newest;
+}

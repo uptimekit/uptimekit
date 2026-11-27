@@ -30,6 +30,7 @@ import {
 } from "./status-page-config";
 import { calculateAggregateStatus } from "./status-utils";
 import { createTtlCache } from "./ttl-cache";
+import { type DayEvent, getNewestEvent } from "./uptime";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -351,7 +352,16 @@ export async function prepareStatusPageData(
                         dayEnd,
                     );
 
-                    return range ? [{ range, title: m.title, id: m.id }] : [];
+                    return range
+                        ? [
+                              {
+                                  range,
+                                  title: m.title,
+                                  id: m.id,
+                                  startedAt: m.startAt,
+                              },
+                          ]
+                        : [];
                 });
                 const maintenanceRanges = maintenanceItems.map(
                     (item) => item.range,
@@ -361,6 +371,7 @@ export async function prepareStatusPageData(
                 const monitoredMs = Math.max(0, DAY_MS - maintenanceMs);
                 const reportRanges: TimeRange[] = [];
                 const reportsOutsideMaintenance: typeof events.reports = [];
+                const dayEvents: DayEvent[] = [...maintenanceItems];
 
                 for (const r of events.reports) {
                     const affectsMonitor = r.affectedMonitors.some(
@@ -375,6 +386,7 @@ export async function prepareStatusPageData(
                         dayEnd,
                     );
                     if (!range) continue;
+                    dayEvents.push(r);
 
                     const rangesOutsideMaintenance = subtractRanges(
                         [range],
@@ -398,6 +410,10 @@ export async function prepareStatusPageData(
                                   100,
                           )
                         : 100;
+                const newestEvent = getNewestEvent(dayEvents);
+                const incidentLink = newestEvent
+                    ? buildPath(`/incidents/${newestEvent.id}`, routeSlug)
+                    : undefined;
 
                 if (totalIncidentMs > 0) {
                     const annotation = Array.from(
@@ -415,11 +431,7 @@ export async function prepareStatusPageData(
                         ),
                         uptime,
                         annotation,
-                        // events are newest first, so this is the latest incident that day
-                        incidentLink: buildPath(
-                            `/incidents/${reportsOutsideMaintenance[0].id}`,
-                            routeSlug,
-                        ),
+                        incidentLink,
                         downtimeMs: totalIncidentMs,
                         maintenanceMs,
                         monitoredMs,
@@ -441,10 +453,7 @@ export async function prepareStatusPageData(
                         status: "maintenance" as const,
                         uptime: 100,
                         annotation,
-                        incidentLink: buildPath(
-                            `/incidents/${maintenanceItems[0].id}`,
-                            routeSlug,
-                        ),
+                        incidentLink,
                         maintenanceMs,
                         monitoredMs,
                         duration: formatDuration(maintenanceMs),
