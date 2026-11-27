@@ -1,6 +1,7 @@
 import { getStatusPageData } from "@/status-page/lib/data-preparer";
 import type { StatusPageRecord } from "@/status-page/lib/db-queries";
 import type { IncidentHistoryPeriod } from "@/status-page/lib/incident-history";
+import { getLinkedStatusPages } from "@/status-page/lib/linked-pages";
 import { normalizeStatusPageDesign } from "@/status-page/lib/status-page-config";
 import {
     prepareIncidentDetailData,
@@ -26,9 +27,11 @@ export async function renderStatusPage(
     routeSlug?: string,
 ) {
     const design = normalizeStatusPageDesign(pageConfig.design);
-    const [ThemePage, data] = await Promise.all([
+    const [ThemePage, data, linkedPages] = await Promise.all([
         loadThemeComponent(design.themeId),
         getStatusPageData(pageConfig, routeSlug),
+        // Loaded outside the cached page data so two pages linking each other can't recurse
+        getLinkedStatusPages(pageConfig.id),
     ]);
 
     return (
@@ -36,7 +39,7 @@ export async function renderStatusPage(
             themeId={design.themeId}
             theme={design.theme}
             ThemeComponent={ThemePage}
-            componentProps={{ data }}
+            componentProps={{ data: { ...data, linkedPages } }}
         />
     );
 }

@@ -1,7 +1,7 @@
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
-import { CompressionPlugin, RPCHandler } from "@orpc/server/fetch";
+import { RPCHandler } from "@orpc/server/fetch";
 import {
     BatchHandlerPlugin,
     StrictGetMethodPlugin,
@@ -27,11 +27,9 @@ const rpcHandler = new RPCHandler(appRouter, {
             logger.error("RPC error:", error);
         }),
     ],
-    plugins: [
-        new StrictGetMethodPlugin(),
-        new BatchHandlerPlugin(),
-        new CompressionPlugin(),
-    ],
+    // No oRPC CompressionPlugin: Next already gzips responses, and both
+    // together double-gzipped every body ("Cannot parse response body").
+    plugins: [new StrictGetMethodPlugin(), new BatchHandlerPlugin()],
 });
 const apiHandler = new OpenAPIHandler(appRouter, {
     plugins: [

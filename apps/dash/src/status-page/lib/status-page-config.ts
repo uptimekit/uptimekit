@@ -1,6 +1,12 @@
 import {
+    defaultUppiesLook,
     normalizeStatusPageThemeId,
     type StatusPageBarStyle,
+    type UppiesLook,
+    uppiesAnnouncementColors,
+    uppiesCorners,
+    uppiesFonts,
+    uppiesSurfaces,
 } from "@uptimekit/config/status-page-themes";
 import type {
     NormalizedStatusPageDesign,
@@ -40,6 +46,45 @@ function normalizePercentDigits(value: unknown): number {
     return Number.isInteger(digits) && digits >= 2 && digits <= 6 ? digits : 2;
 }
 
+function oneOf<T extends string>(
+    value: unknown,
+    choices: readonly T[],
+    fallback: T,
+): T {
+    return choices.includes(value as T) ? (value as T) : fallback;
+}
+
+function asString(value: unknown): string {
+    return typeof value === "string" ? value : "";
+}
+
+export function normalizeUppiesLook(rawLook: unknown): UppiesLook {
+    const look: RawDesign =
+        rawLook && typeof rawLook === "object" ? (rawLook as RawDesign) : {};
+    const hue = Number(look.accentHue);
+    const fallback = defaultUppiesLook;
+
+    return {
+        accentHue:
+            Number.isInteger(hue) && hue >= 0 && hue <= 360
+                ? hue
+                : fallback.accentHue,
+        surface: oneOf(look.surface, uppiesSurfaces, fallback.surface),
+        corners: oneOf(look.corners, uppiesCorners, fallback.corners),
+        font: oneOf(look.font, uppiesFonts, fallback.font),
+        showStatusIcon: look.showStatusIcon !== false,
+        tagline: asString(look.tagline),
+        footerText: asString(look.footerText),
+        announcement: asString(look.announcement),
+        announcementColor: oneOf(
+            look.announcementColor,
+            uppiesAnnouncementColors,
+            fallback.announcementColor,
+        ),
+        navLinks: asString(look.navLinks),
+    };
+}
+
 export function normalizeStatusPageDesign(
     rawDesign: unknown,
 ): NormalizedStatusPageDesign {
@@ -68,6 +113,7 @@ export function normalizeStatusPageDesign(
             defaultSectionCollapsible &&
             design.defaultSectionCollapsed === true,
         allowSubscriptions: design.allowSubscriptions !== false,
+        uppies: normalizeUppiesLook(design.uppies),
     };
 }
 

@@ -50,6 +50,7 @@ import {
     ComboboxPopup,
     ComboboxValue,
 } from "@/components/ui/combobox";
+import { DataPagination } from "@/components/ui/data-pagination";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
     Dialog,
@@ -120,6 +121,7 @@ type StatusBadge = {
 };
 
 const DATE_FORMAT = "MMM d, yyyy 'at' h:mm a";
+const TIMELINE_PAGE_SIZE = 10;
 
 function getStatusBadge({
     isResolved,
@@ -477,7 +479,19 @@ function IncidentTimeline({
     setActivityToEdit: (activity: EditableActivity | null) => void;
     setActivityToDelete: (activity: EditableActivity | null) => void;
 }) {
+    const [requestedPage, setPage] = useState(1);
+    // shortcut: pages client-side because incidents.get returns every activity, move to a paged endpoint if timelines get huge
     const activities = incident.activities ?? [];
+    const totalPages = Math.max(
+        1,
+        Math.ceil(activities.length / TIMELINE_PAGE_SIZE),
+    );
+    // Deleting the only entry on the last page would otherwise leave an empty page
+    const page = Math.min(requestedPage, totalPages);
+    const visibleActivities = activities.slice(
+        (page - 1) * TIMELINE_PAGE_SIZE,
+        page * TIMELINE_PAGE_SIZE,
+    );
     const trimmedComment = comment.trim();
 
     return (
@@ -491,6 +505,8 @@ function IncidentTimeline({
                     onSubmit={(e) => {
                         e.preventDefault();
                         if (!trimmedComment || submitComment.isPending) return;
+                        // Newest entries are first, so the new comment lands on page 1
+                        setPage(1);
                         submitComment.mutate({
                             incidentId: id,
                             message: trimmedComment,
@@ -523,7 +539,7 @@ function IncidentTimeline({
                     </p>
                 ) : (
                     <ol className="relative space-y-5 before:absolute before:top-3 before:bottom-3 before:left-3 before:w-px before:bg-border">
-                        {activities.map((activity: any) => (
+                        {visibleActivities.map((activity: any) => (
                             <TimelineEntry
                                 key={activity.id}
                                 activity={activity}
@@ -533,6 +549,13 @@ function IncidentTimeline({
                         ))}
                     </ol>
                 )}
+
+                <DataPagination
+                    page={page}
+                    totalPages={totalPages}
+                    setPage={setPage}
+                    className="-mx-6 -mb-6 rounded-b-xl"
+                />
             </CardContent>
         </Card>
     );

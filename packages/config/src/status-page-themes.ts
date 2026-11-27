@@ -4,6 +4,7 @@ export const statusPageThemeIds = [
     "signal",
     "spark",
     "dashboard",
+    "uppies",
 ] as const;
 
 export type StatusPageThemeId = (typeof statusPageThemeIds)[number];
@@ -18,6 +19,7 @@ export interface StatusPageThemeCapabilities {
     scheduledMaintenance: boolean;
     incidentHistory: boolean;
     websiteLink: boolean;
+    lookOptions: boolean;
 }
 
 export interface StatusPageThemeDefinition {
@@ -36,6 +38,7 @@ const completeCapabilities = {
     scheduledMaintenance: true,
     incidentHistory: true,
     websiteLink: true,
+    lookOptions: false,
 } as const satisfies StatusPageThemeCapabilities;
 
 export const statusPageThemes = [
@@ -83,6 +86,20 @@ export const statusPageThemes = [
         supportsDarkMode: true,
         capabilities: completeCapabilities,
     },
+    {
+        id: "uppies",
+        name: "Uppies",
+        description:
+            "Quiet, configurable page ported from uppies by ryana may que",
+        supportsDarkMode: true,
+        capabilities: {
+            ...completeCapabilities,
+            headerLayout: false,
+            barStyles: ["normal"],
+            groupCollapse: false,
+            lookOptions: true,
+        },
+    },
 ] as const satisfies readonly StatusPageThemeDefinition[];
 
 export const defaultStatusPageThemeId: StatusPageThemeId = "default";
@@ -106,3 +123,44 @@ export function getStatusPageThemeDefinition(
     }
     return definition;
 }
+
+// The look options copied from uppies (github.com/schmayterling/uppies).
+export const uppiesAccentSwatches = [25, 55, 85, 150, 200, 245, 290, 330];
+export const uppiesSurfaces = ["neutral", "paper"] as const;
+export const uppiesCorners = ["sharp", "soft", "round"] as const;
+export const uppiesFonts = ["system", "rounded", "serif", "mono"] as const;
+export const uppiesAnnouncementColors = [
+    "blue",
+    "green",
+    "amber",
+    "red",
+    "neutral",
+    "accent",
+] as const;
+
+export interface UppiesLook {
+    accentHue: number;
+    surface: (typeof uppiesSurfaces)[number];
+    corners: (typeof uppiesCorners)[number];
+    font: (typeof uppiesFonts)[number];
+    showStatusIcon: boolean;
+    tagline: string;
+    footerText: string;
+    announcement: string;
+    announcementColor: (typeof uppiesAnnouncementColors)[number];
+    // One "label | https://url" per line, shown in the top bar.
+    navLinks: string;
+}
+
+export const defaultUppiesLook: UppiesLook = {
+    accentHue: 200,
+    surface: "neutral",
+    corners: "soft",
+    font: "system",
+    showStatusIcon: true,
+    tagline: "",
+    footerText: "",
+    announcement: "",
+    announcementColor: "blue",
+    navLinks: "",
+};

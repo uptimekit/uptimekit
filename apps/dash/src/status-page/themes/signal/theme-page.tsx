@@ -1,3 +1,4 @@
+import { LinkedPagesSection } from "@/status-page/components/linked-pages-section";
 import type { ThemePageProps } from "../types";
 import { CurrentIssuesBanner } from "./components/current-issues-banner";
 import { Footer } from "./components/footer";
@@ -43,6 +44,8 @@ export default function SignalTheme({ data }: ThemePageProps) {
                     <ScheduledMaintenanceSection
                         scheduledMaintenances={scheduledMaintenances}
                     />
+                    <LinkedPagesSection linkedPages={data.linkedPages} />
+
                     <PreviousIncidents
                         pastIncidents={pastIncidents}
                         slug={config.routeSlug}

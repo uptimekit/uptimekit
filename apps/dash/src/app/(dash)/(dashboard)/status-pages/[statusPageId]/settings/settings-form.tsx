@@ -10,13 +10,24 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+    keepPreviousData,
+    useMutation,
+    useQuery,
+    useQueryClient,
+} from "@tanstack/react-query";
+import { MAX_LINKED_STATUS_PAGES } from "@uptimekit/api/lib/status-page-links";
+import {
+    defaultUppiesLook,
     getStatusPageThemeDefinition,
     normalizeStatusPageThemeId,
     type StatusPageThemeCapabilities,
     statusPageThemeIds,
     statusPageThemes,
+    uppiesAnnouncementColors,
+    uppiesCorners,
+    uppiesFonts,
+    uppiesSurfaces,
 } from "@uptimekit/config/status-page-themes";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -31,6 +42,17 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+    Combobox,
+    ComboboxChip,
+    ComboboxChips,
+    ComboboxChipsInput,
+    ComboboxEmpty,
+    ComboboxItem,
+    ComboboxList,
+    ComboboxPopup,
+    ComboboxValue,
+} from "@/components/ui/combobox";
 import {
     Form,
     FormControl,
@@ -61,7 +83,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getStatusPageBaseDomain } from "@/lib/status-page-url";
 import { cn } from "@/lib/utils";
+import { normalizeUppiesLook } from "@/status-page/lib/status-page-config";
 import { client, orpc } from "@/utils/orpc";
+import { UppiesLookSection } from "./uppies-look-section";
 
 const settingsSchema = z.object({
     name: z.string().min(1, "Company name is required"),
@@ -90,6 +114,28 @@ const settingsSchema = z.object({
         .min(6, "Password must be at least 6 characters")
         .optional()
         .or(z.literal("")),
+    linkedStatusPageIds: z
+        .array(z.string())
+        .max(
+            MAX_LINKED_STATUS_PAGES,
+            `You can link up to ${MAX_LINKED_STATUS_PAGES} status pages`,
+        ),
+    uppies: z.object({
+        accentHue: z
+            .number("Hue must be a number")
+            .int("Hue must be a whole number")
+            .min(0, "Hue goes from 0 to 360")
+            .max(360, "Hue goes from 0 to 360"),
+        surface: z.enum(uppiesSurfaces),
+        corners: z.enum(uppiesCorners),
+        font: z.enum(uppiesFonts),
+        showStatusIcon: z.boolean(),
+        tagline: z.string().max(200),
+        footerText: z.string().max(500),
+        announcement: z.string().max(1000),
+        announcementColor: z.enum(uppiesAnnouncementColors),
+        navLinks: z.string().max(2000),
+    }),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -122,6 +168,11 @@ function getSettingsFormValues(statusPage: any): SettingsFormValues {
         customDomain: statusPage?.domain || "",
         isPrivate: statusPage ? !statusPage.public : false,
         password: "",
+        linkedStatusPageIds:
+            statusPage?.linkedStatusPages?.map(
+                (page: LinkableStatusPage) => page.id,
+            ) ?? [],
+        uppies: normalizeUppiesLook(design.uppies),
     };
 }
 
@@ -175,6 +226,8 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
             customDomain: "",
             isPrivate: false,
             password: "",
+            linkedStatusPageIds: [],
+            uppies: defaultUppiesLook,
         },
     });
     const defaultSectionCollapsible = useWatch({
@@ -228,6 +281,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
             domain: data.customDomain || null,
             public: !data.isPrivate,
             password: data.isPrivate ? data.password || undefined : null,
+            linkedStatusPageIds: data.linkedStatusPageIds,
             design: {
                 themeId: data.themeId,
                 logoUrl: data.logoUrl,
@@ -244,6 +298,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
                     ? data.defaultSectionCollapsed
                     : false,
                 customCss: data.customCss || "",
+                uppies: data.uppies,
             },
         });
     };
@@ -317,6 +372,14 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
                 <Separator />
 
+                <LinkedStatusPagesSettings
+                    form={form}
+                    statusPageId={statusPageId}
+                    savedPages={statusPage?.linkedStatusPages ?? []}
+                />
+
+                <Separator />
+
                 <PersonalizationSection
                     form={form}
                     statusPage={statusPage}
@@ -335,6 +398,13 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 
                 <Separator />
 
+                {themeCapabilities.lookOptions ? (
+                    <>
+                        <UppiesLookSection form={form} />
+                        <Separator />
+                    </>
+                ) : null}
+
                 <CustomDomainSection
                     form={form}
                     baseDomain={statusPageBaseDomain}
@@ -351,7 +421,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
 }
 
 type SettingsOption = { value: string; label: string };
-type SettingsFormApi = ReturnType<typeof useForm<SettingsFormValues>>;
+export type SettingsFormApi = ReturnType<typeof useForm<SettingsFormValues>>;
 
 function BasicInformationSection({
     form,
@@ -497,6 +567,142 @@ function LinksSection({ form }: { form: SettingsFormApi }) {
                             )}
                         />
                     </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+interface LinkableStatusPage {
+    id: string;
+    name: string;
+}
+
+function LinkedStatusPagesSettings({
+    form,
+    statusPageId,
+    savedPages,
+}: {
+    form: SettingsFormApi;
+    statusPageId: string;
+    savedPages: LinkableStatusPage[];
+}) {
+    const [query, setQuery] = useState("");
+    const [pickedPages, setPickedPages] = useState<LinkableStatusPage[]>([]);
+    // Searched on the server so every page in the organization can be found
+    const { data } = useQuery({
+        ...orpc.statusPages.list.queryOptions({
+            input: { q: query.trim() || undefined, limit: 50 },
+        }),
+        placeholderData: keepPreviousData,
+    });
+    const linkablePages: LinkableStatusPage[] = (data?.items ?? []).filter(
+        (page) => page.id !== statusPageId,
+    );
+    // Selected pages keep their names even when the current search leaves them out
+    const pagesById = new Map(
+        [...savedPages, ...pickedPages, ...linkablePages].map((page) => [
+            page.id,
+            page,
+        ]),
+    );
+
+    return (
+        <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+            <div className="space-y-2">
+                <h2 className="font-semibold text-lg leading-none tracking-tight">
+                    Linked status pages
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                    Show other status pages from your organization, with their
+                    live status, at the bottom of this page.
+                </p>
+            </div>
+            <Card className="md:col-span-2">
+                <CardContent className="grid gap-6 p-6">
+                    <FormField
+                        control={form.control}
+                        name="linkedStatusPageIds"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Status pages</FormLabel>
+                                <FormControl>
+                                    <Combobox
+                                        items={linkablePages}
+                                        // Keeps the saved order, which is the order shown on the page
+                                        value={field.value.flatMap((id) => {
+                                            const page = pagesById.get(id);
+                                            return page ? [page] : [];
+                                        })}
+                                        onValueChange={(
+                                            pages: LinkableStatusPage[],
+                                        ) => {
+                                            setPickedPages((previous) => [
+                                                ...previous,
+                                                ...pages,
+                                            ]);
+                                            field.onChange(
+                                                pages.map((page) => page.id),
+                                            );
+                                        }}
+                                        onInputValueChange={setQuery}
+                                        multiple
+                                    >
+                                        <ComboboxChips>
+                                            <ComboboxValue>
+                                                {(
+                                                    value: LinkableStatusPage[],
+                                                ) => (
+                                                    <>
+                                                        {value?.map((page) => (
+                                                            <ComboboxChip
+                                                                key={page.id}
+                                                                aria-label={
+                                                                    page.name
+                                                                }
+                                                            >
+                                                                {page.name}
+                                                            </ComboboxChip>
+                                                        ))}
+                                                        <ComboboxChipsInput
+                                                            aria-label="Select status pages to link"
+                                                            placeholder={
+                                                                value?.length
+                                                                    ? undefined
+                                                                    : "No linked pages"
+                                                            }
+                                                        />
+                                                    </>
+                                                )}
+                                            </ComboboxValue>
+                                        </ComboboxChips>
+                                        <ComboboxPopup>
+                                            <ComboboxEmpty>
+                                                No other status pages.
+                                            </ComboboxEmpty>
+                                            <ComboboxList>
+                                                {(page: LinkableStatusPage) => (
+                                                    <ComboboxItem
+                                                        key={page.id}
+                                                        value={page}
+                                                    >
+                                                        {page.name}
+                                                    </ComboboxItem>
+                                                )}
+                                            </ComboboxList>
+                                        </ComboboxPopup>
+                                    </Combobox>
+                                </FormControl>
+                                <FormDescription>
+                                    Pages appear in the order you add them, up
+                                    to {MAX_LINKED_STATUS_PAGES}.
+                                    Password-protected pages are shown without
+                                    their status.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </CardContent>
             </Card>
         </div>

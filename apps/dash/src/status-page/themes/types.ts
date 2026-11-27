@@ -1,6 +1,7 @@
 import type {
     StatusPageBarStyle,
     StatusPageThemeId,
+    UppiesLook,
 } from "@uptimekit/config/status-page-themes";
 import type { IncidentHistoryPeriod } from "@/status-page/lib/incident-history";
 
@@ -27,6 +28,7 @@ export interface UptimeDay {
     monitoredMs?: number;
     annotation?: string;
     duration?: string;
+    incidentLink?: string;
 }
 
 export interface StatusPageDesign {
@@ -44,6 +46,7 @@ export interface StatusPageDesign {
     defaultSectionCollapsible?: boolean;
     defaultSectionCollapsed?: boolean;
     allowSubscriptions?: boolean;
+    uppies?: Partial<UppiesLook>;
 }
 
 export interface NormalizedStatusPageDesign {
@@ -61,6 +64,7 @@ export interface NormalizedStatusPageDesign {
     defaultSectionCollapsible: boolean;
     defaultSectionCollapsed: boolean;
     allowSubscriptions: boolean;
+    uppies: UppiesLook;
 }
 
 export interface MonitorGroup {
@@ -141,9 +145,18 @@ export interface StatusPageConfig {
     design: NormalizedStatusPageDesign;
 }
 
+export interface LinkedStatusPage {
+    id: string;
+    name: string;
+    url: string;
+    // null for password-protected pages so their status isn't leaked
+    status: StatusType | null;
+}
+
 export interface StatusPageData {
     config: StatusPageConfig;
     overallStatus: StatusType;
+    linkedPages?: LinkedStatusPage[];
     monitorGroups: GroupedMonitors[];
     activeIssues: Incident[];
     scheduledMaintenances: Maintenance[];

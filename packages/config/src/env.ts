@@ -88,7 +88,7 @@ export function loadEnv() {
         const envPath = path.join(root, ".env");
 
         if (fs.existsSync(envPath)) {
-            config({ path: envPath });
+            config({ path: envPath, quiet: true });
         }
     }
 

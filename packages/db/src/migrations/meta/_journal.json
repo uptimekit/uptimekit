@@ -274,6 +274,13 @@
             "when": 1792695532415,
             "tag": "0038_oidc_allow_password_login",
             "breakpoints": true
+        },
+        {
+            "idx": 39,
+            "version": "7",
+            "when": 1795259140851,
+            "tag": "0039_status_page_links",
+            "breakpoints": true
         }
     ]
 }

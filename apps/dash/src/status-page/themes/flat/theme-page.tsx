@@ -1,3 +1,4 @@
+import { LinkedPagesSection } from "@/status-page/components/linked-pages-section";
 import { ScheduledMaintenanceSection } from "@/status-page/components/scheduled-maintenance-section";
 import type { ThemePageProps } from "../types";
 import { ActiveIssuesSection } from "./components/active-issues-section";
@@ -53,6 +54,8 @@ export default function FlatTheme({ data }: ThemePageProps) {
                     <ScheduledMaintenanceSection
                         scheduledMaintenances={scheduledMaintenances}
                     />
+
+                    <LinkedPagesSection linkedPages={data.linkedPages} />
 
                     <PreviousIncidents
                         pastIncidents={pastIncidents}

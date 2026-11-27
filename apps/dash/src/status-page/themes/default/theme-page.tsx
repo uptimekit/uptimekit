@@ -1,3 +1,4 @@
+import { LinkedPagesSection } from "@/status-page/components/linked-pages-section";
 import { ScheduledMaintenanceSection } from "@/status-page/components/scheduled-maintenance-section";
 import type { ThemePageProps } from "../types";
 import { ActiveIssuesSection } from "./components/active-issues-section";
@@ -16,6 +17,7 @@ export default function DefaultTheme({ data }: ThemePageProps) {
         activeIssues,
         scheduledMaintenances,
         pastIncidents,
+        linkedPages,
     } = data;
     const { design } = config;
 
@@ -49,6 +51,8 @@ export default function DefaultTheme({ data }: ThemePageProps) {
                     <ScheduledMaintenanceSection
                         scheduledMaintenances={scheduledMaintenances}
                     />
+
+                    <LinkedPagesSection linkedPages={linkedPages} />
 
                     <PreviousIncidents
                         pastIncidents={pastIncidents}

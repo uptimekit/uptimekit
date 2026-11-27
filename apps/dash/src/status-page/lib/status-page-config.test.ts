@@ -1,4 +1,5 @@
 import {
+    defaultUppiesLook,
     getStatusPageThemeDefinition,
     statusPageThemeIds,
     statusPageThemes,
@@ -6,6 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import {
     normalizeStatusPageDesign,
+    normalizeUppiesLook,
     prepareStatusPageConfig,
 } from "./status-page-config";
 
@@ -19,7 +21,6 @@ describe("status page design normalization", () => {
             expect(getStatusPageThemeDefinition(theme.id)).toBe(theme);
             expect(theme.capabilities.barStyles.length).toBeGreaterThan(0);
             expect(theme.capabilities).toMatchObject({
-                groupCollapse: true,
                 activeIssues: true,
                 scheduledMaintenance: true,
                 incidentHistory: true,
@@ -44,7 +45,44 @@ describe("status page design normalization", () => {
             defaultSectionCollapsible: true,
             defaultSectionCollapsed: false,
             allowSubscriptions: true,
+            uppies: defaultUppiesLook,
         });
+    });
+
+    it("keeps valid uppies look choices and replaces invalid ones", () => {
+        expect(
+            normalizeUppiesLook({
+                accentHue: 290,
+                surface: "paper",
+                corners: "round",
+                font: "mono",
+                showStatusIcon: false,
+                tagline: "hi",
+                announcementColor: "red",
+                navLinks: "docs | https://docs.example.com",
+            }),
+        ).toEqual({
+            ...defaultUppiesLook,
+            accentHue: 290,
+            surface: "paper",
+            corners: "round",
+            font: "mono",
+            showStatusIcon: false,
+            tagline: "hi",
+            announcementColor: "red",
+            navLinks: "docs | https://docs.example.com",
+        });
+
+        expect(
+            normalizeUppiesLook({
+                accentHue: 999,
+                surface: "glass",
+                corners: 3,
+                font: "comic",
+                tagline: 42,
+                announcementColor: "pink",
+            }),
+        ).toEqual(defaultUppiesLook);
     });
 
     it("keeps the system color mode and falls back to light for unknown values", () => {
