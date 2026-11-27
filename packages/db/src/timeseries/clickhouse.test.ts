@@ -38,7 +38,6 @@ beforeAll(async () => {
         url: getClickHouseUrl(),
         username: "default",
         password: "test",
-        asyncInsertBusyTimeoutMs: 200,
     });
 
     await driver.ensureSchema();
@@ -68,23 +67,28 @@ describe("ClickHouse async inserts", () => {
         if (!driver) throw new Error("ClickHouse container failed to start");
         const monitorId = `parts-${crypto.randomUUID()}`;
         const now = Date.now();
-
-        await driver.insertMonitorEvents(
-            Array.from({ length: 20 }, (_, index) => ({
-                id: crypto.randomUUID(),
-                monitorId,
-                status: "up",
-                latency: 100,
-                timestamp: new Date(now - index * 1000),
-            })),
-        );
-
         const client = createClient({
             url: getClickHouseUrl(),
             username: "default",
             password: "test",
         });
+
+        // Without merges every insert keeps its own part, so the count shows
+        // how many parts the inserts created.
+        await client.command({
+            query: "SYSTEM STOP MERGES uptimekit.monitor_events",
+        });
         try {
+            await driver.insertMonitorEvents(
+                Array.from({ length: 20 }, (_, index) => ({
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "up",
+                    latency: 100,
+                    timestamp: new Date(now - index * 1000),
+                })),
+            );
+
             const result = await client.query({
                 query: `
                     SELECT uniqExact(_part) AS parts, count() AS rows
@@ -99,6 +103,9 @@ describe("ClickHouse async inserts", () => {
             expect(Number(row?.rows)).toBe(20);
             expect(Number(row?.parts)).toBeLessThanOrEqual(2);
         } finally {
+            await client.command({
+                query: "SYSTEM START MERGES uptimekit.monitor_events",
+            });
             await client.close();
         }
     });

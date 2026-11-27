@@ -88,7 +88,7 @@ By default the ClickHouse image logs at `trace` level and keeps a dozen system l
 </clickhouse>
 ```
 
-On ClickHouse 26.8 or newer, UptimeKit writes monitor events with deduplicated async inserts, so the server groups rows into one part per second instead of one part per row.
+On ClickHouse 26.8 or newer, UptimeKit writes monitor events with deduplicated async inserts, so the server writes each worker batch as one part instead of one part per row. Older servers get synchronous inserts, because their async deduplication could drop or reject rows.
 
 Turning a log off does not delete data it already wrote. ClickHouse also keeps a renamed copy, such as `system.query_log_1`, each time an upgrade changes a log table's schema. List them and drop the ones you no longer need:
 

@@ -6,7 +6,7 @@ rss: true
 ---
 <Update label="November 2026" description="Unreleased">
   - **ClickHouse disk writes:** `docker-compose.clickhouse.yml` now ships a low-write server config that lowers logging to `warning`, turns off the noisy system log tables and keeps `query_log` for 3 days. On a small production instance these logs wrote 234 GB in 6 days for 122 MB of monitoring data.
-  - **ClickHouse inserts:** Monitor events and status changes now use deduplicated async inserts on ClickHouse 26.8 or newer, so the server writes one part per second instead of one part per row. Older servers keep synchronous inserts.
+  - **ClickHouse inserts:** Monitor events and status changes now use deduplicated async inserts on ClickHouse 26.8 or newer, so each worker batch is written as one part instead of one part per row. Older servers are forced to synchronous inserts, because their async deduplication could drop or reject rows.
   - **Docs:** Added a ClickHouse disk usage section with the server config and a query to clean up old `system.*_log` tables.
 </Update>
 

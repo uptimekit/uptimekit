@@ -41,7 +41,6 @@ const CLICKHOUSE_DEDUPLICATION_WINDOW = 10_000;
 const CLICKHOUSE_INSERT_CONCURRENCY = 8;
 const CLICKHOUSE_ASYNC_INSERT_CONCURRENCY = 32;
 const CLICKHOUSE_MAX_OPEN_CONNECTIONS = 32;
-const DEFAULT_ASYNC_INSERT_BUSY_TIMEOUT_MS = 1000;
 // 26.2 added per-query deduplication for async inserts on plain MergeTree;
 // 26.6 and 26.8 fixed lost and rejected rows in partially deduplicated flushes.
 const ASYNC_INSERT_MIN_VERSION = { major: 26, minor: 8 };
@@ -169,7 +168,6 @@ export interface ClickHouseDriverOptions {
     url?: string;
     username?: string;
     password?: string;
-    asyncInsertBusyTimeoutMs?: number;
 }
 
 export class ClickHouseDriver implements TimeSeriesDriver {
@@ -273,24 +271,23 @@ export class ClickHouseDriver implements TimeSeriesDriver {
         return json.data[0]?.version ?? "";
     }
 
-    // Without async inserts every row becomes its own part on disk.
     private getInsertSettings(id: string): ClickHouseSettings {
         const deduplication: ClickHouseSettings = {
             insert_deduplicate: 1,
             insert_deduplication_token: getInsertDeduplicationToken(id),
         };
+        // Recent servers enable async inserts by default, including versions
+        // whose async deduplication could drop or reject rows.
         if (!this.useAsyncInsert) {
-            return deduplication;
+            return { ...deduplication, async_insert: 0 };
         }
 
+        // The adaptive flush window stays at 50-200 ms, so workers waiting
+        // for the response are not throttled by a long flush delay.
         return {
             ...deduplication,
             async_insert: 1,
             wait_for_async_insert: 1,
-            async_insert_use_adaptive_busy_timeout: 0,
-            async_insert_busy_timeout_ms:
-                this.options.asyncInsertBusyTimeoutMs ??
-                DEFAULT_ASYNC_INSERT_BUSY_TIMEOUT_MS,
         };
     }
 
