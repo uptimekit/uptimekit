@@ -1,3 +1,4 @@
+import { defaultUppiesLook } from "@uptimekit/config/status-page-themes";
 import { loadThemeComponent } from "@/status-page/lib/theme-loader";
 import { normalizeStatusPageThemeId } from "@/status-page/themes";
 import { ThemePageWrapper } from "@/status-page/themes/theme-page-wrapper";
@@ -57,6 +58,7 @@ function buildDemoData(
                 defaultSectionCollapsible: true,
                 defaultSectionCollapsed: false,
                 allowSubscriptions: false,
+                uppies: defaultUppiesLook,
             },
         },
         overallStatus: "operational",

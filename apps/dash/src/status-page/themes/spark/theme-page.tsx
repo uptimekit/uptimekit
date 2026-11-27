@@ -1,3 +1,4 @@
+import { LinkedPagesSection } from "@/status-page/components/linked-pages-section";
 import { ScheduledMaintenanceSection } from "@/status-page/components/scheduled-maintenance-section";
 import {
     ActiveStatusEvents,
@@ -122,6 +123,10 @@ export default function SparkTheme({ data }: ThemePageProps) {
                 <ActiveStatusEvents incidents={activeIssues} />
                 <ScheduledMaintenanceSection
                     scheduledMaintenances={scheduledMaintenances}
+                />
+                <LinkedPagesSection
+                    linkedPages={data.linkedPages}
+                    className="mb-0"
                 />
                 <StatusEventHistory
                     incidentsByDate={pastIncidents}

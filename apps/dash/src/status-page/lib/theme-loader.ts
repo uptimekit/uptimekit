@@ -44,6 +44,11 @@ const themeRuntimes: Record<StatusPageThemeId, ThemeRuntime> = {
             import("@/status-page/themes/dashboard/incident-detail"),
         updates: () => import("@/status-page/themes/dashboard/updates"),
     },
+    uppies: {
+        page: () => import("@/status-page/themes/uppies/theme-page"),
+        incident: () => import("@/status-page/themes/uppies/incident-detail"),
+        updates: () => import("@/status-page/themes/uppies/updates"),
+    },
 };
 
 export async function loadThemeComponent(

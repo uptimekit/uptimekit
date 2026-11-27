@@ -5,6 +5,7 @@ import {
     integer,
     json,
     pgTable,
+    primaryKey,
     text,
     timestamp,
 } from "drizzle-orm/pg-core";
@@ -73,6 +74,25 @@ export const statusPageMonitor = pgTable(
     (table) => [
         index("status_page_monitor_pageId_idx").on(table.statusPageId),
         index("status_page_monitor_monitorId_idx").on(table.monitorId),
+    ],
+);
+
+export const statusPageLink = pgTable(
+    "status_page_link",
+    {
+        statusPageId: text("status_page_id")
+            .notNull()
+            .references(() => statusPage.id, { onDelete: "cascade" }),
+        linkedStatusPageId: text("linked_status_page_id")
+            .notNull()
+            .references(() => statusPage.id, { onDelete: "cascade" }),
+        order: integer("order").default(0).notNull(),
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.statusPageId, table.linkedStatusPageId],
+        }),
+        index("status_page_link_linkedId_idx").on(table.linkedStatusPageId),
     ],
 );
 

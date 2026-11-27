@@ -29,6 +29,7 @@ import {
     statusPage,
     statusPageEmailSubscribers,
     statusPageGroup,
+    statusPageLink,
     statusPageMonitor,
     statusPageReport,
     statusPageReportMonitor,
@@ -1214,6 +1215,21 @@ const statusPageMonitors = {
     },
 } satisfies Record<string, StatusPageMonitorSeed>;
 
+// Each page links back to the main one; the main page links to all others, including the password-protected one
+const statusPageLinks = [
+    [ids.statusPages.public, ids.statusPages.developers],
+    [ids.statusPages.public, ids.statusPages.europe],
+    [ids.statusPages.public, ids.statusPages.internal],
+    [ids.statusPages.developers, ids.statusPages.public],
+    [ids.statusPages.developers, ids.statusPages.europe],
+    [ids.statusPages.europe, ids.statusPages.public],
+    [ids.statusPages.internal, ids.statusPages.public],
+].map(([statusPageId, linkedStatusPageId], order) => ({
+    statusPageId,
+    linkedStatusPageId,
+    order,
+}));
+
 // One page per theme so every theme and design option is visible out of the box.
 const statusPages: StatusPageSeed[] = [
     {
@@ -1864,7 +1880,7 @@ async function seedRelationalData(
         await tx.insert(user).values([
             {
                 id: ids.user,
-                name: "Alex Carter",
+                name: "Eric Cartman",
                 email: DEMO.email,
                 emailVerified: true,
                 image: null,
@@ -1997,6 +2013,7 @@ async function seedRelationalData(
         await tx.insert(statusPage).values(statusPageRows.pages);
         await tx.insert(statusPageGroup).values(statusPageRows.groupRows);
         await tx.insert(statusPageMonitor).values(statusPageRows.monitorRows);
+        await tx.insert(statusPageLink).values(statusPageLinks);
 
         await tx.insert(incident).values([...incidents, ...maintenanceWindows]);
         await tx

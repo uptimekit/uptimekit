@@ -1,0 +1,733 @@
+/* Uppies theme. Ported from uppies by ryana may que, MIT licensed:
+   https://github.com/schmayterling/uppies (see LICENSE in this folder).
+   The tokens are uppies' house set with an --up- prefix, because the shared
+   components read shadcn tokens of the same names (--muted, --accent). */
+
+[data-theme="uppies"] {
+    color-scheme: light;
+
+    --up-font-ui:
+        -apple-system, BlinkMacSystemFont, "Geist", system-ui, sans-serif;
+    --up-font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --up-font-rounded: ui-rounded, "SF Pro Rounded", "Geist", sans-serif;
+    --up-font-serif: "EB Garamond", "Iowan Old Style", Georgia, serif;
+    --up-text-xs: 12px;
+    --up-text-sm: 13px;
+    --up-text-heading: 16px;
+    --up-text-body: 16px;
+    --up-text-section: 20px;
+    --up-text-title: 24px;
+    --up-tracking-heading: -0.015em;
+
+    --up-space-0-5: 2px;
+    --up-space-1: 4px;
+    --up-space-1-5: 6px;
+    --up-space-2: 8px;
+    --up-space-3: 12px;
+    --up-space-4: 16px;
+    --up-space-5: 24px;
+    --up-space-6: 32px;
+    --up-space-7: 48px;
+    --up-space-8: 64px;
+    --up-target-min: 24px;
+    --up-content-width: 720px;
+
+    --up-radius-inner: 4px;
+    --up-radius-control: 6px;
+    --up-radius-card: 12px;
+    --up-radius-round: 999px;
+
+    --up-hue: 200;
+    --up-background: light-dark(oklch(1 0 0), oklch(0.21 0 0));
+    --up-surface: light-dark(oklch(0.97 0 0), oklch(0.25 0 0));
+    --up-elevated: light-dark(oklch(1 0 0), oklch(0.26 0 0));
+    --up-ink: light-dark(oklch(0.24 0.008 200), oklch(0.93 0.005 200));
+    --up-muted: light-dark(oklch(0.49 0.012 200), oklch(0.76 0.012 200));
+    --up-border: light-dark(oklch(0.9 0 0), oklch(0.33 0 0));
+    --up-border-strong: light-dark(
+        oklch(0.84 0.006 200),
+        oklch(0.42 0.006 200)
+    );
+    --up-border-control: light-dark(
+        oklch(0.62 0.006 200),
+        oklch(0.56 0.006 200)
+    );
+    --up-hover: light-dark(oklch(0.943 0 0), oklch(0.285 0 0));
+    --up-active: light-dark(oklch(0.919 0 0), oklch(0.31 0 0));
+    --up-overlay: oklch(0 0 0 / 0.2);
+    --up-success: light-dark(oklch(0.437 0.097 149), oklch(0.874 0.103 138));
+    --up-warning: light-dark(oklch(0.432 0.093 71), oklch(0.865 0.088 86));
+    --up-danger: light-dark(oklch(0.484 0.171 20), oklch(0.833 0.093 19));
+    --up-info: light-dark(oklch(0.439 0.14 262), oklch(0.833 0.085 256));
+    --up-shadow-popover: 0 6px 24px var(--up-overlay);
+    --up-motion-fast: 120ms;
+    --up-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme="uppies"].dark {
+    color-scheme: dark;
+}
+
+/* declared again on .uppies, where the page sets its own --up-hue. lightness
+   and chroma stay fixed so any hue keeps its contrast in both themes. */
+[data-theme="uppies"],
+.uppies {
+    --up-accent: light-dark(
+        oklch(0.45 0.075 var(--up-hue)),
+        oklch(0.8 0.075 var(--up-hue))
+    );
+}
+
+/* the shared components (subscribe dialog, period picker, linked pages) speak
+   shadcn tokens. they are declared again on .uppies so a look choice there
+   (paper, corners) reaches them too. */
+[data-theme="uppies"],
+[data-theme="uppies"] .uppies {
+    --background: var(--up-background);
+    --foreground: var(--up-ink);
+    --card: var(--up-background);
+    --card-foreground: var(--up-ink);
+    --popover: var(--up-elevated);
+    --popover-foreground: var(--up-ink);
+    --primary: var(--up-ink);
+    --primary-foreground: var(--up-background);
+    --secondary: var(--up-surface);
+    --secondary-foreground: var(--up-ink);
+    --muted: var(--up-surface);
+    --muted-foreground: var(--up-muted);
+    --accent: var(--up-hover);
+    --accent-foreground: var(--up-ink);
+    --border: var(--up-border);
+    --input: var(--up-border-control);
+    --ring: var(--up-accent);
+    --radius: var(--up-radius-card);
+}
+
+[data-theme="uppies"] body {
+    background: var(--up-background);
+}
+
+/* the easy look settings. the default choices add nothing. */
+.uppies[data-surface="paper"] {
+    --up-background: light-dark(oklch(0.985 0.022 93), oklch(0.19 0 0));
+    --up-surface: light-dark(oklch(0.975 0.014 78), oklch(0.22 0 0));
+    --up-ink: light-dark(oklch(0.225 0.011 73), oklch(0.94 0 0));
+    --up-muted: light-dark(oklch(0.47 0.025 74), oklch(0.76 0 0));
+    --up-border: light-dark(rgb(31 27 22 / 0.2), oklch(0.36 0 0));
+}
+.uppies[data-corners="sharp"] {
+    --up-radius-inner: 0px;
+    --up-radius-control: 2px;
+    --up-radius-card: 4px;
+}
+.uppies[data-corners="round"] {
+    --up-radius-inner: 6px;
+    --up-radius-control: 10px;
+    --up-radius-card: 18px;
+}
+.uppies[data-font="rounded"] {
+    --up-font-ui: var(--up-font-rounded);
+}
+.uppies[data-font="serif"] {
+    --up-font-ui: var(--up-font-serif);
+}
+.uppies[data-font="mono"] {
+    --up-font-ui: var(--up-font-mono);
+}
+
+/* base */
+.uppies {
+    min-height: 100vh;
+    background: var(--up-background);
+    color: var(--up-ink);
+    font-family: var(--up-font-ui);
+    font-size: var(--up-text-body);
+    line-height: 1.5;
+}
+.uppies .column {
+    max-inline-size: var(--up-content-width);
+    margin-inline: auto;
+    padding: var(--up-space-6) var(--up-space-4) var(--up-space-8);
+}
+
+/* element rules sit in tailwind's base layer, under its utilities, so the
+   shared components inside the page (period picker, linked pages) keep
+   their own classes. uppies' markup still wins over preflight here. */
+@layer base {
+    .uppies *,
+    .uppies *::before,
+    .uppies *::after {
+        box-sizing: border-box;
+    }
+    .uppies :is(h1, h2, h3, h4) {
+        margin: 0;
+        font-weight: 600;
+        text-wrap: balance;
+    }
+    .uppies h1 {
+        font-size: var(--up-text-title);
+        letter-spacing: var(--up-tracking-heading);
+    }
+    .uppies :is(h3, h4) {
+        font-size: var(--up-text-heading);
+    }
+    .uppies h2 {
+        font-size: var(--up-text-section);
+        letter-spacing: var(--up-tracking-heading);
+    }
+    .uppies :is(section, .incident) {
+        margin-block-start: var(--up-space-6);
+    }
+    .uppies :is(section > h2, .title-row) {
+        margin-block-end: var(--up-space-3);
+    }
+    .uppies p {
+        margin-block: var(--up-space-2);
+    }
+    .uppies a {
+        color: inherit;
+        text-underline-offset: 0.2em;
+        transition: color var(--up-motion-fast) var(--up-ease-out);
+    }
+    @media (hover: hover) {
+        .uppies a:hover {
+            color: var(--up-accent);
+        }
+    }
+}
+.uppies :focus-visible {
+    outline: 2px solid var(--up-accent);
+    outline-offset: 2px;
+}
+.uppies ::selection {
+    background: color-mix(in oklab, var(--up-accent) 22%, var(--up-background));
+}
+.uppies :is(.muted, .meta) {
+    color: var(--up-muted);
+}
+.uppies .meta {
+    font-size: var(--up-text-sm);
+}
+.uppies .title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--up-space-3);
+    flex-wrap: wrap;
+}
+.uppies .title-row > a.meta {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--up-target-min);
+}
+.uppies .title-ruled {
+    padding-block-end: var(--up-space-2);
+    border-block-end: 1px solid var(--up-border);
+}
+
+/* the status page's own top bar: its name on the left, its links on the right */
+.uppies .site-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--up-space-2) var(--up-space-5);
+    margin-block-end: var(--up-space-6);
+    padding-block-end: var(--up-space-3);
+    border-block-end: 1px solid var(--up-border);
+}
+.uppies .site-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--up-space-2);
+    min-inline-size: 0;
+    color: var(--up-accent);
+    font-size: var(--up-text-heading);
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+.uppies .logo {
+    block-size: 1.5em;
+    inline-size: auto;
+    max-inline-size: 8em;
+    object-fit: contain;
+}
+.uppies .site-links {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--up-space-1) var(--up-space-4);
+    font-size: var(--up-text-heading);
+}
+.uppies .site-subscribe {
+    margin-inline-start: auto;
+}
+.uppies .site-links > a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--up-target-min);
+    color: var(--up-muted);
+    text-decoration: none;
+}
+@media (hover: hover) {
+    .uppies .site-links > a:hover {
+        color: var(--up-accent);
+    }
+}
+.uppies .site-links > a[aria-current] {
+    color: var(--up-ink);
+    font-weight: 600;
+}
+
+/* announcement: a message that stands apart from the page around it */
+.uppies .page-announcement {
+    --tone: var(--up-info);
+    display: block;
+    margin: 0 0 var(--up-space-5);
+    padding: var(--up-space-2) var(--up-space-3);
+    border: 1px solid color-mix(in oklab, var(--tone) 35%, var(--up-border));
+    border-inline-start: 2px solid var(--tone);
+    border-radius: var(--up-radius-control);
+    background: color-mix(in oklab, var(--tone) 8%, var(--up-background));
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.uppies .announcement-red {
+    --tone: var(--up-danger);
+}
+.uppies .announcement-amber {
+    --tone: var(--up-warning);
+}
+.uppies .announcement-green {
+    --tone: var(--up-success);
+}
+.uppies .announcement-neutral {
+    --tone: var(--up-muted);
+}
+.uppies .announcement-accent {
+    --tone: var(--up-accent);
+}
+
+/* the banner takes the colour of the state it reports, so an outage does not look like a calm day */
+.uppies .banner {
+    display: flex;
+    align-items: center;
+    gap: var(--up-space-3);
+    padding: var(--up-space-4);
+    border: 1px solid var(--up-border);
+    border-radius: var(--up-radius-card);
+    background: var(--up-surface);
+    font-size: var(--up-text-title);
+}
+.uppies .banner-ok {
+    border-color: color-mix(in oklab, var(--up-success) 50%, var(--up-border));
+}
+.uppies .banner-warn {
+    border-color: var(--up-warning);
+    background: color-mix(in oklab, var(--up-warning) 8%, var(--up-surface));
+}
+.uppies .banner-down {
+    border-color: var(--up-danger);
+    background: color-mix(in oklab, var(--up-danger) 8%, var(--up-surface));
+}
+.uppies .banner-text {
+    margin: 0;
+    font-size: 1em;
+    letter-spacing: var(--up-tracking-heading);
+}
+.uppies .status-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--up-space-1) var(--up-space-3);
+    margin-block-start: var(--up-space-2);
+}
+.uppies .status-meta p {
+    margin: 0;
+}
+.uppies .status-checked {
+    font-variant-numeric: tabular-nums;
+}
+
+/* a round status icon is as tall as the text it stands beside */
+.uppies .status-icon {
+    flex: none;
+    inline-size: 1em;
+    block-size: 1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.uppies .status-icon .status-dot {
+    fill: currentColor;
+    stroke: none;
+}
+.uppies .status-icon-wrench path {
+    stroke-width: 2.5;
+}
+.uppies .status-icon-check {
+    color: var(--up-success);
+}
+.uppies .status-icon-warning {
+    color: var(--up-warning);
+}
+.uppies .status-icon-cross {
+    color: var(--up-danger);
+}
+.uppies .status-icon-wrench {
+    color: var(--up-info);
+}
+.uppies .status-icon-dash {
+    color: var(--up-muted);
+}
+
+/* components */
+.uppies .components {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--up-space-5);
+}
+.uppies .category h3 {
+    margin-block-start: var(--up-space-3);
+    padding-block-end: var(--up-space-2);
+    border-block-end: 1px solid var(--up-border);
+    color: var(--up-muted);
+    font-size: var(--up-text-sm);
+    font-weight: 400;
+}
+.uppies .category:first-child h3 {
+    margin-block-start: 0;
+}
+.uppies .component-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--up-space-3);
+    margin-block-end: var(--up-space-2);
+}
+.uppies .component-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.uppies .component-description {
+    margin: calc(-1 * var(--up-space-1)) 0 var(--up-space-2);
+}
+
+/* state: a word, a colour and a shape together */
+.uppies .state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--up-space-1-5);
+    white-space: nowrap;
+    font-size: var(--up-text-sm);
+}
+.uppies .mark {
+    flex: none;
+    fill: currentColor;
+}
+.uppies .mark .hollow {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+.uppies .state-ok {
+    color: var(--up-success);
+}
+.uppies .state-warn {
+    color: var(--up-warning);
+}
+.uppies .state-down {
+    color: var(--up-danger);
+}
+.uppies .state-none {
+    color: var(--up-muted);
+}
+
+/* the uptime strip: one bar per day, shorter as the day gets worse */
+.uppies .strip {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: var(--up-space-0-5);
+    block-size: var(--up-space-5);
+}
+.uppies .strip-dense {
+    gap: 0;
+}
+.uppies .strip-dense .day {
+    border-radius: 0;
+}
+.uppies .day {
+    position: relative;
+    flex: 1;
+    min-inline-size: 0;
+    border-radius: var(--up-space-0-5);
+}
+.uppies .day-ok {
+    block-size: 100%;
+    background: var(--up-success);
+}
+.uppies .day-warn {
+    block-size: 70%;
+    background: var(--up-warning);
+}
+.uppies .day-down {
+    block-size: 40%;
+    background: var(--up-danger);
+}
+.uppies .day-maint {
+    block-size: 100%;
+    background: var(--up-info);
+}
+.uppies .day-none {
+    block-size: 100%;
+    background: var(--up-active);
+}
+/* a tooltip for each day, drawn without script. it opens on hover and on a
+   tap, and the cells near either end align it inward so it stays on screen. */
+.uppies .day:is(:hover, :focus)::after {
+    content: attr(data-tip);
+    position: absolute;
+    /* measured from the strip's height, not the bar's, so short (bad) days don't drop it */
+    inset-block-end: calc(var(--up-space-5) + var(--up-space-1-5));
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    z-index: 1;
+    padding: var(--up-space-1) var(--up-space-2);
+    border: 1px solid var(--up-border-strong);
+    border-radius: var(--up-radius-control);
+    background: var(--up-elevated);
+    box-shadow: var(--up-shadow-popover);
+    color: var(--up-ink);
+    font-size: var(--up-text-sm);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.uppies .day:nth-child(-n + 10):is(:hover, :focus)::after {
+    inset-inline-start: 0;
+    translate: 0 0;
+}
+.uppies .day:nth-last-child(-n + 10):is(:hover, :focus)::after {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    translate: 0 0;
+}
+.uppies .strip-legend {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--up-space-3);
+    margin-block-start: var(--up-space-1);
+    font-variant-numeric: tabular-nums;
+}
+.uppies .narrow-only {
+    display: none;
+}
+
+/* incidents and maintenance */
+.uppies .incident {
+    padding: var(--up-space-4);
+    border: 1px solid var(--up-border);
+    border-radius: var(--up-radius-card);
+}
+.uppies .incident-open {
+    border-color: var(--up-warning);
+}
+.uppies .incident-open h2,
+.uppies .tl-incident h4 {
+    margin: 0;
+    font-size: var(--up-text-heading);
+    letter-spacing: 0;
+}
+.uppies .cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--up-space-3);
+}
+.uppies .cards .incident {
+    margin: 0;
+}
+.uppies .maintenance h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--up-space-2);
+}
+.uppies .maintenance > .meta {
+    margin: var(--up-space-1) 0 0;
+}
+.uppies .maintenance-now {
+    border-color: var(--up-info);
+}
+.uppies .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--up-space-1-5);
+    margin: var(--up-space-2) 0 0;
+}
+.uppies .chip {
+    padding: var(--up-space-0-5) var(--up-space-2);
+    border-radius: var(--up-radius-round);
+    background: color-mix(in oklab, var(--up-info) 14%, var(--up-background));
+    color: var(--up-info);
+    font-size: var(--up-text-xs);
+    font-weight: 600;
+}
+.uppies .chip-plain {
+    border-radius: var(--up-radius-control);
+    background: var(--up-surface);
+    color: var(--up-muted);
+    font-weight: 400;
+    text-decoration: none;
+}
+.uppies .incident-open .chip-plain {
+    background: var(--up-hover);
+}
+
+/* each incident's updates run down a rail: a dot per update, and a line that
+   stops short of the dots on both ends */
+.uppies .updates {
+    list-style: none;
+    margin: var(--up-space-3) 0 0;
+    padding: 0;
+}
+.uppies .updates > li {
+    position: relative;
+    padding-inline-start: var(--up-space-5);
+    padding-block-end: var(--up-space-4);
+}
+.uppies .updates > li:last-child {
+    padding-block-end: 0;
+}
+.uppies .updates > li::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: var(--up-space-0-5);
+    inset-block-start: var(--up-space-1-5);
+    inline-size: var(--up-space-2);
+    block-size: var(--up-space-2);
+    border-radius: var(--up-radius-round);
+    background: var(--up-border-strong);
+}
+.uppies .updates > li::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: calc(var(--up-space-1) + 1px);
+    inset-block: calc(var(--up-space-4) + var(--up-space-0-5))
+        calc(-1 * var(--up-space-0-5));
+    inline-size: 2px;
+    border-radius: var(--up-radius-round);
+    background: var(--up-border);
+}
+.uppies .updates > li:last-child::after {
+    display: none;
+}
+.uppies .updates > .update-open::before {
+    background: var(--up-warning);
+}
+.uppies .update-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--up-space-1) var(--up-space-2);
+    margin: 0;
+}
+.uppies .update-body {
+    margin: var(--up-space-1) 0 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* the timeline: the day on the left, what happened on the right */
+.uppies .tl {
+    list-style: none;
+    margin: var(--up-space-4) 0 0;
+    padding: 0;
+}
+.uppies .tl-day {
+    display: grid;
+    grid-template-columns: calc(var(--up-space-8) * 2 + var(--up-space-6)) minmax(
+            0,
+            1fr
+        );
+    gap: var(--up-space-2) var(--up-space-5);
+    padding-block-end: var(--up-space-6);
+}
+.uppies .tl-day:last-child {
+    padding-block-end: 0;
+}
+.uppies .tl-when {
+    display: grid;
+    justify-items: start;
+    align-content: start;
+    gap: var(--up-space-2);
+    margin: 0;
+}
+.uppies .tl-date {
+    margin: 0;
+    font-size: var(--up-text-heading);
+}
+.uppies .tl-what {
+    display: grid;
+    gap: var(--up-space-5);
+    min-inline-size: 0;
+}
+.uppies .tl-incident {
+    overflow-wrap: anywhere;
+}
+.uppies .tl-incident h4 a {
+    text-decoration: none;
+}
+
+.uppies .page-foot {
+    margin-block-start: var(--up-space-7);
+}
+.uppies .page-foot p {
+    margin-block: var(--up-space-1);
+}
+.uppies .page-foot a {
+    text-decoration: underline;
+}
+
+/* phones show 30 days so each day stays wide enough to see */
+@media (max-width: 520px) {
+    .uppies .strip > .day:nth-last-child(n + 31) {
+        display: none;
+    }
+    .uppies .wide-only {
+        display: none;
+    }
+    .uppies .narrow-only {
+        display: inline;
+    }
+    .uppies .banner {
+        font-size: var(--up-text-heading);
+    }
+    .uppies .tl-day {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .uppies .tl-when {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding-block-end: var(--up-space-2);
+        border-block-end: 1px solid var(--up-border);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .uppies * {
+        transition-duration: 0s !important;
+    }
+}

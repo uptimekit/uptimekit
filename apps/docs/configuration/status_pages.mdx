@@ -182,6 +182,34 @@ Password-protected status pages include several security features:
 5. Upon success, a secure session token is issued for 24 hours
 6. User can access the status page without re-authentication during the session period
 
+## Linked Status Pages
+
+A status page can link to other status pages in the same organization. Linked pages appear in an **Other status pages** list near the bottom of the page, each showing its live status, so visitors can check related services in one place.
+
+To link pages, open a status page's **Settings**, pick pages under **Linked status pages** and save. Pages appear in the order you add them, up to 20 per page.
+
+- Links go one way: linking page A to page B does not add A to page B.
+- Password-protected pages are listed by name only, without their status.
+- Deleting a status page removes it from every page that links to it.
+
+## Uppies Theme
+
+The **Uppies** theme is ported from [uppies](https://github.com/schmayterling/uppies) by ryana may que, with their permission and under its MIT license. It is a quiet, single-column page with uptime bars, a status banner and an incident timeline.
+
+When you pick it under **Settings**, an **Uppies look** section appears with:
+
+- **Accent hue**: one of eight swatches or any hue from 0 to 360. Lightness stays fixed, so every hue stays readable in light and dark mode.
+- **Background**: `neutral` or the warmer `paper`.
+- **Corners**: `sharp`, `soft` or `round`.
+- **Typeface**: `system`, `rounded`, `serif` or `mono`.
+- **Status icon**: show or hide the round icon next to the status sentence.
+- **Tagline**: a line under the status banner.
+- **Top bar links**: up to 6, one per line, written as `label | https://example.com`. Only `http` and `https` links are shown.
+- **Announcement**: a plain text notice at the top of the page, in blue, green, amber, red, neutral or the accent color.
+- **Footer text**: a line in the page footer.
+
+A monitor set to show its status only appears as a single row without uptime bars. Groups appear as plain headings and can't be collapsed.
+
 ## Example Configuration
 
 Here's a complete example of status page configuration in your `.env` file:

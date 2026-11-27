@@ -1,10 +1,17 @@
 import { ORPCError } from "@orpc/server";
-import { statusPageThemeIds } from "@uptimekit/config/status-page-themes";
+import {
+    statusPageThemeIds,
+    uppiesAnnouncementColors,
+    uppiesCorners,
+    uppiesFonts,
+    uppiesSurfaces,
+} from "@uptimekit/config/status-page-themes";
 import { db } from "@uptimekit/db";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import {
     statusPage,
     statusPageGroup,
+    statusPageLink,
     statusPageMonitor,
 } from "@uptimekit/db/schema/status-pages";
 import { and, asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
@@ -12,6 +19,10 @@ import { z } from "zod";
 import { protectedProcedure, writeProcedure } from "../index";
 import { hashPassword } from "../lib/password";
 import { normalizeStatusPageDomain } from "../lib/status-page-domain";
+import {
+    MAX_LINKED_STATUS_PAGES,
+    normalizeLinkedStatusPageIds,
+} from "../lib/status-page-links";
 import { subscribersRouter } from "./subscribers";
 
 function getActiveOrganizationId(
@@ -24,6 +35,38 @@ function getActiveOrganizationId(
     }
 
     return activeOrganizationId;
+}
+
+async function getValidatedLinkedStatusPageIds({
+    statusPageId,
+    organizationId,
+    linkedIds,
+}: {
+    statusPageId: string;
+    organizationId: string;
+    linkedIds: string[];
+}) {
+    const uniqueIds = normalizeLinkedStatusPageIds(linkedIds, statusPageId);
+    if (uniqueIds.length === 0) {
+        return uniqueIds;
+    }
+
+    // Only pages from the same organization, otherwise any page id could be linked and its status exposed
+    const ownedCount = await db.$count(
+        statusPage,
+        and(
+            inArray(statusPage.id, uniqueIds),
+            eq(statusPage.organizationId, organizationId),
+        ),
+    );
+
+    if (ownedCount !== uniqueIds.length) {
+        throw new ORPCError("BAD_REQUEST", {
+            message: "Linked status pages must belong to this organization",
+        });
+    }
+
+    return uniqueIds;
 }
 
 export const statusPagesRouter = {
@@ -185,10 +228,17 @@ export const statusPagesRouter = {
                 });
             }
 
+            const links = await db
+                .select({ id: statusPageLink.linkedStatusPageId })
+                .from(statusPageLink)
+                .where(eq(statusPageLink.statusPageId, page.id))
+                .orderBy(asc(statusPageLink.order));
+
             const { password, ...pageData } = page;
             return {
                 ...pageData,
                 hasPassword: !!password,
+                linkedStatusPageIds: links.map((link) => link.id),
             };
         }),
 
@@ -232,6 +282,22 @@ export const statusPagesRouter = {
                         defaultSectionCollapsed: z.boolean().optional(),
                         faviconUrl: z.string().optional(),
                         customCss: z.string().max(50_000).optional(),
+                        uppies: z
+                            .object({
+                                accentHue: z.number().int().min(0).max(360),
+                                surface: z.enum(uppiesSurfaces),
+                                corners: z.enum(uppiesCorners),
+                                font: z.enum(uppiesFonts),
+                                showStatusIcon: z.boolean(),
+                                tagline: z.string().max(200),
+                                footerText: z.string().max(500),
+                                announcement: z.string().max(1000),
+                                announcementColor: z.enum(
+                                    uppiesAnnouncementColors,
+                                ),
+                                navLinks: z.string().max(2000),
+                            })
+                            .optional(),
                     })
                     .optional(),
                 description: z.string().optional(),
@@ -241,24 +307,34 @@ export const statusPagesRouter = {
                     .min(6, "Password must be at least 6 characters")
                     .optional()
                     .nullable(),
+                linkedStatusPageIds: z
+                    .array(z.string())
+                    .max(MAX_LINKED_STATUS_PAGES)
+                    .optional(),
             }),
         )
         .handler(async ({ input, context }) => {
+            const organizationId = getActiveOrganizationId(
+                context.session.session.activeOrganizationId,
+            );
             const existing = await db.query.statusPage.findFirst({
                 where: and(
                     eq(statusPage.id, input.id),
-                    eq(
-                        statusPage.organizationId,
-                        getActiveOrganizationId(
-                            context.session.session.activeOrganizationId,
-                        ),
-                    ),
+                    eq(statusPage.organizationId, organizationId),
                 ),
             });
 
             if (!existing) {
                 throw new ORPCError("NOT_FOUND");
             }
+
+            const linkedStatusPageIds = input.linkedStatusPageIds
+                ? await getValidatedLinkedStatusPageIds({
+                      statusPageId: existing.id,
+                      organizationId,
+                      linkedIds: input.linkedStatusPageIds,
+                  })
+                : undefined;
 
             // If updating slug, check uniqueness
             if (input.slug && input.slug !== existing.slug) {
@@ -319,20 +395,42 @@ export const statusPagesRouter = {
                 passwordHash = null;
             }
 
-            await db
-                .update(statusPage)
-                .set({
-                    name: input.name,
-                    slug: input.slug,
-                    domain: normalizedDomain,
-                    description: input.description,
-                    public: input.public,
-                    design: newDesign,
-                    ...(passwordHash !== undefined && {
-                        password: passwordHash,
-                    }),
-                })
-                .where(eq(statusPage.id, input.id));
+            await db.transaction(async (tx) => {
+                await tx
+                    .update(statusPage)
+                    .set({
+                        name: input.name,
+                        slug: input.slug,
+                        domain: normalizedDomain,
+                        description: input.description,
+                        public: input.public,
+                        design: newDesign,
+                        ...(passwordHash !== undefined && {
+                            password: passwordHash,
+                        }),
+                    })
+                    .where(eq(statusPage.id, input.id));
+
+                if (!linkedStatusPageIds) {
+                    return;
+                }
+
+                await tx
+                    .delete(statusPageLink)
+                    .where(eq(statusPageLink.statusPageId, existing.id));
+
+                if (linkedStatusPageIds.length > 0) {
+                    await tx.insert(statusPageLink).values(
+                        linkedStatusPageIds.map(
+                            (linkedStatusPageId, order) => ({
+                                statusPageId: existing.id,
+                                linkedStatusPageId,
+                                order,
+                            }),
+                        ),
+                    );
+                }
+            });
 
             return { success: true };
         }),

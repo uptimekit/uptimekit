@@ -1,4 +1,7 @@
-import { statusPageThemeIds } from "@uptimekit/config/status-page-themes";
+import {
+    defaultUppiesLook,
+    statusPageThemeIds,
+} from "@uptimekit/config/status-page-themes";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -39,6 +42,7 @@ function getConfig(
             defaultSectionCollapsible: true,
             defaultSectionCollapsed: false,
             allowSubscriptions: false,
+            uppies: defaultUppiesLook,
         },
     };
 }
@@ -55,6 +59,14 @@ describe("theme runtime contract", () => {
                 scheduledMaintenances: [],
                 pastIncidents: { "Aug 7, 2026": [incident] },
                 lastUpdated: "2026-08-07T00:00:00Z",
+                linkedPages: [
+                    {
+                        id: "page-2",
+                        name: "Linked Example",
+                        url: "/status/linked-example",
+                        status: "operational",
+                    },
+                ],
             };
             const [Home, IncidentPage, UpdatesPage] = await Promise.all([
                 loadThemeComponent(themeId),
@@ -81,6 +93,7 @@ describe("theme runtime contract", () => {
             );
 
             expect(home).toContain("Example Status");
+            expect(home).toContain("Linked Example");
             expect(detail).toContain("API latency");
             expect(updates.toLowerCase()).toContain("incident history");
         });
