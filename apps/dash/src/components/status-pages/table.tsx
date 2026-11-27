@@ -84,6 +84,9 @@ function StatusPageRow({
                     </span>
                     <a
                         href={statusPageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
                         className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs hover:text-primary"
                     >
                         {statusPageUrl}
