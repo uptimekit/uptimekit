@@ -8,23 +8,20 @@ import type {
 export async function persistMonitorTimeseriesPayload(
     payload: MonitorTimeseriesPersistencePayload,
 ) {
-    if (payload.changesToInsert.length > 0) {
-        await timeseries.insertMonitorChanges(
+    await Promise.all([
+        timeseries.insertMonitorChanges(
             payload.changesToInsert.map((change) => ({
                 ...change,
                 timestamp: new Date(change.timestamp),
             })),
-        );
-    }
-
-    if (payload.monitorEvents.length > 0) {
-        await timeseries.insertMonitorEvents(
+        ),
+        timeseries.insertMonitorEvents(
             payload.monitorEvents.map((event) => ({
                 ...event,
                 timestamp: new Date(event.timestamp),
             })),
-        );
-    }
+        ),
+    ]);
 }
 
 export async function enqueueMonitorTimeseriesPersistence(

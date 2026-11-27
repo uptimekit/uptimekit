@@ -1,10 +1,14 @@
+import { createClient } from "@clickhouse/client";
 import {
     GenericContainer,
     type StartedTestContainer,
     Wait,
 } from "testcontainers";
-import { afterAll, beforeAll } from "vitest";
-import { ClickHouseDriver } from "./clickhouse";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+    ClickHouseDriver,
+    supportsDeduplicatedAsyncInsert,
+} from "./clickhouse";
 import { defineDriverTests } from "./driver-suite";
 
 const CONTAINER_TIMEOUT = 180_000;
@@ -12,10 +16,13 @@ const CONTAINER_TIMEOUT = 180_000;
 let container: StartedTestContainer | undefined;
 let driver: ClickHouseDriver | undefined;
 
+function getClickHouseUrl() {
+    if (!container) throw new Error("ClickHouse container failed to start");
+    return `http://${container.getHost()}:${container.getMappedPort(8123)}`;
+}
+
 beforeAll(async () => {
-    container = await new GenericContainer(
-        "clickhouse/clickhouse-server:latest",
-    )
+    container = await new GenericContainer("clickhouse/clickhouse-server:26.9")
         .withExposedPorts(8123, 9000)
         .withEnvironment({
             CLICKHOUSE_DB: "default",
@@ -28,7 +35,7 @@ beforeAll(async () => {
         .start();
 
     driver = new ClickHouseDriver({
-        url: `http://${container.getHost()}:${container.getMappedPort(8123)}`,
+        url: getClickHouseUrl(),
         username: "default",
         password: "test",
     });
@@ -44,4 +51,62 @@ afterAll(async () => {
 defineDriverTests("ClickHouseDriver", () => {
     if (!driver) throw new Error("ClickHouse container failed to start");
     return driver;
+});
+
+describe("ClickHouse async inserts", () => {
+    it("enables async inserts only on versions with safe deduplication", () => {
+        expect(supportsDeduplicatedAsyncInsert("26.9.1.1")).toBe(true);
+        expect(supportsDeduplicatedAsyncInsert("26.8.2.5")).toBe(true);
+        expect(supportsDeduplicatedAsyncInsert("27.1.1.1")).toBe(true);
+        expect(supportsDeduplicatedAsyncInsert("26.7.3.1")).toBe(false);
+        expect(supportsDeduplicatedAsyncInsert("25.12.1.1")).toBe(false);
+        expect(supportsDeduplicatedAsyncInsert("")).toBe(false);
+    });
+
+    it("writes a batch of events into a few parts instead of one per row", async () => {
+        if (!driver) throw new Error("ClickHouse container failed to start");
+        const monitorId = `parts-${crypto.randomUUID()}`;
+        const now = Date.now();
+        const client = createClient({
+            url: getClickHouseUrl(),
+            username: "default",
+            password: "test",
+        });
+
+        // Without merges every insert keeps its own part, so the count shows
+        // how many parts the inserts created.
+        await client.command({
+            query: "SYSTEM STOP MERGES uptimekit.monitor_events",
+        });
+        try {
+            await driver.insertMonitorEvents(
+                Array.from({ length: 20 }, (_, index) => ({
+                    id: crypto.randomUUID(),
+                    monitorId,
+                    status: "up",
+                    latency: 100,
+                    timestamp: new Date(now - index * 1000),
+                })),
+            );
+
+            const result = await client.query({
+                query: `
+                    SELECT uniqExact(_part) AS parts, count() AS rows
+                    FROM uptimekit.monitor_events
+                    WHERE monitorId = {monitorId:String}
+                `,
+                query_params: { monitorId },
+                format: "JSONEachRow",
+            });
+            const [row] = await result.json<{ parts: string; rows: string }>();
+
+            expect(Number(row?.rows)).toBe(20);
+            expect(Number(row?.parts)).toBeLessThanOrEqual(2);
+        } finally {
+            await client.command({
+                query: "SYSTEM START MERGES uptimekit.monitor_events",
+            });
+            await client.close();
+        }
+    });
 });
