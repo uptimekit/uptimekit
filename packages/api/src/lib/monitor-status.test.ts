@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
     getAggregateMonitorStatus,
     getReportingWorkerIds,
+    getWorkerStatusSince,
     isAutomaticIncidentOpenEligible,
     type MonitorRuntimeStatus,
+    type WorkerStatusSnapshot,
 } from "./monitor-status";
 
 function toMap(
@@ -228,5 +230,125 @@ describe("reporting workers", () => {
         expect(result.startedAt?.toISOString()).toBe(
             "2026-04-26T10:01:30.000Z",
         );
+    });
+});
+
+describe("worker status since", () => {
+    // Window: 60 + 3 * 30 + 2 * 20 + 30 = 220 seconds.
+    const timing = { interval: 60, timeout: 30, retries: 2, retryInterval: 20 };
+    const previous = {
+        status: "down" as const,
+        timestamp: new Date("2026-04-26T10:01:00Z"),
+        since: new Date("2026-04-26T10:00:00Z"),
+    };
+
+    it("starts a new streak when the status changes", () => {
+        const at = new Date("2026-04-26T10:02:00Z");
+        expect(
+            getWorkerStatusSince({ previous, status: "up", at, timing }),
+        ).toBe(at);
+    });
+
+    it("keeps the streak while the worker keeps reporting", () => {
+        expect(
+            getWorkerStatusSince({
+                previous,
+                status: "down",
+                at: new Date("2026-04-26T10:04:40Z"),
+                timing,
+            }),
+        ).toBe(previous.since);
+    });
+
+    it("does not reopen an incident from a resolved outage after a reporting gap", () => {
+        const returnedAt = new Date("2026-04-26T11:00:00Z");
+        const workerStatusById = new Map<string, WorkerStatusSnapshot>([
+            ["worker-b", { status: "up", timestamp: previous.timestamp }],
+            [
+                "worker-a",
+                {
+                    status: "down",
+                    timestamp: returnedAt,
+                    since: getWorkerStatusSince({
+                        previous,
+                        status: "down",
+                        at: returnedAt,
+                        timing,
+                    }),
+                },
+            ],
+        ]);
+        const evaluate = (eventTime: Date) =>
+            isAutomaticIncidentOpenEligible({
+                configuredWorkerIds: getReportingWorkerIds({
+                    workerIds: ["worker-a", "worker-b"],
+                    workerStatusById,
+                    at: eventTime,
+                    timing,
+                    reportingWorkerId: "worker-a",
+                }),
+                workerStatusById,
+                activeIncident: undefined,
+                eventTime,
+                incidentPendingDurationSeconds: 60,
+            });
+
+        expect(evaluate(returnedAt).eligible).toBe(false);
+        expect(
+            evaluate(new Date("2026-04-26T11:01:00Z")).startedAt?.toISOString(),
+        ).toBe(returnedAt.toISOString());
+    });
+
+    it("does not reach back past the last recovery for a delayed report", () => {
+        // A's 10:01 report was queued, so B resolved the incident at 10:04
+        // while A was excluded; the late report keeps A's 10:00 streak.
+        const recoveredAt = new Date("2026-04-26T10:04:00Z");
+        const workerStatusById = new Map<string, WorkerStatusSnapshot>([
+            ["worker-b", { status: "up", timestamp: recoveredAt }],
+            [
+                "worker-a",
+                {
+                    status: "down",
+                    timestamp: new Date("2026-04-26T10:07:30Z"),
+                    since: previous.since,
+                },
+            ],
+        ]);
+        const evaluate = (eventTime: Date) =>
+            isAutomaticIncidentOpenEligible({
+                configuredWorkerIds: getReportingWorkerIds({
+                    workerIds: ["worker-a", "worker-b"],
+                    workerStatusById,
+                    at: eventTime,
+                    timing,
+                    reportingWorkerId: "worker-a",
+                }),
+                workerStatusById,
+                activeIncident: undefined,
+                eventTime,
+                incidentPendingDurationSeconds: 300,
+                lastRecoveredAt: recoveredAt,
+            });
+
+        expect(evaluate(new Date("2026-04-26T10:08:00Z")).eligible).toBe(false);
+        expect(
+            evaluate(new Date("2026-04-26T10:09:00Z")).startedAt?.toISOString(),
+        ).toBe(recoveredAt.toISOString());
+    });
+
+    it("does not reopen a resolved outage from reports older than the recovery", () => {
+        const eventTime = new Date("2026-04-26T10:01:00Z");
+        const result = isAutomaticIncidentOpenEligible({
+            configuredWorkerIds: ["worker-a"],
+            workerStatusById: new Map([
+                ["worker-a", { ...previous, timestamp: eventTime }],
+            ]),
+            activeIncident: undefined,
+            eventTime,
+            incidentPendingDurationSeconds: 60,
+            lastRecoveredAt: new Date("2026-04-26T10:05:00Z"),
+        });
+
+        expect(result.eligible).toBe(false);
     });
 });

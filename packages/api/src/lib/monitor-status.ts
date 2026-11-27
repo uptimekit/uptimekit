@@ -435,6 +435,7 @@ export function isAutomaticIncidentOpenEligible(input: {
     activeIncident: { id: string } | undefined;
     eventTime: Date;
     incidentPendingDurationSeconds: number;
+    lastRecoveredAt?: Date | null;
     isUnderMaintenance?: boolean;
     workerLabels?: Map<string, string>;
 }): AutomaticIncidentOpenEvaluation {
@@ -468,19 +469,20 @@ export function isAutomaticIncidentOpenEligible(input: {
         };
     }
 
-    const durationMs =
-        input.eventTime.getTime() -
-        aggregateStatus.allWorkersDownSince.getTime();
-    const pendingMs = input.incidentPendingDurationSeconds * 1000;
+    // Late or out-of-order reports can carry failures from before the last
+    // recovery; those belong to the incident that recovery closed.
+    const outageStartMs = Math.max(
+        aggregateStatus.allWorkersDownSince.getTime(),
+        input.lastRecoveredAt?.getTime() ?? 0,
+    );
+    const durationMs = input.eventTime.getTime() - outageStartMs;
+    const eligible = durationMs >= input.incidentPendingDurationSeconds * 1000;
 
     return {
-        eligible: durationMs >= pendingMs,
+        eligible,
         allWorkersDownSince: aggregateStatus.allWorkersDownSince,
-        triggerStatus: durationMs >= pendingMs ? "down" : null,
-        startedAt:
-            durationMs >= pendingMs
-                ? aggregateStatus.allWorkersDownSince
-                : null,
+        triggerStatus: eligible ? "down" : null,
+        startedAt: eligible ? new Date(outageStartMs) : null,
         reason: aggregateStatus.statusReason,
     };
 }
@@ -581,6 +583,28 @@ export function getWorkerReportWindowMs(timing: MonitorCheckTiming = {}) {
         timing.retryInterval ?? DEFAULT_RETRY_INTERVAL_SECONDS;
     const checkDuration = (retries + 1) * timeout + retries * retryInterval;
     return (interval + checkDuration + WORKER_REPORT_GRACE_SECONDS) * 1000;
+}
+
+// A reporting gap breaks the streak, so a returning worker cannot carry an
+// outage that was already resolved into a new incident.
+export function getWorkerStatusSince(input: {
+    previous: WorkerStatusSnapshot | undefined;
+    status: MonitorRuntimeStatus;
+    at: Date;
+    timing?: MonitorCheckTiming;
+}) {
+    const { previous, at } = input;
+    if (!previous || previous.status !== input.status) {
+        return at;
+    }
+
+    const oldestAcceptedMs =
+        at.getTime() - getWorkerReportWindowMs(input.timing);
+    if (previous.timestamp.getTime() < oldestAcceptedMs) {
+        return at;
+    }
+
+    return previous.since ?? previous.timestamp;
 }
 
 // A dead worker must not veto an outage with its last "up" report.

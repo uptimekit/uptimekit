@@ -9,7 +9,7 @@ import {
 import { monitor } from "@uptimekit/db/schema/monitors";
 import { statusPageMonitor } from "@uptimekit/db/schema/status-pages";
 import { worker } from "@uptimekit/db/schema/workers";
-import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { type AppEventPayload, publishAppEvent } from "../../lib/events";
 import {
     getLatestMonitorLocationStatuses,
@@ -23,6 +23,7 @@ import {
     getConfiguredWorkerStates,
     getEffectiveMonitorWorkers,
     getReportingWorkerIds,
+    getWorkerStatusSince,
     isAutomaticIncidentOpenEligible,
     isAutomaticIncidentResolveEligible,
     normalizeMonitorStatus,
@@ -824,6 +825,22 @@ async function processMonitorEventGroup(input: {
     let activeIncident: (typeof activeIncidentList)[0] | undefined =
         activeIncidentList[0];
 
+    const [lastRecovery] = await tx
+        .select({ endedAt: incident.endedAt })
+        .from(incident)
+        .innerJoin(incidentMonitor, eq(incident.id, incidentMonitor.incidentId))
+        .where(
+            and(
+                eq(incidentMonitor.monitorId, monitorId),
+                eq(incident.type, "automatic"),
+                // End dates are editable; a future one must not mute alerts.
+                lte(incident.endedAt, now),
+            ),
+        )
+        .orderBy(desc(incident.endedAt))
+        .limit(1);
+    let lastRecoveredAt = lastRecovery?.endedAt ?? null;
+
     // Sort by timestamp
     monitorEvents.sort(
         (a, b) =>
@@ -873,10 +890,20 @@ async function processMonitorEventGroup(input: {
         const eventWorkerId = event.location || workerId;
 
         const previousWorkerStatus = workerStatusById.get(eventWorkerId);
-        const statusSince =
-            previousWorkerStatus?.status === event.status
-                ? (previousWorkerStatus.since ?? previousWorkerStatus.timestamp)
-                : eventTime;
+        // Like the stored state, a retried older report must not replace a newer one.
+        if (
+            previousWorkerStatus &&
+            eventTime < previousWorkerStatus.timestamp
+        ) {
+            continue;
+        }
+
+        const statusSince = getWorkerStatusSince({
+            previous: previousWorkerStatus,
+            status: event.status,
+            at: eventTime,
+            timing: monitorConfig,
+        });
 
         workerStatusById.set(eventWorkerId, {
             status: event.status,
@@ -979,6 +1006,7 @@ async function processMonitorEventGroup(input: {
             });
 
             activeIncident = undefined;
+            lastRecoveredAt = eventTime;
             continue;
         }
 
@@ -1058,6 +1086,7 @@ async function processMonitorEventGroup(input: {
             eventTime,
             incidentPendingDurationSeconds:
                 monitorConfig.incidentPendingDuration,
+            lastRecoveredAt,
             isUnderMaintenance,
             workerLabels,
         });
