@@ -11,7 +11,6 @@ import { getCookieName } from "@/status-page/lib/access-token";
 import {
     getActiveMaintenances,
     getActiveStatusPageReports,
-    getMonitorStatus,
     getStatusPageBySlug,
 } from "@/status-page/lib/db-queries";
 import { withEvlog } from "@/status-page/lib/evlog";
@@ -179,13 +178,6 @@ async function handleGet(
             // Check heartbeat
             if (isExternalMonitor(pm.monitor)) {
                 return toOgStatus(await getExternalMonitorStatus(pm.monitor));
-            }
-
-            const lastCheck = await getMonitorStatus(pm.monitorId);
-            if (lastCheck) {
-                if (lastCheck.status === "down") return "major_outage";
-                if (lastCheck.status === "degraded") return "degraded";
-                if (lastCheck.status === "maintenance") return "maintenance";
             }
 
             return "operational";
