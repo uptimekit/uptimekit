@@ -150,6 +150,21 @@ export const integrationsRouter = {
                 }
             }
 
+            if (input.type === "apprise") {
+                try {
+                    await assertSafePublicHttpUrl(parsedConfig.serverUrl, {
+                        label: "apprise server URL",
+                    });
+                } catch (error) {
+                    if (error instanceof UnsafePublicHttpUrlError) {
+                        throw new ORPCError("BAD_REQUEST", {
+                            message: error.message,
+                        });
+                    }
+                    throw error;
+                }
+            }
+
             const notificationId = input.id ?? crypto.randomUUID();
 
             await db.transaction(async (tx) => {
