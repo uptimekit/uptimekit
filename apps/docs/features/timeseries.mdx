@@ -64,6 +64,43 @@ CLICKHOUSE_PASSWORD=
     history.
 </Info>
 
+### Disk usage
+
+By default the ClickHouse image logs at `trace` level and keeps a dozen system log tables (`text_log`, `trace_log`, `metric_log`, `part_log` and more). On a small instance they write far more to disk than the monitoring data, which wears out SSDs. `docker-compose.clickhouse.yml` turns them off with this server config. If you run ClickHouse yourself, add it as `/etc/clickhouse-server/config.d/zz-low-write.xml`:
+
+```xml
+<clickhouse>
+    <logger>
+        <level>warning</level>
+    </logger>
+    <text_log remove="1"/>
+    <trace_log remove="1"/>
+    <metric_log remove="1"/>
+    <asynchronous_metric_log remove="1"/>
+    <asynchronous_insert_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <query_metric_log remove="1"/>
+    <latency_log remove="1"/>
+    <part_log remove="1"/>
+    <query_log>
+        <ttl>event_date + INTERVAL 3 DAY DELETE</ttl>
+    </query_log>
+</clickhouse>
+```
+
+On ClickHouse 26.8 or newer, UptimeKit writes monitor events with deduplicated async inserts, so the server groups rows into one part per second instead of one part per row.
+
+Turning a log off does not delete data it already wrote. ClickHouse also keeps a renamed copy, such as `system.query_log_1`, each time an upgrade changes a log table's schema. List them and drop the ones you no longer need:
+
+```sql
+SELECT name, formatReadableSize(total_bytes) AS size
+FROM system.tables
+WHERE database = 'system' AND match(name, '_log(_[0-9]+)?$')
+ORDER BY total_bytes DESC;
+
+DROP TABLE IF EXISTS system.trace_log_1 SYNC;
+```
+
 ## Environment Variables
 
 | Variable                 | Required       | Description                                             |

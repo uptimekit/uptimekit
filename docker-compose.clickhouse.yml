@@ -57,6 +57,9 @@ services:
     image: clickhouse/clickhouse-server:26.9
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+    configs:
+      - source: clickhouse_low_write
+        target: /etc/clickhouse-server/config.d/zz-low-write.xml
     environment:
       CLICKHOUSE_DB: uptimekit
       CLICKHOUSE_USER: default
@@ -72,3 +75,26 @@ services:
 volumes:
   db_data:
   clickhouse_data:
+
+configs:
+  # The image defaults to trace logging and a dozen system log tables. On a
+  # small instance they write far more to disk than the monitoring data itself.
+  clickhouse_low_write:
+    content: |
+      <clickhouse>
+          <logger>
+              <level>warning</level>
+          </logger>
+          <text_log remove="1"/>
+          <trace_log remove="1"/>
+          <metric_log remove="1"/>
+          <asynchronous_metric_log remove="1"/>
+          <asynchronous_insert_log remove="1"/>
+          <processors_profile_log remove="1"/>
+          <query_metric_log remove="1"/>
+          <latency_log remove="1"/>
+          <part_log remove="1"/>
+          <query_log>
+              <ttl>event_date + INTERVAL 3 DAY DELETE</ttl>
+          </query_log>
+      </clickhouse>
