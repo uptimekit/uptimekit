@@ -1,5 +1,5 @@
 import { formatTooltipDate } from "@/status-page/lib/uptime";
-import type { Incident, StatusType, UptimeDay } from "../types";
+import type { StatusType, UptimeDay } from "../types";
 
 export type UppiesIcon = "check" | "warning" | "cross" | "wrench" | "dash";
 
@@ -77,25 +77,6 @@ export function dayTip(day: UptimeDay, digits: number): string {
         return `${date}: no data`;
     }
     return `${date}: ${day.uptime.toFixed(digits)}% up`;
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// The most recent incident that touched this monitor during the (UTC) day.
-export function findDayIncident(
-    day: UptimeDay,
-    monitorId: string,
-    incidents: Incident[],
-): Incident | undefined {
-    const dayStart = Date.parse(day.date);
-    const dayEnd = dayStart + DAY_MS;
-    return incidents.find(
-        (incident) =>
-            incident.monitors.some(({ monitor }) => monitor.id === monitorId) &&
-            new Date(incident.startedAt).getTime() < dayEnd &&
-            (incident.endedAt === null ||
-                new Date(incident.endedAt).getTime() >= dayStart),
-    );
 }
 
 export interface NavLink {

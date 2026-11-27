@@ -229,8 +229,12 @@ export const statusPagesRouter = {
             }
 
             const links = await db
-                .select({ id: statusPageLink.linkedStatusPageId })
+                .select({ id: statusPage.id, name: statusPage.name })
                 .from(statusPageLink)
+                .innerJoin(
+                    statusPage,
+                    eq(statusPage.id, statusPageLink.linkedStatusPageId),
+                )
                 .where(eq(statusPageLink.statusPageId, page.id))
                 .orderBy(asc(statusPageLink.order));
 
@@ -238,7 +242,7 @@ export const statusPagesRouter = {
             return {
                 ...pageData,
                 hasPassword: !!password,
-                linkedStatusPageIds: links.map((link) => link.id),
+                linkedStatusPages: links,
             };
         }),
 

@@ -10,7 +10,13 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+    keepPreviousData,
+    useMutation,
+    useQuery,
+    useQueryClient,
+} from "@tanstack/react-query";
+import { MAX_LINKED_STATUS_PAGES } from "@uptimekit/api/lib/status-page-links";
 import {
     defaultUppiesLook,
     getStatusPageThemeDefinition,
@@ -108,7 +114,12 @@ const settingsSchema = z.object({
         .min(6, "Password must be at least 6 characters")
         .optional()
         .or(z.literal("")),
-    linkedStatusPageIds: z.array(z.string()),
+    linkedStatusPageIds: z
+        .array(z.string())
+        .max(
+            MAX_LINKED_STATUS_PAGES,
+            `You can link up to ${MAX_LINKED_STATUS_PAGES} status pages`,
+        ),
     uppies: z.object({
         accentHue: z
             .number("Hue must be a number")
@@ -157,7 +168,10 @@ function getSettingsFormValues(statusPage: any): SettingsFormValues {
         customDomain: statusPage?.domain || "",
         isPrivate: statusPage ? !statusPage.public : false,
         password: "",
-        linkedStatusPageIds: statusPage?.linkedStatusPageIds ?? [],
+        linkedStatusPageIds:
+            statusPage?.linkedStatusPages?.map(
+                (page: LinkableStatusPage) => page.id,
+            ) ?? [],
         uppies: normalizeUppiesLook(design.uppies),
     };
 }
@@ -361,6 +375,7 @@ export function SettingsForm({ statusPageId }: SettingsFormProps) {
                 <LinkedStatusPagesSettings
                     form={form}
                     statusPageId={statusPageId}
+                    savedPages={statusPage?.linkedStatusPages ?? []}
                 />
 
                 <Separator />
@@ -566,17 +581,31 @@ interface LinkableStatusPage {
 function LinkedStatusPagesSettings({
     form,
     statusPageId,
+    savedPages,
 }: {
     form: SettingsFormApi;
     statusPageId: string;
+    savedPages: LinkableStatusPage[];
 }) {
-    const { data } = useQuery(
-        orpc.statusPages.list.queryOptions({ input: { limit: 100 } }),
-    );
+    const [query, setQuery] = useState("");
+    const [pickedPages, setPickedPages] = useState<LinkableStatusPage[]>([]);
+    // Searched on the server so every page in the organization can be found
+    const { data } = useQuery({
+        ...orpc.statusPages.list.queryOptions({
+            input: { q: query.trim() || undefined, limit: 50 },
+        }),
+        placeholderData: keepPreviousData,
+    });
     const linkablePages: LinkableStatusPage[] = (data?.items ?? []).filter(
         (page) => page.id !== statusPageId,
     );
-    const pagesById = new Map(linkablePages.map((page) => [page.id, page]));
+    // Selected pages keep their names even when the current search leaves them out
+    const pagesById = new Map(
+        [...savedPages, ...pickedPages, ...linkablePages].map((page) => [
+            page.id,
+            page,
+        ]),
+    );
 
     return (
         <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
@@ -605,15 +634,18 @@ function LinkedStatusPagesSettings({
                                             const page = pagesById.get(id);
                                             return page ? [page] : [];
                                         })}
-                                        onValueChange={(pages) =>
+                                        onValueChange={(
+                                            pages: LinkableStatusPage[],
+                                        ) => {
+                                            setPickedPages((previous) => [
+                                                ...previous,
+                                                ...pages,
+                                            ]);
                                             field.onChange(
-                                                pages.map(
-                                                    (
-                                                        page: LinkableStatusPage,
-                                                    ) => page.id,
-                                                ),
-                                            )
-                                        }
+                                                pages.map((page) => page.id),
+                                            );
+                                        }}
+                                        onInputValueChange={setQuery}
                                         multiple
                                     >
                                         <ComboboxChips>
@@ -662,7 +694,8 @@ function LinkedStatusPagesSettings({
                                     </Combobox>
                                 </FormControl>
                                 <FormDescription>
-                                    Pages appear in the order you add them.
+                                    Pages appear in the order you add them, up
+                                    to {MAX_LINKED_STATUS_PAGES}.
                                     Password-protected pages are shown without
                                     their status.
                                 </FormDescription>

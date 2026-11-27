@@ -27,7 +27,6 @@ export default function UppiesTheme({ data }: ThemePageProps) {
     } = data;
     const { design } = config;
     const look = design.uppies;
-    const allIncidents = Object.values(pastIncidents).flat();
     const overall = statusViews[overallStatus];
     const hasComponents = monitorGroups.some(
         (group) => group.monitors.length > 0,
@@ -91,7 +90,6 @@ export default function UppiesTheme({ data }: ThemePageProps) {
                                         monitor={monitor}
                                         barDays={design.barDays}
                                         digits={design.percentDigits}
-                                        incidents={allIncidents}
                                     />
                                 ))}
                             </Fragment>

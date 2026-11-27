@@ -9,13 +9,7 @@ import type {
     Monitor,
     StatusPageConfig,
 } from "../types";
-import {
-    dayTip,
-    findDayIncident,
-    parseNavLinks,
-    statusViews,
-    type UppiesIcon,
-} from "./look";
+import { dayTip, parseNavLinks, statusViews, type UppiesIcon } from "./look";
 
 const UPPIES_URL = "https://github.com/schmayterling/uppies";
 
@@ -178,12 +172,10 @@ export function ComponentRow({
     monitor,
     barDays,
     digits,
-    incidents,
 }: {
     monitor: Monitor;
     barDays: number;
     digits: number;
-    incidents: Incident[];
 }) {
     const view = statusViews[monitor.currentStatus];
     const uptime = `${monitor.avgUptime.toFixed(digits)}% uptime`;
@@ -206,28 +198,30 @@ export function ComponentRow({
                 <>
                     <div
                         className="strip"
-                        role="img"
+                        role="group"
                         aria-label={`uptime over the last ${barDays} days: ${uptime}`}
                     >
                         {monitor.history.map((day) => {
-                            const dayProps = {
-                                className: `day day-${statusViews[day.status].day}`,
-                                "data-tip": dayTip(day, digits),
-                                tabIndex: -1,
-                            };
-                            const incident = findDayIncident(
-                                day,
-                                monitor.id,
-                                incidents,
-                            );
-                            return incident ? (
+                            const className = `day day-${statusViews[day.status].day}`;
+                            const tip = dayTip(day, digits);
+                            return day.incidentLink ? (
                                 <a
                                     key={day.date}
-                                    href={incident.detailsLink}
-                                    {...dayProps}
-                                />
+                                    href={day.incidentLink}
+                                    className={className}
+                                    data-tip={tip}
+                                >
+                                    <span className="sr-only">
+                                        {tip}, view incident
+                                    </span>
+                                </a>
                             ) : (
-                                <span key={day.date} {...dayProps} />
+                                <span
+                                    key={day.date}
+                                    className={className}
+                                    data-tip={tip}
+                                    tabIndex={-1}
+                                />
                             );
                         })}
                     </div>

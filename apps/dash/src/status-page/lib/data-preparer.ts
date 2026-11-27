@@ -351,7 +351,7 @@ export async function prepareStatusPageData(
                         dayEnd,
                     );
 
-                    return range ? [{ range, title: m.title }] : [];
+                    return range ? [{ range, title: m.title, id: m.id }] : [];
                 });
                 const maintenanceRanges = maintenanceItems.map(
                     (item) => item.range,
@@ -415,6 +415,11 @@ export async function prepareStatusPageData(
                         ),
                         uptime,
                         annotation,
+                        // events are newest first, so this is the latest incident that day
+                        incidentLink: buildPath(
+                            `/incidents/${reportsOutsideMaintenance[0].id}`,
+                            routeSlug,
+                        ),
                         downtimeMs: totalIncidentMs,
                         maintenanceMs,
                         monitoredMs,
@@ -436,6 +441,10 @@ export async function prepareStatusPageData(
                         status: "maintenance" as const,
                         uptime: 100,
                         annotation,
+                        incidentLink: buildPath(
+                            `/incidents/${maintenanceItems[0].id}`,
+                            routeSlug,
+                        ),
                         maintenanceMs,
                         monitoredMs,
                         duration: formatDuration(maintenanceMs),

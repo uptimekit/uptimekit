@@ -28,6 +28,7 @@ export interface UptimeDay {
     monitoredMs?: number;
     annotation?: string;
     duration?: string;
+    incidentLink?: string;
 }
 
 export interface StatusPageDesign {
