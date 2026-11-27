@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
-import { type ClickHouseClient, createClient } from "@clickhouse/client";
+import {
+    type ClickHouseClient,
+    type ClickHouseSettings,
+    createClient,
+} from "@clickhouse/client";
 import type { TimeSeriesBackend, TimeSeriesDriver } from "./driver";
 import type {
     ChangeTimelineItem,
@@ -35,6 +39,11 @@ type ClickHouseTimeSeriesTable =
 
 const CLICKHOUSE_DEDUPLICATION_WINDOW = 10_000;
 const CLICKHOUSE_INSERT_CONCURRENCY = 8;
+const CLICKHOUSE_ASYNC_INSERT_CONCURRENCY = 32;
+const CLICKHOUSE_MAX_OPEN_CONNECTIONS = 32;
+// 26.2 added per-query deduplication for async inserts on plain MergeTree;
+// 26.6 and 26.8 fixed lost and rejected rows in partially deduplicated flushes.
+const ASYNC_INSERT_MIN_VERSION = { major: 26, minor: 8 };
 
 const BOOTSTRAP_QUERIES: BootstrapQuery[] = [
     { query: "CREATE DATABASE IF NOT EXISTS uptimekit" },
@@ -135,6 +144,14 @@ function getQuantileLevel(value: number | undefined) {
     return quantile.toString();
 }
 
+export function supportsDeduplicatedAsyncInsert(version: string) {
+    const [major = 0, minor = 0] = version.split(".").map(Number);
+    if (major !== ASYNC_INSERT_MIN_VERSION.major) {
+        return major > ASYNC_INSERT_MIN_VERSION.major;
+    }
+    return minor >= ASYNC_INSERT_MIN_VERSION.minor;
+}
+
 function getInsertDeduplicationToken(id: string) {
     return createHash("sha256")
         .update(`uptimekit-timeseries-row\u001f${id.toLowerCase()}`)
@@ -159,6 +176,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
     private options: ClickHouseDriverOptions;
     private client: ClickHouseClient | null = null;
     private schemaInit: Promise<void> | null = null;
+    private useAsyncInsert = false;
 
     constructor(options: ClickHouseDriverOptions = {}) {
         this.options = options;
@@ -180,7 +198,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                     process.env.CLICKHOUSE_PASSWORD ??
                     "",
                 request_timeout: 30000,
-                max_open_connections: 10,
+                max_open_connections: CLICKHOUSE_MAX_OPEN_CONNECTIONS,
             });
         }
         return this.client;
@@ -215,10 +233,8 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                                 optionalTable.database,
                                 optionalTable.table,
                             );
+                            // System logs can be disabled in the server config.
                             if (!exists) {
-                                console.warn(
-                                    `[clickhouse] Skipping optional bootstrap query because the table does not exist: ${query}`,
-                                );
                                 continue;
                             }
                             await this.getClient().command({ query });
@@ -235,12 +251,44 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                     }
                     await this.getClient().command({ query });
                 }
+                this.useAsyncInsert = supportsDeduplicatedAsyncInsert(
+                    await this.getServerVersion(),
+                );
             })().catch((error) => {
                 this.schemaInit = null;
                 throw error;
             });
         }
         await this.schemaInit;
+    }
+
+    private async getServerVersion() {
+        const result = await this.getClient().query({
+            query: "SELECT version() AS version",
+            format: "JSON",
+        });
+        const json = await result.json<{ version: string }>();
+        return json.data[0]?.version ?? "";
+    }
+
+    private getInsertSettings(id: string): ClickHouseSettings {
+        const deduplication: ClickHouseSettings = {
+            insert_deduplicate: 1,
+            insert_deduplication_token: getInsertDeduplicationToken(id),
+        };
+        // Recent servers enable async inserts by default, including versions
+        // whose async deduplication could drop or reject rows.
+        if (!this.useAsyncInsert) {
+            return { ...deduplication, async_insert: 0 };
+        }
+
+        // The adaptive flush window stays at 50-200 ms, so workers waiting
+        // for the response are not throttled by a long flush delay.
+        return {
+            ...deduplication,
+            async_insert: 1,
+            wait_for_async_insert: 1,
+        };
     }
 
     private async queryJson<T>(
@@ -300,13 +348,14 @@ export class ClickHouseDriver implements TimeSeriesDriver {
             }
         };
 
+        const concurrency = this.useAsyncInsert
+            ? CLICKHOUSE_ASYNC_INSERT_CONCURRENCY
+            : CLICKHOUSE_INSERT_CONCURRENCY;
+
         await Promise.all(
             Array.from(
                 {
-                    length: Math.min(
-                        CLICKHOUSE_INSERT_CONCURRENCY,
-                        rows.length,
-                    ),
+                    length: Math.min(concurrency, rows.length),
                 },
                 () => insertNextRow(),
             ),
@@ -348,12 +397,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                     },
                 ],
                 format: "JSONEachRow",
-                clickhouse_settings: {
-                    insert_deduplicate: 1,
-                    insert_deduplication_token: getInsertDeduplicationToken(
-                        event.id,
-                    ),
-                },
+                clickhouse_settings: this.getInsertSettings(event.id),
             });
         });
     }
@@ -382,12 +426,7 @@ export class ClickHouseDriver implements TimeSeriesDriver {
                     },
                 ],
                 format: "JSONEachRow",
-                clickhouse_settings: {
-                    insert_deduplicate: 1,
-                    insert_deduplication_token: getInsertDeduplicationToken(
-                        change.id,
-                    ),
-                },
+                clickhouse_settings: this.getInsertSettings(change.id),
             });
         });
     }
@@ -899,5 +938,6 @@ export class ClickHouseDriver implements TimeSeriesDriver {
 
         this.client = null;
         this.schemaInit = null;
+        this.useAsyncInsert = false;
     }
 }
