@@ -452,6 +452,7 @@
 
 /* the uptime strip: one bar per day, shorter as the day gets worse */
 .uppies .strip {
+    --shown: var(--days);
     position: relative;
     display: flex;
     align-items: flex-end;
@@ -490,15 +491,28 @@
     block-size: 100%;
     background: var(--up-active);
 }
+/* every day is hoverable over the strip's full height and across the gaps, so
+   moving along the strip never falls between days and blinks the tooltip off */
+.uppies .day::before {
+    content: "";
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: calc(var(--up-space-0-5) / -2);
+    block-size: var(--up-space-5);
+}
 /* a tooltip for each day, drawn without script. it opens on hover and on a
-   tap, and the cells near either end align it inward so it stays on screen. */
-.uppies .day:is(:hover, :focus)::after {
+   tap; a day left focused by a click gives way while the strip is hovered, so
+   two tooltips never show at once. */
+.uppies .day:hover::after,
+.uppies .strip:not(:hover) > .day:focus::after {
     content: attr(data-tip);
     position: absolute;
     /* measured from the strip's height, not the bar's, so short (bad) days don't drop it */
     inset-block-end: calc(var(--up-space-5) + var(--up-space-1-5));
     inset-inline-start: 50%;
-    translate: -50% 0;
+    /* glides from left-aligned on the oldest shown day to right-aligned on
+       today, so it stays inside the strip without jumping near the ends */
+    translate: calc(-100% * (1 - var(--age) / max(var(--shown) - 1, 1))) 0;
     z-index: 1;
     padding: var(--up-space-1) var(--up-space-2);
     border: 1px solid var(--up-border-strong);
@@ -511,15 +525,6 @@
     line-height: 1.4;
     white-space: nowrap;
     pointer-events: none;
-}
-.uppies .day:nth-child(-n + 10):is(:hover, :focus)::after {
-    inset-inline-start: 0;
-    translate: 0 0;
-}
-.uppies .day:nth-last-child(-n + 10):is(:hover, :focus)::after {
-    inset-inline-start: auto;
-    inset-inline-end: 0;
-    translate: 0 0;
 }
 .uppies .strip-legend {
     display: flex;
@@ -702,6 +707,9 @@
 
 /* phones show 30 days so each day stays wide enough to see */
 @media (max-width: 520px) {
+    .uppies .strip {
+        --shown: min(var(--days), 30);
+    }
     .uppies .strip > .day:nth-last-child(n + 31) {
         display: none;
     }

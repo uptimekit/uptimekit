@@ -1,4 +1,3 @@
-import { getAggregateMonitorStatusesForMonitors } from "@uptimekit/api/lib/monitor-status";
 import {
     mergeRanges,
     subtractRanges,
@@ -160,27 +159,6 @@ export async function prepareStatusPageData(
 ): Promise<StatusPageData> {
     const design = normalizeStatusPageDesign(pageConfig.design);
     const { barDays } = design;
-    const internalMonitorInputs = [];
-    for (const pm of pageConfig.monitors) {
-        if (isExternalMonitor(pm.monitor)) {
-            continue;
-        }
-
-        internalMonitorInputs.push({
-            id: pm.monitorId,
-            workerIds: (pm.monitor.workerIds as string[] | null) ?? [],
-            locations: (pm.monitor.locations as string[] | null) ?? [],
-            interval: pm.monitor.interval,
-            timeout: pm.monitor.timeout,
-            retries: pm.monitor.retries,
-            retryInterval: pm.monitor.retryInterval,
-        });
-    }
-    const aggregateMonitorStatusesPromise =
-        internalMonitorInputs.length > 0
-            ? getAggregateMonitorStatusesForMonitors(internalMonitorInputs)
-            : Promise.resolve(new Map());
-
     const [
         activeReports,
         activeMaintenances,
@@ -188,7 +166,6 @@ export async function prepareStatusPageData(
         reports,
         maintenances,
         events,
-        aggregateMonitorStatuses,
     ] = await Promise.all([
         getActiveStatusPageReports(pageConfig.id),
         getActiveMaintenances(pageConfig.id),
@@ -196,7 +173,6 @@ export async function prepareStatusPageData(
         getStatusPageReports(pageConfig.id),
         getMaintenanceHistory(pageConfig.id),
         getStatusPageEvents(pageConfig.id, barDays),
-        aggregateMonitorStatusesPromise,
     ]);
 
     const combinedActive = [
@@ -311,24 +287,14 @@ export async function prepareStatusPageData(
                 }
             }
 
-            if (currentStatus === "operational") {
-                if (isExternalMonitor(pm.monitor)) {
-                    currentStatus =
-                        (await getExternalMonitorStatus(pm.monitor)) ??
-                        "unknown";
-                } else {
-                    const aggregateStatus = aggregateMonitorStatuses.get(
-                        pm.monitorId,
-                    );
-                    if (aggregateStatus) {
-                        if (aggregateStatus.status === "down")
-                            currentStatus = "major_outage";
-                        if (aggregateStatus.status === "degraded")
-                            currentStatus = "degraded";
-                        if (aggregateStatus.status === "maintenance")
-                            currentStatus = "maintenance";
-                    }
-                }
+            // internal monitors follow published incidents only; workers raise
+            // those, so a raw failing check never shows here on its own
+            if (
+                currentStatus === "operational" &&
+                isExternalMonitor(pm.monitor)
+            ) {
+                currentStatus =
+                    (await getExternalMonitorStatus(pm.monitor)) ?? "unknown";
             }
 
             let history = buildOperationalHistory(barDays);

@@ -200,15 +200,24 @@ export function ComponentRow({
                         className="strip"
                         role="group"
                         aria-label={`uptime over the last ${barDays} days: ${uptime}`}
+                        style={
+                            {
+                                "--days": monitor.history.length,
+                            } as CSSProperties
+                        }
                     >
-                        {monitor.history.map((day) => {
+                        {monitor.history.map((day, index) => {
                             const className = `day day-${statusViews[day.status].day}`;
                             const tip = dayTip(day, digits);
+                            const style = {
+                                "--age": monitor.history.length - 1 - index,
+                            } as CSSProperties;
                             return day.incidentLink ? (
                                 <a
                                     key={day.date}
                                     href={day.incidentLink}
                                     className={className}
+                                    style={style}
                                     data-tip={tip}
                                 >
                                     <span className="sr-only">
@@ -219,6 +228,7 @@ export function ComponentRow({
                                 <span
                                     key={day.date}
                                     className={className}
+                                    style={style}
                                     data-tip={tip}
                                     tabIndex={-1}
                                 />

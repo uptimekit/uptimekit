@@ -1,5 +1,4 @@
 import { getMaintenanceStatus } from "@uptimekit/api/lib/maintenance-status";
-import { getAggregateMonitorStatusForMonitor } from "@uptimekit/api/lib/monitor-status";
 import {
     db,
     incident,
@@ -7,7 +6,6 @@ import {
     incidentStatusPage,
     statusPage,
     statusPageMonitor,
-    timeseries,
 } from "@uptimekit/db";
 import { monitor } from "@uptimekit/db/schema/monitors";
 import {
@@ -689,43 +687,6 @@ export const getMaintenanceHistoryForPeriod = async (
             );
 
         return limit ? items.slice(0, limit) : items;
-    });
-};
-
-export const getMonitorStatus = async (monitorId: string) => {
-    return withRetry(async () => {
-        const monitorRecord = await db.query.monitor.findFirst({
-            where: eq(monitor.id, monitorId),
-            columns: {
-                id: true,
-                workerIds: true,
-                locations: true,
-                interval: true,
-                timeout: true,
-                retries: true,
-                retryInterval: true,
-            },
-        });
-
-        if (!monitorRecord) return undefined;
-
-        const [latestEvent, aggregateStatus] = await Promise.all([
-            timeseries.getLatestEventForMonitor(monitorId),
-            getAggregateMonitorStatusForMonitor({
-                id: monitorRecord.id,
-                workerIds: (monitorRecord.workerIds as string[] | null) ?? [],
-                locations: (monitorRecord.locations as string[] | null) ?? [],
-                interval: monitorRecord.interval,
-                timeout: monitorRecord.timeout,
-                retries: monitorRecord.retries,
-                retryInterval: monitorRecord.retryInterval,
-            }),
-        ]);
-
-        return {
-            status: aggregateStatus.status,
-            timestamp: latestEvent?.timestamp,
-        };
     });
 };
 
